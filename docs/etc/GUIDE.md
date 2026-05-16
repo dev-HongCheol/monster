@@ -179,18 +179,73 @@ User: 게임이 특정 씬에서 크래시가 발생해요.
 #### `/gstack-upgrade`
 gstack을 최신 버전으로 업그레이드합니다.
 
+## superpowers 설치
+
+superpowers는 TDD, 태스크 분해, subagent 병렬 개발 등 구현 방법론을 제공하는 Claude Code 플러그인입니다.  
+gstack이 기획/리뷰/배포를 담당하고, superpowers는 코드 작성 시점에 활성화됩니다.
+
+### Claude Code (Mac / Windows 공통)
+
+Claude Code 내에서 다음 명령을 실행합니다 (OS 무관, Claude Code 명령어):
+
+```
+/plugin install superpowers@claude-plugins-official
+```
+
+또는 Superpowers 마켓플레이스를 통해:
+
+```
+/plugin marketplace add obra/superpowers-marketplace
+/plugin install superpowers@superpowers-marketplace
+```
+
+### 설치 확인
+
+설치 후 다음 스킬이 사용 가능하면 정상:
+
+```
+superpowers:test-driven-development
+superpowers:executing-plans
+superpowers:brainstorming
+```
+
+### 주요 스킬
+
+| 스킬 | 사용 시점 |
+|------|-----------|
+| `superpowers:test-driven-development` | 코드 작성 시 TDD 강제 (RED-GREEN-REFACTOR) |
+| `superpowers:executing-plans` | 계획 승인 후 태스크 단위 실행 |
+| `superpowers:brainstorming` | 복잡한 기능 분해 |
+| `superpowers:dispatching-parallel-agents` | 여러 worktree 병렬 구현 |
+| `superpowers:verification-before-completion` | 브랜치 완료 전 검증 |
+
+---
+
+## plan-and-build 스킬
+
+gstack + superpowers를 체이닝하는 커스텀 스킬입니다.  
+`/autoplan` → superpowers 구현 → `/review` + `/ship` 제안을 하나의 워크플로우로 연결합니다.
+
+**스킬 파일 및 설치 방법:** [docs/etc/skill/GUIDE.md](./skill/GUIDE.md)
+
+**언제 사용하나요:**
+- 기능 개발 전체 사이클 (기획부터 구현까지 한 번에)
+- superpowers TDD를 빠뜨리지 않고 확실히 사용하고 싶을 때
+
+---
+
 ## 일반적인 워크플로우
 
 ### 1. 새로운 기능 개발 시
 
 ```
-1. /office-hours - 아이디어 검토
-2. /plan-ceo-review - 전략적 계획 수립
-3. /autoplan - 상세 구현 계획
-4. [코드 작성]
-5. /review - 코드 리뷰
-6. /qa <URL> - QA 테스트 (해당하는 경우)
-7. /ship - PR 생성 및 배포
+1. /office-hours      - 아이디어 검토
+2. /plan-and-build    - autoplan → superpowers TDD 구현 → review/ship 체이닝
+   (또는 단계 분리)
+   2a. /autoplan      - 상세 구현 계획
+   2b. [승인 후] superpowers:executing-plans + superpowers:test-driven-development
+   2c. /review        - 코드 리뷰
+   2d. /ship          - PR 생성 및 배포
 ```
 
 ### 2. 버그 수정 시
