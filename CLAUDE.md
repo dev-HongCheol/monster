@@ -26,6 +26,8 @@ docs/
 ### 현재 활성 세션 문서
 
 - [2026-05-14 프로토타입 스코프 결정](docs/development/sessions/2026-05-14-prototype-scope.md)
+- [2026-05-16 Cocos 버전 선택 design doc](docs/development/sessions/2026-05-16-cocos-setup-design.md)
+- [2026-05-16 Cocos 세팅 플랜](docs/development/sessions/2026-05-16-cocos-setup-plan.md)
 
 ### 미정리 초안 (참고용)
 
