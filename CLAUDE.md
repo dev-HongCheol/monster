@@ -68,10 +68,8 @@ docs/
 
 ### 기능 개발
 1. `/office-hours` — 요구사항 재구성 및 스코프 확인
-2. `/autoplan` — CEO + Eng + Design 리뷰, 계획 저장
-3. Human 승인 후 구현
-4. `/review` — 코드 리뷰
-5. `/ship` — PR 생성
+2. `/plan-and-build` — autoplan(CEO+Eng 리뷰) → 승인 후 superpowers TDD 구현 → /review + /ship 제안
+   - 또는 단계 분리: `/autoplan` → 승인 후 `superpowers:executing-plans` + `superpowers:test-driven-development`
 
 ### 문서/설계 작업
 1. `/office-hours` 또는 `/plan-ceo-review` — 방향 검토
@@ -133,3 +131,29 @@ Use the /browse skill from gstack for all web browsing. Never use mcp__claude-in
 - `/unfreeze` - Unfreeze changes
 - `/gstack-upgrade` - Upgrade gstack
 - `/learn` - Learn from documentation
+
+## Skill routing
+
+When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
+
+Key routing rules:
+- 제품 아이디어/브레인스토밍 → invoke /office-hours
+- 전략/스코프 결정 → invoke /plan-ceo-review
+- 아키텍처 설계 → invoke /plan-eng-review
+- 디자인 리뷰 → invoke /design-consultation or /plan-design-review
+- 전체 리뷰 파이프라인 → invoke /autoplan
+- 기획→구현→리뷰 전체 사이클 → invoke /plan-and-build
+- 버그/에러 디버깅 → invoke /investigate
+- QA/사이트 동작 테스트 → invoke /qa or /qa-only
+- 코드 리뷰 → invoke /review
+- UI 개선 → invoke /design-review
+- PR 생성/배포 → invoke /ship or /land-and-deploy
+- 진행 상황 저장 → invoke /context-save
+- 컨텍스트 복원 → invoke /context-restore
+
+**코드 작성 시작 시점에는 superpowers 방법론을 함께 활성화:**
+- TDD로 구현 → invoke superpowers:test-driven-development
+- 복잡한 기능 분해 → invoke superpowers:brainstorming
+- 병렬 구현 (여러 worktree) → invoke superpowers:dispatching-parallel-agents
+- 구현 계획 실행 → invoke superpowers:executing-plans
+- 브랜치 완료 전 검증 → invoke superpowers:verification-before-completion
