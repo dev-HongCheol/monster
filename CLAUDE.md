@@ -1,5 +1,98 @@
 # Project Guidelines
 
+## 프로젝트 문서 구조
+
+모든 프로젝트 문서는 `docs/` 아래에 있다. 새 문서는 반드시 이 구조 안에 저장한다.
+외부 경로(`~/.gstack/` 등)에 저장하지 않는다.
+
+```
+docs/
+├── planning/               # 기획 (게임 디자인, 컨셉, 로드맵)
+├── design/                 # 디자인 (아트 디렉션, UI/UX, 에셋 파이프라인)
+├── development/            # 개발 (아키텍처, 환경 설정)
+│   └── sessions/           # 개발 세션/의사결정 기록 (날짜-주제.md)
+├── qa/                     # QA (테스트 체크리스트, 버그 리포트)
+└── etc/                    # 미정리 초안 문서
+```
+
+### 역할별 주요 문서 위치
+
+| 역할 | 참고 폴더 |
+|------|-----------|
+| 개발자 | `docs/development/`, `docs/planning/` |
+| 디자이너 | `docs/design/`, `docs/planning/` |
+| QA | `docs/qa/`, `docs/development/sessions/` |
+
+### 현재 활성 세션 문서
+
+- [2026-05-14 프로토타입 스코프 결정](docs/development/sessions/2026-05-14-prototype-scope.md)
+
+### 미정리 초안 (참고용)
+
+- [게임 기획서](docs/etc/plan.md)
+- [아트 디렉션](docs/etc/design.md)
+- [개발 체크리스트](docs/etc/checklist.md)
+
+## Safety Rules
+
+### 절대 금지 (확인 없이 하지 않음)
+- main 브랜치 force push
+- 5개 이상 파일 동시 수정 시 먼저 계획 공유
+- 씬 파일(.scene), 프리팹(.prefab), 아트 에셋 삭제
+- API 키, 크레덴셜 커밋
+
+### 행동 규칙
+- 같은 문제 3번 실패 시 → STOP, 상황 보고 후 대기
+- 패키지/플러그인 설치 전 반드시 확인
+- 현재 작업과 무관한 파일 수정 금지
+- 발견한 무관 이슈 → 즉시 수정하지 말고 언급만
+
+### 루프 방지
+같은 파일을 5번 이상 수정해도 진전 없으면 → STOP하고 방향 재확인 요청
+
+## Knowledge Base
+
+작업 전 먼저 확인할 위치:
+- `docs/planning/` — 게임 디자인, 컨셉, 로드맵
+- `docs/design/` — 아트 디렉션, UI/UX, 에셋 파이프라인
+- `docs/development/sessions/` — 개발 세션 및 의사결정 기록
+- `docs/decisions/` — Architecture Decision Records (ADR)
+- `docs/qa/` — QA 체크리스트, 버그 리포트
+
+지식 추가 기준:
+- 주요 기술/설계 결정 → `docs/decisions/NNN-title.md` ADR로 작성
+- 개발 세션 기록 → `docs/development/sessions/YYYY-MM-DD-topic.md`
+- 새 기획/디자인 문서 → gstack 스킬로 정리 후 해당 폴더에 저장
+
+## Workflow
+
+### 기능 개발
+1. `/office-hours` — 요구사항 재구성 및 스코프 확인
+2. `/autoplan` — CEO + Eng + Design 리뷰, 계획 저장
+3. Human 승인 후 구현
+4. `/review` — 코드 리뷰
+5. `/ship` — PR 생성
+
+### 문서/설계 작업
+1. `/office-hours` 또는 `/plan-ceo-review` — 방향 검토
+2. 결과물 → 해당 `docs/` 하위 폴더에 저장
+3. 주요 결정은 `docs/decisions/` ADR로 기록
+
+### 보안/품질 점검
+- 새 코드 작성 후 → `/cso` 보안 체크
+- 배포 전 → `/review` + `/qa`
+
+## 도구 스택
+
+### gstack
+제품 워크플로우 (기획 리뷰, 설계 검토, QA, 보안, 배포).
+기획→구현→리뷰→배포 전 단계에서 사용.
+
+### superpowers
+구현 방법론 (TDD, bite-sized 태스크, subagent+worktree 병렬 개발).
+**코드 작성 시작 시점에 활성화.** 지금은 설치만 된 상태.
+gstack과 역할이 달라 충돌 없이 병행 가능 — 실제 병행 효과는 첫 코딩 세션에서 평가.
+
 ## gstack
 
 Use the /browse skill from gstack for all web browsing. Never use mcp__claude-in-chrome__* tools.
