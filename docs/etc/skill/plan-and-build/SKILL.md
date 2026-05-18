@@ -46,8 +46,12 @@ Phase 3: SHIP
 
 ### Phase 3: Ship
 
-1. After all tasks complete, say: "구현 완료. `/review`와 `/ship` 진행할까요?"
-2. Wait for human confirmation — do NOT auto-invoke either skill
+1. After all tasks complete, update documentation **on the feature branch**:
+   - Session plan file: status → 완료, 결과 요약 작성
+   - CLAUDE.md 현재 활성 세션 문서: ✅ 완료 마킹
+   - Commit the doc update to the feature branch (NOT main)
+2. Say: "문서 업데이트 완료. `/review`와 `/ship` 진행할까요?"
+3. Wait for human confirmation — do NOT auto-invoke either skill
 
 ## Critical Rules
 
@@ -56,6 +60,7 @@ Phase 3: SHIP
 | Human approval required before Phase 2 | Starting implementation after plan display |
 | superpowers skills activated before any code | Writing code without invoking superpowers:test-driven-development |
 | TDD applies to every task | "This task is too simple for tests" |
+| Doc update on feature branch BEFORE PR | Committing doc updates directly to main after merge |
 | Suggest /review + /ship, don't auto-run | Invoking /ship without asking |
 
 ## When NOT to Use

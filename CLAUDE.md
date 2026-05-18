@@ -77,6 +77,12 @@ docs/
 1. `/office-hours` — 요구사항 재구성 및 스코프 확인
 2. `/plan-and-build` — autoplan(CEO+Eng 리뷰) → 승인 후 superpowers TDD 구현 → /review + /ship 제안
    - 또는 단계 분리: `/autoplan` → 승인 후 `superpowers:executing-plans` + `superpowers:test-driven-development`
+3. **PR 생성 전 (피처 브랜치에서):** 관련 세션 문서·플랜 파일 완료 상태로 업데이트 후 커밋
+4. PR 생성 → squash merge
+
+> **규칙: main에 직접 커밋하지 않는다.**
+> 문서 업데이트 포함 모든 변경은 피처 브랜치에서 커밋 후 PR로 병합한다.
+> PR 생성 전에 문서가 최신 상태인지 반드시 확인한다.
 
 ### 문서/설계 작업
 1. `/office-hours` 또는 `/plan-ceo-review` — 방향 검토
