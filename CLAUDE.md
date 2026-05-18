@@ -11,6 +11,7 @@ docs/
 ├── design/                 # 디자인 (아트 디렉션, UI/UX, 에셋 파이프라인)
 ├── development/            # 개발 (아키텍처, 환경 설정)
 │   └── sessions/           # 개발 세션/의사결정 기록 (날짜-주제.md)
+├── decisions/              # Architecture Decision Records (ADR, NNN-title.md)
 ├── qa/                     # QA (테스트 체크리스트, 버그 리포트)
 └── etc/                    # 미정리 초안 문서
 ```
@@ -27,7 +28,11 @@ docs/
 
 - [2026-05-14 프로토타입 스코프 결정](docs/development/sessions/2026-05-14-prototype-scope.md)
 - [2026-05-16 Cocos 버전 선택 design doc](docs/development/sessions/2026-05-16-cocos-setup-design.md)
-- [2026-05-16 Cocos 세팅 플랜](docs/development/sessions/2026-05-16-cocos-setup-plan.md)
+- [2026-05-16 Cocos 세팅 플랜](docs/development/sessions/2026-05-16-cocos-setup-plan.md) ✅ 완료
+
+### 주요 결정 기록 (ADR)
+
+- [ADR 001: Cocos Creator 버전 선택](docs/decisions/001-cocos-version.md)
 
 ### 미정리 초안 (참고용)
 
