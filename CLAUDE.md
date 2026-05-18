@@ -24,12 +24,6 @@ docs/
 | 디자이너 | `docs/design/`, `docs/planning/` |
 | QA | `docs/qa/`, `docs/development/sessions/` |
 
-### 현재 활성 세션 문서
-
-- [2026-05-14 프로토타입 스코프 결정](docs/development/sessions/2026-05-14-prototype-scope.md)
-- [2026-05-16 Cocos 버전 선택 design doc](docs/development/sessions/2026-05-16-cocos-setup-design.md)
-- [2026-05-16 Cocos 세팅 플랜](docs/development/sessions/2026-05-16-cocos-setup-plan.md) ✅ 완료
-
 ### 주요 결정 기록 (ADR)
 
 - [ADR 001: Cocos Creator 버전 선택](docs/decisions/001-cocos-version.md)
@@ -39,6 +33,8 @@ docs/
 - [게임 기획서](docs/etc/plan.md)
 - [아트 디렉션](docs/etc/design.md)
 - [개발 체크리스트](docs/etc/checklist.md)
+
+> 세션 작업 문서(design doc, plan 등)는 `docs/development/sessions/`에 보관되며 CLAUDE.md에서 별도 관리하지 않는다.
 
 ## Safety Rules
 
