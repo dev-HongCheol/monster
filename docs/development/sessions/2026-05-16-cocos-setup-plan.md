@@ -1,71 +1,67 @@
-# Cocos Creator 버전 선택 및 프로젝트 초기 세팅 플랜
+# Cocos Creator 프로젝트 부트스트랩 플랜
 
 - **날짜:** 2026-05-16
-- **브랜치:** feat/cocos-setup
-- **상태:** DRAFT
+- **브랜치:** feat/cocos-setup (main에 squash merge 완료)
+- **상태:** ✅ 완료
 
-## 배경
+## 결과 요약
 
-세션 문서(2026-05-14-prototype-scope.md)에서 Cocos 4를 엔진으로 결정했고,
-미결 사항으로 "Cocos Creator 3.x 최신 vs Cocos 4 (2026년 오픈소스화) — 버전 선택 필요"가 남아 있다.
+Cocos Creator 3.8.8 Empty(2D) 프로젝트를 `game/` 서브폴더에 생성하고 개발 환경을 설정했다.
 
-프로젝트 목표: TS 프론트 개발자가 Cocos Creator를 학습하며 로그라이크 액션 게임을 개발.
-최초 완료 기준: 색깔 사각형이 이동하고 프로젝타일을 발사하는 최소 전투 프로토타입.
+### 생성된 구조
 
-## 결정해야 할 것
+```
+monster/
+├── game/                          # Cocos Creator 3.8.8 프로젝트
+│   ├── assets/
+│   │   ├── scripts/
+│   │   │   ├── components/
+│   │   │   ├── systems/
+│   │   │   ├── ui/
+│   │   │   └── data/
+│   │   ├── scenes/
+│   │   │   └── main.scene         # 첫 빈 씬 (Canvas + Camera)
+│   │   └── resources/             # 동적 로드 에셋 전용
+│   ├── settings/                  # Cocos 프로젝트 설정
+│   ├── tsconfig.json              # strict: true (루트 불변, extends 방식)
+│   └── .gitignore                 # Cocos 표준 (library/, temp/, local/ 등)
+├── .gitignore                     # 루트: Cocos 캐시 game/ 프리픽스로 제외
+├── biome.json                     # 포맷팅 + 린팅 (Prettier+ESLint 대체)
+├── .editorconfig
+├── .vscode/
+│   ├── extensions.json            # 권장 확장 (cocos.cocos-creator 필수)
+│   └── settings.json              # format-on-save (Biome)
+├── docs/decisions/
+│   └── 001-cocos-version.md       # ADR: 버전 선택 + resources/ 원칙 + 4.x 비이전 영역
+└── docs/etc/todos.md              # defer된 항목 추적
+```
 
-### 1. Cocos Creator 버전
+### 주요 결정
 
-| 버전 | 상태 | 특징 |
-|------|------|------|
-| Cocos Creator 3.x (최신) | 안정 | 풍부한 문서, 커뮤니티, TypeScript 지원 |
-| Cocos Creator 4.x | 새버전 (2026 오픈소스화) | 최신 아키텍처, 문서 부족 가능성 |
+| 결정 | 내용 |
+|------|------|
+| 엔진 | Cocos Creator 3.8.8 LTS (Empty 2D 템플릿) |
+| 프로젝트 위치 | `game/` 서브폴더 |
+| 포맷터 | Biome (Prettier + ESLint 대체) |
+| TypeScript | strict mode (`assets/tsconfig.json` extends 방식) |
+| Cocos 자동생성 코드 | Biome ignore 초기 적용 → 충돌 검증 후 해제 예정 |
 
-**대상 플랫폼:** 모바일(iOS/Android) + 웹
-**개발자 배경:** TypeScript 숙련, Cocos 처음
+### CEO/Eng 리뷰에서 발견 및 반영된 항목
 
-### 2. 프로젝트 구조 세팅
+- tsconfig 수정 방식: 루트 불변, `assets/tsconfig.json` extends만 허용
+- .gitignore 보강: `extensions/`, `build/`, `native/`, `profiles/` 추가 / `*.meta` 제외 명시적 금지
+- `assets/resources/` 예약 경로 의미 ADR에 명시
+- VSCode 확장에 `cocos.cocos-creator` 필수 포함
+- 씬 생성 절차: Cocos 에디터에서만 가능 (파일 직접 생성 불가)
+- Cocos 자동 생성 중첩 git 레포 (`game/.git`) 제거
 
-- 프로젝트 생성 방식 (Cocos Dashboard vs CLI)
-- 폴더 구조 컨벤션
-- TypeScript 설정 (tsconfig, strict mode)
-- VSCode 설정 (.vscode/)
-- .gitignore 설정
-- 빌드 타겟 설정 (Web Mobile + Native Mobile)
+## 미완료 / 다음 단계
 
-## 구현 범위
-
-### In Scope
-- Cocos Creator 버전 최종 결정 및 근거 문서화
-- 프로젝트 생성 및 기본 폴더 구조
-- TypeScript + VSCode 개발 환경 설정
-- .gitignore, README 기본 파일
-- 첫 씬(Scene) 생성 — 빈 씬으로 시작
-
-### Out of Scope
-- 게임 로직 구현 (이동, 전투, AI)
-- 아트 에셋 파이프라인
-- 빌드/배포 자동화 (CI/CD)
-- 모바일 컨트롤 스킴 결정
-
-## 전제
-
-1. 모바일 퍼스트 타겟 — Android/iOS 네이티브 빌드 필요
-2. TypeScript 엄격 모드 선호 — TS 개발자 배경에 맞춤
-3. 솔로 개발 — 협업 도구 설정 불필요
-4. 학습 목적 — 커뮤니티/문서 접근성이 중요
-
-## 예상 작업
-
-1. Cocos Creator 버전 조사 및 결정
-2. Cocos Dashboard 또는 CLI로 프로젝트 생성
-3. 기본 폴더 구조 정리 (`assets/scripts/`, `assets/scenes/`, `assets/resources/`)
-4. VSCode 플러그인 설치 가이드 작성
-5. tsconfig 조정
-6. .gitignore 설정 (Cocos 특화)
-7. 첫 커밋
-8. ADR 작성 — 버전 선택 결정 기록
+- [ ] `docs/etc/todos.md` 참고
+- [ ] 다음 세션: 첫 게임 코드 — 색깔 사각형 이동 + 프로젝타일 발사
 
 ## 참고
 
+- [Cocos 버전 선택 design doc](./2026-05-16-cocos-setup-design.md)
+- [ADR 001: Cocos Creator 버전 선택](../decisions/001-cocos-version.md)
 - [프로토타입 스코프 결정](./2026-05-14-prototype-scope.md)
