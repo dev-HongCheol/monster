@@ -1,0 +1,22 @@
+# Cocos Creator
+game/library/
+game/local/
+game/temp/
+game/extensions/
+game/build/
+game/native/
+game/profiles/
+
+# *.meta files MUST NOT be ignored — Cocos uses them for asset GUID tracking
+# Ignoring *.meta breaks scene/prefab references after clone
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+
+# Node (if any tooling is added)
+node_modules/
