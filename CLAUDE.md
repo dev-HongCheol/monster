@@ -56,6 +56,7 @@ docs/
 ## Knowledge Base
 
 작업 전 먼저 확인할 위치:
+- `docs/development/conventions.md` — **코드 컨벤션 (코드 작성 전 필수 확인)**
 - `docs/planning/` — 게임 디자인, 컨셉, 로드맵
 - `docs/design/` — 아트 디렉션, UI/UX, 에셋 파이프라인
 - `docs/development/sessions/` — 개발 세션 및 의사결정 기록
