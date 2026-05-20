@@ -17,13 +17,18 @@ export class EnemySpawner extends Component {
   /** 동시에 존재할 수 있는 최대 적 수 */
   @property maxEnemies: number = 10;
 
-  /** 플레이어로부터 스폰되는 거리 (units) */
-  private readonly _spawnRadius: number = 450;
+  /** 플레이어로부터 스폰되는 거리 (units) - Canvas 범위 내에서 스폰 */
+  private readonly _spawnRadius: number = 350;
   private _spawnTimer: number = 0;
+  private _canvas: Node | null = null;
 
   onLoad() {
     if (!this.enemyPrefab) { console.error('[EnemySpawner] enemyPrefab not assigned'); return; }
     if (!this.playerNode) { console.error('[EnemySpawner] playerNode not assigned'); return; }
+
+    // Canvas 찾기 (Player의 부모가 Canvas)
+    this._canvas = this.playerNode.parent;
+    if (!this._canvas) { console.error('[EnemySpawner] Canvas not found'); return; }
   }
 
   update(dt: number) {
@@ -38,19 +43,19 @@ export class EnemySpawner extends Component {
   }
 
   private _spawnEnemy(): void {
-    if (!this.enemyPrefab || !this.playerNode) return;
+    if (!this.enemyPrefab || !this.playerNode || !this._canvas) return;
 
     // 플레이어 주변 원 위 랜덤 각도에 스폰
     const angle = Math.random() * Math.PI * 2;
     const spawnPos = new Vec3(
-      this.playerNode.worldPosition.x + Math.cos(angle) * this._spawnRadius,
-      this.playerNode.worldPosition.y + Math.sin(angle) * this._spawnRadius,
+      this.playerNode.position.x + Math.cos(angle) * this._spawnRadius,
+      this.playerNode.position.y + Math.sin(angle) * this._spawnRadius,
       0,
     );
 
     const enemy = instantiate(this.enemyPrefab);
-    this.node.addChild(enemy);
-    enemy.setWorldPosition(spawnPos);
+    this._canvas.addChild(enemy); // Canvas에 추가
+    enemy.setPosition(spawnPos);
     enemy.getComponent(EnemyController)!.playerNode = this.playerNode;
   }
 }

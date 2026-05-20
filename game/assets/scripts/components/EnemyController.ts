@@ -50,8 +50,8 @@ export class EnemyController extends Component {
   }
 
   private _followPlayer(dt: number): void {
-    const myPos = this.node.worldPosition;
-    const targetPos = this.playerNode!.worldPosition;
+    const myPos = this.node.position;
+    const targetPos = this.playerNode!.position;
     const dir = new Vec3();
     Vec3.subtract(dir, targetPos, myPos);
 
@@ -59,7 +59,7 @@ export class EnemyController extends Component {
     dir.normalize();
     dir.multiplyScalar(ENEMY_DATA.speed * dt);
 
-    this.node.setWorldPosition(
+    this.node.setPosition(
       myPos.x + dir.x,
       myPos.y + dir.y,
       myPos.z,
@@ -67,7 +67,7 @@ export class EnemyController extends Component {
   }
 
   private _checkContactDamage(dt: number): void {
-    const dist = Vec3.distance(this.node.worldPosition, this.playerNode!.worldPosition);
+    const dist = Vec3.distance(this.node.position, this.playerNode!.position);
     // 플레이어 반경(25) + 적 반경(25) = 50
     if (dist < 50) {
       GameManager.instance.damagePlayer(ENEMY_DATA.contactDamagePerSec * dt);

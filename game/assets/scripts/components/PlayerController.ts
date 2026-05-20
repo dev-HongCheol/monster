@@ -70,8 +70,8 @@ export class PlayerController extends Component {
 
   private _move(dt: number): void {
     const { speed } = GameManager.instance.playerData;
-    const pos = this.node.worldPosition;
-    this.node.setWorldPosition(
+    const pos = this.node.position;
+    this.node.setPosition(
       pos.x + this._moveDir.x * speed * dt,
       pos.y + this._moveDir.y * speed * dt,
       pos.z,
@@ -95,11 +95,11 @@ export class PlayerController extends Component {
 
     let nearest: Node | null = null;
     let minDist = Infinity;
-    const myPos = this.node.worldPosition;
+    const myPos = this.node.position;
 
     for (const enemy of enemies) {
       if (!enemy || !enemy.isValid) continue;
-      const dist = Vec3.distance(myPos, enemy.node.worldPosition);
+      const dist = Vec3.distance(myPos, enemy.node.position);
       if (dist < minDist) {
         minDist = dist;
         nearest = enemy.node;
@@ -112,12 +112,12 @@ export class PlayerController extends Component {
     if (!this.bulletPrefab || !this.bulletParent) return;
 
     const dir = new Vec3();
-    Vec3.subtract(dir, target.worldPosition, this.node.worldPosition);
+    Vec3.subtract(dir, target.position, this.node.position);
     dir.normalize();
 
     const bullet = instantiate(this.bulletPrefab);
     this.bulletParent.addChild(bullet);
-    bullet.setWorldPosition(this.node.worldPosition);
+    bullet.setPosition(this.node.position);
 
     const { bulletSpeed, bulletDamage } = GameManager.instance.playerData;
     bullet.getComponent(Projectile)!.init(dir, bulletSpeed, bulletDamage);

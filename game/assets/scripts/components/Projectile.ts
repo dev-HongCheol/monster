@@ -10,8 +10,8 @@ export class Projectile extends Component {
   private _direction: Vec3 = new Vec3(0, 1, 0);
   private _speed: number = 500;
   private _damage: number = 25;
-  /** 화면 경계 밖 판정 거리 (units) */
-  private readonly _outOfBoundsLimit: number = 700;
+  /** 화면 경계 밖 판정 거리 (units) - Canvas 크기 1280x720 고려 */
+  private readonly _outOfBoundsLimit: number = 800;
 
   /**
    * 발사체를 초기화한다. instantiate 직후 반드시 호출해야 한다.
@@ -32,8 +32,8 @@ export class Projectile extends Component {
   }
 
   private _move(dt: number): void {
-    const pos = this.node.worldPosition;
-    this.node.setWorldPosition(
+    const pos = this.node.position;
+    this.node.setPosition(
       pos.x + this._direction.x * this._speed * dt,
       pos.y + this._direction.y * this._speed * dt,
       pos.z,
@@ -41,10 +41,10 @@ export class Projectile extends Component {
   }
 
   private _checkEnemyHit(): void {
-    const pos = this.node.worldPosition;
+    const pos = this.node.position;
     for (const enemy of GameManager.instance.enemies) {
       if (!enemy || !enemy.isValid) continue;
-      const dist = Vec3.distance(pos, enemy.node.worldPosition);
+      const dist = Vec3.distance(pos, enemy.node.position);
       // 발사체 반경(8) + 적 반경(25) = 33
       if (dist < 33) {
         enemy.takeDamage(this._damage);
@@ -55,7 +55,7 @@ export class Projectile extends Component {
   }
 
   private _checkOutOfBounds(): void {
-    const pos = this.node.worldPosition;
+    const pos = this.node.position;
     if (Math.abs(pos.x) > this._outOfBoundsLimit || Math.abs(pos.y) > this._outOfBoundsLimit) {
       this.node.destroy();
     }
