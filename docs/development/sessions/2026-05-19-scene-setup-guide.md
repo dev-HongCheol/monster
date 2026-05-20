@@ -9,9 +9,11 @@
 
 단색 사각형을 만들려면 흰색 기본 스프라이트가 필요하다.
 
-1. Assets 패널 → `internal` 폴더 열기
-2. `default_sprite` 또는 `default_sprite_splash` 찾기
+1. Assets 패널 → `internal` 폴더 → `default_ui` 폴더 열기
+2. `default_sprite_splash` SpriteFrame 찾기
 3. 이 SpriteFrame을 이후 Sprite 컴포넌트에 사용한다
+
+> **주의:** `internal/default_ui/` 하위에 있다. `internal` 직하에는 없다.
 
 ---
 
@@ -21,11 +23,12 @@
 
 ```
 Scene (main)
-├── GameManager          ← 빈 노드
-├── EnemySpawner         ← 빈 노드
-├── BulletParent         ← 빈 노드
-├── Player               ← Sprite 노드
 └── Canvas
+    ├── Camera
+    ├── GameManager      ← 빈 노드
+    ├── EnemySpawner     ← 빈 노드
+    ├── BulletParent     ← 빈 노드
+    ├── Player           ← Sprite 노드
     └── HUD              ← 빈 노드
         ├── HpLabel      ← Label 노드
         └── GameOverPanel ← 빈 노드 (기본 비활성)
@@ -33,61 +36,66 @@ Scene (main)
             └── RestartButton ← Button 노드
 ```
 
+> **중요:** Cocos Creator 3.x에서 모든 2D 렌더 오브젝트(Sprite, Label 등)는 반드시 Canvas(RenderRoot2D) 하위에 있어야 화면에 표시된다. Player를 Canvas 밖에 두면 보이지 않는다.
+
 ---
 
 ## 3. 노드 생성 순서
 
-### 3-1. GameManager, EnemySpawner, BulletParent (빈 노드)
+### 3-1. Canvas 생성 (먼저!)
 
 Hierarchy 빈 공간 우클릭 →
-`Create Node` → `Create Empty Node`
+`Create` → `UI Component` → `Canvas`
 
-이름 변경: 노드 더블클릭 → 이름 입력
+이름: `Canvas` (기본값 유지)
+
+### 3-2. GameManager, EnemySpawner, BulletParent (빈 노드)
+
+Canvas 우클릭 →
+`Create` → `Create Empty Node`
+
+이름 변경: 노드 더블클릭 또는 F2
 
 각각 생성:
 - `GameManager`
 - `EnemySpawner`
 - `BulletParent`
 
-### 3-2. Player (Sprite 노드)
+### 3-3. Player (Sprite 노드)
 
-Hierarchy 우클릭 →
-`Create Node` → `2D Object` → `Sprite`
+Canvas 우클릭 →
+`Create` → `2D Object` → `Sprite`
 
 이름: `Player`
 
 **Inspector 설정:**
-- `Sprite` 컴포넌트 → SpriteFrame: `internal/default_sprite` 드래그
+- `Sprite` 컴포넌트 → SpriteFrame: `internal/default_ui/default_sprite_splash` 드래그
 - `Sprite` 컴포넌트 → Color: 파란색 (R:0 G:100 B:255)
 - `UITransform` 컴포넌트 → Content Size: `W:50 H:50`
 - Position: `X:0 Y:0 Z:0`
 
-### 3-3. Canvas + HUD
+### 3-4. HUD
 
-Hierarchy 우클릭 →
-`Create Node` → `UI Component` → `Canvas`
-
-Canvas 하위에 HUD 생성:
-Canvas 우클릭 → `Create Node` → `Create Empty Node` → 이름 `HUD`
+Canvas 우클릭 → `Create` → `Create Empty Node` → 이름 `HUD`
 
 **HUD 하위에 HpLabel 생성:**
-HUD 우클릭 → `Create Node` → `UI Component` → `Label`
+HUD 우클릭 → `Create` → `UI Component` → `Label`
 - 이름: `HpLabel`
 - Inspector → `Label` 컴포넌트 → String: `HP: 100 / 100`
 - Position: X:-300 Y:220 (좌상단)
 
 **HUD 하위에 GameOverPanel 생성:**
-HUD 우클릭 → `Create Node` → `Create Empty Node`
+HUD 우클릭 → `Create` → `Create Empty Node`
 - 이름: `GameOverPanel`
 - Inspector 상단 체크박스(Active) → **체크 해제** (비활성 상태로 시작)
 
 **GameOverPanel 하위에 Label 생성:**
-GameOverPanel 우클릭 → `Create Node` → `UI Component` → `Label`
+GameOverPanel 우클릭 → `Create` → `UI Component` → `Label`
 - String: `GAME OVER`
 - Font Size: 48
 
 **GameOverPanel 하위에 RestartButton 생성:**
-GameOverPanel 우클릭 → `Create Node` → `UI Component` → `Button`
+GameOverPanel 우클릭 → `Create` → `UI Component` → `Button`
 - 이름: `RestartButton`
 - 하위 Label의 String: `RESTART`
 - Position: X:0 Y:-80
@@ -136,10 +144,10 @@ Hierarchy에서 노드를 Inspector의 슬롯으로 **드래그**해서 연결�
 
 ### Enemy 프리팹
 
-1. Hierarchy 우클릭 → `Create Node` → `2D Object` → `Sprite`
+1. Canvas 우클릭 → `Create` → `2D Object` → `Sprite`
    - 이름: `Enemy`
 2. Inspector 설정:
-   - Sprite → SpriteFrame: `internal/default_sprite`
+   - Sprite → SpriteFrame: `internal/default_ui/default_sprite_splash`
    - Sprite → Color: 빨간색 (R:255 G:0 B:0)
    - UITransform → Content Size: `W:50 H:50`
 3. `Add Component` → `Scripts` → `EnemyController`
@@ -149,10 +157,10 @@ Hierarchy에서 노드를 Inspector의 슬롯으로 **드래그**해서 연결�
 
 ### Bullet 프리팹
 
-1. Hierarchy 우클릭 → `Create Node` → `2D Object` → `Sprite`
+1. Canvas 우클릭 → `Create` → `2D Object` → `Sprite`
    - 이름: `Bullet`
 2. Inspector 설정:
-   - Sprite → SpriteFrame: `internal/default_sprite`
+   - Sprite → SpriteFrame: `internal/default_ui/default_sprite_splash`
    - Sprite → Color: 노란색 (R:255 G:255 B:0)
    - UITransform → Content Size: `W:15 H:15`
 3. `Add Component` → `Scripts` → `Projectile`
