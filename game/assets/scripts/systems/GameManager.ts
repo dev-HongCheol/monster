@@ -31,6 +31,12 @@ export class GameManager extends Component {
     GameManager.instance = this;
   }
 
+  onDestroy() {
+    if (GameManager.instance === this) {
+      GameManager.instance = null!;
+    }
+  }
+
   /**
    * 적을 활성 목록에 등록한다.
    * @param enemy 등록할 적 컴포넌트

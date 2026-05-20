@@ -27,7 +27,7 @@ export class EnemyController extends Component {
   }
 
   onDestroy() {
-    GameManager.instance.unregisterEnemy(this);
+    GameManager.instance?.unregisterEnemy(this);
   }
 
   update(dt: number) {
