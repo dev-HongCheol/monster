@@ -1,7 +1,7 @@
-import { _decorator, Component, Node, Prefab, instantiate, Vec3 } from 'cc';
+import { _decorator, Component, instantiate, Node, Prefab, Vec3 } from 'cc';
+import { EnemyController } from '../components/EnemyController';
 import { GameState } from '../data/GameTypes';
 import { GameManager } from './GameManager';
-import { EnemyController } from '../components/EnemyController';
 
 const { ccclass, property } = _decorator;
 
@@ -23,12 +23,21 @@ export class EnemySpawner extends Component {
   private _canvas: Node | null = null;
 
   onLoad() {
-    if (!this.enemyPrefab) { console.error('[EnemySpawner] enemyPrefab not assigned'); return; }
-    if (!this.playerNode) { console.error('[EnemySpawner] playerNode not assigned'); return; }
+    if (!this.enemyPrefab) {
+      console.error('[EnemySpawner] enemyPrefab not assigned');
+      return;
+    }
+    if (!this.playerNode) {
+      console.error('[EnemySpawner] playerNode not assigned');
+      return;
+    }
 
     // Canvas 찾기 (Player의 부모가 Canvas)
     this._canvas = this.playerNode.parent;
-    if (!this._canvas) { console.error('[EnemySpawner] Canvas not found'); return; }
+    if (!this._canvas) {
+      console.error('[EnemySpawner] Canvas not found');
+      return;
+    }
   }
 
   update(dt: number) {

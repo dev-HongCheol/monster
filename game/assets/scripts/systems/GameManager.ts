@@ -1,6 +1,6 @@
 import { _decorator, Component, director } from 'cc';
-import { GameState, IPlayerData } from '../data/GameTypes';
 import type { EnemyController } from '../components/EnemyController';
+import { GameState, type IPlayerData } from '../data/GameTypes';
 
 const { ccclass } = _decorator;
 
@@ -21,11 +21,21 @@ export class GameManager extends Component {
   private _playerHp: number = PLAYER_DATA.maxHp;
   private _enemies: EnemyController[] = [];
 
-  get state() { return this._state; }
-  get playerHp() { return this._playerHp; }
-  get maxPlayerHp() { return PLAYER_DATA.maxHp; }
-  get playerData() { return PLAYER_DATA; }
-  get enemies() { return this._enemies; }
+  get state() {
+    return this._state;
+  }
+  get playerHp() {
+    return this._playerHp;
+  }
+  get maxPlayerHp() {
+    return PLAYER_DATA.maxHp;
+  }
+  get playerData() {
+    return PLAYER_DATA;
+  }
+  get enemies() {
+    return this._enemies;
+  }
 
   onLoad() {
     GameManager.instance = this;

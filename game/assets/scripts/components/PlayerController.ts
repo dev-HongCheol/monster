@@ -1,4 +1,15 @@
-import { _decorator, Component, Node, Vec3, Prefab, instantiate, input, Input, EventKeyboard, KeyCode } from 'cc';
+import {
+  _decorator,
+  Component,
+  type EventKeyboard,
+  Input,
+  input,
+  instantiate,
+  KeyCode,
+  Node,
+  Prefab,
+  Vec3,
+} from 'cc';
 import { GameState } from '../data/GameTypes';
 import { GameManager } from '../systems/GameManager';
 import { Projectile } from './Projectile';
@@ -22,8 +33,14 @@ export class PlayerController extends Component {
   private _keyRight: boolean = false;
 
   onLoad() {
-    if (!this.bulletPrefab) { console.error('[PlayerController] bulletPrefab not assigned'); return; }
-    if (!this.bulletParent) { console.error('[PlayerController] bulletParent not assigned'); return; }
+    if (!this.bulletPrefab) {
+      console.error('[PlayerController] bulletPrefab not assigned');
+      return;
+    }
+    if (!this.bulletParent) {
+      console.error('[PlayerController] bulletParent not assigned');
+      return;
+    }
 
     input.on(Input.EventType.KEY_DOWN, this._onKeyDown, this);
     input.on(Input.EventType.KEY_UP, this._onKeyUp, this);

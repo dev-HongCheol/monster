@@ -1,7 +1,3 @@
 {
-  "recommendations": [
-    "biomejs.biome",
-    "cocos.cocos-creator",
-    "editorconfig.editorconfig"
-  ]
+  "recommendations": ["biomejs.biome", "cocos.cocos-creator", "editorconfig.editorconfig"]
 }

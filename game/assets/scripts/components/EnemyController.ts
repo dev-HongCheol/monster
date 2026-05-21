@@ -1,5 +1,5 @@
 import { _decorator, Component, Node, Vec3 } from 'cc';
-import { GameState, IEnemyData } from '../data/GameTypes';
+import { GameState, type IEnemyData } from '../data/GameTypes';
 import { GameManager } from '../systems/GameManager';
 
 const { ccclass, property } = _decorator;
@@ -59,11 +59,7 @@ export class EnemyController extends Component {
     dir.normalize();
     dir.multiplyScalar(ENEMY_DATA.speed * dt);
 
-    this.node.setPosition(
-      myPos.x + dir.x,
-      myPos.y + dir.y,
-      myPos.z,
-    );
+    this.node.setPosition(myPos.x + dir.x, myPos.y + dir.y, myPos.z);
   }
 
   private _checkContactDamage(dt: number): void {

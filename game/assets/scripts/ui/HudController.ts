@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Button } from 'cc';
+import { _decorator, Button, Component, Label, Node } from 'cc';
 import { GameState } from '../data/GameTypes';
 import { GameManager } from '../systems/GameManager';
 
@@ -15,9 +15,18 @@ export class HudController extends Component {
   @property(Button) restartButton: Button | null = null;
 
   onLoad() {
-    if (!this.hpLabel) { console.error('[HudController] hpLabel not assigned'); return; }
-    if (!this.gameOverPanel) { console.error('[HudController] gameOverPanel not assigned'); return; }
-    if (!this.restartButton) { console.error('[HudController] restartButton not assigned'); return; }
+    if (!this.hpLabel) {
+      console.error('[HudController] hpLabel not assigned');
+      return;
+    }
+    if (!this.gameOverPanel) {
+      console.error('[HudController] gameOverPanel not assigned');
+      return;
+    }
+    if (!this.restartButton) {
+      console.error('[HudController] restartButton not assigned');
+      return;
+    }
 
     this.gameOverPanel.active = false;
     this.restartButton.node.on(Button.EventType.CLICK, this._onRestart, this);
