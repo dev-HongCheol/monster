@@ -93,6 +93,15 @@ squash merge 전에 반드시 최종 커밋 메시지(subject + body)를 보여�
 2. 결과물 → 해당 `docs/` 하위 폴더에 저장
 3. 주요 결정은 `docs/decisions/` ADR로 기록
 
+### 커밋 전 lint
+husky pre-commit 훅이 staged 파일에 `biome check --write`를 자동 실행한다.
+커밋이 막히면 auto-fix로 해결되지 않는 lint 에러가 남아있는 것이므로 `pnpm check`로 에러를 확인하고 수동 수정 후 재커밋한다.
+
+```bash
+pnpm check          # 에러 확인
+pnpm check --write  # auto-fix 적용
+```
+
 ### 보안/품질 점검
 - 새 코드 작성 후 → `/cso` 보안 체크
 - 배포 전 → `/review` + `/qa`

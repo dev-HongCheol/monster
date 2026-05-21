@@ -1,13 +1,13 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
   "files": {
-    "ignore": [
-      "game/library/**",
-      "game/local/**",
-      "game/temp/**",
-      "game/extensions/**",
-      "game/build/**",
-      "game/assets/scripts/**"
+    "includes": [
+      "**",
+      "!**/game/library",
+      "!**/game/local",
+      "!**/game/temp",
+      "!**/game/extensions",
+      "!**/game/build"
     ]
   },
   "formatter": {
