@@ -15,7 +15,7 @@ const PLAYER_DATA: IPlayerData = {
 /** 게임 전체 상태와 플레이어 HP를 관리하는 싱글톤 */
 @ccclass('GameManager')
 export class GameManager extends Component {
-  static instance: GameManager = null!;
+  static instance!: GameManager;
 
   private _state: GameState = GameState.Playing;
   private _playerHp: number = PLAYER_DATA.maxHp;
@@ -43,7 +43,7 @@ export class GameManager extends Component {
 
   onDestroy() {
     if (GameManager.instance === this) {
-      GameManager.instance = null!;
+      GameManager.instance = null as unknown as GameManager;
     }
   }
 

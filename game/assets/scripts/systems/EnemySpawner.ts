@@ -23,20 +23,16 @@ export class EnemySpawner extends Component {
   private _canvas: Node | null = null;
 
   onLoad() {
-    if (!this.enemyPrefab) {
-      console.error('[EnemySpawner] enemyPrefab not assigned');
+    if (!this.enemyPrefab || !this.playerNode) {
+      console.error('[EnemySpawner] required properties not assigned');
+      this.enabled = false;
       return;
     }
-    if (!this.playerNode) {
-      console.error('[EnemySpawner] playerNode not assigned');
-      return;
-    }
-
     // Canvas 찾기 (Player의 부모가 Canvas)
     this._canvas = this.playerNode.parent;
     if (!this._canvas) {
       console.error('[EnemySpawner] Canvas not found');
-      return;
+      this.enabled = false;
     }
   }
 
@@ -51,6 +47,7 @@ export class EnemySpawner extends Component {
     this._spawnEnemy();
   }
 
+  /** 플레이어 주변 랜덤 위치에 적을 생성하고 추적 대상을 설정한다. */
   private _spawnEnemy(): void {
     if (!this.enemyPrefab || !this.playerNode || !this._canvas) return;
 
@@ -65,6 +62,8 @@ export class EnemySpawner extends Component {
     const enemy = instantiate(this.enemyPrefab);
     this._canvas.addChild(enemy); // Canvas에 추가
     enemy.setPosition(spawnPos);
-    enemy.getComponent(EnemyController)!.playerNode = this.playerNode;
+    const enemyCtrl = enemy.getComponent(EnemyController);
+    if (!enemyCtrl) return;
+    enemyCtrl.playerNode = this.playerNode;
   }
 }

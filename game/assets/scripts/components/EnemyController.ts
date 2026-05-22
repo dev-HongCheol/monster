@@ -32,8 +32,6 @@ export class EnemyController extends Component {
 
   update(dt: number) {
     if (GameManager.instance.state !== GameState.Playing) return;
-    if (!this.playerNode) return;
-
     this._followPlayer(dt);
     this._checkContactDamage(dt);
   }
@@ -49,9 +47,11 @@ export class EnemyController extends Component {
     }
   }
 
+  /** 플레이어 방향으로 이동한다. */
   private _followPlayer(dt: number): void {
+    if (!this.playerNode) return;
     const myPos = this.node.position;
-    const targetPos = this.playerNode!.position;
+    const targetPos = this.playerNode.position;
     const dir = new Vec3();
     Vec3.subtract(dir, targetPos, myPos);
 
@@ -62,8 +62,10 @@ export class EnemyController extends Component {
     this.node.setPosition(myPos.x + dir.x, myPos.y + dir.y, myPos.z);
   }
 
+  /** 플레이어와 접촉 반경 내에 있으면 접촉 데미지를 입힌다. */
   private _checkContactDamage(dt: number): void {
-    const dist = Vec3.distance(this.node.position, this.playerNode!.position);
+    if (!this.playerNode) return;
+    const dist = Vec3.distance(this.node.position, this.playerNode.position);
     // 플레이어 반경(25) + 적 반경(25) = 50
     if (dist < 50) {
       GameManager.instance.damagePlayer(ENEMY_DATA.contactDamagePerSec * dt);
