@@ -98,24 +98,21 @@ private _isAlive: boolean = true; // 자명 → 주석 생략
 
 ### 메서드 JSDoc
 
-public(export) 메서드에만 JSDoc을 작성한다.
+라이프사이클 메서드(`onLoad`, `start`, `update`, `onDestroy` 등)를 제외한 모든 메서드에 JSDoc을 작성한다. private 메서드 포함.
 
 ```ts
+/** 대상 방향으로 발사체를 생성하고 발사한다. */
+private _shoot(target: Node): void { ... }
+
 /**
  * 피해를 입히고 사망 여부를 반환한다.
  * @param amount 피해량 (0 이상, 음수 무시됨)
  * @returns true면 이 프레임에 사망
  */
 takeDamage(amount: number): boolean { ... }
-```
 
-private 메서드와 라이프사이클 메서드는 JSDoc 생략 — 이름이 명확하면 충분.
-
-```ts
-private _resetState() { ... }   // 주석 없이
-private _spawnBullet() { ... }  // 주석 없이
-onLoad() { ... }                // 주석 없이
-update(dt: number) { ... }      // 주석 없이
+onLoad() { ... }      // 라이프사이클 — 주석 생략
+update(dt: number) {} // 라이프사이클 — 주석 생략
 ```
 
 ### 복잡 로직 인라인 주석
@@ -184,13 +181,36 @@ export class GameManager extends Component {
 
 ## null 처리
 
-```ts
-@property(Prefab) bulletPrefab: Prefab | null = null;
+`@property` 필드는 Cocos 직렬화 요구로 `| null` 타입이 강제된다.
 
+### onLoad 검증
+
+모든 필드를 한 번에 검증하고, 실패 시 `this.enabled = false`로 `update()` 호출을 차단한다.
+
+```ts
 onLoad() {
-  if (!this.bulletPrefab) { error('bulletPrefab not assigned'); return; }
+  if (!this.bulletPrefab || !this.bulletParent) {
+    console.error('[ClassName] required properties not assigned');
+    this.enabled = false;
+    return;
+  }
+  // 초기화 로직
 }
 ```
+
+### 메서드 내 null 체크
+
+각 메서드가 자신이 필요한 필드만 직접 체크한다. `if (!this.x) return` 이후 동일 스코프 내에서 TypeScript narrowing이 유지되므로 `!` 없이 사용 가능하다.
+
+```ts
+private _shoot(): void {
+  if (!this.bulletPrefab || !this.bulletParent) return;
+  const bullet = instantiate(this.bulletPrefab); // ! 불필요
+  this.bulletParent.addChild(bullet);
+}
+```
+
+`!` (non-null assertion 연산자) 사용 금지 — Biome `noNonNullAssertion` 규칙.
 
 ---
 

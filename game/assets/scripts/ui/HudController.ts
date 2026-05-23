@@ -15,19 +15,11 @@ export class HudController extends Component {
   @property(Button) restartButton: Button | null = null;
 
   onLoad() {
-    if (!this.hpLabel) {
-      console.error('[HudController] hpLabel not assigned');
+    if (!this.hpLabel || !this.gameOverPanel || !this.restartButton) {
+      console.error('[HudController] required properties not assigned');
+      this.enabled = false;
       return;
     }
-    if (!this.gameOverPanel) {
-      console.error('[HudController] gameOverPanel not assigned');
-      return;
-    }
-    if (!this.restartButton) {
-      console.error('[HudController] restartButton not assigned');
-      return;
-    }
-
     this.gameOverPanel.active = false;
     this.restartButton.node.on(Button.EventType.CLICK, this._onRestart, this);
   }
@@ -37,12 +29,14 @@ export class HudController extends Component {
     this._checkGameOver();
   }
 
+  /** HP 라벨을 현재 플레이어 HP로 갱신한다. */
   private _updateHp(): void {
     if (!this.hpLabel) return;
     const gm = GameManager.instance;
     this.hpLabel.string = `HP: ${Math.ceil(gm.playerHp)} / ${gm.maxPlayerHp}`;
   }
 
+  /** 게임오버 상태이면 패널을 활성화한다. */
   private _checkGameOver(): void {
     if (!this.gameOverPanel) return;
     const isGameOver = GameManager.instance.state === GameState.GameOver;
@@ -52,6 +46,7 @@ export class HudController extends Component {
     }
   }
 
+  /** 재시작 버튼 클릭 시 게임을 재시작한다. */
   private _onRestart(): void {
     GameManager.instance.restart();
   }

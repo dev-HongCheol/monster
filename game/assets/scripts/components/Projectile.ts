@@ -31,6 +31,7 @@ export class Projectile extends Component {
     this._checkOutOfBounds();
   }
 
+  /** 이동 방향으로 발사체를 이동시킨다. */
   private _move(dt: number): void {
     const pos = this.node.position;
     this.node.setPosition(
@@ -40,10 +41,11 @@ export class Projectile extends Component {
     );
   }
 
+  /** 적과 충돌 여부를 검사해 명중 시 데미지를 주고 자신을 제거한다. */
   private _checkEnemyHit(): void {
     const pos = this.node.position;
     for (const enemy of GameManager.instance.enemies) {
-      if (!enemy || !enemy.isValid) continue;
+      if (!enemy?.isValid) continue;
       const dist = Vec3.distance(pos, enemy.node.position);
       // 발사체 반경(8) + 적 반경(25) = 33
       if (dist < 33) {
@@ -54,6 +56,7 @@ export class Projectile extends Component {
     }
   }
 
+  /** 화면 경계를 벗어나면 자신을 제거한다. */
   private _checkOutOfBounds(): void {
     const pos = this.node.position;
     if (Math.abs(pos.x) > this._outOfBoundsLimit || Math.abs(pos.y) > this._outOfBoundsLimit) {
