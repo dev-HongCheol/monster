@@ -29,18 +29,16 @@ npm install -g @anthropic-ai/claude-code
 Claude Code의 제품 워크플로우 스킬 모음 (기획 리뷰, QA, 보안, 배포 등).
 
 ```bash
-cd ~/.claude/skills
-git clone https://github.com/garrynewman/gstack.git gstack
-cd gstack && ./setup
-```
-
-설치 확인: Claude Code에서 `/browse` 실행.
-
-팀원 추가 장비:
-```bash
+mkdir -p ~/.claude/skills
 git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
 cd ~/.claude/skills/gstack && ./setup --team
 ```
+
+> `--team` 옵션은 Claude Code 세션 시작 시 gstack을 자동 업데이트하는 훅을 `~/.claude/settings.json`에 등록한다. 단독 작업이라 자동 업데이트가 불필요하면 `./setup`만 실행.
+>
+> 사전 요구사항: `bun` (`npm i -g bun`), Git Bash 또는 WSL bash. PowerShell에서는 `./setup` 직접 실행이 안 되므로 Git Bash로 실행한다.
+
+설치 확인: Claude Code 재시작 후 `/browse`, `/office-hours` 등 gstack 스킬이 노출되는지 확인.
 
 ---
 
@@ -48,21 +46,19 @@ cd ~/.claude/skills/gstack && ./setup --team
 
 구현 방법론 플러그인 (TDD, 병렬 worktree 개발 등).
 
-Claude Code 내에서:
-```
-/plugins install superpowers
+### Windows 설치 (확인됨: Windows 11, Git Bash)
+
+터미널에서:
+```bash
+claude plugin marketplace add obra/superpowers-marketplace
+claude plugin install superpowers@superpowers-marketplace
 ```
 
-또는 `~/.claude/settings.json`에 직접 추가:
-```json
-{
-  "enabledPlugins": {
-    "superpowers@claude-plugins-official": true
-  }
-}
-```
+**중요: 설치 후 Claude Code 재시작 필수**
 
-설치 확인 — 다음 스킬이 사용 가능하면 정상:
+### 설치 확인
+
+Claude Code 재시작 후, 다음 스킬이 사용 가능하면 정상:
 
 | 스킬 | 사용 시점 |
 |------|-----------|

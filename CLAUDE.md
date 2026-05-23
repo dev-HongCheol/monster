@@ -126,7 +126,8 @@ mcp__context7__get-library-docs: "/websites/cocos_creator_3_8_manual_en" topic="
 
 ### superpowers
 구현 방법론 (TDD, bite-sized 태스크, subagent+worktree 병렬 개발).
-**코드 작성 시작 시점에 활성화.** 지금은 설치만 된 상태.
+**코드 작성 시작 시점에 활성화.**
+설치 방법: `docs/development/environment-setup.md` § 3 참고 (설치 후 Claude Code 재시작 필수).
 gstack과 역할이 달라 충돌 없이 병행 가능 — 실제 병행 효과는 첫 코딩 세션에서 평가.
 
 ### Context7 MCP
