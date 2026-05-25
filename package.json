@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest",
+    "test:run": "vitest run",
     "prepare": "husky",
     "format": "biome format --write .",
     "lint": "biome lint .",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.5"
+    "lint-staged": "^17.0.5",
+    "vitest": "^3.2.3"
   }
 }
