@@ -1,0 +1,11 @@
+[
+  {
+    "id": "fireball",
+    "name": "파이어볼",
+    "damage": 25,
+    "projectileSpeed": 500,
+    "projectileRadius": 8,
+    "cooldown": 0.5,
+    "projectileCount": 1
+  }
+]

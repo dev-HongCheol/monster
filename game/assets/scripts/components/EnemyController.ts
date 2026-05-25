@@ -1,29 +1,34 @@
 import { _decorator, Component, Node, Vec3 } from 'cc';
 import { GameState, type IEnemyData } from '../data/GameTypes';
+import { DataManager } from '../systems/DataManager';
 import { GameManager } from '../systems/GameManager';
 
 const { ccclass, property } = _decorator;
-
-const ENEMY_DATA: IEnemyData = {
-  maxHp: 100,
-  speed: 150,
-  contactDamagePerSec: 20,
-  collisionRadius: 25,
-};
 
 /** 플레이어를 추적하고 접촉 시 데미지를 주는 적 AI */
 @ccclass('EnemyController')
 export class EnemyController extends Component {
   /** 추적 대상 플레이어 노드 (인스펙터에서 연결) */
   @property(Node) playerNode: Node | null = null;
+  /** enemies.json 의 id 값 (인스펙터에서 설정) */
+  @property enemyId: string = 'skeleton';
 
-  /** 적 충돌 반경 (units) */
-  readonly collisionRadius: number = ENEMY_DATA.collisionRadius;
+  collisionRadius: number = 25;
 
-  private _hp: number = ENEMY_DATA.maxHp;
+  private _data: IEnemyData | null = null;
+  private _hp: number = 0;
+  private _playerCollisionRadius: number = 0;
 
   onLoad() {
     GameManager.instance.registerEnemy(this);
+    DataManager.instance.onReady(() => {
+      this._data = DataManager.instance.getEnemy(this.enemyId);
+      if (this._data) {
+        this._hp = this._data.maxHp;
+        this.collisionRadius = this._data.collisionRadius;
+      }
+      this._playerCollisionRadius = DataManager.instance.playerData.collisionRadius;
+    });
   }
 
   onDestroy() {
@@ -31,15 +36,13 @@ export class EnemyController extends Component {
   }
 
   update(dt: number) {
+    if (!this._data) return;
     if (GameManager.instance.state !== GameState.Playing) return;
     this._followPlayer(dt);
     this._checkContactDamage(dt);
   }
 
-  /**
-   * 외부(발사체)에서 데미지를 입힌다. HP가 0 이하면 노드를 제거한다.
-   * @param amount 피해량
-   */
+  /** 피해를 입히고 HP가 0 이하면 노드를 제거한다. */
   takeDamage(amount: number): void {
     this._hp -= amount;
     if (this._hp <= 0) {
@@ -49,26 +52,24 @@ export class EnemyController extends Component {
 
   /** 플레이어 방향으로 이동한다. */
   private _followPlayer(dt: number): void {
-    if (!this.playerNode) return;
+    if (!this.playerNode || !this._data) return;
     const myPos = this.node.position;
     const targetPos = this.playerNode.position;
     const dir = new Vec3();
     Vec3.subtract(dir, targetPos, myPos);
-
-    if (dir.length() < 1) return;
+    if (dir.lengthSqr() < 1) return;
     dir.normalize();
-    dir.multiplyScalar(ENEMY_DATA.speed * dt);
-
+    dir.multiplyScalar(this._data.speed * dt);
     this.node.setPosition(myPos.x + dir.x, myPos.y + dir.y, myPos.z);
   }
 
-  /** 플레이어와 접촉 반경 내에 있으면 접촉 데미지를 입힌다. */
+  /** 플레이어와 접촉 거리 내에 있으면 초당 데미지를 준다. */
   private _checkContactDamage(dt: number): void {
-    if (!this.playerNode) return;
+    if (!this.playerNode || !this._data) return;
     const dist = Vec3.distance(this.node.position, this.playerNode.position);
-    // 플레이어 반경(25) + 적 반경(25) = 50
-    if (dist < 50) {
-      GameManager.instance.damagePlayer(ENEMY_DATA.contactDamagePerSec * dt);
+    const touchRadius = this.collisionRadius + this._playerCollisionRadius;
+    if (dist < touchRadius) {
+      GameManager.instance.damagePlayer(this._data.contactDamagePerSec * dt);
     }
   }
 }

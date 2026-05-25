@@ -1,0 +1,5 @@
+{
+  "maxHp": 100,
+  "speed": 300,
+  "collisionRadius": 25
+}

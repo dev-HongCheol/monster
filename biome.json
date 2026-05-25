@@ -7,7 +7,8 @@
       "!**/game/local",
       "!**/game/temp",
       "!**/game/extensions",
-      "!**/game/build"
+      "!**/game/build",
+      "!**/game/profiles"
     ]
   },
   "formatter": {
