@@ -3,7 +3,6 @@
 ## 프로젝트 문서 구조
 
 모든 프로젝트 문서는 `docs/` 아래에 있다. 새 문서는 반드시 이 구조 안에 저장한다.
-외부 경로(`~/.gstack/` 등)에 저장하지 않는다.
 
 ```
 docs/
@@ -27,6 +26,8 @@ docs/
 ### 주요 결정 기록 (ADR)
 
 - [ADR 001: Cocos Creator 버전 선택](docs/decisions/001-cocos-version.md)
+- [ADR 002: scripts/logic/ 분리 패턴](docs/decisions/002-scripts-logic-pattern.md)
+- [ADR 003: 테스트 전략](docs/decisions/003-testing-strategy.md)
 
 ### 미정리 초안 (참고용)
 
@@ -49,6 +50,7 @@ docs/
 - 패키지/플러그인 설치 전 반드시 확인
 - 현재 작업과 무관한 파일 수정 금지
 - 발견한 무관 이슈 → 즉시 수정하지 말고 언급만
+- **기존 JSDoc/인라인 주석 삭제 금지** — 기존 코드에 이미 있는 주석은 수정·기능 추가 시에도 유지한다. 파라미터가 변경된 경우 `@param` 내용을 업데이트한다.
 
 ### 루프 방지
 같은 파일을 5번 이상 수정해도 진전 없으면 → STOP하고 방향 재확인 요청
@@ -70,12 +72,60 @@ docs/
 
 ## Workflow
 
+### ⛔ 코드 작성 전 필수 게이트
+
+**코드를 한 줄이라도 작성하기 전에 아래 스킬을 반드시 호출한다. 예외 없음.**
+
+| 시점 | AI가 invoke하는 스킬 |
+|------|---------------------|
+| 구현 계획 승인 직후 | `superpowers:executing-plans` |
+| 코드 작성 시작 전 | `superpowers:test-driven-development` |
+| 코드 검증 항목 완료 후 | `/cso` (OWASP + STRIDE 보안 체크) |
+| 커밋 전 | `superpowers:verification-before-completion` |
+
+**TDD 예외 처리 규칙:**
+프로토타입/throwaway 코드로 TDD를 스킵할 경우, 반드시 사용자에게 명시적으로 확인받아야 한다.
+"이건 프로토타입이니까 TDD 생략해도 될 것 같다"는 AI가 혼자 결정할 수 없다.
+
+**커밋 규칙:**
+구현 완료 후 커밋을 제안하거나 실행하지 않는다. 사용자가 검증을 마친 후 직접 결정한다.
+
+---
+
 ### 기능 개발
+
+#### 1단계: 계획 (사용자 주도)
 1. `/office-hours` — 요구사항 재구성 및 스코프 확인
-2. `/plan-and-build` — autoplan(CEO+Eng 리뷰) → 승인 후 superpowers TDD 구현 → /review + /ship 제안
-   - 또는 단계 분리: `/autoplan` → 승인 후 `superpowers:executing-plans` + `superpowers:test-driven-development`
-3. **PR 생성 전 (피처 브랜치에서):** 관련 세션 문서·플랜 파일 완료 상태로 업데이트 후 커밋
-4. PR 생성 → squash merge
+2. `/autoplan` — CEO+Eng 리뷰 → 사용자 승인
+
+#### 2단계: 코드 작업 (AI 주도)
+3. `superpowers:executing-plans` 호출 → `superpowers:test-driven-development` 호출
+   - `logic/` 클래스 Vitest 테스트 먼저 작성 (RED)
+   - 구현 (GREEN → REFACTOR)
+4. QA 체크리스트(`docs/qa/`) 중 **코드로 검증 가능한 항목** 완료 확인
+5. `/cso` 호출 — 보안 체크 (OWASP + STRIDE)
+6. 보안 이슈 발견 시 코드 수정 → `/cso` 재실행
+7. `superpowers:verification-before-completion` 호출
+
+#### 3단계: 에디터/검증 (사용자 주도)
+> AI는 이 단계를 수행하지 않는다. 사용자가 직접 진행 후 결과를 전달한다.
+
+8. Cocos Creator 에디터 세팅 (씬 노드 구성, `@property` 연결 — `docs/qa/` 체크리스트 참고)
+9. 수동 인게임 테스트 (QA 체크리스트 나머지 항목)
+10. `/review` 실행 — 코드 리뷰
+
+#### 4단계: 완료
+11. **PR 생성 전:** 관련 세션 문서·플랜 파일 완료 상태로 업데이트 후 커밋
+12. PR 생성 → squash merge
+
+---
+
+### 문서/설계 작업 (코드 없음)
+1. `/office-hours` 또는 `/plan-ceo-review` — 방향 검토
+2. 결과물 → 해당 `docs/` 하위 폴더에 저장
+3. 주요 결정은 `docs/decisions/` ADR로 기록
+
+---
 
 ### PR Squash Merge 절차
 squash merge 전에 반드시 최종 커밋 메시지(subject + body)를 보여주고 사용자 확인 후 실행한다.
@@ -88,10 +138,7 @@ squash merge 전에 반드시 최종 커밋 메시지(subject + body)를 보여�
 > 문서 업데이트 포함 모든 변경은 피처 브랜치에서 커밋 후 PR로 병합한다.
 > PR 생성 전에 문서가 최신 상태인지 반드시 확인한다.
 
-### 문서/설계 작업
-1. `/office-hours` 또는 `/plan-ceo-review` — 방향 검토
-2. 결과물 → 해당 `docs/` 하위 폴더에 저장
-3. 주요 결정은 `docs/decisions/` ADR로 기록
+---
 
 ### 커밋 전 lint
 husky pre-commit 훅이 staged 파일에 `biome check --write`를 자동 실행한다.
@@ -101,10 +148,6 @@ husky pre-commit 훅이 staged 파일에 `biome check --write`를 자동 실행�
 pnpm check          # 에러 확인
 pnpm check --write  # auto-fix 적용
 ```
-
-### 보안/품질 점검
-- 새 코드 작성 후 → `/cso` 보안 체크
-- 배포 전 → `/review` + `/qa`
 
 ## Cocos Creator 구현 규칙
 
@@ -193,9 +236,8 @@ Key routing rules:
 - 진행 상황 저장 → invoke /context-save
 - 컨텍스트 복원 → invoke /context-restore
 
-**코드 작성 시작 시점에는 superpowers 방법론을 함께 활성화:**
-- TDD로 구현 → invoke superpowers:test-driven-development
+**superpowers 추가 라우팅:**
 - 복잡한 기능 분해 → invoke superpowers:brainstorming
 - 병렬 구현 (여러 worktree) → invoke superpowers:dispatching-parallel-agents
-- 구현 계획 실행 → invoke superpowers:executing-plans
-- 브랜치 완료 전 검증 → invoke superpowers:verification-before-completion
+
+→ 코드 작성 전 필수 게이트는 Workflow 섹션 참고

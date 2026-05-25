@@ -218,8 +218,11 @@ private _shoot(): void {
 
 ```
 scripts/
-  components/   # Node에 붙는 컴포넌트
+  logic/        # cc import 없는 순수 TypeScript 클래스 (Vitest 테스트 대상)
+  components/   # Node에 붙는 컴포넌트 (logic을 감싸는 껍데기)
   systems/      # 글로벌 매니저 (GameManager, SpawnSystem 등)
   data/         # 타입/인터페이스 정의
   ui/           # UI 컴포넌트
 ```
+
+게임 규칙 로직은 `logic/`에 구현하고 Component는 라이프사이클 + wiring만 담당한다. → [ADR 002](../../docs/decisions/002-scripts-logic-pattern.md)
