@@ -11,6 +11,8 @@ import {
   Vec3,
 } from 'cc';
 import { GameState } from '../data/GameTypes';
+import { DataManager } from '../systems/DataManager';
+import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
 import { Projectile } from './Projectile';
 
@@ -23,9 +25,12 @@ export class PlayerController extends Component {
   @property(Prefab) bulletPrefab: Prefab | null = null;
   /** 발사체가 생성될 부모 노드 (인스펙터에서 연결) */
   @property(Node) bulletParent: Node | null = null;
+  /** 시작 마법 id (spells.json) */
+  @property activeSpellId: string = 'fireball';
 
   private _moveDir: Vec3 = new Vec3();
   private _attackTimer: number = 0;
+  private _dataReady = false;
 
   private _keyUp: boolean = false;
   private _keyDown: boolean = false;
@@ -34,12 +39,18 @@ export class PlayerController extends Component {
 
   onLoad() {
     if (!this.bulletPrefab || !this.bulletParent) {
-      console.error('[PlayerController] required properties not assigned');
-      this.enabled = false;
-      return;
+      console.error(
+        '[PlayerController] bulletPrefab or bulletParent not assigned — attack disabled',
+      );
     }
     input.on(Input.EventType.KEY_DOWN, this._onKeyDown, this);
     input.on(Input.EventType.KEY_UP, this._onKeyUp, this);
+  }
+
+  start() {
+    DataManager.instance.onReady(() => {
+      this._dataReady = true;
+    });
   }
 
   onDestroy() {
@@ -48,6 +59,7 @@ export class PlayerController extends Component {
   }
 
   update(dt: number) {
+    if (!this._dataReady) return;
     if (GameManager.instance.state !== GameState.Playing) return;
 
     this._updateMoveDir();
@@ -79,14 +91,14 @@ export class PlayerController extends Component {
       0,
     );
     // 대각선 이동 시 속도가 √2배 되는 것 방지
-    if (this._moveDir.length() > 1) {
+    if (this._moveDir.lengthSqr() > 1) {
       this._moveDir.normalize();
     }
   }
 
   /** 이동 방향으로 플레이어를 이동시킨다. */
   private _move(dt: number): void {
-    const { speed } = GameManager.instance.playerData;
+    const speed = DataManager.instance.playerData.speed;
     const pos = this.node.position;
     this.node.setPosition(
       pos.x + this._moveDir.x * speed * dt,
@@ -103,8 +115,17 @@ export class PlayerController extends Component {
     const target = this._findNearestEnemy();
     if (!target) return;
 
-    this._attackTimer = GameManager.instance.playerData.attackCooldown;
-    this._shoot(target);
+    const spell = DataManager.instance.getSpell(this.activeSpellId);
+    if (!spell) return;
+
+    const cooldown = spell.cooldown * DeckManager.instance.cooldownMult;
+    this._attackTimer = cooldown;
+    this._shoot(
+      target,
+      spell.projectileSpeed,
+      spell.damage * DeckManager.instance.damageMult,
+      spell.projectileRadius,
+    );
   }
 
   /** 활성 적 중 가장 가까운 적 노드를 반환한다. 없으면 null. */
@@ -130,8 +151,11 @@ export class PlayerController extends Component {
   /**
    * 대상 방향으로 발사체를 생성하고 발사한다.
    * @param target 조준 대상 노드
+   * @param bulletSpeed 발사체 속도
+   * @param damage 발사체 피해량
+   * @param radius 발사체 충돌 반경
    */
-  private _shoot(target: Node): void {
+  private _shoot(target: Node, bulletSpeed: number, damage: number, radius: number): void {
     if (!this.bulletPrefab || !this.bulletParent) return;
 
     const dir = new Vec3();
@@ -142,9 +166,8 @@ export class PlayerController extends Component {
     this.bulletParent.addChild(bullet);
     bullet.setPosition(this.node.position);
 
-    const { bulletSpeed, bulletDamage } = GameManager.instance.playerData;
     const projectile = bullet.getComponent(Projectile);
     if (!projectile) return;
-    projectile.init(dir, bulletSpeed, bulletDamage);
+    projectile.init(dir, bulletSpeed, damage, radius);
   }
 }
