@@ -2,6 +2,7 @@ import { _decorator, Component, instantiate, Node, Prefab, Vec3 } from 'cc';
 import { EnemyController } from '../components/EnemyController';
 import { GameState } from '../data/GameTypes';
 import { GameManager } from './GameManager';
+import { WaveManager } from './WaveManager';
 
 const { ccclass, property } = _decorator;
 
@@ -12,12 +13,17 @@ export class EnemySpawner extends Component {
   @property(Prefab) enemyPrefab: Prefab | null = null;
   /** 플레이어 노드 (인스펙터에서 연결) */
   @property(Node) playerNode: Node | null = null;
-  /** 스폰 간격 (sec) */
+  /** 웨이브당 기본 스폰 간격 (sec) */
   @property spawnInterval: number = 2;
   /** 동시에 존재할 수 있는 최대 적 수 */
-  @property maxEnemies: number = 10;
+  @property maxEnemies: number = 20;
+  /** 웨이브마다 추가되는 최대 적 수 */
+  @property enemiesPerWaveScale: number = 4;
+  /** 웨이브마다 줄어드는 스폰 간격 (sec) */
+  @property intervalReductionPerWave: number = 0.2;
+  /** 스폰 간격 최솟값 (sec) */
+  @property minSpawnInterval: number = 0.5;
 
-  /** 플레이어로부터 스폰되는 거리 (units) - Canvas 범위 내에서 스폰 */
   private readonly _spawnRadius: number = 350;
   private _spawnTimer: number = 0;
   private _canvas: Node | null = null;
@@ -28,7 +34,6 @@ export class EnemySpawner extends Component {
       this.enabled = false;
       return;
     }
-    // Canvas 찾기 (Player의 부모가 Canvas)
     this._canvas = this.playerNode.parent;
     if (!this._canvas) {
       console.error('[EnemySpawner] Canvas not found');
@@ -37,21 +42,28 @@ export class EnemySpawner extends Component {
   }
 
   update(dt: number) {
+    if (!GameManager.instance) return;
     if (GameManager.instance.state !== GameState.Playing) return;
 
     this._spawnTimer -= dt;
     if (this._spawnTimer > 0) return;
-    if (GameManager.instance.enemies.length >= this.maxEnemies) return;
 
-    this._spawnTimer = this.spawnInterval;
+    const wave = WaveManager.instance.waveNumber;
+    const maxEnemies = this.maxEnemies + (wave - 1) * this.enemiesPerWaveScale;
+    if (GameManager.instance.enemies.length >= maxEnemies) return;
+
+    const interval = Math.max(
+      this.minSpawnInterval,
+      this.spawnInterval - (wave - 1) * this.intervalReductionPerWave,
+    );
+    this._spawnTimer = interval;
     this._spawnEnemy();
   }
 
-  /** 플레이어 주변 랜덤 위치에 적을 생성하고 추적 대상을 설정한다. */
+  /** 플레이어 주변 랜덤 위치에 적을 스폰하고 추적 대상을 설정한다. */
   private _spawnEnemy(): void {
     if (!this.enemyPrefab || !this.playerNode || !this._canvas) return;
 
-    // 플레이어 주변 원 위 랜덤 각도에 스폰
     const angle = Math.random() * Math.PI * 2;
     const spawnPos = new Vec3(
       this.playerNode.position.x + Math.cos(angle) * this._spawnRadius,
@@ -60,7 +72,7 @@ export class EnemySpawner extends Component {
     );
 
     const enemy = instantiate(this.enemyPrefab);
-    this._canvas.addChild(enemy); // Canvas에 추가
+    this._canvas.addChild(enemy);
     enemy.setPosition(spawnPos);
     const enemyCtrl = enemy.getComponent(EnemyController);
     if (!enemyCtrl) return;
