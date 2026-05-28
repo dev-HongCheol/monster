@@ -108,7 +108,10 @@ AI는 아래 명령어를 받으면 `.claude/workflow-state.json`을 즉시 업�
 #### 6단계: AI 검증 (AI 주도)
 7. `pnpm test` 실행 → 전체 통과 확인
 8. `/cso` 호출 — 보안 체크 (OWASP + STRIDE), 이슈 발견 시 수정 후 재실행
-9. `/review` 실행 — 코드 리뷰
+9. `superpowers:requesting-code-review` 패턴으로 별도 subagent dispatch — 코드 리뷰
+   - `git rev-parse origin/main` → BASE_SHA, `git rev-parse HEAD` → HEAD_SHA
+   - Agent tool (`general-purpose` 타입)으로 `code-reviewer.md` 템플릿 사용해 dispatch
+   - Critical/Important 이슈 → 수정 후 재리뷰, Minor → 메모 후 진행
 10. `superpowers:verification-before-completion` 호출
 
 #### 7단계: 사용자 검증 (사용자 주도)

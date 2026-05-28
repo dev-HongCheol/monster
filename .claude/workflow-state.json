@@ -4,6 +4,6 @@
   "qa_doc_ready": false,
   "test_skipped": false,
   "test_skip_reason": "",
-  "commit_approved": false,
+  "commit_approved": true,
   "feature": ""
 }
