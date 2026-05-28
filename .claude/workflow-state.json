@@ -5,6 +5,9 @@
   "qa_doc_ready": true,
   "test_skipped": true,
   "test_skip_reason": "변경 코드 전부 Cocos 프레임워크 의존(EnemyController._dropXpItem) — 순수 로직 파일 없음",
+  "cso_done": false,
+  "ts_check_clean": false,
+  "lint_clean": false,
   "pr_approved": false,
   "code_review_clean": false
 }

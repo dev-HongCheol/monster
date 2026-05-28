@@ -75,15 +75,16 @@ AI는 아래 명령어를 받으면 `.claude/workflow-state.json`을 즉시 업�
 | 사용자 입력 | AI 동작 | 상태 변화 |
 |------------|--------|----------|
 | `계획 승인` | plan_approved → true | phase: "qa-setup" |
-| `커밋 승인` | commit_approved → true | phase: "commit_approved" |
+| `PR 승인` | pr_approved → true | phase: "pr_approved" |
 
-**커밋 승인 없이 커밋 불가.** `commit_approved: true` 상태에서만 커밋을 진행한다.
+**PR 승인 없이 PR 생성 불가.** `pr_approved: true` 상태에서만 PR을 생성한다.
 
 ---
 
 ### 기능 개발
 
 #### 1단계: 계획 (사용자 주도)
+0. **워크플로우 상태 리셋:** `.claude/workflow-state.json`의 모든 진행 플래그를 초기화한다. `phase: "planning"`, `feature: null`, 나머지 boolean 필드(`plan_approved`, `qa_doc_ready`, `test_skipped`, `cso_done`, `ts_check_clean`, `lint_clean`, `pr_approved`, `code_review_clean`)는 모두 `false`, `test_skip_reason`은 `null`로 설정.
 1. `/office-hours` — 요구사항 재구성 및 스코프 확인
 2. `/autoplan` — CEO+Eng 리뷰 → 사용자 승인
 
@@ -107,29 +108,40 @@ AI는 아래 명령어를 받으면 `.claude/workflow-state.json`을 즉시 업�
 
 #### 6단계: AI 검증 (AI 주도)
 7. `pnpm test` 실행 → 전체 통과 확인
-8. `/cso` 호출 — 보안 체크 (OWASP + STRIDE), 이슈 발견 시 수정 후 재실행
-9. `superpowers:requesting-code-review` 패턴으로 별도 subagent dispatch — 코드 리뷰
-   - `git rev-parse origin/main` → BASE_SHA, `git rev-parse HEAD` → HEAD_SHA
-   - Agent tool (`general-purpose` 타입)으로 `code-reviewer.md` 템플릿 사용해 dispatch
-   - Critical/Important 이슈 → 수정 후 재리뷰, Minor → 메모 후 진행
-10. `superpowers:verification-before-completion` 호출
+8. `/cso` 호출 — 보안 체크 (OWASP + STRIDE)
+   - 완료 후: `workflow-state.json`에 `cso_done: true` 설정
+   - 이슈 발견 시: `docs/qa/[feature]-security-issues.md`에 기록 → 즉시 수정 → 해당 항목에 "수정됨" 표시 → `cso_done: false`, `ts_check_clean: false`, `lint_clean: false`, `code_review_clean: false` 초기화 → 8번 재실행 (이후 9→10→11→12까지 순차 재실행)
+   - 재실행 시 기존 문서는 유지하고 신규 이슈만 추가. 모든 이슈 "수정됨" 확인 시 `cso_done: true` 설정
+   - **`cso_done: true` 확인 전 다음 단계 진행 불가**
+9. `mcp__ide__getDiagnostics` 호출 → TypeScript Error severity 0건 확인 (있으면 수정)
+   - 완료 후: `workflow-state.json`에 `ts_check_clean: true` 설정
+10. `pnpm check --write` 실행 → lint + format 최종 확인
+    - 완료 후: `workflow-state.json`에 `lint_clean: true` 설정
+11. 기능 단위로 커밋 분리 후 순차 커밋 (husky가 staged 파일에 `biome check --write` 자동 실행)
+12. `superpowers:requesting-code-review` 패턴으로 별도 subagent dispatch — 코드 리뷰
+    - `git rev-parse origin/main` → BASE_SHA, `git rev-parse HEAD` → HEAD_SHA
+    - Agent tool (`general-purpose` 타입)으로 `code-reviewer.md` 템플릿 사용해 dispatch
+    - 모든 이슈 → `docs/qa/[feature]-review-issues.md`에 기록
+      - **문서가 이미 존재하면 덮어쓰지 말고 업데이트한다.** 기존 항목은 보존하고, 신규 이슈만 하단에 "재리뷰 (커밋 SHA 또는 차수)" 섹션으로 추가. 이미 "수정됨" 표시된 항목은 그대로 둔다. 상단 "리뷰 커밋"은 최신 SHA로 갱신.
+    - **코드 품질·타입 안전성·실제 버그** → 즉시 수정 후 문서에 "수정됨" 표시
+      - 수정 발생 시: `code_review_clean: false`, `ts_check_clean: false`, `lint_clean: false` 설정 → 9번(TypeScript 체크)부터 재실행 (10→11→12 포함)
+      - 재실행 후 추가 수정 없음: `code_review_clean: true` 설정
+    - **게임 정책·설계 관련 지적** → 문서에 기록 후 13번으로 진행. 수정은 사용자 요청 시에만
+13. `superpowers:verification-before-completion` 호출
 
 #### 7단계: 사용자 검증 (사용자 주도)
 > AI는 이 단계를 수행하지 않는다.
+> **6단계 완료 시 AI가 사용자에게 알림:** "7단계입니다. `docs/qa/[feature]-test.md` 체크리스트를 참고해 에디터 세팅 및 인게임 테스트를 진행해 주세요."
 
-11. Cocos Creator 에디터 세팅 (씬 노드 구성, `@property` 연결 — `docs/qa/` 체크리스트 참고)
-12. 수동 인게임 테스트 (QA 체크리스트 수동 항목)
+14. Cocos Creator 에디터 세팅 (씬 노드 구성, `@property` 연결 — `docs/qa/` 체크리스트 참고)
+15. 수동 인게임 테스트 (QA 체크리스트 수동 항목)
 
-#### 8단계: 커밋 승인 (사용자)
-13. 사용자: **`커밋 승인`** → AI가 workflow-state.json 업데이트
+#### 8단계: PR 승인 (사용자)
+16. 사용자: **`PR 승인`** → AI가 workflow-state.json 업데이트
 
-#### 9단계: 커밋 (AI 주도)
-14. `pnpm check --write` 실행 (전체 lint + format 확인)
-15. 기능 단위로 커밋 분리 후 순차 커밋
-    - 각 커밋 시 husky가 staged 파일에 `biome check --write` 자동 실행
-    - 커밋이 막히면 auto-fix 미해결 에러 존재 → `pnpm check`로 확인 후 수동 수정
-16. **PR 생성 전:** 관련 세션 문서·플랜 파일 완료 상태로 업데이트
-17. PR 생성 → squash merge
+#### 9단계: PR (AI 주도)
+17. **PR 생성 전:** 관련 세션 문서·플랜 파일 완료 상태로 업데이트
+18. PR 생성 → squash merge
 
 ---
 
@@ -175,6 +187,7 @@ squash merge 전에 반드시 최종 커밋 메시지(subject + body)를 보여�
 - **신규 문서 생성:** 새 피처 브랜치마다 별도 문서 생성 (`[feature]-test.md`).
 - **에디터 노드 생성 규칙:** Position, Size는 씬 좌표계 기준으로 명시. 의존 노드 계층 순서가 있으면 반드시 명시.
 - **체크리스트 항목 작성 기준:** 사용자가 에디터를 열지 않아도 항목만 보고 무엇을 해야 하는지 알 수 있을 만큼 구체적으로 작성.
+- **브랜치 표기 규칙:** QA 문서 상단의 브랜치 표기는 본문 작성 당시 브랜치를 보존한다. 후속 피처가 같은 문서를 이어 쓸 때는 덮어쓰지 말고 `원본 브랜치 / 추가 브랜치 (변경 범위)` 형식으로 병기한다. 예: `feat/walking-skeleton / feat/xp-system (xpDrop 추가)`.
 
 ---
 
@@ -204,67 +217,23 @@ mcp__context7__get-library-docs: "/websites/cocos_creator_3_8_manual_en" topic="
 ### Context7 MCP
 Cocos Creator 공식 문서를 실시간 조회. 설치 방법: `docs/development/environment-setup.md` 참고.
 
-## gstack
+## gstack 사용 규칙
 
-Use the /browse skill from gstack for all web browsing. Never use mcp__claude-in-chrome__* tools.
-
-### Available Skills
-
-- `/office-hours` - Product interrogation with forcing questions
-- `/plan-ceo-review` - Strategic challenge and scope review
-- `/plan-eng-review` - Engineering architecture review
-- `/plan-design-review` - Design and UX review
-- `/design-consultation` - Design consultation
-- `/design-shotgun` - Rapid design iterations
-- `/design-html` - HTML/CSS design work
-- `/review` - Code review
-- `/ship` - Ship the PR
-- `/land-and-deploy` - Land and deploy
-- `/canary` - Canary deployment
-- `/benchmark` - Performance benchmarking
-- `/browse` - Web browsing
-- `/connect-chrome` - Connect to Chrome browser
-- `/qa` - QA testing on staging URL
-- `/qa-only` - QA testing only
-- `/design-review` - Design review
-- `/setup-browser-cookies` - Setup browser cookies
-- `/setup-deploy` - Setup deployment
-- `/setup-gbrain` - Setup GBrain
-- `/retro` - Engineering retrospective
-- `/investigate` - Root cause debugging
-- `/document-release` - Document release notes
-- `/codex` - Codex integration
-- `/cso` - Security audit (OWASP + STRIDE)
-- `/autoplan` - Automated planning
-- `/plan-devex-review` - Developer experience review
-- `/devex-review` - DevEx review
-- `/careful` - Careful mode
-- `/freeze` - Freeze changes
-- `/guard` - Guard mode
-- `/unfreeze` - Unfreeze changes
-- `/gstack-upgrade` - Upgrade gstack
-- `/learn` - Learn from documentation
+웹 브라우징은 항상 gstack의 `/browse` 사용. `mcp__claude-in-chrome__*` 도구는 사용 금지.
 
 ## Skill routing
 
-When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
+스킬 전체 목록은 세션 시작 시 자동 로드된다. 이름만으로 용도가 분명하지 않은 스킬은 아래 매핑을 참고한다.
 
-Key routing rules:
-- 제품 아이디어/브레인스토밍 → invoke /office-hours
-- 전략/스코프 결정 → invoke /plan-ceo-review
-- 아키텍처 설계 → invoke /plan-eng-review
-- 디자인 리뷰 → invoke /design-consultation or /plan-design-review
-- 전체 리뷰 파이프라인 → invoke /autoplan
-- 버그/에러 디버깅 → invoke /investigate
-- QA/사이트 동작 테스트 → invoke /qa or /qa-only
-- 코드 리뷰 → invoke /review
-- UI 개선 → invoke /design-review
-- PR 생성/배포 → invoke /ship or /land-and-deploy
-- 진행 상황 저장 → invoke /context-save
-- 컨텍스트 복원 → invoke /context-restore
-
-**superpowers 추가 라우팅:**
-- 복잡한 기능 분해 → invoke superpowers:brainstorming
-- 병렬 구현 (여러 worktree) → invoke superpowers:dispatching-parallel-agents
+- 제품 아이디어/브레인스토밍 → `/office-hours`
+- 전략/스코프 결정 → `/plan-ceo-review`
+- 아키텍처 설계 → `/plan-eng-review`
+- 디자인 리뷰 → `/design-consultation` 또는 `/plan-design-review`
+- 전체 리뷰 파이프라인 → `/autoplan`
+- 버그/에러 디버깅 → `/investigate`
+- 보안 점검 (OWASP + STRIDE) → `/cso`
+- UI 개선 (코드 리뷰 아님) → `/design-review`
+- 복잡한 기능 분해 → `superpowers:brainstorming`
+- 병렬 구현 (worktree) → `superpowers:dispatching-parallel-agents`
 
 → 기능 개발 절차는 Workflow 섹션 참고
