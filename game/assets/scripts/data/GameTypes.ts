@@ -3,6 +3,7 @@ export enum GameState {
   Playing,
   WaveClear,
   GameOver,
+  Victory,
 }
 
 /** 플레이어 기본 수치 (player.json) */
@@ -62,7 +63,16 @@ export interface IEnemyData {
   collisionRadius: number;
 }
 
+/** 경험치 공식 데이터 (experience.json) */
+export interface IXPData {
+  /** 레벨 1→2에 필요한 기본 XP */
+  baseXp: number;
+  /** 레벨마다 요구 XP에 곱하는 배율 (예: 1.2 = 120%) */
+  xpMultiplier: number;
+}
+
 /** 씬 간 결과 데이터 전달용 전역 객체 */
 export const GameResult = {
   waveReached: 0,
+  gameVictory: false,
 };

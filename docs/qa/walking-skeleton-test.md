@@ -11,13 +11,13 @@
 | 변경 파일 | 확인 범위 |
 |-----------|----------|
 | `systems/DataManager.ts` | JSON 로드, data/*.json 수치 인게임 반영 |
-| `systems/GameManager.ts` | HP 피해, 게임오버 판정, 웨이브 클리어 전환, 씬 이동 |
-| `systems/WaveManager.ts` | 타이머 카운트다운, 타이머 0 → WaveClear 전환 |
+| `systems/GameManager.ts` | HP 피해, 게임오버 판정, 웨이브 클리어 전환, 전체 게임 타이머 → 0 시 승리, 씬 이동 |
+| `systems/WaveManager.ts` | 타이머 카운트다운, 타이머 0 → Wave 번호 증가 (WaveClear 트리거 없음) |
 | `systems/EnemySpawner.ts` | 적 스폰 발생, 웨이브별 스폰 간격/최대 수 변화 |
 | `systems/DeckManager.ts` | 카드 드로우 3장, 카드 효과 수치 반영 |
 | `components/EnemyController.ts` | 적 추적 이동, 접촉 데미지, 적 사망 처리 |
 | `components/PlayerController.ts` | WASD 이동, 자동 조준 발사, 쿨다운 간격 |
-| `ui/HudController.ts` | HP·Wave·타이머 표시, GameOver 패널, 카드 선택 패널 |
+| `ui/HudController.ts` | HP·Wave·전체 게임 잔여 시간(MM:SS) 표시, GameOver 패널, 카드 선택 패널 |
 | `ui/CardSelectPanel.ts` | 카드 3장 표시, 선택 → 강화 적용 → 다음 웨이브 |
 | `ui/MainMenuController.ts` | [Play] → main.scene |
 | `ui/ResultController.ts` | 웨이브 수 표시, [Retry]/[Menu] 동작 |
@@ -42,9 +42,9 @@
 | Camera | 빈 노드 | (0, 0, 1000) | — | Camera | ✅ |
 | Player | Sprite | (0, 0) | 50×50 | UITransform, Sprite, PlayerController | ✅ |
 | DataManager | 빈 노드 | (-640, -360) | — | DataManager | ✅ |
-| WaveManager | 빈 노드 | (-640, -360) | — | WaveManager (waveDuration: 30) | ✅ |
+| WaveManager | 빈 노드 | (-640, -360) | — | WaveManager (waveDuration: 180) | ✅ |
 | DeckManager | 빈 노드 | (-640, -360) | — | DeckManager | ✅ |
-| GameManager | 빈 노드 | (-640, -360) | — | GameManager | ✅ |
+| GameManager | 빈 노드 | (-640, -360) | — | GameManager (gameDuration: 900) | ✅ |
 | HUD | 빈 노드 | (0, 0) | — | HudController | ✅ |
 | ↳ HpLabel | Label | (-300, 220) | 자동 | UITransform, Label(fontSize 20) | ✅ |
 | ↳ WaveLabel | Label | (0, 220) | 자동 | UITransform, Label(fontSize 20) | ✅ |
@@ -166,10 +166,15 @@
 
 ### 웨이브 시스템
 
-- [ ] HUD에 `Wave 1`, 타이머 카운트다운 표시
-- [ ] 타이머 0 → 일시정지, CardSelectPanel 표시
-- [ ] 카드 선택 후 Wave 2 타이머 30초로 리셋
+- ~~[ ] HUD에 `Wave 1`, 타이머 카운트다운 표시~~ → **변경됨**: HUD 타이머가 웨이브 단위가 아닌 전체 게임 잔여 시간으로 교체 (xp-system)
+- ~~[ ] 타이머 0 → 일시정지, CardSelectPanel 표시~~ → **의도적 제거**: 카드 선택 트리거를 타이머에서 레벨업(XP)으로 분리 (xp-system)
+- ~~[ ] 카드 선택 후 Wave 2 타이머 30초로 리셋~~ → **변경됨**: 웨이브 지속 시간 30초 → 180초 (xp-system)
+- [ ] HUD에 `Wave 1`, 전체 잔여 시간 `15:00`부터 MM:SS 카운트다운 표시
+- [ ] 웨이브 타이머(3분) 0 → Wave 번호 증가, **CardSelectPanel 표시 안 됨**
+- [ ] 레벨업(XP 충족) → CardSelectPanel 표시, 타이머 일시 정지
+- [ ] 카드 선택 후 게임 재개, 웨이브 타이머 3분으로 리셋
 - [ ] Wave 번호 2, 3... 증가
+- [ ] 전체 타이머 0 → result.scene 이동, `승리!` 표시
 
 ### 카드 선택
 

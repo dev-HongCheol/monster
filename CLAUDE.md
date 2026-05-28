@@ -29,12 +29,6 @@ docs/
 - [ADR 002: scripts/logic/ 분리 패턴](docs/decisions/002-scripts-logic-pattern.md)
 - [ADR 003: 테스트 전략](docs/decisions/003-testing-strategy.md)
 
-### 미정리 초안 (참고용)
-
-- [게임 기획서](docs/etc/plan.md)
-- [아트 디렉션](docs/etc/design.md)
-- [개발 체크리스트](docs/etc/checklist.md)
-
 > 세션 작업 문서(design doc, plan 등)는 `docs/development/sessions/`에 보관되며 CLAUDE.md에서 별도 관리하지 않는다.
 
 ## Safety Rules
@@ -57,13 +51,14 @@ docs/
 
 ## Knowledge Base
 
-작업 전 먼저 확인할 위치:
-- `docs/development/conventions.md` — **코드 컨벤션 (코드 작성 전 필수 확인)**
-- `docs/planning/` — 게임 디자인, 컨셉, 로드맵
-- `docs/design/` — 아트 디렉션, UI/UX, 에셋 파이프라인
-- `docs/development/sessions/` — 개발 세션 및 의사결정 기록
-- `docs/decisions/` — Architecture Decision Records (ADR)
-- `docs/qa/` — QA 체크리스트, 버그 리포트
+모든 최신 정보는 아래에 있다. `docs/etc/`는 초안 폴더이므로 참조하지 않는다.
+
+- `docs/development/conventions.md` — **코드 컨벤션. 코드 작성 전 항상 읽는다**
+- `docs/planning/` — 게임 디자인, 컨셉, 로드맵 (기획 관련 작업 시 참조)
+- `docs/design/` — 아트 디렉션, UI/UX (디자인 관련 작업 시 참조)
+- `docs/development/sessions/` — 개발 세션 및 의사결정 기록 (맥락 파악 필요 시 참조)
+- `docs/decisions/` — ADR (설계 결정 확인 시 참조)
+- `docs/qa/` — QA 체크리스트 (구현·검증 단계에서 참조)
 
 지식 추가 기준:
 - 주요 기술/설계 결정 → `docs/decisions/NNN-title.md` ADR로 작성
@@ -72,23 +67,17 @@ docs/
 
 ## Workflow
 
-### ⛔ 코드 작성 전 필수 게이트
 
-**코드를 한 줄이라도 작성하기 전에 아래 스킬을 반드시 호출한다. 예외 없음.**
+### 워크플로우 상태 명령어
 
-| 시점 | AI가 invoke하는 스킬 |
-|------|---------------------|
-| 구현 계획 승인 직후 | `superpowers:executing-plans` |
-| 코드 작성 시작 전 | `superpowers:test-driven-development` |
-| 코드 검증 항목 완료 후 | `/cso` (OWASP + STRIDE 보안 체크) |
-| 커밋 전 | `superpowers:verification-before-completion` |
+AI는 아래 명령어를 받으면 `.claude/workflow-state.json`을 즉시 업데이트한다.
 
-**TDD 예외 처리 규칙:**
-프로토타입/throwaway 코드로 TDD를 스킵할 경우, 반드시 사용자에게 명시적으로 확인받아야 한다.
-"이건 프로토타입이니까 TDD 생략해도 될 것 같다"는 AI가 혼자 결정할 수 없다.
+| 사용자 입력 | AI 동작 | 상태 변화 |
+|------------|--------|----------|
+| `계획 승인` | plan_approved → true | phase: "qa-setup" |
+| `커밋 승인` | commit_approved → true | phase: "commit_approved" |
 
-**커밋 규칙:**
-구현 완료 후 커밋을 제안하거나 실행하지 않는다. 사용자가 검증을 마친 후 직접 결정한다.
+**커밋 승인 없이 커밋 불가.** `commit_approved: true` 상태에서만 커밋을 진행한다.
 
 ---
 
@@ -98,25 +87,46 @@ docs/
 1. `/office-hours` — 요구사항 재구성 및 스코프 확인
 2. `/autoplan` — CEO+Eng 리뷰 → 사용자 승인
 
-#### 2단계: 코드 작업 (AI 주도)
-3. `superpowers:executing-plans` 호출 → `superpowers:test-driven-development` 호출
-   - `logic/` 클래스 Vitest 테스트 먼저 작성 (RED)
-   - 구현 (GREEN → REFACTOR)
-4. QA 체크리스트(`docs/qa/`) 중 **코드로 검증 가능한 항목** 완료 확인
-5. `/cso` 호출 — 보안 체크 (OWASP + STRIDE)
-6. 보안 이슈 발견 시 코드 수정 → `/cso` 재실행
-7. `superpowers:verification-before-completion` 호출
+#### 2단계: 계획 승인 (사용자)
+3. 사용자: **`계획 승인`** → AI가 workflow-state.json 업데이트
 
-#### 3단계: 에디터/검증 (사용자 주도)
-> AI는 이 단계를 수행하지 않는다. 사용자가 직접 진행 후 결과를 전달한다.
+#### 3단계: QA 문서 + 테스트 코드 (AI 주도)
+4. `superpowers:executing-plans` 호출 → `superpowers:test-driven-development` 호출
+   - `docs/qa/[feature]-test.md` 작성 (아래 **QA 문서 작성 규칙** 참고)
+   - `tests/logic/[Feature].test.ts` 작성 (RED 상태)
+   - **테스트 스킵 조건:** 구현할 코드가 전부 Cocos 프레임워크에 의존해 순수 로직 파일이 없으면 테스트 파일 생성을 생략할 수 있다. 단, 반드시 이유를 명시하고 `workflow-state.json`의 `test_skipped: true`, `test_skip_reason`에 기록한다. AI가 혼자 판단하며 사용자 확인은 불필요.
 
-8. Cocos Creator 에디터 세팅 (씬 노드 구성, `@property` 연결 — `docs/qa/` 체크리스트 참고)
-9. 수동 인게임 테스트 (QA 체크리스트 나머지 항목)
-10. `/review` 실행 — 코드 리뷰
+#### 4단계: 구현 준비 완료 (AI 자동)
+5. AI가 아래 조건을 직접 확인 후 통과 시 workflow-state.json 업데이트 → `qa_doc_ready: true`, phase: "implementation"
+   - `docs/qa/[feature]-test.md` 존재 ✅
+   - `tests/logic/[Feature].test.ts` 존재 **또는** `test_skipped: true` (이유 기록됨) ✅
+   - 이 시점부터 `game/assets/scripts/*.ts` 수정 허용 (훅 해제)
 
-#### 4단계: 완료
-11. **PR 생성 전:** 관련 세션 문서·플랜 파일 완료 상태로 업데이트 후 커밋
-12. PR 생성 → squash merge
+#### 5단계: 구현 (AI 주도)
+6. 구현 (GREEN → REFACTOR)
+
+#### 6단계: AI 검증 (AI 주도)
+7. `pnpm test` 실행 → 전체 통과 확인
+8. `/cso` 호출 — 보안 체크 (OWASP + STRIDE), 이슈 발견 시 수정 후 재실행
+9. `/review` 실행 — 코드 리뷰
+10. `superpowers:verification-before-completion` 호출
+
+#### 7단계: 사용자 검증 (사용자 주도)
+> AI는 이 단계를 수행하지 않는다.
+
+11. Cocos Creator 에디터 세팅 (씬 노드 구성, `@property` 연결 — `docs/qa/` 체크리스트 참고)
+12. 수동 인게임 테스트 (QA 체크리스트 수동 항목)
+
+#### 8단계: 커밋 승인 (사용자)
+13. 사용자: **`커밋 승인`** → AI가 workflow-state.json 업데이트
+
+#### 9단계: 커밋 (AI 주도)
+14. `pnpm check --write` 실행 (전체 lint + format 확인)
+15. 기능 단위로 커밋 분리 후 순차 커밋
+    - 각 커밋 시 husky가 staged 파일에 `biome check --write` 자동 실행
+    - 커밋이 막히면 auto-fix 미해결 에러 존재 → `pnpm check`로 확인 후 수동 수정
+16. **PR 생성 전:** 관련 세션 문서·플랜 파일 완료 상태로 업데이트
+17. PR 생성 → squash merge
 
 ---
 
@@ -140,14 +150,30 @@ squash merge 전에 반드시 최종 커밋 메시지(subject + body)를 보여�
 
 ---
 
-### 커밋 전 lint
-husky pre-commit 훅이 staged 파일에 `biome check --write`를 자동 실행한다.
-커밋이 막히면 auto-fix로 해결되지 않는 lint 에러가 남아있는 것이므로 `pnpm check`로 에러를 확인하고 수동 수정 후 재커밋한다.
 
-```bash
-pnpm check          # 에러 확인
-pnpm check --write  # auto-fix 적용
-```
+## QA 문서 작성 규칙
+
+3단계(QA 문서 + 테스트 코드 작성) 시점에, 에디터 작업과 수동 테스트가 필요한 모든 정보를 `docs/qa/[feature]-test.md`에 작성한다.
+
+### 반드시 포함해야 하는 항목
+
+| 섹션 | 내용 |
+|------|------|
+| **Impact Map** | 변경 파일별 확인 범위 (회귀 테스트 기준) |
+| **씬/프리팹 변경 사항** | 추가·수정할 노드 목록 (타입, Position, Size, 컴포넌트) |
+| **에디터 연결 체크리스트** | `@property` 프로퍼티 ↔ 노드 매핑. ✅/❌ 상태 표시 |
+| **수동 테스트 체크리스트** | `[ ]` 항목. 코드로 검증 불가한 인게임 동작만 포함 |
+
+### 작성 기준
+
+- **기존 문서 보완:** 기존 `docs/qa/` 문서의 테스트 항목이 코드 변경으로 인해 더 이상 유효하지 않으면 아래 기준으로 처리한다.
+  - **동작이 의도적으로 제거되거나 다른 방식으로 대체된 경우** → 취소선 + 이유 주석으로 남긴다. 형식: `~~기존 항목~~ → **변경됨/의도적 제거**: 이유 (피처명)`. 히스토리가 남아야 이후 구현 시 맥락을 파악할 수 있다.
+  - **수치·레이블 등 단순 값 변경** → 항목 내 값을 직접 수정한다.
+- **신규 문서 생성:** 새 피처 브랜치마다 별도 문서 생성 (`[feature]-test.md`).
+- **에디터 노드 생성 규칙:** Position, Size는 씬 좌표계 기준으로 명시. 의존 노드 계층 순서가 있으면 반드시 명시.
+- **체크리스트 항목 작성 기준:** 사용자가 에디터를 열지 않아도 항목만 보고 무엇을 해야 하는지 알 수 있을 만큼 구체적으로 작성.
+
+---
 
 ## Cocos Creator 구현 규칙
 
@@ -171,7 +197,6 @@ mcp__context7__get-library-docs: "/websites/cocos_creator_3_8_manual_en" topic="
 구현 방법론 (TDD, bite-sized 태스크, subagent+worktree 병렬 개발).
 **코드 작성 시작 시점에 활성화.**
 설치 방법: `docs/development/environment-setup.md` § 3 참고 (설치 후 Claude Code 재시작 필수).
-gstack과 역할이 달라 충돌 없이 병행 가능 — 실제 병행 효과는 첫 코딩 세션에서 평가.
 
 ### Context7 MCP
 Cocos Creator 공식 문서를 실시간 조회. 설치 방법: `docs/development/environment-setup.md` 참고.
@@ -227,7 +252,6 @@ Key routing rules:
 - 아키텍처 설계 → invoke /plan-eng-review
 - 디자인 리뷰 → invoke /design-consultation or /plan-design-review
 - 전체 리뷰 파이프라인 → invoke /autoplan
-- 기획→구현→리뷰 전체 사이클 → invoke /plan-and-build
 - 버그/에러 디버깅 → invoke /investigate
 - QA/사이트 동작 테스트 → invoke /qa or /qa-only
 - 코드 리뷰 → invoke /review
@@ -240,4 +264,4 @@ Key routing rules:
 - 복잡한 기능 분해 → invoke superpowers:brainstorming
 - 병렬 구현 (여러 worktree) → invoke superpowers:dispatching-parallel-agents
 
-→ 코드 작성 전 필수 게이트는 Workflow 섹션 참고
+→ 기능 개발 절차는 Workflow 섹션 참고

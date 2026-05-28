@@ -10,7 +10,7 @@ export class WaveManager extends Component {
   static instance!: WaveManager;
 
   /** 웨이브당 지속 시간 (sec) */
-  @property waveDuration: number = 30;
+  @property waveDuration: number = 180;
 
   private _waveNumber: number = 0;
   private _waveTimer: number = 0;
@@ -33,11 +33,16 @@ export class WaveManager extends Component {
     }
   }
 
-  /** 웨이브 번호를 증가시키고 타이머를 초기화한다. */
+  /** 게임 시작 시 웨이브 번호를 1로 설정하고 타이머를 초기화한다. */
   startWave() {
-    this._waveNumber++;
+    this._waveNumber = 1;
     this._waveTimer = this.waveDuration;
     this._started = true;
+  }
+
+  /** 카드 선택 후 타이머만 리셋한다. 웨이브 번호는 변경하지 않는다. */
+  resumeWave() {
+    this._waveTimer = this.waveDuration;
   }
 
   update(dt: number) {
@@ -46,8 +51,8 @@ export class WaveManager extends Component {
     if (GameManager.instance.state !== GameState.Playing) return;
     this._waveTimer -= dt;
     if (this._waveTimer <= 0) {
-      this._waveTimer = 0;
-      GameManager.instance.setWaveClear();
+      this._waveNumber++;
+      this._waveTimer = this.waveDuration;
     }
   }
 }

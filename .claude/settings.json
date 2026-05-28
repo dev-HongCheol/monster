@@ -9,6 +9,24 @@
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh\""
           }
         ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/gate-implementation.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/gate-implementation.sh\""
+          }
+        ]
       }
     ]
   }

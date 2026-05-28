@@ -3,18 +3,24 @@ import type { EnemyController } from '../components/EnemyController';
 import { GameResult, GameState } from '../data/GameTypes';
 import { DataManager } from './DataManager';
 import { DeckManager } from './DeckManager';
+import { ExperienceManager } from './ExperienceManager';
 import { WaveManager } from './WaveManager';
 
-const { ccclass } = _decorator;
+const { ccclass, property } = _decorator;
 
 /** 게임 전체 상태와 플레이어 HP를 관리하는 싱글톤 */
 @ccclass('GameManager')
 export class GameManager extends Component {
   static instance!: GameManager;
 
+  /** 전체 게임 제한 시간 (sec). 0이 되면 승리 */
+  @property gameDuration: number = 900;
+
   private _state: GameState = GameState.Playing;
   private _playerHp: number = 0;
   private _maxPlayerHp: number = 0;
+  private _gameTimer: number = 0;
+  private _started: boolean = false;
   private _enemies: EnemyController[] = [];
 
   get state() {
@@ -26,6 +32,9 @@ export class GameManager extends Component {
   get maxPlayerHp() {
     return this._maxPlayerHp;
   }
+  get gameTimer() {
+    return this._gameTimer;
+  }
   get enemies() {
     return this._enemies;
   }
@@ -33,10 +42,24 @@ export class GameManager extends Component {
   onLoad() {
     GameManager.instance = this;
     GameResult.waveReached = 0;
+    GameResult.gameVictory = false;
   }
 
   start() {
     DataManager.instance.onReady(() => this._onDataReady());
+  }
+
+  update(dt: number) {
+    if (!this._started) return;
+    if (this._state !== GameState.Playing) return;
+    this._gameTimer -= dt;
+    if (this._gameTimer <= 0) {
+      this._gameTimer = 0;
+      GameResult.waveReached = WaveManager.instance.waveNumber;
+      GameResult.gameVictory = true;
+      this._state = GameState.Victory;
+      this.goToResult();
+    }
   }
 
   onDestroy() {
@@ -50,6 +73,9 @@ export class GameManager extends Component {
     const base = DataManager.instance.playerData;
     this._maxPlayerHp = base.maxHp;
     this._playerHp = base.maxHp;
+    this._gameTimer = this.gameDuration;
+    this._started = true;
+    ExperienceManager.instance.setOnLevelUp(() => this.setWaveClear());
     WaveManager.instance.startWave();
   }
 
@@ -81,7 +107,7 @@ export class GameManager extends Component {
     this._state = GameState.WaveClear;
   }
 
-  /** 카드 HP 보너스(이번 웨이브 증가분)를 적용하고 다음 웨이브를 시작한다. */
+  /** 카드 HP 보너스(이번 웨이브 증가분)를 적용하고 게임을 재개한다. */
   startNextWave(): void {
     if (this._state !== GameState.WaveClear) return;
     const newMaxHp = DataManager.instance.playerData.maxHp + DeckManager.instance.maxHpBonus;
@@ -91,7 +117,7 @@ export class GameManager extends Component {
       this._playerHp = Math.min(this._playerHp + hpDelta, this._maxPlayerHp);
     }
     this._state = GameState.Playing;
-    WaveManager.instance.startWave();
+    WaveManager.instance.resumeWave();
   }
 
   /** result 씬으로 이동한다. */
