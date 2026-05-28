@@ -21,8 +21,9 @@
 
 ## Minor
 
-### 3. QA 문서 브랜치명 불일치 (`feat/walking-skeleton` → `feat/xp-system`)
+### 3. QA 문서 브랜치명 보완 (원본 브랜치 + xpDrop 추가 브랜치 병기)
 - 위치: `docs/qa/xp-system-test.md:3`
+- 본문 대부분은 `feat/walking-skeleton` 작성분이므로 원본 브랜치명을 유지하고 `feat/xp-system` (xpDrop 추가)를 병기
 - **수정됨** ✅
 
 ---

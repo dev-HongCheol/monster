@@ -1,6 +1,6 @@
 # XP 시스템 수동 테스트
 
-- **브랜치:** `feat/xp-system`
+- **브랜치:** `feat/walking-skeleton` (최초 작성) / `feat/xp-system` (xpDrop 추가)
 - **날짜:** 2026-05-25
 - **목적:** XP·레벨업 시스템 에디터 설정 및 인게임 동작 확인
 
@@ -127,4 +127,4 @@ DataManager → WaveManager → DeckManager → ExperienceManager → GameManage
 
 - [x] `experience.json` baseXp: 100 반영 (첫 레벨업 XP 100)
 - [x] `experience.json` xpMultiplier: 1.2 반영 (레벨 2 요구 XP 120)
-- [ ] `enemies.json` skeleton xpDrop 반영 확인 (해골 처치 → XP 아이템 xpValue가 enemies.json 값과 일치: 10)
+- [x] `enemies.json` skeleton xpDrop 반영 확인 (해골 처치 → XP 아이템 xpValue가 enemies.json 값과 일치: 10)
