@@ -56,14 +56,14 @@ export class EnemyController extends Component {
 
   /** 현재 위치에 XP 아이템을 스폰한다. */
   private _dropXpItem(): void {
-    if (!this.xpItemPrefab || !this.playerNode) return;
+    if (!this.xpItemPrefab || !this.playerNode || !this._data) return;
     const item = instantiate(this.xpItemPrefab);
     this.node.parent?.addChild(item);
     item.setPosition(this.node.position);
     const ctrl = item.getComponent(XPItemController);
     if (ctrl) {
       ctrl.playerNode = this.playerNode;
-      ctrl.xpValue = this._data?.xpDrop ?? 0;
+      ctrl.xpValue = this._data.xpDrop;
     }
   }
 
