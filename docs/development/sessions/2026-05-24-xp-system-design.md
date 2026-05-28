@@ -94,9 +94,9 @@ components/XPItemController.ts    — 드롭 아이템 컴포넌트, 픽업 반�
 | `resources/data/experience.json` | 신규 | 레벨별 요구 XP 테이블 |
 | `data/GameTypes.ts` | 수정 | IXPItemData 인터페이스 추가 |
 | `systems/EnemyController.ts` | 수정 | 사망 시 XPItem 스폰 |
-| `systems/GameManager.ts` | 수정 | onLevelUp 연결 → WaveClear 전환 (웨이브 타이머 트리거 제거) |
+| `systems/GameManager.ts` | 수정 | onLevelUp 연결 → WaveClear 전환 (웨이브 타이머 트리거 제거), `gameDuration` 신규 @property(900초), 전체 게임 타이머 카운트다운 → 0 시 Victory |
 | `systems/WaveManager.ts` | 수정 | 타이머 종료 시 WaveClear 전환 제거, 웨이브 번호 증가만 수행 |
-| `ui/HudController.ts` | 수정 | XP 바 / 레벨 레이블 추가 |
+| `ui/HudController.ts` | 수정 | XP·레벨 레이블 추가, timerLabel을 웨이브 타이머에서 **전체 게임 잔여 시간(MM:SS)** 으로 변경 |
 
 ### logic/ExperienceLogic.ts
 

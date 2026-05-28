@@ -20,9 +20,9 @@ export class EnemySpawner extends Component {
   /** 웨이브마다 추가되는 최대 적 수 */
   @property enemiesPerWaveScale: number = 4;
   /** 웨이브마다 줄어드는 스폰 간격 (sec) */
-  @property intervalReductionPerWave: number = 0.2;
+  @property intervalReductionPerWave: number = 0.5;
   /** 스폰 간격 최솟값 (sec) */
-  @property minSpawnInterval: number = 0.5;
+  @property minSpawnInterval: number = 0.05;
 
   private readonly _spawnRadius: number = 350;
   private _spawnTimer: number = 0;

@@ -1,5 +1,6 @@
 import { _decorator, Button, Component, Label, Node } from 'cc';
 import { GameState } from '../data/GameTypes';
+import { ExperienceManager } from '../systems/ExperienceManager';
 import { GameManager } from '../systems/GameManager';
 import { WaveManager } from '../systems/WaveManager';
 
@@ -11,6 +12,8 @@ export class HudController extends Component {
   @property(Label) hpLabel: Label | null = null;
   @property(Label) waveLabel: Label | null = null;
   @property(Label) timerLabel: Label | null = null;
+  @property(Label) levelLabel: Label | null = null;
+  @property(Label) xpLabel: Label | null = null;
   @property(Node) gameOverPanel: Node | null = null;
   @property(Button) restartButton: Button | null = null;
   @property(Button) menuButton: Button | null = null;
@@ -33,6 +36,7 @@ export class HudController extends Component {
   update() {
     this._updateHp();
     this._updateWaveInfo();
+    this._updateXpInfo();
     this._handleStateChange();
   }
 
@@ -43,14 +47,30 @@ export class HudController extends Component {
     this.hpLabel.string = `HP: ${Math.ceil(gm.playerHp)} / ${gm.maxPlayerHp}`;
   }
 
-  /** 웨이브 번호와 타이머 레이블을 갱신한다. */
+  /** 웨이브 번호와 전체 게임 잔여 시간을 갱신한다. */
   private _updateWaveInfo(): void {
     const wm = WaveManager.instance;
     if (this.waveLabel) {
       this.waveLabel.string = `Wave ${wm.waveNumber}`;
     }
     if (this.timerLabel) {
-      this.timerLabel.string = `${Math.ceil(wm.waveTimer)}s`;
+      const t = Math.max(0, GameManager.instance.gameTimer);
+      const min = Math.floor(t / 60);
+      const sec = String(Math.floor(t % 60)).padStart(2, '0');
+      this.timerLabel.string = `${min}:${sec}`;
+    }
+  }
+
+  /** 레벨과 XP 진행도 레이블을 갱신한다. */
+  private _updateXpInfo(): void {
+    if (!ExperienceManager.instance) return;
+    const em = ExperienceManager.instance;
+    if (this.levelLabel) {
+      this.levelLabel.string = `Lv.${em.level}`;
+    }
+    if (this.xpLabel) {
+      const req = em.requiredXp === Infinity ? '∞' : String(em.requiredXp);
+      this.xpLabel.string = `XP: ${em.currentXp} / ${req}`;
     }
   }
 

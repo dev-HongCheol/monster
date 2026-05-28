@@ -11,13 +11,13 @@
 | 변경 파일 | 확인 범위 |
 |-----------|----------|
 | `systems/DataManager.ts` | JSON 로드, data/*.json 수치 인게임 반영 |
-| `systems/GameManager.ts` | HP 피해, 게임오버 판정, 웨이브 클리어 전환, 씬 이동 |
-| `systems/WaveManager.ts` | 타이머 카운트다운, 타이머 0 → WaveClear 전환 |
+| `systems/GameManager.ts` | HP 피해, 게임오버 판정, 웨이브 클리어 전환, 전체 게임 타이머 → 0 시 승리, 씬 이동 |
+| `systems/WaveManager.ts` | 타이머 카운트다운, 타이머 0 → Wave 번호 증가 (WaveClear 트리거 없음) |
 | `systems/EnemySpawner.ts` | 적 스폰 발생, 웨이브별 스폰 간격/최대 수 변화 |
 | `systems/DeckManager.ts` | 카드 드로우 3장, 카드 효과 수치 반영 |
 | `components/EnemyController.ts` | 적 추적 이동, 접촉 데미지, 적 사망 처리 |
 | `components/PlayerController.ts` | WASD 이동, 자동 조준 발사, 쿨다운 간격 |
-| `ui/HudController.ts` | HP·Wave·타이머 표시, GameOver 패널, 카드 선택 패널 |
+| `ui/HudController.ts` | HP·Wave·전체 게임 잔여 시간(MM:SS) 표시, GameOver 패널, 카드 선택 패널 |
 | `ui/CardSelectPanel.ts` | 카드 3장 표시, 선택 → 강화 적용 → 다음 웨이브 |
 | `ui/MainMenuController.ts` | [Play] → main.scene |
 | `ui/ResultController.ts` | 웨이브 수 표시, [Retry]/[Menu] 동작 |
@@ -42,9 +42,9 @@
 | Camera | 빈 노드 | (0, 0, 1000) | — | Camera | ✅ |
 | Player | Sprite | (0, 0) | 50×50 | UITransform, Sprite, PlayerController | ✅ |
 | DataManager | 빈 노드 | (-640, -360) | — | DataManager | ✅ |
-| WaveManager | 빈 노드 | (-640, -360) | — | WaveManager (waveDuration: 30) | ✅ |
+| WaveManager | 빈 노드 | (-640, -360) | — | WaveManager (waveDuration: 180) | ✅ |
 | DeckManager | 빈 노드 | (-640, -360) | — | DeckManager | ✅ |
-| GameManager | 빈 노드 | (-640, -360) | — | GameManager | ✅ |
+| GameManager | 빈 노드 | (-640, -360) | — | GameManager (gameDuration: 900) | ✅ |
 | HUD | 빈 노드 | (0, 0) | — | HudController | ✅ |
 | ↳ HpLabel | Label | (-300, 220) | 자동 | UITransform, Label(fontSize 20) | ✅ |
 | ↳ WaveLabel | Label | (0, 220) | 자동 | UITransform, Label(fontSize 20) | ✅ |
@@ -146,49 +146,54 @@
 - [x] result.scene [Retry] → main.scene
 - [x] result.scene [Menu] → menu.scene
 - [x] GameOver 패널 [Restart] → main.scene 재시작
-- [ ] GameOver 패널 [Menu] → menu.scene
+- [x] GameOver 패널 [Menu] → menu.scene
 
 ### 게임플레이 기본
 
-- [ ] WASD / 방향키 이동
-- [ ] 대각선 이동 속도가 일반 이동과 동일 (normalize 적용)
-- [ ] 가장 가까운 적에게 자동 발사
-- [ ] 발사체 명중 → 적 HP 감소
-- [ ] 적 HP 0 → 소멸
-- [ ] WaveClear / GameOver 상태에서 이동·발사 정지
+- [x] WASD / 방향키 이동
+- [x] 대각선 이동 속도가 일반 이동과 동일 (normalize 적용)
+- [x] 가장 가까운 적에게 자동 발사
+- [x] 발사체 명중 → 적 HP 감소
+- [x] 적 HP 0 → 소멸
+- [x] WaveClear / GameOver 상태에서 이동·발사 정지
 
 ### 적 시스템
 
-- [ ] 게임 시작 후 적 스폰
-- [ ] 적이 플레이어 추적
-- [ ] 적 접촉 → 플레이어 HP 감소 (HUD 반영)
-- [ ] Wave 2 이후 스폰 간격 단축, 최대 적 수 증가
+- [x] 게임 시작 후 적 스폰
+- [x] 적이 플레이어 추적
+- [x] 적 접촉 → 플레이어 HP 감소 (HUD 반영)
+- [x] Wave 2 이후 스폰 간격 단축, 최대 적 수 증가
 
 ### 웨이브 시스템
 
-- [ ] HUD에 `Wave 1`, 타이머 카운트다운 표시
-- [ ] 타이머 0 → 일시정지, CardSelectPanel 표시
-- [ ] 카드 선택 후 Wave 2 타이머 30초로 리셋
-- [ ] Wave 번호 2, 3... 증가
+- ~~[ ] HUD에 `Wave 1`, 타이머 카운트다운 표시~~ → **변경됨**: HUD 타이머가 웨이브 단위가 아닌 전체 게임 잔여 시간으로 교체 (xp-system)
+- ~~[ ] 타이머 0 → 일시정지, CardSelectPanel 표시~~ → **의도적 제거**: 카드 선택 트리거를 타이머에서 레벨업(XP)으로 분리 (xp-system)
+- ~~[ ] 카드 선택 후 Wave 2 타이머 30초로 리셋~~ → **변경됨**: 웨이브 지속 시간 30초 → 180초 (xp-system)
+- [x] HUD에 `Wave 1`, 전체 잔여 시간 `15:00`부터 MM:SS 카운트다운 표시
+- [] 웨이브 타이머(3분) 0 → Wave 번호 증가, **CardSelectPanel 표시 안 됨**
+- [x] 레벨업(XP 충족) → CardSelectPanel 표시, 타이머 일시 정지
+- [] 카드 선택 후 게임 재개, 웨이브 타이머 3분으로 리셋
+- [x] Wave 번호 2, 3... 증가
+- [x] 전체 타이머 0 → result.scene 이동, `승리!` 표시
 
 ### 카드 선택
 
-- [ ] 카드 3장 이름·설명 표시
-- [ ] 3장 미만이면 빈 슬롯 비활성화
-- [ ] 카드 선택 → 게임 재개, 다음 웨이브 시작
-- [ ] 데미지 카드 선택 → 이후 발사 데미지 증가
-- [ ] 쿨다운 카드 선택 → 발사 간격 단축
-- [ ] HP 카드 선택 → 최대 HP 및 현재 HP 증가
+- [x] 카드 3장 이름·설명 표시
+- [x] 3장 미만이면 빈 슬롯 비활성화
+- [] 카드 선택 → 게임 재개, 다음 웨이브 시작
+- [x] 데미지 카드 선택 → 이후 발사 데미지 증가
+- [x] 쿨다운 카드 선택 → 발사 간격 단축
+- [x] HP 카드 선택 → 최대 HP 및 현재 HP 증가
 
 ### HP / 게임오버
 
-- [ ] HUD HP 실시간 감소
-- [ ] HP 0 → GameOver 전환, 게임 정지
-- [ ] GameOver 패널 표시
+- [x] HUD HP 실시간 감소
+- [x] HP 0 → GameOver 전환, 게임 정지
+- [x] GameOver 패널 표시
 
 ### 데이터 연동
 
-- [ ] `player.json` maxHp·speed 인게임 반영
-- [ ] `spells.json` fireball 수치 반영
-- [ ] `enemies.json` skeleton 수치 반영
-- [ ] `cards.json` 카드 내용 표시·적용
+- [x] `player.json` maxHp·speed 인게임 반영
+- [x] `spells.json` fireball 수치 반영
+- [x] `enemies.json` skeleton 수치 반영
+- [x] `cards.json` 카드 내용 표시·적용

@@ -1,7 +1,8 @@
-import { _decorator, Component, Node, Vec3 } from 'cc';
+import { _decorator, Component, instantiate, Node, Prefab, Vec3 } from 'cc';
 import { GameState, type IEnemyData } from '../data/GameTypes';
 import { DataManager } from '../systems/DataManager';
 import { GameManager } from '../systems/GameManager';
+import { XPItemController } from './XPItemController';
 
 const { ccclass, property } = _decorator;
 
@@ -12,6 +13,8 @@ export class EnemyController extends Component {
   @property(Node) playerNode: Node | null = null;
   /** enemies.json 의 id 값 (인스펙터에서 설정) */
   @property enemyId: string = 'skeleton';
+  /** 사망 시 스폰할 XP 아이템 프리팹 (인스펙터에서 연결) */
+  @property(Prefab) xpItemPrefab: Prefab | null = null;
 
   collisionRadius: number = 25;
 
@@ -42,11 +45,25 @@ export class EnemyController extends Component {
     this._checkContactDamage(dt);
   }
 
-  /** 피해를 입히고 HP가 0 이하면 노드를 제거한다. */
+  /** 피해를 입히고 HP가 0 이하면 XP 아이템을 드롭하고 노드를 제거한다. */
   takeDamage(amount: number): void {
     this._hp -= amount;
     if (this._hp <= 0) {
+      this._dropXpItem();
       this.node.destroy();
+    }
+  }
+
+  /** 현재 위치에 XP 아이템을 스폰한다. */
+  private _dropXpItem(): void {
+    if (!this.xpItemPrefab || !this.playerNode || !this._data) return;
+    const item = instantiate(this.xpItemPrefab);
+    this.node.parent?.addChild(item);
+    item.setPosition(this.node.position);
+    const ctrl = item.getComponent(XPItemController);
+    if (ctrl) {
+      ctrl.playerNode = this.playerNode;
+      ctrl.xpValue = this._data.xpDrop;
     }
   }
 
