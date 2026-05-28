@@ -127,4 +127,4 @@ DataManager → WaveManager → DeckManager → ExperienceManager → GameManage
 
 - [x] `experience.json` baseXp: 100 반영 (첫 레벨업 XP 100)
 - [x] `experience.json` xpMultiplier: 1.2 반영 (레벨 2 요구 XP 120)
-- [ ] `enemies.json` skeleton xpDrop 반영 확인 (해골 처치 → XP 아이템 xpValue가 enemies.json 값과 일치)
+- [ ] `enemies.json` skeleton xpDrop 반영 확인 (해골 처치 → XP 아이템 xpValue가 enemies.json 값과 일치: 10)

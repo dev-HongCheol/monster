@@ -5,6 +5,7 @@
     "maxHp": 100,
     "speed": 150,
     "contactDamagePerSec": 20,
-    "collisionRadius": 25
+    "collisionRadius": 25,
+    "xpDrop": 10
   }
 ]

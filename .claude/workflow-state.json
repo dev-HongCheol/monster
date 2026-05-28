@@ -1,9 +1,10 @@
 {
-  "phase": "planning",
-  "plan_approved": false,
-  "qa_doc_ready": false,
-  "test_skipped": false,
-  "test_skip_reason": "",
-  "commit_approved": true,
-  "feature": ""
+  "phase": "implementation",
+  "feature": "xp-drop-per-enemy",
+  "plan_approved": true,
+  "qa_doc_ready": true,
+  "test_skipped": true,
+  "test_skip_reason": "변경 코드 전부 Cocos 프레임워크 의존(EnemyController._dropXpItem) — 순수 로직 파일 없음",
+  "pr_approved": false,
+  "code_review_clean": false
 }

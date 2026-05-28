@@ -61,6 +61,8 @@ export interface IEnemyData {
   contactDamagePerSec: number;
   /** 거리 기반 충돌 반경 */
   collisionRadius: number;
+  /** 사망 시 드롭하는 XP 량 */
+  xpDrop: number;
 }
 
 /** 경험치 공식 데이터 (experience.json) */

@@ -61,7 +61,10 @@ export class EnemyController extends Component {
     this.node.parent?.addChild(item);
     item.setPosition(this.node.position);
     const ctrl = item.getComponent(XPItemController);
-    if (ctrl) ctrl.playerNode = this.playerNode;
+    if (ctrl) {
+      ctrl.playerNode = this.playerNode;
+      ctrl.xpValue = this._data?.xpDrop ?? 0;
+    }
   }
 
   /** 플레이어 방향으로 이동한다. */
