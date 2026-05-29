@@ -11,29 +11,11 @@
         ]
       },
       {
-        "matcher": "Edit",
+        "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/gate-implementation.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/gate-implementation.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": "MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/gate-implementation.sh\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/gate-scripts.mjs\""
           }
         ]
       }

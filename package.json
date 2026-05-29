@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "wf": "node .claude/workflow.mjs",
     "test": "vitest",
     "test:run": "vitest run",
     "prepare": "husky",
