@@ -4,6 +4,7 @@
 // 상태 변경은 반드시 이 CLI를 통해서만 일어난다 (hook이 JSON 직접 편집을 차단).
 // 사용: node .claude/workflow.mjs <command> [args]
 
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -80,6 +81,18 @@ function resetVerification(state) {
   for (const f of Object.values(CHECK_FLAG)) state.verification[f] = false;
 }
 
+// vitest를 항상 run 모드로 실행한다 (bare vitest = watch 모드 → hang 방지).
+// stdio는 상속해 결과가 그대로 보이게 하고, 예외가 아니라 종료코드로 판단한다.
+// 반환: 0 = 통과, 그 외 = 실패/오류.
+function runVitest(extraArgs = []) {
+  const r = spawnSync("pnpm", ["exec", "vitest", "run", ...extraArgs], {
+    cwd: ROOT,
+    stdio: "inherit",
+    shell: true, // Windows .cmd 해석
+  });
+  return r.status;
+}
+
 // kebab-case feature → PascalCase (테스트 파일명 일관성)
 function toPascal(slug) {
   return String(slug)
@@ -138,6 +151,22 @@ const commands = {
       fail(
         `테스트 파일 없음(스킵도 아님): ${path.relative(ROOT, testFilePath(s))}`
       );
+
+    // RED 게이트: 스킵이 아니면 피처 테스트가 실제로 실패(RED)하는지 검증.
+    // 구현이 없어 실패하는 게 정상적인 TDD 시작점이므로, 통과해 버리면 차단한다.
+    if (!s.test_skipped) {
+      const rel = path.relative(ROOT, testFilePath(s)).split(path.sep).join("/");
+      console.log(`\n▶ RED 확인: vitest run ${rel}`);
+      const status = runVitest([rel]);
+      if (status === 0) {
+        fail(
+          "테스트가 RED가 아닙니다 (피처 테스트가 통과함). " +
+            "구현 전 실패하는 테스트를 먼저 작성하세요."
+        );
+      }
+      console.log("✓ RED 확인됨 (피처 테스트 실패 — 정상)\n");
+    }
+
     s.phase = "implementation";
     save(s);
     console.log("✓ ready-impl → phase=implementation (스크립트 편집 허용)");
@@ -147,6 +176,17 @@ const commands = {
   "start-verification"() {
     const s = load();
     requirePhase(s, "implementation");
+
+    // GREEN 게이트: 전체 스위트가 통과해야 검증에 진입한다.
+    // (test_skipped 여부와 무관 — 다른 로직 테스트는 항상 통과해야 한다.)
+    console.log("\n▶ GREEN 확인: vitest run (전체 스위트)");
+    if (runVitest([]) !== 0) {
+      fail(
+        "테스트 실패 — 전체 스위트가 통과해야 검증에 진입할 수 있습니다. 수정 후 다시 실행하세요."
+      );
+    }
+    console.log("✓ GREEN 확인됨 (전체 스위트 통과)\n");
+
     s.phase = "verification";
     resetVerification(s);
     save(s);

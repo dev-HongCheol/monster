@@ -82,8 +82,8 @@ planning → qa-setup → implementation → verification → user-verification 
 | `pnpm wf start <feature>` | AI | 전체 초기화 → `planning` |
 | `pnpm wf approve-plan` | 사용자 트리거(`계획 승인`)→AI | `planning` → `qa-setup` |
 | `pnpm wf skip-test "<사유>"` | AI | 테스트 스킵 (순수 로직 없음, 사유 필수) |
-| `pnpm wf ready-impl` | AI | `qa-setup` → `implementation` (디스크에서 문서·테스트 파일 확인) |
-| `pnpm wf start-verification` | AI | `implementation` → `verification` |
+| `pnpm wf ready-impl` | AI | `qa-setup` → `implementation` (문서·테스트 파일 확인 + 스킵 아니면 피처 테스트 **RED** 검증) |
+| `pnpm wf start-verification` | AI | `implementation` → `verification` (전체 스위트 **GREEN** 검증 후 전환) |
 | `pnpm wf pass <cso\|ts\|lint\|review>` | AI | 개별 검증 통과 (4개 모두 통과 시 자동 `user-verification`) |
 | `pnpm wf invalidate` | AI | `verification` 중 코드 변경 → 전체 검증 초기화 |
 | `pnpm wf rework` | 사용자 트리거(`리워크`)→AI | `user-verification` → `implementation` (버그 발견 복귀) |
@@ -122,16 +122,17 @@ planning → qa-setup → implementation → verification → user-verification 
    - **테스트 스킵 조건:** 구현할 코드가 전부 Cocos 프레임워크에 의존해 순수 로직 파일이 없으면 테스트 파일 생성을 생략할 수 있다. 단, `pnpm wf skip-test "<사유>"`로 이유를 기록한다. AI가 혼자 판단하며 사용자 확인은 불필요.
 
 #### 4단계: 구현 준비 완료 (AI 자동)
-5. `pnpm wf ready-impl` 실행 → `phase: "implementation"`. CLI가 디스크에서 아래를 직접 확인 (통과 못 하면 전이 실패).
+5. `pnpm wf ready-impl` 실행 → `phase: "implementation"`. CLI가 아래를 직접 확인 (통과 못 하면 전이 실패).
    - `docs/qa/[feature]-test.md` 존재 ✅
    - `tests/logic/[Feature].test.ts` 존재 **또는** `test_skipped: true` (이유 기록됨) ✅
+   - **RED 게이트:** 스킵이 아니면 CLI가 피처 테스트를 `vitest run`으로 돌려 **실패(RED)인지** 확인한다. 통과해 버리면(= 실패하는 테스트를 먼저 안 쓴 것) 전이가 차단된다. ✅
    - 이 시점부터 `game/assets/scripts/*.ts` 수정 허용 (훅 해제)
 
 #### 5단계: 구현 (AI 주도)
 6. 구현 (GREEN → REFACTOR)
 
 #### 6단계: AI 검증 (AI 주도)
-7. 구현 종료 → `pnpm wf start-verification` 실행 → `phase: "verification"`. 이어서 `pnpm test` 실행 → 전체 통과 확인
+7. 구현 종료 → `pnpm wf start-verification` 실행 → `phase: "verification"`. **GREEN 게이트:** CLI가 전체 스위트(`vitest run`)를 돌려 전부 통과해야만 전이한다. 실패가 있으면 차단되고 `implementation`에 머문다(별도 `pnpm test` 수동 실행 불필요).
 8. `/cso` 호출 — 보안 체크 (OWASP + STRIDE)
    - 완료 후: `pnpm wf pass cso`
    - 이슈 발견 시: `docs/qa/[feature]-security-issues.md`에 기록 → 즉시 수정 → 해당 항목에 "수정됨" 표시 → **`pnpm wf invalidate`** (전체 검증 초기화) → 8번 재실행 (이후 9→10→11→12까지 순차 재실행)

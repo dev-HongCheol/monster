@@ -29,6 +29,8 @@ planning → qa-setup → implementation → verification → user-verification 
 ```
 
 - **스크립트 편집 허용 phase:** `implementation`, `verification` (그 외 phase에서는 `game/assets/scripts/**/*.ts` 편집을 훅이 deny)
+- **RED 게이트 (`ready-impl`):** 스킵이 아니면 피처 테스트(`tests/logic/[Feature].test.ts`)를 `vitest run`으로 실제 실행해 **실패(RED)할 때만** `implementation`으로 전환한다. 테스트가 통과해 버리면(= TDD 시작점이 아님) 전환을 차단한다. (한계 #2의 RED 부분 해소)
+- **GREEN 게이트 (`start-verification`):** 전체 스위트를 `vitest run`으로 실행해 **전부 통과(GREEN)할 때만** `verification`으로 전환한다. 실패가 있으면 차단하고 `implementation`에 머문다. (한계 #2의 GREEN 부분 해소 — 기존 "AI가 수동으로 `pnpm test` 실행" honor-step을 대체)
 - **rework (coral):** `user-verification`에서 수동 테스트 중 버그 발견 → `implementation`으로 복귀하며 검증 플래그 초기화, 편집 재허용. (문제 1 해결 — 비어 있던 복귀 루프를 닫음)
 - **invalidate:** `verification` 중 프로덕션 코드를 고치면(코드리뷰발 포함) `cso_done`을 포함한 네 검증 플래그를 **전부** 초기화하고 cso부터 다시 돈다. (문제 2 해결 — 리셋 비대칭 제거)
 
@@ -39,8 +41,8 @@ planning → qa-setup → implementation → verification → user-verification 
 | `start <feature>` | AI | 전체 초기화 → `planning` (문제 4 해결 — 리셋을 결정적 트리거에 묶음) |
 | `approve-plan` | 사용자 트리거(`계획 승인`)→AI | `planning` → `qa-setup` |
 | `skip-test "<사유>"` | AI | 순수 로직 없을 때 테스트 스킵 (사유 필수) |
-| `ready-impl` | AI | `qa-setup` → `implementation`. 플래그가 아니라 **디스크에서** QA 문서·테스트 파일 존재를 직접 확인 |
-| `start-verification` | AI | `implementation` → `verification` |
+| `ready-impl` | AI | `qa-setup` → `implementation`. **디스크에서** QA 문서·테스트 파일 존재를 확인하고, 스킵이 아니면 피처 테스트를 실제로 돌려 **RED(실패)인지** 검증 (통과하면 차단) |
+| `start-verification` | AI | `implementation` → `verification`. 전환 전 전체 스위트(`vitest run`)를 돌려 **GREEN(통과)인지** 검증 (실패하면 차단) |
 | `pass <cso\|ts\|lint\|review>` | AI | 개별 검증 통과 표시. 4개 모두 통과 시 자동으로 `user-verification`(편집 잠금) |
 | `invalidate` | AI | `verification` 중 코드 변경 → 전체 검증 초기화 |
 | `rework` | 사용자 트리거(`리워크`)→AI | `user-verification` → `implementation` (버그 발견 시 복귀) |
@@ -68,7 +70,9 @@ planning → qa-setup → implementation → verification → user-verification 
 정직하게 짚어둔다. 이 구조는 **우발적·위조성 플래그 조작을 막는 강도**까지 올린 것이지 "AI가 절대 못 푸는 잠금"은 아니다.
 
 - **사람 게이트는 AI가 실행하므로 honor-system에 의존한다.** 사용성을 위해 `approve-plan`·`approve-pr`·`rework`를 "사용자 자연어 지시 → AI 실행"으로 두기로 했다(아래 결정 참고). 따라서 보호 근거는 "사용자가 셸에서 직접 커맨드를 친다"가 아니라 **"사용자가 대화에서 실제로 승인 문구를 입력했다"**는 점이다. AI가 승인 없이 임의로 전이하지 않을 것이라는 신뢰가 전제다. 막아주는 건 (1) JSON 직접 편집 차단, (2) `ready-impl`의 디스크 사실 검증, (3) 모든 전이의 phase 순서 검증뿐이며, 이는 우발적·위조성 조작을 막을 뿐 악의적 AI를 막지는 못한다. 더 강한 보장이 필요하면 사용자만 생성 가능한 토큰 파일을 승인 커맨드의 전제로 요구하는 방식으로 보강할 수 있다.
-- **게이트는 "순서"를 강제하지 "실질"을 강제하지 않는다.** `ready-impl`은 QA 문서·테스트 파일의 *존재*만 확인할 뿐, 테스트가 RED인지·`pnpm test`가 통과하는지는 검증하지 않는다. 게이트가 실제로 막는 건 `game/assets/scripts/**/*.ts` 한 디렉터리뿐이다. 따라서 TDD는 흐름상 강제가 아니라 명목상이며, 내용 검증은 여전히 신뢰에 맡겨져 있다.
+- **테스트 게이트는 더 이상 명목상이 아니다 (한계 #2 해소).** 초안에서는 `ready-impl`이 QA 문서·테스트 파일의 *존재*만 확인할 뿐 테스트가 RED인지·`pnpm test`가 통과하는지는 검증하지 않아, TDD가 흐름상 강제가 아니라 명목상이었다. 이제 `ready-impl`은 피처 테스트를 실제로 돌려 **RED일 때만** 통과시키고, `start-verification`은 전체 스위트가 **GREEN일 때만** 검증에 진입시킨다(둘 다 `vitest run` 실행, 비정상 종료 시 차단).
+  - **남는 honor-system:** RED 검사는 *모든* 비정상 종료(non-zero)를 RED로 받아들인다. 따라서 테스트 파일의 문법/임포트 오류도 "RED"로 읽힌다 — "잘 만들어진 실패 단언"이 아니라 "실패하는 피처 테스트가 존재함"을 강제할 뿐이다. 또한 게이트는 `verification` 진입 시점에만 GREEN을 강제하므로, 검증 중 코드를 고쳐 `invalidate`로 cso/ts/lint/review를 다시 도는 경우 테스트 재실행은 절차(신뢰)에 맡긴다.
+  - **게이트가 막는 편집 범위는 여전히 `game/assets/scripts/**/*.ts` 한 디렉터리뿐이다.** 그 밖의 내용 검증(보안·타입·린트·리뷰)은 honor-system이다.
 
 ## 참고
 
