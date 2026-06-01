@@ -15,10 +15,25 @@ export interface IPlayerBaseData {
   collisionRadius: number;
 }
 
+/** 마법 분류 (기획 § 1) — JSON 문자열과 일치 */
+export enum SpellCategory {
+  Fire = 'fire',
+  Ice = 'ice',
+  Lightning = 'lightning',
+  Support = 'support',
+}
+
+/** 마법 등급 (기획 § 2) — 1~4 */
+export type SpellTier = 1 | 2 | 3 | 4;
+
 /** 마법 데이터 (spells.json 항목) */
 export interface ISpellData {
   id: string;
   name: string;
+  /** 분류 (화염/얼음/번개/보조) */
+  category: SpellCategory;
+  /** 등급 (1~4) */
+  tier: SpellTier;
   /** 1발 데미지 */
   damage: number;
   /** 발사체 이동 속도 (units/sec) */

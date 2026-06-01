@@ -2,6 +2,8 @@
   {
     "id": "fireball",
     "name": "파이어볼",
+    "category": "fire",
+    "tier": 1,
     "damage": 25,
     "projectileSpeed": 500,
     "projectileRadius": 8,
