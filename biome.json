@@ -3,6 +3,7 @@
   "files": {
     "includes": [
       "**",
+      "!**/.claude",
       "!**/game/library",
       "!**/game/local",
       "!**/game/temp",
