@@ -13,7 +13,7 @@
 - `GameTypes.ts`: `SpellCategory` enum, `SpellTier` 타입, `ISpellData`에 `category`·`tier` 필드 추가
 - `spells.json`: 기존 파이어볼에 `category`·`tier` 부여
 - `logic/LoadoutLogic.ts`: 6슬롯 로드아웃 순수 로직 (신규)
-- `tests/logic/LoadoutLogic.test.ts`: 단위 테스트 (신규)
+- `tests/logic/MagicLoadoutCore.test.ts`: 단위 테스트 (신규, 파일명은 워크플로우 CLI 피처명 규칙)
 
 범위 밖(별도 슬라이스): 16종 마법 전체 데이터, 강화 합산 룰, 카드 추첨, 런타임 배선·시작 카드 패널.
 
@@ -40,7 +40,7 @@
 
 ---
 
-## 4. 자동 테스트로 검증 (LoadoutLogic.test.ts)
+## 4. 자동 테스트로 검증 (MagicLoadoutCore.test.ts)
 
 순수 로직이므로 단위 테스트로 전부 커버한다. 사용자 수동 작업 불필요.
 
