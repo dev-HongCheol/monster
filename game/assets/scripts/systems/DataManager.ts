@@ -31,6 +31,9 @@ export class DataManager extends Component {
   get cards(): ICardData[] {
     return this._cards;
   }
+  get spells(): ISpellData[] {
+    return this._spells;
+  }
   get xpData(): IXPData {
     return this._xpData as IXPData;
   }

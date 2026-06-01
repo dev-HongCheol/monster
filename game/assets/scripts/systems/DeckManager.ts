@@ -32,9 +32,20 @@ export class DeckManager extends Component {
     }
   }
 
-  /** 카드 풀에서 n장을 무작위로 뽑아 반환한다. */
-  drawCards(n: number): ICardData[] {
-    return this._logic.drawCards(DataManager.instance.cards, n);
+  /**
+   * base 카드 + 미보유 마법 합성 카드로 풀을 만들고 n장을 무작위로 뽑아 반환한다.
+   * @param n 뽑을 장 수
+   * @param ownedSpellIds 현재 로드아웃 보유 마법 id (마법 추가 카드 합성 제외용)
+   * @param isFull 로드아웃이 가득 찼는지 (true면 마법 추가 카드 미합성)
+   */
+  drawCards(n: number, ownedSpellIds: string[], isFull: boolean): ICardData[] {
+    const pool = this._logic.buildDrawPool(
+      DataManager.instance.cards,
+      DataManager.instance.spells,
+      ownedSpellIds,
+      isFull,
+    );
+    return this._logic.drawCards(pool, n);
   }
 
   /** 카드 효과를 영구 적용한다. */

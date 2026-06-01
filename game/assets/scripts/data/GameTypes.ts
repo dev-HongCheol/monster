@@ -1,7 +1,8 @@
 /** 게임 전체 상태 */
 export enum GameState {
   Playing,
-  WaveClear,
+  /** 레벨업으로 카드 선택을 위해 일시정지한 상태 (웨이브와 무관) */
+  LevelUp,
   GameOver,
   Victory,
 }
@@ -56,13 +57,16 @@ export interface ICardEffect {
   maxHpBonus?: number;
 }
 
-/** 카드 데이터 (cards.json 항목) */
+/** 카드 데이터 (cards.json 항목 + 드로우 시 합성되는 마법 추가 카드) */
 export interface ICardData {
   id: string;
   name: string;
   description: string;
-  type: 'enhancement' | 'passive';
+  /** enhancement/passive는 cards.json 정적 카드, magic은 미보유 마법에서 동적 합성 */
+  type: 'enhancement' | 'passive' | 'magic';
   effect: ICardEffect;
+  /** type='magic'일 때 부여할 마법 id (spells.json) */
+  spellId?: string;
 }
 
 /** 적 기본 수치 (enemies.json 항목) */

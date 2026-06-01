@@ -82,7 +82,7 @@ export class HudController extends Component {
 
     if (state === GameState.GameOver) {
       if (this.gameOverPanel) this.gameOverPanel.active = true;
-    } else if (state === GameState.WaveClear) {
+    } else if (state === GameState.LevelUp) {
       if (this.cardSelectPanel) this.cardSelectPanel.active = true;
     } else if (state === GameState.Playing) {
       if (this.gameOverPanel) this.gameOverPanel.active = false;

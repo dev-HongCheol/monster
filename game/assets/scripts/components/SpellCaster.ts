@@ -31,6 +31,8 @@ const { ccclass, property } = _decorator;
  */
 @ccclass('SpellCaster')
 export class SpellCaster extends Component {
+  static instance!: SpellCaster;
+
   /** 발사체 프리팹 (인스펙터에서 연결) */
   @property(Prefab) bulletPrefab: Prefab | null = null;
   /** 발사체가 생성될 부모 노드 (인스펙터에서 연결) */
@@ -48,9 +50,25 @@ export class SpellCaster extends Component {
   }
 
   onLoad() {
+    SpellCaster.instance = this;
     if (!this.bulletPrefab || !this.bulletParent) {
       console.error('[SpellCaster] bulletPrefab or bulletParent not assigned — attack disabled');
     }
+  }
+
+  onDestroy() {
+    if (SpellCaster.instance === this) {
+      SpellCaster.instance = null as unknown as SpellCaster;
+    }
+  }
+
+  /**
+   * 마법을 로드아웃에 추가한다 (카드 "마법 추가" 픽). 추가된 마법은 다음 프레임부터 자동 발사된다.
+   * @param id 마법 id (spells.json)
+   * @returns 추가 성공 여부. 슬롯이 가득 찼거나 이미 보유 중이면 false.
+   */
+  addSpell(id: string): boolean {
+    return this._loadout.addSpell(id);
   }
 
   start() {
