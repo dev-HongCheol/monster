@@ -1,6 +1,6 @@
 # QA: loadout-runtime (로드아웃 런타임 배선)
 
-> **브랜치:** feat/loadout-runtime
+> **브랜치:** feat/magic-loadout-runtime
 > **작성일:** 2026-06-01
 > **관련 기획:** [마법 시스템 — 마법사](../planning/magic-system-mage.md) § 4·§ 5
 > **관련 플랜:** [2026-06-01-loadout-runtime-plan](../development/sessions/2026-06-01-loadout-runtime-plan.md)

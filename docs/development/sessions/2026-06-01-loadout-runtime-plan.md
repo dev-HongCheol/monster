@@ -1,8 +1,8 @@
 # 로드아웃 런타임 배선 — 구현 플랜
 
 > **작성일:** 2026-06-01
-> **브랜치(예정):** feat/loadout-runtime
-> **워크플로우 피처명:** `loadout-runtime` (테스트 파일 `LoadoutRuntime.test.ts`)
+> **브랜치(예정):** feat/magic-loadout-runtime
+> **워크플로우 피처명:** `loadout-runtime` (wf CLI 피처명 — 테스트 파일 `LoadoutRuntime.test.ts`)
 > **관련 기획:** [마법 시스템 — 마법사](../../planning/magic-system-mage.md) § 4·§ 5
 > **선행 슬라이스:** magic-loadout-core (#13) — `LoadoutLogic` 순수 로직(현재 런타임 미배선)
 
