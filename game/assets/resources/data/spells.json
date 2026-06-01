@@ -9,5 +9,27 @@
     "projectileRadius": 8,
     "cooldown": 0.5,
     "projectileCount": 1
+  },
+  {
+    "id": "ice_missile",
+    "name": "아이스 미사일",
+    "category": "ice",
+    "tier": 1,
+    "damage": 18,
+    "projectileSpeed": 450,
+    "projectileRadius": 8,
+    "cooldown": 0.7,
+    "projectileCount": 1
+  },
+  {
+    "id": "lightning_bolt",
+    "name": "라이트닝 볼트",
+    "category": "lightning",
+    "tier": 1,
+    "damage": 14,
+    "projectileSpeed": 700,
+    "projectileRadius": 6,
+    "cooldown": 0.35,
+    "projectileCount": 1
   }
 ]

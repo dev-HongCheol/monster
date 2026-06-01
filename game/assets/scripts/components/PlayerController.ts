@@ -1,35 +1,14 @@
-import {
-  _decorator,
-  Component,
-  type EventKeyboard,
-  Input,
-  input,
-  instantiate,
-  KeyCode,
-  Node,
-  Prefab,
-  Vec3,
-} from 'cc';
+import { _decorator, Component, type EventKeyboard, Input, input, KeyCode, Vec3 } from 'cc';
 import { GameState } from '../data/GameTypes';
 import { DataManager } from '../systems/DataManager';
-import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
-import { Projectile } from './Projectile';
 
-const { ccclass, property } = _decorator;
+const { ccclass } = _decorator;
 
-/** 플레이어 이동, 자동 사격, HP 연동을 담당하는 컴포넌트 */
+/** 플레이어 이동, HP 연동을 담당하는 컴포넌트. 자동 발사는 SpellCaster가 담당한다. */
 @ccclass('PlayerController')
 export class PlayerController extends Component {
-  /** 발사체 프리팹 (인스펙터에서 연결) */
-  @property(Prefab) bulletPrefab: Prefab | null = null;
-  /** 발사체가 생성될 부모 노드 (인스펙터에서 연결) */
-  @property(Node) bulletParent: Node | null = null;
-  /** 시작 마법 id (spells.json) */
-  @property activeSpellId: string = 'fireball';
-
   private _moveDir: Vec3 = new Vec3();
-  private _attackTimer: number = 0;
   private _dataReady = false;
 
   private _keyUp: boolean = false;
@@ -38,11 +17,6 @@ export class PlayerController extends Component {
   private _keyRight: boolean = false;
 
   onLoad() {
-    if (!this.bulletPrefab || !this.bulletParent) {
-      console.error(
-        '[PlayerController] bulletPrefab or bulletParent not assigned — attack disabled',
-      );
-    }
     input.on(Input.EventType.KEY_DOWN, this._onKeyDown, this);
     input.on(Input.EventType.KEY_UP, this._onKeyUp, this);
   }
@@ -64,7 +38,6 @@ export class PlayerController extends Component {
 
     this._updateMoveDir();
     this._move(dt);
-    this._updateAttack(dt);
   }
 
   /** 키 입력으로 이동 방향 플래그를 활성화한다. */
@@ -105,69 +78,5 @@ export class PlayerController extends Component {
       pos.y + this._moveDir.y * speed * dt,
       pos.z,
     );
-  }
-
-  /** 공격 쿨다운을 갱신하고 쿨다운이 끝나면 가장 가까운 적을 공격한다. */
-  private _updateAttack(dt: number): void {
-    this._attackTimer -= dt;
-    if (this._attackTimer > 0) return;
-
-    const target = this._findNearestEnemy();
-    if (!target) return;
-
-    const spell = DataManager.instance.getSpell(this.activeSpellId);
-    if (!spell) return;
-
-    const cooldown = spell.cooldown * DeckManager.instance.cooldownMult;
-    this._attackTimer = cooldown;
-    this._shoot(
-      target,
-      spell.projectileSpeed,
-      spell.damage * DeckManager.instance.damageMult,
-      spell.projectileRadius,
-    );
-  }
-
-  /** 활성 적 중 가장 가까운 적 노드를 반환한다. 없으면 null. */
-  private _findNearestEnemy(): Node | null {
-    const enemies = GameManager.instance.enemies;
-    if (enemies.length === 0) return null;
-
-    let nearest: Node | null = null;
-    let minDist = Infinity;
-    const myPos = this.node.position;
-
-    for (const enemy of enemies) {
-      if (!enemy?.isValid) continue;
-      const dist = Vec3.distance(myPos, enemy.node.position);
-      if (dist < minDist) {
-        minDist = dist;
-        nearest = enemy.node;
-      }
-    }
-    return nearest;
-  }
-
-  /**
-   * 대상 방향으로 발사체를 생성하고 발사한다.
-   * @param target 조준 대상 노드
-   * @param bulletSpeed 발사체 속도
-   * @param damage 발사체 피해량
-   * @param radius 발사체 충돌 반경
-   */
-  private _shoot(target: Node, bulletSpeed: number, damage: number, radius: number): void {
-    if (!this.bulletPrefab || !this.bulletParent) return;
-
-    const dir = new Vec3();
-    Vec3.subtract(dir, target.position, this.node.position);
-    dir.normalize();
-
-    const bullet = instantiate(this.bulletPrefab);
-    this.bulletParent.addChild(bullet);
-    bullet.setPosition(this.node.position);
-
-    const projectile = bullet.getComponent(Projectile);
-    if (!projectile) return;
-    projectile.init(dir, bulletSpeed, damage, radius);
   }
 }
