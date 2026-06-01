@@ -44,14 +44,14 @@
 
 순수 로직이므로 단위 테스트로 전부 커버한다. 사용자 수동 작업 불필요.
 
-검증 동작 (기획 § 4·§ 6.1 근거):
-- [ ] 빈 로드아웃은 `count === 0`, `isFull === false`
-- [ ] `addSpell(id)`로 마법 추가 시 `true` 반환, `count` 증가, `hasSpell(id) === true`
-- [ ] **분류 중복 허용**: 같은 분류의 서로 다른 마법(예: fireball, meteor) 동시 보유 가능
-- [ ] **동일 마법 중복 불가**: 이미 보유한 id를 다시 `addSpell` → `false`, `count` 불변
-- [ ] 6슬롯 가득 차면 `isFull === true`, 7번째 `addSpell` → `false`
-- [ ] `removeSpell(id)`: 보유 중이면 제거 후 `true`, 미보유면 `false`
-- [ ] `spells` getter는 내부 배열의 **복사본**을 반환(외부 변형이 내부에 영향 없음)
+검증 동작 (기획 § 4·§ 6.1 근거) — **`MagicLoadoutCore.test.ts` 8/8 통과(커밋 583e27a)로 전부 체크됨:**
+- [x] 빈 로드아웃은 `count === 0`, `isFull === false`
+- [x] `addSpell(id)`로 마법 추가 시 `true` 반환, `count` 증가, `hasSpell(id) === true`
+- [x] **분류 중복 허용**: 같은 분류의 서로 다른 마법(예: fireball, meteor) 동시 보유 가능
+- [x] **동일 마법 중복 불가**: 이미 보유한 id를 다시 `addSpell` → `false`, `count` 불변
+- [x] 6슬롯 가득 차면 `isFull === true`, 7번째 `addSpell` → `false`
+- [x] `removeSpell(id)`: 보유 중이면 제거 후 `true`, 미보유면 `false` (+ 제거 후 재추가 가능)
+- [x] `spells` getter는 내부 배열의 **복사본**을 반환(외부 변형이 내부에 영향 없음)
 
 ## 5. 수동 테스트 체크리스트
 
