@@ -133,6 +133,7 @@ planning → qa-setup → implementation → verification → user-verification 
 
 #### 6단계: AI 검증 (AI 주도)
 7. 구현 종료 → `pnpm wf start-verification` 실행 → `phase: "verification"`. **GREEN 게이트:** CLI가 전체 스위트(`vitest run`)를 돌려 전부 통과해야만 전이한다. 실패가 있으면 차단되고 `implementation`에 머문다(별도 `pnpm test` 수동 실행 불필요).
+   - **GREEN 직후 필수:** `docs/qa/[feature]-test.md`의 "자동 테스트로 검증" 체크리스트 항목을 `[ ]` → `[x]`로 갱신하고, 통과 근거(피처 테스트 N/N + 전체 스위트 M/M, 통과 커밋 SHA)를 섹션 머리에 기재한다. (테스트 코드와 QA 문서가 어긋나지 않도록 — 자주 누락되는 단계)
 8. `/cso` 호출 — 보안 체크 (OWASP + STRIDE)
    - 완료 후: `pnpm wf pass cso`
    - 이슈 발견 시: `docs/qa/[feature]-security-issues.md`에 기록 → 즉시 수정 → 해당 항목에 "수정됨" 표시 → **`pnpm wf invalidate`** (전체 검증 초기화) → 8번 재실행 (이후 9→10→11→12까지 순차 재실행)

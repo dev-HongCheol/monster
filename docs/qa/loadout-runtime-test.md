@@ -60,16 +60,16 @@
 
 ## 4. 자동 테스트로 검증 (LoadoutRuntime.test.ts)
 
-`FireSchedulerLogic`의 쿨다운 스케줄링은 단위 테스트로 전부 커버한다.
+`FireSchedulerLogic`의 쿨다운 스케줄링은 단위 테스트로 전부 커버한다. 사용자 수동 작업 불필요.
 
-검증 동작 (플랜 § 3·§ 6 근거):
-- [ ] 신규 마법은 첫 `tick` 후 `isReady === true` (즉시 발사 가능)
-- [ ] 미등록 마법 `isReady === false` (안전한 기본값)
-- [ ] `consume(id, cd)` 후 쿨다운 경과 전까지 `isReady === false`
-- [ ] `consume` 후 누적 `tick`이 cd를 넘기면 다시 `isReady === true`
-- [ ] 여러 마법 타이머 독립 (한쪽 consume이 다른 쪽에 영향 없음)
-- [ ] 로드아웃에서 빠진 마법(`activeIds` 제외) 타이머 정리 → 재추가 시 즉시 발사 가능
-- [ ] `consume` 없이 `tick`만 누적되면 쿨다운 미소모 (타깃 없을 때 적 등장 즉시 발사)
+검증 동작 (플랜 § 3·§ 6 근거) — **`LoadoutRuntime.test.ts` 7/7 통과(커밋 0ef1243), 전체 스위트 38/38 통과로 전부 체크됨:**
+- [x] 신규 마법은 첫 `tick` 후 `isReady === true` (즉시 발사 가능)
+- [x] 미등록 마법 `isReady === false` (안전한 기본값)
+- [x] `consume(id, cd)` 후 쿨다운 경과 전까지 `isReady === false`
+- [x] `consume` 후 누적 `tick`이 cd를 넘기면 다시 `isReady === true`
+- [x] 여러 마법 타이머 독립 (한쪽 consume이 다른 쪽에 영향 없음)
+- [x] 로드아웃에서 빠진 마법(`activeIds` 제외) 타이머 정리 → 재추가 시 즉시 발사 가능
+- [x] `consume` 없이 `tick`만 누적되면 쿨다운 미소모 (타깃 없을 때 적 등장 즉시 발사)
 
 ## 5. 수동 테스트 체크리스트 (인게임 — 에디터 세팅 후)
 
