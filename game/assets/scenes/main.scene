@@ -391,9 +391,7 @@
       "__id__": 10
     },
     "startingSpellIds": [
-      "fireball",
-      "ice_missile",
-      "lightning_bolt"
+      "fireball"
     ],
     "_id": "c5lplblStDWoPS3nMoskvR"
   },
