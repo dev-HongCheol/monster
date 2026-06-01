@@ -28,6 +28,7 @@ docs/
 - [ADR 001: Cocos Creator 버전 선택](docs/decisions/001-cocos-version.md)
 - [ADR 002: scripts/logic/ 분리 패턴](docs/decisions/002-scripts-logic-pattern.md)
 - [ADR 003: 테스트 전략](docs/decisions/003-testing-strategy.md)
+- [ADR 004: 워크플로우 상태 머신](docs/decisions/004-workflow-state-machine.md)
 
 > 세션 작업 문서(design doc, plan 등)는 `docs/development/sessions/`에 보관되며 CLAUDE.md에서 별도 관리하지 않는다.
 
@@ -68,55 +69,79 @@ docs/
 ## Workflow
 
 
-### 워크플로우 상태 명령어
+### 워크플로우 상태 ([ADR 004](docs/decisions/004-workflow-state-machine.md))
 
-AI는 아래 명령어를 받으면 `.claude/workflow-state.json`을 즉시 업데이트한다.
+상태의 단일 진실은 `.claude/workflow-state.json`의 **`phase`** 하나다. 상태 변경은 **반드시 `pnpm wf <command>` CLI로만** 한다. PreToolUse 훅(`gate-scripts.mjs`)이 상태 파일 직접 편집을 차단하고, phase 기준으로 `game/assets/scripts/**/*.ts` 편집을 게이팅한다. (편집 허용 phase: `implementation`, `verification`)
 
-| 사용자 입력 | AI 동작 | 상태 변화 |
-|------------|--------|----------|
-| `계획 승인` | plan_approved → true | phase: "qa-setup" |
-| `PR 승인` | pr_approved → true | phase: "pr_approved" |
+```
+planning → qa-setup → implementation → verification → user-verification → pr-ready → done
+```
 
-**PR 승인 없이 PR 생성 불가.** `pr_approved: true` 상태에서만 PR을 생성한다.
+| 명령 | 주체 | 전이 |
+|------|------|------|
+| `pnpm wf start <feature>` | AI | 전체 초기화 → `planning` |
+| `pnpm wf approve-plan` | 사용자 트리거(`계획 승인`)→AI | `planning` → `qa-setup` |
+| `pnpm wf skip-test "<사유>"` | AI | 테스트 스킵 (순수 로직 없음, 사유 필수) |
+| `pnpm wf ready-impl` | AI | `qa-setup` → `implementation` (문서·테스트 파일 확인 + 스킵 아니면 피처 테스트 **RED** 검증) |
+| `pnpm wf start-verification` | AI | `implementation` → `verification` (전체 스위트 **GREEN** 검증 후 전환) |
+| `pnpm wf pass <cso\|ts\|lint\|review>` | AI | 개별 검증 통과 (4개 모두 통과 시 자동 `user-verification`) |
+| `pnpm wf invalidate` | AI | `verification` 중 코드 변경 → 전체 검증 초기화 |
+| `pnpm wf rework` | 사용자 트리거(`리워크`)→AI | `user-verification` → `implementation` (버그 발견 복귀) |
+| `pnpm wf approve-pr` | 사용자 트리거(`PR 승인`)→AI | `user-verification` → `pr-ready` |
+| `pnpm wf pr-done` | AI | `pr-ready` → `done` |
+| `pnpm wf status` | — | 현재 상태 + 편집 가능 여부 출력 |
+
+> **사람 게이트 (사용자 트리거 → AI 실행):** 아래 세 전이는 사람의 판단이 필요한 지점이다. 사용자가 자연어로 지시하면 **AI가 해당 커맨드를 대신 실행**한다.
+>
+> | 사용자 입력 | AI 실행 |
+> |------------|--------|
+> | `계획 승인` | `pnpm wf approve-plan` |
+> | `PR 승인` | `pnpm wf approve-pr` |
+> | `리워크` (또는 "버그, 구현 복귀") | `pnpm wf rework` |
+>
+> 나머지 커맨드(`start`/`skip-test`/`ready-impl`/`start-verification`/`pass`/`invalidate`/`pr-done`)는 AI가 절차에 따라 자동 실행한다.
+>
+> **PR 승인 없이 PR 생성 불가.** `phase: "pr-ready"` 상태에서만 PR을 생성한다.
 
 ---
 
 ### 기능 개발
 
 #### 1단계: 계획 (사용자 주도)
-0. **워크플로우 상태 리셋:** `.claude/workflow-state.json`의 모든 진행 플래그를 초기화한다. `phase: "planning"`, `feature: null`, 나머지 boolean 필드(`plan_approved`, `qa_doc_ready`, `test_skipped`, `cso_done`, `ts_check_clean`, `lint_clean`, `pr_approved`, `code_review_clean`)는 모두 `false`, `test_skip_reason`은 `null`로 설정.
+0. **워크플로우 상태 리셋:** `pnpm wf start <feature>` 실행 → 전체 초기화 + `phase: "planning"`.
 1. `/office-hours` — 요구사항 재구성 및 스코프 확인
 2. `/autoplan` — CEO+Eng 리뷰 → 사용자 승인
 
 #### 2단계: 계획 승인 (사용자)
-3. 사용자: **`계획 승인`** → AI가 workflow-state.json 업데이트
+3. 사용자: **`계획 승인`** 입력 → AI가 `pnpm wf approve-plan` 실행 → `phase: "qa-setup"`
 
 #### 3단계: QA 문서 + 테스트 코드 (AI 주도)
 4. `superpowers:executing-plans` 호출 → `superpowers:test-driven-development` 호출
    - `docs/qa/[feature]-test.md` 작성 (아래 **QA 문서 작성 규칙** 참고)
    - `tests/logic/[Feature].test.ts` 작성 (RED 상태)
-   - **테스트 스킵 조건:** 구현할 코드가 전부 Cocos 프레임워크에 의존해 순수 로직 파일이 없으면 테스트 파일 생성을 생략할 수 있다. 단, 반드시 이유를 명시하고 `workflow-state.json`의 `test_skipped: true`, `test_skip_reason`에 기록한다. AI가 혼자 판단하며 사용자 확인은 불필요.
+   - **테스트 스킵 조건:** 구현할 코드가 전부 Cocos 프레임워크에 의존해 순수 로직 파일이 없으면 테스트 파일 생성을 생략할 수 있다. 단, `pnpm wf skip-test "<사유>"`로 이유를 기록한다. AI가 혼자 판단하며 사용자 확인은 불필요.
 
 #### 4단계: 구현 준비 완료 (AI 자동)
-5. AI가 아래 조건을 직접 확인 후 통과 시 workflow-state.json 업데이트 → `qa_doc_ready: true`, phase: "implementation"
+5. `pnpm wf ready-impl` 실행 → `phase: "implementation"`. CLI가 아래를 직접 확인 (통과 못 하면 전이 실패).
    - `docs/qa/[feature]-test.md` 존재 ✅
    - `tests/logic/[Feature].test.ts` 존재 **또는** `test_skipped: true` (이유 기록됨) ✅
+   - **RED 게이트:** 스킵이 아니면 CLI가 피처 테스트를 `vitest run`으로 돌려 **실패(RED)인지** 확인한다. 통과해 버리면(= 실패하는 테스트를 먼저 안 쓴 것) 전이가 차단된다. ✅
    - 이 시점부터 `game/assets/scripts/*.ts` 수정 허용 (훅 해제)
 
 #### 5단계: 구현 (AI 주도)
 6. 구현 (GREEN → REFACTOR)
 
 #### 6단계: AI 검증 (AI 주도)
-7. `pnpm test` 실행 → 전체 통과 확인
+7. 구현 종료 → `pnpm wf start-verification` 실행 → `phase: "verification"`. **GREEN 게이트:** CLI가 전체 스위트(`vitest run`)를 돌려 전부 통과해야만 전이한다. 실패가 있으면 차단되고 `implementation`에 머문다(별도 `pnpm test` 수동 실행 불필요).
 8. `/cso` 호출 — 보안 체크 (OWASP + STRIDE)
-   - 완료 후: `workflow-state.json`에 `cso_done: true` 설정
-   - 이슈 발견 시: `docs/qa/[feature]-security-issues.md`에 기록 → 즉시 수정 → 해당 항목에 "수정됨" 표시 → `cso_done: false`, `ts_check_clean: false`, `lint_clean: false`, `code_review_clean: false` 초기화 → 8번 재실행 (이후 9→10→11→12까지 순차 재실행)
-   - 재실행 시 기존 문서는 유지하고 신규 이슈만 추가. 모든 이슈 "수정됨" 확인 시 `cso_done: true` 설정
-   - **`cso_done: true` 확인 전 다음 단계 진행 불가**
+   - 완료 후: `pnpm wf pass cso`
+   - 이슈 발견 시: `docs/qa/[feature]-security-issues.md`에 기록 → 즉시 수정 → 해당 항목에 "수정됨" 표시 → **`pnpm wf invalidate`** (전체 검증 초기화) → 8번 재실행 (이후 9→10→11→12까지 순차 재실행)
+   - 재실행 시 기존 문서는 유지하고 신규 이슈만 추가. 모든 이슈 "수정됨" 확인 시 `pass cso`
+   - **`pass cso` 전 다음 단계 진행 불가**
 9. `mcp__ide__getDiagnostics` 호출 → TypeScript Error severity 0건 확인 (있으면 수정)
-   - 완료 후: `workflow-state.json`에 `ts_check_clean: true` 설정
+   - 완료 후: `pnpm wf pass ts`
 10. `pnpm check --write` 실행 → lint + format 최종 확인
-    - 완료 후: `workflow-state.json`에 `lint_clean: true` 설정
+    - 완료 후: `pnpm wf pass lint`
 11. 기능 단위로 커밋 분리 후 순차 커밋 (husky가 staged 파일에 `biome check --write` 자동 실행)
 12. `superpowers:requesting-code-review` 패턴으로 별도 subagent dispatch — 코드 리뷰
     - `git rev-parse origin/main` → BASE_SHA, `git rev-parse HEAD` → HEAD_SHA
@@ -124,8 +149,8 @@ AI는 아래 명령어를 받으면 `.claude/workflow-state.json`을 즉시 업�
     - 모든 이슈 → `docs/qa/[feature]-review-issues.md`에 기록
       - **문서가 이미 존재하면 덮어쓰지 말고 업데이트한다.** 기존 항목은 보존하고, 신규 이슈만 하단에 "재리뷰 (커밋 SHA 또는 차수)" 섹션으로 추가. 이미 "수정됨" 표시된 항목은 그대로 둔다. 상단 "리뷰 커밋"은 최신 SHA로 갱신.
     - **코드 품질·타입 안전성·실제 버그** → 즉시 수정 후 문서에 "수정됨" 표시
-      - 수정 발생 시: `code_review_clean: false`, `ts_check_clean: false`, `lint_clean: false` 설정 → 9번(TypeScript 체크)부터 재실행 (10→11→12 포함)
-      - 재실행 후 추가 수정 없음: `code_review_clean: true` 설정
+      - 수정 발생 시: **`pnpm wf invalidate`** (코드리뷰발 수정도 보안 재검증을 거치도록 cso 포함 전체 초기화) → 8번(/cso)부터 재실행 (9→10→11→12 포함)
+      - 추가 수정 없음: `pnpm wf pass review` → 4개 검증 모두 통과 시 자동으로 `phase: "user-verification"`(스크립트 편집 잠금)
     - **게임 정책·설계 관련 지적** → 문서에 기록 후 13번으로 진행. 수정은 사용자 요청 시에만
 13. `superpowers:verification-before-completion` 호출
 
@@ -135,13 +160,15 @@ AI는 아래 명령어를 받으면 `.claude/workflow-state.json`을 즉시 업�
 
 14. Cocos Creator 에디터 세팅 (씬 노드 구성, `@property` 연결 — `docs/qa/` 체크리스트 참고)
 15. 수동 인게임 테스트 (QA 체크리스트 수동 항목)
+    - **버그 발견 시:** 사용자 **`리워크`** 입력 → AI가 `pnpm wf rework` 실행 → `phase: "implementation"`으로 복귀, 검증 초기화, 스크립트 편집 재허용 → 5단계부터 다시 진행
 
 #### 8단계: PR 승인 (사용자)
-16. 사용자: **`PR 승인`** → AI가 workflow-state.json 업데이트
+16. 사용자: **`PR 승인`** 입력 → AI가 `pnpm wf approve-pr` 실행 → `phase: "pr-ready"`
 
 #### 9단계: PR (AI 주도)
 17. **PR 생성 전:** 관련 세션 문서·플랜 파일 완료 상태로 업데이트
-18. PR 생성 → squash merge
+18. PR 생성 → squash merge → `pnpm wf pr-done`
+    - **PR 본문은 사용자가 코드 리뷰를 쉽게 할 수 있도록 자세히 작성한다.** 변경 배경/목적, 주요 변경 사항(파일·로직 단위), 리뷰 시 중점적으로 봐야 할 부분, 테스트·검증 방법을 포함한다.
 
 ---
 
