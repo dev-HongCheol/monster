@@ -1,5 +1,6 @@
 # 코드 리뷰 이슈: loadout-runtime
 
+> **최신 리뷰 커밋:** 3d38987 (색 틴트 리워크) · 초기 리뷰 8d27aed
 > **리뷰 커밋:** 8d27aed359a5210272feee6d8b70b6fbb4780ec8 (base 4d96a8a)
 > **리뷰 방식:** general-purpose 서브에이전트 (superpowers:requesting-code-review 패턴)
 > **결과:** CRITICAL/MUST-FIX **없음**. 스케줄러 의미·단일 마법 회귀·코드 이동·타입/null·Cocos 라이프사이클 모두 검증 통과. 선택/설계 노트만 존재.
@@ -28,3 +29,14 @@
 - **씬에 구 PlayerController 바인딩 잔존:** `main.scene`의 `bulletPrefab`/`activeSpellId`는 에디터가 드롭할 orphan. `SpellCaster`로의 이전은 QA 문서 § 3에 수동 작업으로 명시됨. 코드 이슈 아님.
 - **`projectileCount` 추가되었으나 미사용:** 패턴 슬라이스용으로 의도된 것. 정상.
 - **전역 강화 마법별 곱적용:** `cooldownMult`/`damageMult`를 모든 마법에 곱 — 플랜 § 1.4 의도대로.
+
+---
+
+## 재리뷰 (커밋 3d38987 — 분류 색 틴트 리워크)
+
+> **결과:** CRITICAL/MUST-FIX **없음**. "ship it."
+
+- **검증 통과:** Sprite null 가드가 `Projectile.init` 앞에 위치해 발사/틴트 분리 정상(Sprite 없어도 발사 안 막힘), RGB 0~255 유효(alpha 기본 255), 순수/cc 분리 유지(`SpellVisual.ts` cc import 없음), 튜플 타이핑·구조분해 정상.
+- **`category: string` 시그니처(분류 enum 대신):** 의도된 선택 — `default` 분기로 미매핑('support'/'unknown') 흰색 처리 가능. enum으로 좁히면 fallback 테스트가 막혀 과제약. 현행 적절.
+- **테스트 적정:** 분류 distinctness·기본값·범위 커버. 정확한 hue 단정은 밸런싱성 값이라 일부러 미단정(브리틀 방지) — 적절.
+- **NIT(미조치):** `_shoot`마다 `new Color` 할당 — 6슬롯·저빈도라 무시 가능. 현행 유지.
