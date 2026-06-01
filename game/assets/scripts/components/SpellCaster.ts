@@ -1,7 +1,18 @@
-import { _decorator, CCString, Component, instantiate, Node, Prefab, Vec3 } from 'cc';
+import {
+  _decorator,
+  CCString,
+  Color,
+  Component,
+  instantiate,
+  Node,
+  Prefab,
+  Sprite,
+  Vec3,
+} from 'cc';
 import { GameState } from '../data/GameTypes';
 import { FireSchedulerLogic } from '../logic/FireSchedulerLogic';
 import { LoadoutLogic } from '../logic/LoadoutLogic';
+import { spellCategoryColor } from '../logic/SpellVisual';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
@@ -71,6 +82,7 @@ export class SpellCaster extends Component {
         spell.projectileSpeed,
         spell.damage * DeckManager.instance.damageMult,
         spell.projectileRadius,
+        spell.category,
       );
     }
   }
@@ -101,8 +113,15 @@ export class SpellCaster extends Component {
    * @param bulletSpeed 발사체 속도
    * @param damage 발사체 피해량
    * @param radius 발사체 충돌 반경
+   * @param category 마법 분류 (발사체 색 틴트용)
    */
-  private _shoot(target: Node, bulletSpeed: number, damage: number, radius: number): void {
+  private _shoot(
+    target: Node,
+    bulletSpeed: number,
+    damage: number,
+    radius: number,
+    category: string,
+  ): void {
     if (!this.bulletPrefab || !this.bulletParent) return;
 
     const dir = new Vec3();
@@ -112,6 +131,13 @@ export class SpellCaster extends Component {
     const bullet = instantiate(this.bulletPrefab);
     this.bulletParent.addChild(bullet);
     bullet.setPosition(this.node.position);
+
+    // 마법별 전용 스프라이트가 없는 동안 분류 색으로 발사체를 구분한다.
+    const sprite = bullet.getComponent(Sprite);
+    if (sprite) {
+      const [r, g, b] = spellCategoryColor(category);
+      sprite.color = new Color(r, g, b);
+    }
 
     const projectile = bullet.getComponent(Projectile);
     if (!projectile) return;

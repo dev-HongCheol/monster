@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { SpellCategory } from '../../game/assets/scripts/data/GameTypes';
 import { FireSchedulerLogic } from '../../game/assets/scripts/logic/FireSchedulerLogic';
+import { spellCategoryColor } from '../../game/assets/scripts/logic/SpellVisual';
 
 describe('FireSchedulerLogic', () => {
   let scheduler: FireSchedulerLogic;
@@ -62,5 +64,30 @@ describe('FireSchedulerLogic', () => {
     scheduler.tick(0.3, ['fireball']);
     // consume 호출이 없었으므로 여전히 발사 준비 상태
     expect(scheduler.isReady('fireball')).toBe(true);
+  });
+});
+
+describe('spellCategoryColor', () => {
+  it('화염/얼음/번개는 서로 다른 색을 반환한다', () => {
+    const fire = spellCategoryColor(SpellCategory.Fire);
+    const ice = spellCategoryColor(SpellCategory.Ice);
+    const lightning = spellCategoryColor(SpellCategory.Lightning);
+    expect(fire).not.toEqual(ice);
+    expect(ice).not.toEqual(lightning);
+    expect(fire).not.toEqual(lightning);
+  });
+
+  it('미매핑 분류(support 등)는 흰색 기본값을 반환한다', () => {
+    expect(spellCategoryColor(SpellCategory.Support)).toEqual([255, 255, 255]);
+    expect(spellCategoryColor('unknown')).toEqual([255, 255, 255]);
+  });
+
+  it('모든 RGB 성분은 0~255 범위다', () => {
+    for (const c of [SpellCategory.Fire, SpellCategory.Ice, SpellCategory.Lightning]) {
+      for (const v of spellCategoryColor(c)) {
+        expect(v).toBeGreaterThanOrEqual(0);
+        expect(v).toBeLessThanOrEqual(255);
+      }
+    }
   });
 });
