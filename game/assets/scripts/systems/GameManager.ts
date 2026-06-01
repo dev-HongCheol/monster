@@ -75,7 +75,7 @@ export class GameManager extends Component {
     this._playerHp = base.maxHp;
     this._gameTimer = this.gameDuration;
     this._started = true;
-    ExperienceManager.instance.setOnLevelUp(() => this.setWaveClear());
+    ExperienceManager.instance.setOnLevelUp(() => this.enterLevelUp());
     WaveManager.instance.startWave();
   }
 
@@ -101,15 +101,15 @@ export class GameManager extends Component {
     }
   }
 
-  /** 현재 웨이브를 WaveClear 상태로 전환한다. */
-  setWaveClear(): void {
+  /** 레벨업으로 카드 선택을 위해 게임을 일시정지(LevelUp) 상태로 전환한다. */
+  enterLevelUp(): void {
     if (this._state !== GameState.Playing) return;
-    this._state = GameState.WaveClear;
+    this._state = GameState.LevelUp;
   }
 
-  /** 카드 HP 보너스(이번 웨이브 증가분)를 적용하고 게임을 재개한다. */
-  startNextWave(): void {
-    if (this._state !== GameState.WaveClear) return;
+  /** 카드 HP 보너스(이번 레벨업 증가분)를 적용하고 게임을 재개한다. */
+  resumeFromLevelUp(): void {
+    if (this._state !== GameState.LevelUp) return;
     const newMaxHp = DataManager.instance.playerData.maxHp + DeckManager.instance.maxHpBonus;
     if (newMaxHp > this._maxPlayerHp) {
       const hpDelta = newMaxHp - this._maxPlayerHp;

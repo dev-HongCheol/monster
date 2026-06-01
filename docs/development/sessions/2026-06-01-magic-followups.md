@@ -28,6 +28,7 @@
 - **마법별 전용 스프라이트/이펙트:** 현재는 분류 색 틴트(화염=빨강/얼음=하늘/번개=노랑)로만 구분. 아트 단계에서 마법별 전용 비주얼.
 - **`startingSpellIds` 시드 실패 무알림:** `addSpell`이 6슬롯 초과/중복을 조용히 드롭. 카드 연동 슬라이스에서 `console.warn` 등 진단 추가 검토 (코드리뷰 nit).
 - **`projectileCount` 미사용 필드:** spells.json에 존재하나 패턴 슬라이스에서 다발/갈래 발사에 사용 예정.
+- **레벨업 재개 시 웨이브 타이머 풀 리셋 (관찰):** `GameManager.resumeFromLevelUp`(구 `startNextWave`)이 `WaveManager.resumeWave()`를 호출해 `_waveTimer`를 `waveDuration`으로 **풀 리셋**한다. 웨이브=시간축이면 레벨업할 때마다 다음 웨이브까지의 카운트다운 진행분이 버려져, 레벨업이 잦으면 웨이브가 안 넘어갈 수 있다. `magic-add-card` 슬라이스에서 네이밍만 정리하고 **행동은 미변경**(사용자 결정 2026-06-02). 웨이브 난이도 곡선 설계 시 재검토.
 
 ---
 

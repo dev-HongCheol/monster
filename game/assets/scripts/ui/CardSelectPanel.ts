@@ -1,4 +1,5 @@
 import { _decorator, Button, Component, Label } from 'cc';
+import { SpellCaster } from '../components/SpellCaster';
 import type { ICardData } from '../data/GameTypes';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
@@ -17,7 +18,10 @@ export class CardSelectPanel extends Component {
 
   onEnable() {
     if (!DataManager.instance?.isReady) return;
-    this._drawnCards = DeckManager.instance.drawCards(3);
+    const loadout = SpellCaster.instance?.loadout;
+    const ownedSpellIds = loadout ? loadout.spells : [];
+    const isFull = loadout ? loadout.isFull : false;
+    this._drawnCards = DeckManager.instance.drawCards(3, ownedSpellIds, isFull);
     for (let i = 0; i < this.cardButtons.length; i++) {
       const card = this._drawnCards[i];
       if (!card) {
@@ -34,11 +38,15 @@ export class CardSelectPanel extends Component {
     }
   }
 
-  /** 카드를 선택해 효과를 적용하고 다음 웨이브를 시작한다. */
+  /** 카드를 선택해 효과(강화/패시브) 또는 마법 추가를 적용하고 게임을 재개한다. */
   private _onPickCard(idx: number): void {
     const card = this._drawnCards[idx];
     if (!card) return;
-    DeckManager.instance.applyCard(card);
-    GameManager.instance.startNextWave();
+    if (card.type === 'magic' && card.spellId) {
+      SpellCaster.instance?.addSpell(card.spellId);
+    } else {
+      DeckManager.instance.applyCard(card);
+    }
+    GameManager.instance.resumeFromLevelUp();
   }
 }
