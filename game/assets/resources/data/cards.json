@@ -1,22 +1,16 @@
 [
   {
     "id": "damage_boost",
-    "name": "공격력 강화",
-    "description": "마법 대미지 +20%",
     "type": "enhancement",
     "effect": { "damageMult": 0.2 }
   },
   {
     "id": "cooldown_reduce",
-    "name": "속사",
-    "description": "쿨다운 -20%",
     "type": "enhancement",
     "effect": { "cooldownMult": -0.2 }
   },
   {
     "id": "hp_up",
-    "name": "생명력 강화",
-    "description": "최대 HP +20",
     "type": "passive",
     "effect": { "maxHpBonus": 20 }
   }

@@ -1,7 +1,6 @@
 [
   {
     "id": "fireball",
-    "name": "파이어볼",
     "category": "fire",
     "tier": 1,
     "damage": 25,
@@ -12,7 +11,6 @@
   },
   {
     "id": "ice_missile",
-    "name": "아이스 미사일",
     "category": "ice",
     "tier": 1,
     "damage": 18,
@@ -23,7 +21,6 @@
   },
   {
     "id": "lightning_bolt",
-    "name": "라이트닝 볼트",
     "category": "lightning",
     "tier": 1,
     "damage": 14,

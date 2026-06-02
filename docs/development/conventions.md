@@ -226,3 +226,56 @@ scripts/
 ```
 
 게임 규칙 로직은 `logic/`에 구현하고 Component는 라이프사이클 + wiring만 담당한다. → [ADR 002](../../docs/decisions/002-scripts-logic-pattern.md)
+
+---
+
+## 다국어(i18n)
+
+자체 경량 `t()` 방식. 카탈로그는 `resources/i18n/<lang>.json`. → [ADR 005](../../docs/decisions/005-i18n-approach.md)
+
+### 핵심 규칙
+
+- **`logic/` 순수 로직엔 사용자 표시 문자열을 두지 않는다.** logic은 **키/구조화 데이터**만 산출하고, 표시 해석(`t()`)은 UI(`ui/`)·Component에서 한다.
+
+  ```ts
+  // ❌ logic에서 한글 결합 — 언어 종속
+  description: `신규 마법 추가 (${CATEGORY_LABEL[cat]} · ${tier}등급)`;
+
+  // ✅ logic은 키/params만 산출, UI가 t()로 결합
+  descKey: 'card.add_magic',
+  descParams: { category: `category.${cat}`, tier },
+  ```
+
+- **조합형 문자열은 단순 연결 대신 파라미터 메시지 템플릿(`{param}`)** 으로 — 언어별 어순/조사 차이를 흡수한다. (`HP: {cur} / {max}`)
+
+- **파라미터 값이 자체 카탈로그 키인 경우(중첩 키), UI가 먼저 `t()`로 해석한 뒤 바깥 템플릿에 치환한다.** 예: 마법 추가 카드 설명 `card.add_magic`의 `{category}`는 `category.fire` 같은 키 → `t('card.add_magic', { category: t('category.fire'), tier })`. `t()`는 1단계 치환만 하므로 분류명 같은 현지화 토큰은 호출부가 사전 해석한다(`CardSelectPanel._resolveDesc` 참고). logic은 키만 산출하고 결합 해석은 UI 책임.
+
+- **카탈로그 키는 안정적 식별자.** 네임스페이스 점 표기(`result.victory`, `hud.hp`, `spell.<id>.name`, `category.<cat>`). 콘텐츠 추가 = 카탈로그 한 줄 + (필요 시) 데이터 한 줄.
+
+- **데이터(JSON)는 언어 중립.** `spells.json`/`cards.json`은 `id`+수치/분류만 두고 표시명은 **id 파생 키**(`spell.<id>.name`, `card.<id>.desc`)로 카탈로그 참조. 데이터 파일·인터페이스에 표시 문자열 필드를 두지 않는다.
+
+- **폴백 체인:** 활성 언어 미스 → ko → 키 자체. en 빈 문자열/누락도 ko 폴백 → en이 비어도 게임 정상. 카탈로그 로드 전에는 키 자체를 노출(크래시 없음).
+
+### 소스 카탈로그(ko) 작성
+
+소스 언어(ko)는 키당 **객체** `{ message, desc?, params? }`, 타겟 언어(en 등)는 **순수 문자열**.
+
+```jsonc
+// ko.json — 소스: desc(번역 맥락 노트)로 오번역 방지
+"result.victory": { "message": "승리! {wave}웨이브 도달", "desc": "승리 결과 화면", "params": ["wave"] }
+
+// en.json — 타겟: 순수 문자열
+"result.victory": "Victory! Reached wave {wave}"
+```
+
+- **신규 표시 문구 추가 시 ko 엔트리에 `desc`(번역 맥락 노트)를 함께 단다** — 타겟 언어 번역(특히 AI 번역)의 오역 방지용 단일 참조.
+
+### 정적 라벨 vs 동적 라벨
+
+| 종류 | 방법 |
+|------|------|
+| 정적 씬 라벨(버튼/타이틀) | `ui/LocalizedLabel` 컴포넌트 부착 + `@property key` |
+| 코드 동적 라벨(HUD 수치 등) | Component에서 `I18n.instance.t(key, params)` 직접 호출 |
+
+- **i18n 라벨은 TTF 폰트를 사용한다**(비트맵 `.fnt` 금지). 비트맵 폰트는 미리 구운 글자만 그려 다국어 글리프에 부적합. 폰트 글리프 커버리지는 언어 추가 단계에서 확인.
+- 언어 변경 갱신은 `I18n` 싱글톤의 **명시적 레지스트리**로 처리한다(LocalizedLabel가 onEnable 등록 / onDisable·onDestroy 해제, `setLanguage`·`onReady`가 순회 refresh). 이벤트 버스/매 프레임 폴링을 쓰지 않는다.

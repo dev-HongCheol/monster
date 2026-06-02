@@ -1,14 +1,6 @@
-import { type ICardData, type ISpellData, SpellCategory } from '../data/GameTypes';
+import type { ICardData, ISpellData } from '../data/GameTypes';
 
 const MIN_COOLDOWN_MULT = 0.1;
-
-/** 마법 분류 → 한글 라벨 (합성 카드 설명용) */
-const CATEGORY_LABEL: Record<SpellCategory, string> = {
-  [SpellCategory.Fire]: '화염',
-  [SpellCategory.Ice]: '얼음',
-  [SpellCategory.Lightning]: '번개',
-  [SpellCategory.Support]: '보조',
-};
 
 /** 카드 드로우·강화 적용 순수 로직 — cc import 없음 */
 export class DeckLogic {
@@ -42,21 +34,29 @@ export class DeckLogic {
     ownedSpellIds: string[],
     isFull: boolean,
   ): ICardData[] {
-    if (isFull) return [...baseCards];
+    // 정적 카드: id 파생 표시 키 부여 (표시 해석은 UI가 t()로 — logic엔 표시 문자열 없음)
+    const base: ICardData[] = baseCards.map((card) => ({
+      ...card,
+      nameKey: `card.${card.id}.name`,
+      descKey: `card.${card.id}.desc`,
+    }));
+    if (isFull) return base;
 
     const owned = new Set(ownedSpellIds);
     const magicCards: ICardData[] = allSpells
       .filter((spell) => !owned.has(spell.id))
       .map((spell) => ({
         id: `add_${spell.id}`,
-        name: spell.name,
-        description: `신규 마법 추가 (${CATEGORY_LABEL[spell.category]} · ${spell.tier}등급)`,
         type: 'magic',
         effect: {},
         spellId: spell.id,
+        // 마법 이름 키 + 공통 add_magic 설명 키 + 분류 키·등급 파라미터 (UI에서 결합 해석)
+        nameKey: `spell.${spell.id}.name`,
+        descKey: 'card.add_magic',
+        descParams: { category: `category.${spell.category}`, tier: spell.tier },
       }));
 
-    return [...baseCards, ...magicCards];
+    return [...base, ...magicCards];
   }
 
   /**

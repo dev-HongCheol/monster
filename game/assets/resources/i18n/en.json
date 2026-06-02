@@ -1,0 +1,36 @@
+{
+  "menu.title": "MONSTER",
+  "menu.play": "PLAY",
+
+  "result.victory": "Victory! Reached wave {wave}",
+  "result.defeat": "Reached wave {wave}",
+  "result.retry": "RETRY",
+  "result.menu": "MENU",
+
+  "gameover.title": "GAME OVER",
+  "gameover.restart": "RESTART",
+  "gameover.menu": "MENU",
+
+  "hud.hp": "HP: {cur} / {max}",
+  "hud.wave": "Wave {wave}",
+  "hud.timer": "{min}:{sec}",
+  "hud.level": "Lv.{level}",
+  "hud.xp": "XP: {cur} / {req}",
+
+  "card.add_magic": "New spell ({category} · Tier {tier})",
+  "card.damage_boost.name": "Power Up",
+  "card.damage_boost.desc": "Spell damage +20%",
+  "card.cooldown_reduce.name": "Rapid Fire",
+  "card.cooldown_reduce.desc": "Cooldown -20%",
+  "card.hp_up.name": "Vitality",
+  "card.hp_up.desc": "Max HP +20",
+
+  "category.fire": "Fire",
+  "category.ice": "Ice",
+  "category.lightning": "Lightning",
+  "category.support": "Support",
+
+  "spell.fireball.name": "Fireball",
+  "spell.ice_missile.name": "Ice Missile",
+  "spell.lightning_bolt.name": "Lightning Bolt"
+}

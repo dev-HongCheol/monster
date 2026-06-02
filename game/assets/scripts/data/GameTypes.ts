@@ -1,3 +1,5 @@
+import type { I18nParams } from '../logic/I18nLogic';
+
 /** 게임 전체 상태 */
 export enum GameState {
   Playing,
@@ -27,10 +29,12 @@ export enum SpellCategory {
 /** 마법 등급 (기획 § 2) — 1~4 */
 export type SpellTier = 1 | 2 | 3 | 4;
 
-/** 마법 데이터 (spells.json 항목) */
+/**
+ * 마법 데이터 (spells.json 항목) — 언어 중립.
+ * 표시명은 `spell.<id>.name` 카탈로그 키로 해석한다(데이터에 표시 문자열 없음).
+ */
 export interface ISpellData {
   id: string;
-  name: string;
   /** 분류 (화염/얼음/번개/보조) */
   category: SpellCategory;
   /** 등급 (1~4) */
@@ -57,16 +61,25 @@ export interface ICardEffect {
   maxHpBonus?: number;
 }
 
-/** 카드 데이터 (cards.json 항목 + 드로우 시 합성되는 마법 추가 카드) */
+/**
+ * 카드 데이터 (cards.json 항목 + 드로우 시 합성되는 마법 추가 카드) — 언어 중립.
+ *
+ * 표시명/설명은 카탈로그 키(`nameKey`/`descKey`)로 해석한다. cards.json은 `id`+`type`+`effect`만
+ * 가지며, 표시 키는 `buildDrawPool`이 id 파생(정적 카드) 또는 합성(마법 카드) 시 부여한다.
+ */
 export interface ICardData {
   id: string;
-  name: string;
-  description: string;
   /** enhancement/passive는 cards.json 정적 카드, magic은 미보유 마법에서 동적 합성 */
   type: 'enhancement' | 'passive' | 'magic';
   effect: ICardEffect;
   /** type='magic'일 때 부여할 마법 id (spells.json) */
   spellId?: string;
+  /** 표시 이름 카탈로그 키 (buildDrawPool에서 부여). 정적 카드=`card.<id>.name`, 마법=`spell.<id>.name` */
+  nameKey?: string;
+  /** 표시 설명 카탈로그 키. 정적 카드=`card.<id>.desc`, 마법=`card.add_magic` */
+  descKey?: string;
+  /** 설명 치환 파라미터 (마법 카드: `{ category: 'category.<cat>', tier }`) */
+  descParams?: I18nParams;
 }
 
 /** 적 기본 수치 (enemies.json 항목) */
