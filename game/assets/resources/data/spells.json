@@ -7,7 +7,8 @@
     "projectileSpeed": 500,
     "projectileRadius": 8,
     "cooldown": 0.5,
-    "projectileCount": 1
+    "projectileCount": 1,
+    "pattern": "directional"
   },
   {
     "id": "ice_missile",
@@ -17,7 +18,8 @@
     "projectileSpeed": 450,
     "projectileRadius": 8,
     "cooldown": 0.7,
-    "projectileCount": 1
+    "projectileCount": 1,
+    "pattern": "directional"
   },
   {
     "id": "lightning_bolt",
@@ -27,6 +29,7 @@
     "projectileSpeed": 700,
     "projectileRadius": 6,
     "cooldown": 0.35,
-    "projectileCount": 1
+    "projectileCount": 1,
+    "pattern": "directional"
   }
 ]
