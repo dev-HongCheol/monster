@@ -35,8 +35,8 @@
 > 통과 근거: 피처 테스트 없음(skip-test, 주석 전용) + 전체 스위트 **60/60 GREEN** (`vitest run`, phase=verification 전환 게이트).
 
 - 주석 전용 변경이므로 신규 피처 테스트 없음 (`pnpm wf skip-test`로 기록).
-- [ ] `pnpm check`(biome lint + format) 통과
-- [ ] `mcp__ide__getDiagnostics` — TypeScript Error 0건
+- [x] `pnpm check`(biome lint + format) 통과 (52개 파일, 수정 없음)
+- [x] `mcp__ide__getDiagnostics` — 변경 파일 TypeScript Error 0건 (※ `game/tsconfig.json` `moduleResolution=node10` deprecated는 본 변경과 무관한 기존 이슈)
 - [x] `vitest run` 전체 스위트 GREEN (60/60, 기존 테스트 회귀 없음 확인)
 
 ## 수동 테스트 체크리스트
