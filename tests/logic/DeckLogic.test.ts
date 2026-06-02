@@ -4,8 +4,6 @@ import { DeckLogic } from '../../game/assets/scripts/logic/DeckLogic';
 
 const makeCard = (id: string, effect: ICardData['effect'] = {}): ICardData => ({
   id,
-  name: id,
-  description: '',
   type: 'enhancement',
   effect,
 });
