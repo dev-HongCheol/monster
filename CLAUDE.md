@@ -29,6 +29,7 @@ docs/
 - [ADR 002: scripts/logic/ 분리 패턴](docs/decisions/002-scripts-logic-pattern.md)
 - [ADR 003: 테스트 전략](docs/decisions/003-testing-strategy.md)
 - [ADR 004: 워크플로우 상태 머신](docs/decisions/004-workflow-state-machine.md)
+- [ADR 005: i18n 방식 — 자체 경량 t()](docs/decisions/005-i18n-approach.md)
 
 > 세션 작업 문서(design doc, plan 등)는 `docs/development/sessions/`에 보관되며 CLAUDE.md에서 별도 관리하지 않는다.
 

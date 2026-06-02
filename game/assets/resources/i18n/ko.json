@@ -1,0 +1,60 @@
+{
+  "menu.title": { "message": "MONSTER", "desc": "메인 메뉴 게임 타이틀(브랜드명)" },
+  "menu.play": { "message": "PLAY", "desc": "메인 메뉴 게임 시작 버튼" },
+
+  "result.victory": {
+    "message": "승리! {wave}웨이브 도달",
+    "desc": "결과 화면 — 승리 시 도달 웨이브 표시",
+    "params": ["wave"]
+  },
+  "result.defeat": {
+    "message": "{wave}웨이브 도달",
+    "desc": "결과 화면 — 패배 시 도달 웨이브 표시",
+    "params": ["wave"]
+  },
+  "result.retry": { "message": "RETRY", "desc": "결과 화면 다시 시작 버튼" },
+  "result.menu": { "message": "MENU", "desc": "결과 화면 메뉴로 버튼" },
+
+  "gameover.title": { "message": "GAME OVER", "desc": "게임오버 패널 제목" },
+  "gameover.restart": { "message": "RESTART", "desc": "게임오버 패널 재시작 버튼" },
+  "gameover.menu": { "message": "MENU", "desc": "게임오버 패널 메뉴로 버튼" },
+
+  "hud.hp": {
+    "message": "HP: {cur} / {max}",
+    "desc": "HUD 체력 라벨 (현재/최대)",
+    "params": ["cur", "max"]
+  },
+  "hud.wave": { "message": "Wave {wave}", "desc": "HUD 현재 웨이브 번호", "params": ["wave"] },
+  "hud.timer": {
+    "message": "{min}:{sec}",
+    "desc": "HUD 전체 게임 잔여 시간 (분:초)",
+    "params": ["min", "sec"]
+  },
+  "hud.level": { "message": "Lv.{level}", "desc": "HUD 플레이어 레벨", "params": ["level"] },
+  "hud.xp": {
+    "message": "XP: {cur} / {req}",
+    "desc": "HUD 경험치 진행도 (현재/요구)",
+    "params": ["cur", "req"]
+  },
+
+  "card.add_magic": {
+    "message": "신규 마법 추가 ({category} · {tier}등급)",
+    "desc": "미보유 마법 합성 카드 설명. {category}는 분류명(category.* 해석값), {tier}는 등급 숫자",
+    "params": ["category", "tier"]
+  },
+  "card.damage_boost.name": { "message": "공격력 강화", "desc": "강화 카드 이름" },
+  "card.damage_boost.desc": { "message": "마법 대미지 +20%", "desc": "강화 카드 설명" },
+  "card.cooldown_reduce.name": { "message": "속사", "desc": "강화 카드 이름" },
+  "card.cooldown_reduce.desc": { "message": "쿨다운 -20%", "desc": "강화 카드 설명" },
+  "card.hp_up.name": { "message": "생명력 강화", "desc": "패시브 카드 이름" },
+  "card.hp_up.desc": { "message": "최대 HP +20", "desc": "패시브 카드 설명" },
+
+  "category.fire": { "message": "화염", "desc": "마법 분류명" },
+  "category.ice": { "message": "얼음", "desc": "마법 분류명" },
+  "category.lightning": { "message": "번개", "desc": "마법 분류명" },
+  "category.support": { "message": "보조", "desc": "마법 분류명" },
+
+  "spell.fireball.name": { "message": "파이어볼", "desc": "마법 이름" },
+  "spell.ice_missile.name": { "message": "아이스 미사일", "desc": "마법 이름" },
+  "spell.lightning_bolt.name": { "message": "라이트닝 볼트", "desc": "마법 이름" }
+}
