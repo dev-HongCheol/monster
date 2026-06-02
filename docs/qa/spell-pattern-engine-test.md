@@ -2,7 +2,7 @@
 
 - **브랜치:** feat/spell-pattern-engine
 - **설계 문서:** [2026-06-02-spell-pattern-engine-plan.md](../development/sessions/2026-06-02-spell-pattern-engine-plan.md)
-- **자동 테스트로 검증:** ✅ `tests/logic/SpellPatternEngine.test.ts` 피처 10/10 + 전체 스위트 70/70 통과 (커밋 SHA는 커밋 후 보강)
+- **자동 테스트로 검증:** ✅ `tests/logic/SpellPatternEngine.test.ts` 피처 11/11 + 전체 스위트 71/71 통과 (통과 커밋 `e9ef5b0`)
 
 ---
 

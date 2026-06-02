@@ -1,6 +1,6 @@
 {
-  "feature": "i18n-foundation",
-  "phase": "pr-ready",
+  "feature": "spell-pattern-engine",
+  "phase": "user-verification",
   "test_skipped": false,
   "test_skip_reason": null,
   "verification": {
