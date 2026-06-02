@@ -58,26 +58,26 @@
 `@property` ↔ 노드 매핑 (구현 후 사용자가 에디터에서 연결, ✅/❌ 표시).
 
 ### I18n 싱글톤 노드
-- [ ] 씬에 `I18n` 컴포넌트 노드 존재 (DataManager 인접 권장)
+- [x] 씬에 `I18n` 컴포넌트 노드 존재 (DataManager 인접 권장)
 
 ### LocalizedLabel (각 노드의 컴포넌트 `key` 프로퍼티)
-- [ ] menu.scene 타이틀 → `key = menu.title`
-- [ ] menu.scene PlayButton Label → `key = menu.play`
-- [ ] result.scene RetryButton Label → `key = result.retry`
-- [ ] result.scene MenuButton Label → `key = result.menu`
-- [ ] main.scene GAME OVER Label → `key = gameover.title`
-- [ ] main.scene RestartButton Label → `key = gameover.restart`
-- [ ] main.scene GameOver MenuButton Label → `key = gameover.menu`
+- [x] menu.scene 타이틀 → `key = menu.title`
+- [x] menu.scene PlayButton Label → `key = menu.play`
+- [x] result.scene RetryButton Label → `key = result.retry`
+- [x] result.scene MenuButton Label → `key = result.menu`
+- [x] main.scene GAME OVER Label → `key = gameover.title`
+- [x] main.scene RestartButton Label → `key = gameover.restart`
+- [x] main.scene GameOver MenuButton Label → `key = gameover.menu`
 
 ## 수동 테스트 체크리스트 (인게임)
 
 코드/자동 테스트로 검증 불가한 항목만.
 
-- [ ] **메뉴 화면**: 타이틀 `MONSTER`, 버튼 `PLAY`가 정상 표시된다.
-- [ ] **HUD**: 게임 진행 중 HP/Wave/타이머/Lv/XP 라벨이 이전과 동일하게(한글/기존 포맷) 표시된다.
-- [ ] **레벨업 카드 선택**: 강화/패시브 카드 이름·설명이 정상 표시된다.
-- [ ] **마법 추가 카드**: 미보유 마법 카드 설명이 `신규 마법 추가 (화염 · 1등급)`처럼 분류·등급이 한글로 정상 결합된다.
-- [ ] **게임오버 패널**: `GAME OVER`, `RESTART`, `MENU` 정상 표시.
-- [ ] **결과 화면**: 승리 시 `승리! N웨이브 도달`, 패배 시 `N웨이브 도달`로 wave 숫자가 치환되어 표시된다. `RETRY`, `MENU` 버튼 정상.
-- [ ] **카탈로그 로드 지연 내성**: 라벨이 일시적으로 키/공백으로 보이지 않고, 로드 완료 후 즉시 텍스트가 채워진다(크래시 없음).
-- [ ] **(개발 확인) `setLanguage('en')` 부분 번역**: en에 있는 키는 영문, 없는 키는 ko 폴백으로 혼합 표시된다(언어 전환 UI는 이 슬라이스 범위 밖 — 콘솔/임시 호출로 확인).
+- [x] **메뉴 화면**: 타이틀 `MONSTER`, 버튼 `PLAY`가 정상 표시된다.
+- [x] **HUD**: 게임 진행 중 HP/Wave/타이머/Lv/XP 라벨이 이전과 동일하게(한글/기존 포맷) 표시된다.
+- [x] **레벨업 카드 선택**: 강화/패시브 카드 이름·설명이 정상 표시된다.
+- [x] **마법 추가 카드**: 미보유 마법 카드 설명이 `신규 마법 추가 (화염 · 1등급)`처럼 분류·등급이 한글로 정상 결합된다.
+- [x] **게임오버 패널**: `GAME OVER`, `RESTART`, `MENU` 정상 표시.
+- [x] **결과 화면**: 승리 시 `승리! N웨이브 도달`, 패배 시 `N웨이브 도달`로 wave 숫자가 치환되어 표시된다. `RETRY`, `MENU` 버튼 정상.
+- [x] **카탈로그 로드 지연 내성**: 라벨이 일시적으로 키/공백으로 보이지 않고, 로드 완료 후 즉시 텍스트가 채워진다(크래시 없음).
+- [x] **(개발 확인) `setLanguage('en')` 부분 번역**: en에 있는 키는 영문, 없는 키는 ko 폴백으로 혼합 표시된다(언어 전환 UI는 이 슬라이스 범위 밖 — 콘솔/임시 호출로 확인).
