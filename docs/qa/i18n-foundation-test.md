@@ -6,7 +6,7 @@
 
 ## 자동 테스트로 검증
 
-> **통과 근거:** 피처 테스트(I18nFoundation) **12/12** + 전체 스위트 **60/60** GREEN (`pnpm wf start-verification` 통과). 통과 커밋 SHA: _(커밋 후 기재)_
+> **통과 근거:** 피처 테스트(I18nFoundation) **12/12** + 전체 스위트 **60/60** GREEN (`pnpm wf start-verification` 통과). 통과 커밋 SHA: `94fdfb9` (코어 `d4be58c` + 마이그레이션 `94fdfb9`).
 
 - [x] `tests/logic/I18nFoundation.test.ts` — I18nLogic lookup·치환·폴백체인 (12 케이스)
   - 객체 엔트리 `.message` 추출 / 문자열 엔트리 그대로

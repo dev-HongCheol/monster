@@ -248,6 +248,8 @@ scripts/
 
 - **조합형 문자열은 단순 연결 대신 파라미터 메시지 템플릿(`{param}`)** 으로 — 언어별 어순/조사 차이를 흡수한다. (`HP: {cur} / {max}`)
 
+- **파라미터 값이 자체 카탈로그 키인 경우(중첩 키), UI가 먼저 `t()`로 해석한 뒤 바깥 템플릿에 치환한다.** 예: 마법 추가 카드 설명 `card.add_magic`의 `{category}`는 `category.fire` 같은 키 → `t('card.add_magic', { category: t('category.fire'), tier })`. `t()`는 1단계 치환만 하므로 분류명 같은 현지화 토큰은 호출부가 사전 해석한다(`CardSelectPanel._resolveDesc` 참고). logic은 키만 산출하고 결합 해석은 UI 책임.
+
 - **카탈로그 키는 안정적 식별자.** 네임스페이스 점 표기(`result.victory`, `hud.hp`, `spell.<id>.name`, `category.<cat>`). 콘텐츠 추가 = 카탈로그 한 줄 + (필요 시) 데이터 한 줄.
 
 - **데이터(JSON)는 언어 중립.** `spells.json`/`cards.json`은 `id`+수치/분류만 두고 표시명은 **id 파생 키**(`spell.<id>.name`, `card.<id>.desc`)로 카탈로그 참조. 데이터 파일·인터페이스에 표시 문자열 필드를 두지 않는다.
