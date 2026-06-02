@@ -27,7 +27,7 @@ export class PlayerController extends Component {
   private _hp: number = 100;
   private _speed: number = 5; // units/sec
 
-  // 3. 라이프사이클 (주석 생략 — Cocos 개발자면 자명)
+  // 3. 라이프사이클 (단순하면 주석 생략, 로직 누적 시 한 줄 설명)
   onLoad() {}
   start() {}
   update(dt: number) {}
@@ -110,9 +110,34 @@ private _shoot(target: Node): void { ... }
  * @returns true면 이 프레임에 사망
  */
 takeDamage(amount: number): boolean { ... }
+```
 
-onLoad() { ... }      // 라이프사이클 — 주석 생략
-update(dt: number) {} // 라이프사이클 — 주석 생략
+#### 라이프사이클 메서드 주석
+
+라이프사이클 메서드는 시그니처 자체가 호출 시점을 말하므로, 기본적으로 **JSDoc(`@param`/`@returns` 등 형식 주석)은 생략**한다. 다만 본문에 로직이 누적되면 다음 두 가지를 적용한다.
+
+1. **함수에 한 줄 설명:** 본문이 비어 있거나 자명한 단일 wiring이면 주석을 생략한다. 여러 로직이 쌓여 "이 메서드가 매 프레임/초기화 시 무엇을 하는가"가 한눈에 안 들어오면, 메서드 위에 한 줄 설명 주석을 단다.
+2. **내부 코드 인라인 주석:** 본문 내부는 일반 [복잡 로직 인라인 주석](#복잡-로직-인라인-주석) 기준(WHY 위주)을 그대로 따른다.
+
+```ts
+onLoad() {}            // 비어 있음 → 주석 생략
+start() {
+  this._hp = this.maxHp; // 단순 초기화 → 주석 생략
+}
+
+// 적 탐색 → 쿨다운 소진 시 발사 → 무적시간 갱신 (매 프레임)
+update(dt: number) {
+  const target = this._findNearestEnemy();
+
+  this._cooldown -= dt;
+  if (target && this._cooldown <= 0) {
+    this._shoot(target);
+    this._cooldown = this._attackCooldown;
+  }
+
+  // 피격 직후 깜빡임 동안만 입력 무시 — 연타 사망 방지
+  if (this._invincible > 0) this._invincible -= dt;
+}
 ```
 
 ### 복잡 로직 인라인 주석
