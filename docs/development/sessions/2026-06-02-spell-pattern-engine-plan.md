@@ -3,7 +3,7 @@
 - **작성일:** 2026-06-02
 - **세션:** /office-hours (Builder 모드)
 - **브랜치(예정):** feat/spell-pattern-engine
-- **상태:** DRAFT (→ /autoplan 리뷰 후 사용자 승인 대기)
+- **상태:** 구현·검증 완료 → PR (자동 71/71 + /cso 0건 + 코드리뷰 R1 수정, 사용자 인게임 검증 통과)
 - **관련 문서:**
   - [로드맵 v0.2 § 10 — 3주차](../../planning/roadmap.md) (데이터 주도 마법 시스템)
   - [마법 시스템 디자인](../../planning/magic-system-mage.md) (16종 패턴 정의)
