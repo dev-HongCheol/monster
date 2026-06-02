@@ -1,5 +1,5 @@
 {
-  "feature": "i18n-foundation",
+  "feature": "spell-pattern-engine",
   "phase": "pr-ready",
   "test_skipped": false,
   "test_skip_reason": null,

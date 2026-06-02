@@ -30,6 +30,17 @@ export enum SpellCategory {
 export type SpellTier = 1 | 2 | 3 | 4;
 
 /**
+ * 마법 발사 패턴 (magic-system-mage.md § 3) — JSON 문자열과 일치.
+ *
+ * 이번 슬라이스는 `Directional` 하나(발사체 패턴 계열). 유효 발사체 수가 1이면 직선,
+ * N이면 부채꼴로 발사한다. AOE/호밍/메테오/체인/무작위 폭풍은 후속 슬라이스에서 case 추가.
+ */
+export enum SpellPattern {
+  /** aim 방향 발사체 — 유효 count만큼 부채꼴 발사(count=1이면 직선) */
+  Directional = 'directional',
+}
+
+/**
  * 마법 데이터 (spells.json 항목) — 언어 중립.
  * 표시명은 `spell.<id>.name` 카탈로그 키로 해석한다(데이터에 표시 문자열 없음).
  */
@@ -47,8 +58,12 @@ export interface ISpellData {
   projectileRadius: number;
   /** 자동 사격 쿨다운 (sec) */
   cooldown: number;
-  /** 동시 발사 수 */
+  /** 동시 발사 수(기본). 유효 발사체 수 = 이 값 + 강화 보너스 */
   projectileCount: number;
+  /** 발사 패턴 (미지정/미지 값은 Directional 폴백) */
+  pattern: SpellPattern;
+  /** count>=2일 때 총 부채꼴 각도(deg). 생략 시 DEFAULT_SPREAD_ANGLE_DEG */
+  spreadAngleDeg?: number;
 }
 
 /** 카드 효과 수치 */

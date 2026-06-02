@@ -12,6 +12,7 @@ import {
 import { GameState } from '../data/GameTypes';
 import { FireSchedulerLogic } from '../logic/FireSchedulerLogic';
 import { LoadoutLogic } from '../logic/LoadoutLogic';
+import { buildFirePlan, type ShotSpec } from '../logic/SpellPatternLogic';
 import { spellCategoryColor } from '../logic/SpellVisual';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
@@ -89,6 +90,12 @@ export class SpellCaster extends Component {
     const target = this._findNearestEnemy();
     if (!target) return;
 
+    // 발사 기준 조준 단위벡터(플레이어 → 최근접 적). 적이 self와 겹쳐 영벡터면 위쪽 폴백.
+    const aim = new Vec3();
+    Vec3.subtract(aim, target.position, this.node.position);
+    if (aim.lengthSqr() < 1e-8) aim.set(0, 1, 0);
+    else aim.normalize();
+
     for (const id of spells) {
       if (!this._scheduler.isReady(id)) continue;
       const spell = DataManager.instance.getSpell(id);
@@ -96,13 +103,13 @@ export class SpellCaster extends Component {
 
       const cooldown = spell.cooldown * DeckManager.instance.cooldownMult;
       this._scheduler.consume(id, cooldown);
-      this._shoot(
-        target,
-        spell.projectileSpeed,
-        spell.damage * DeckManager.instance.damageMult,
-        spell.projectileRadius,
-        spell.category,
-      );
+
+      // 유효 발사체 수 = 기본값 (+ 향후 발사체 수 강화 보너스). 패턴 엔진이 부채꼴 형태를 결정.
+      const plan = buildFirePlan(spell, { aimX: aim.x, aimY: aim.y, count: spell.projectileCount });
+      const damageMult = DeckManager.instance.damageMult;
+      for (const shot of plan) {
+        this._spawnShot(shot, damageMult, spell.category);
+      }
     }
   }
 
@@ -127,25 +134,13 @@ export class SpellCaster extends Component {
   }
 
   /**
-   * 대상 방향으로 발사체를 생성하고 발사한다.
-   * @param target 조준 대상 노드
-   * @param bulletSpeed 발사체 속도
-   * @param damage 발사체 피해량
-   * @param radius 발사체 충돌 반경
+   * ShotSpec 한 발을 발사체로 생성하고 발사한다.
+   * @param shot 발사 사양 (방향 단위벡터·속도·기본 데미지·반경)
+   * @param damageMult 전역 데미지 배율 (DeckManager) — 기본 데미지에 곱한다
    * @param category 마법 분류 (발사체 색 틴트용)
    */
-  private _shoot(
-    target: Node,
-    bulletSpeed: number,
-    damage: number,
-    radius: number,
-    category: string,
-  ): void {
+  private _spawnShot(shot: ShotSpec, damageMult: number, category: string): void {
     if (!this.bulletPrefab || !this.bulletParent) return;
-
-    const dir = new Vec3();
-    Vec3.subtract(dir, target.position, this.node.position);
-    dir.normalize();
 
     const bullet = instantiate(this.bulletPrefab);
     this.bulletParent.addChild(bullet);
@@ -160,6 +155,11 @@ export class SpellCaster extends Component {
 
     const projectile = bullet.getComponent(Projectile);
     if (!projectile) return;
-    projectile.init(dir, bulletSpeed, damage, radius);
+    projectile.init(
+      new Vec3(shot.dirX, shot.dirY, 0),
+      shot.speed,
+      shot.damage * damageMult,
+      shot.radius,
+    );
   }
 }
