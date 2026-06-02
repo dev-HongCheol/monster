@@ -27,11 +27,13 @@ export class Projectile extends Component {
     this._radius = radius;
   }
 
+  // 화면 밖 제거 기준 거리를 계산한다 — 좌표계 원점이 화면 중앙이므로 절반 + 여유 100
   onLoad() {
     const size = view.getVisibleSize();
     this._outOfBoundsLimit = Math.max(size.width, size.height) / 2 + 100;
   }
 
+  // 매 프레임 이동 → 적 명중 판정 → 화면 밖 이탈 판정 순으로 처리한다
   update(dt: number) {
     this._move(dt);
     this._checkEnemyHit();

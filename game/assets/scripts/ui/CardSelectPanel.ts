@@ -18,6 +18,7 @@ export class CardSelectPanel extends Component {
 
   private _drawnCards: ICardData[] = [];
 
+  // 패널이 열릴 때 카드 3장을 뽑아 버튼별 이름·설명을 채우고 선택 콜백을 배선한다
   onEnable() {
     if (!DataManager.instance?.isReady) return;
     const loadout = SpellCaster.instance?.loadout;

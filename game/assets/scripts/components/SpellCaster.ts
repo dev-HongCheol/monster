@@ -78,6 +78,7 @@ export class SpellCaster extends Component {
     });
   }
 
+  // 스케줄러 tick → 최근접 적 조준 → 쿨다운 소진된 보유 마법만 전역 강화 적용해 발사
   update(dt: number) {
     if (!this._dataReady) return;
     if (GameManager.instance.state !== GameState.Playing) return;
