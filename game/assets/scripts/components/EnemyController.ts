@@ -22,6 +22,7 @@ export class EnemyController extends Component {
   private _hp: number = 0;
   private _playerCollisionRadius: number = 0;
 
+  // 활성 적 목록에 자신을 등록하고, 데이터 준비 후 HP·충돌 반경을 초기화한다
   onLoad() {
     GameManager.instance.registerEnemy(this);
     DataManager.instance.onReady(() => {
@@ -38,6 +39,7 @@ export class EnemyController extends Component {
     GameManager.instance?.unregisterEnemy(this);
   }
 
+  // 데이터 준비 + Playing 상태일 때만 플레이어 추적 + 접촉 데미지를 처리한다
   update(dt: number) {
     if (!this._data) return;
     if (GameManager.instance.state !== GameState.Playing) return;

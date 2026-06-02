@@ -49,6 +49,7 @@ export class GameManager extends Component {
     DataManager.instance.onReady(() => this._onDataReady());
   }
 
+  // 전체 게임 타이머를 감소시키고, 0이 되면 승리로 전환해 result 씬으로 보낸다
   update(dt: number) {
     if (!this._started) return;
     if (this._state !== GameState.Playing) return;

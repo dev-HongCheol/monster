@@ -32,6 +32,7 @@ export class PlayerController extends Component {
     input.off(Input.EventType.KEY_UP, this._onKeyUp, this);
   }
 
+  // 데이터 준비 + Playing 상태일 때만 키 입력으로 이동 방향을 계산해 이동시킨다
   update(dt: number) {
     if (!this._dataReady) return;
     if (GameManager.instance.state !== GameState.Playing) return;

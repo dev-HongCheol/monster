@@ -22,6 +22,7 @@ export class HudController extends Component {
 
   private _prevState: GameState = GameState.Playing;
 
+  // 필수 프로퍼티 검증 → 패널 숨김 초기화 → 재시작/메뉴 버튼 콜백 배선
   onLoad() {
     if (!this.hpLabel || !this.gameOverPanel || !this.restartButton) {
       console.error('[HudController] required properties not assigned');
@@ -34,6 +35,7 @@ export class HudController extends Component {
     this.menuButton?.node.on(Button.EventType.CLICK, this._onMenu, this);
   }
 
+  // 매 프레임 HP·웨이브·XP 레이블을 갱신하고 게임 상태 변화에 따라 패널을 전환한다
   update() {
     this._updateHp();
     this._updateWaveInfo();

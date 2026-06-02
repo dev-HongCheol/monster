@@ -45,6 +45,7 @@ export class WaveManager extends Component {
     this._waveTimer = this.waveDuration;
   }
 
+  // 웨이브 타이머를 감소시키고, 만료되면 웨이브 번호를 올린 뒤 타이머를 리셋한다
   update(dt: number) {
     if (!this._started) return;
     if (!GameManager.instance) return;

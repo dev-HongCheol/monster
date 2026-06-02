@@ -28,6 +28,7 @@ export class EnemySpawner extends Component {
   private _spawnTimer: number = 0;
   private _canvas: Node | null = null;
 
+  // 필수 프로퍼티를 검증하고(실패 시 비활성화) 스폰 부모로 쓸 Canvas 참조를 캐시한다
   onLoad() {
     if (!this.enemyPrefab || !this.playerNode) {
       console.error('[EnemySpawner] required properties not assigned');
@@ -41,6 +42,7 @@ export class EnemySpawner extends Component {
     }
   }
 
+  // 스폰 타이머가 차면 웨이브 스케일링(최대 적 수↑·간격↓) 한도 내에서 적 1마리를 스폰한다
   update(dt: number) {
     if (!GameManager.instance) return;
     if (GameManager.instance.state !== GameState.Playing) return;

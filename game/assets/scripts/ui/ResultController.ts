@@ -11,6 +11,7 @@ export class ResultController extends Component {
   @property(Button) retryButton: Button | null = null;
   @property(Button) menuButton: Button | null = null;
 
+  // 도달 웨이브 라벨을 렌더(카탈로그 늦으면 onReady로 재렌더)하고 재시도/메뉴 버튼을 배선한다
   onLoad() {
     if (this.waveLabel) {
       // 카탈로그 로드 전이면 onReady로 다시 채운다(키 노출 방지).
