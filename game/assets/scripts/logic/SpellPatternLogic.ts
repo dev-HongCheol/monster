@@ -63,7 +63,10 @@ export function buildFirePlan(spell: ISpellData, ctx: FireContext): ShotSpec[] {
 
 /** 방향성 부채꼴 발사 계획. */
 function directionalPlan(spell: ISpellData, ctx: FireContext): ShotSpec[] {
-  const n = Math.max(1, Math.floor(ctx.count));
+  // count가 NaN/Infinity면 floor도 비유한값 → Math.max(1, NaN)=NaN으로 루프가 0번 돌아
+  // 무발사가 된다(R1). 비유한값은 1발로 클램프.
+  const floored = Math.floor(ctx.count);
+  const n = Number.isFinite(floored) ? Math.max(1, floored) : 1;
   const totalDeg = spell.spreadAngleDeg ?? DEFAULT_SPREAD_ANGLE_DEG;
   const shots: ShotSpec[] = [];
 

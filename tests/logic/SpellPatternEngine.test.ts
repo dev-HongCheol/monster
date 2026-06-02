@@ -102,6 +102,11 @@ describe('buildFirePlan — directional', () => {
     expect(buildFirePlan(spell(), { ...AIM, count: -3 })).toHaveLength(1);
   });
 
+  it('count가 NaN/Infinity → 1발로 클램프 (무발사 방지, R1)', () => {
+    expect(buildFirePlan(spell(), { ...AIM, count: Number.NaN })).toHaveLength(1);
+    expect(buildFirePlan(spell(), { ...AIM, count: Number.POSITIVE_INFINITY })).toHaveLength(1);
+  });
+
   it('spreadAngleDeg 지정 시 외곽 각도가 그 값을 따른다', () => {
     const plan = buildFirePlan(spell({ spreadAngleDeg: 60 }), { ...AIM, count: 2 });
     const expectedOuter = Math.cos((60 / 2) * (Math.PI / 180)); // cos 30°
