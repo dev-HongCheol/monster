@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ISpawnTableEntry } from '../../game/assets/scripts/data/GameTypes';
 import { SpawnDirectorLogic } from '../../game/assets/scripts/logic/SpawnDirectorLogic';
 
@@ -102,5 +102,46 @@ describe('SpawnDirectorLogic — 결정성 & 엣지', () => {
     const d = director([{ fromWave: 1, weights: { only: 100 } }]);
     expect(d.selectEnemyId(1, 0)).toBe('only');
     expect(d.selectEnemyId(99, 0.999)).toBe('only');
+  });
+
+  it('roll 음수 → 첫 항목, roll>=1 → 마지막 항목 (방어적 클램프)', () => {
+    const d = director();
+    expect(d.selectEnemyId(1, -0.5)).toBe('skeleton'); // 음수 → 0 취급
+    expect(d.selectEnemyId(3, 1)).toBe('skeleton_tank'); // >=1 → 마지막 키
+    expect(d.selectEnemyId(3, 5)).toBe('skeleton_tank');
+  });
+});
+
+describe('SpawnDirectorLogic — 비정상 데이터 방어', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('빈 테이블: 크래시 없이 빈 id 반환 + 생성 시 경고', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const d = director([]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(d.selectEnemyId(1, 0.5)).toBe('');
+  });
+
+  it('빈 weights 구간: 크래시 없이 빈 id 반환 + 생성 시 경고', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const d = director([{ fromWave: 1, weights: {} }]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(d.selectEnemyId(1, 0.5)).toBe('');
+  });
+
+  it('가중치 합 0: 첫 키로 결정적 폴백 + 생성 시 경고', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const d = director([{ fromWave: 1, weights: { a: 0, b: 0 } }]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(d.selectEnemyId(1, 0)).toBe('a');
+    expect(d.selectEnemyId(1, 0.99)).toBe('a');
+  });
+
+  it('정상 테이블은 경고하지 않는다', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    director();
+    expect(warn).not.toHaveBeenCalled();
   });
 });
