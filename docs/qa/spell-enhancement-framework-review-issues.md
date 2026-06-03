@@ -39,3 +39,11 @@
 - 전역 클램프: +0.05 정상 보너스는 1.05로 미클램프(위계 유지), bonus ≤ -0.95에서만 발동.
 - `applyCard`: DeckLogic이 maxHpBonus만 처리하므로 무조건 위임해도 이중 적용 없음.
 - 신규 테스트 4종 비-tautological(방향·하한·음수 전역 방어 실검증). 전체 85/85 GREEN.
+
+## 재리뷰 (`a4b724f` — DEV 강화 디버그 로그)
+
+리워크로 추가한 디버그 로그(console.table) 커밋 집중 리뷰 — **CLEAN, 신규 이슈 0**.
+- `debugSnapshot` 수치는 기존 factor/effectiveCooldown 위임이라 정합. dps div-by-zero 없음(effCooldown ≥ 0.05).
+- `DEV`(`cc/env`) 게이팅 정확 — 릴리스 dead-code 제거, read-only, null 가드 충분(throw 없음).
+- ADR 002/005 유지(EnhancementLogic cc 미import, i18n는 UI). 컨벤션 OK(`!` 없음, JSDoc 완비).
+- 신규 테스트 2종 비-tautological(원시값 재구성). 전체 87/87 GREEN.
