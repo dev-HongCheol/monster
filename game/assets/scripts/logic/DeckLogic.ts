@@ -1,19 +1,14 @@
 import type { ICardData, ISpellData } from '../data/GameTypes';
 
-const MIN_COOLDOWN_MULT = 0.1;
-
-/** 카드 드로우·강화 적용 순수 로직 — cc import 없음 */
+/**
+ * 카드 드로우 + 플레이어 강화(전역 패시브) 적용 순수 로직 — cc import 없음.
+ *
+ * 마법 데미지·쿨다운 합산(개별·분류·전역 3-tier)은 `EnhancementLogic`이 담당한다(기획 § 7.3).
+ * 여기서는 비전투 플레이어 패시브(현재 maxHp, 향후 이동속도/픽업 등)만 누적한다.
+ */
 export class DeckLogic {
-  private _damageMult = 1;
-  private _cooldownMult = 1;
   private _maxHpBonus = 0;
 
-  get damageMult() {
-    return this._damageMult;
-  }
-  get cooldownMult() {
-    return this._cooldownMult;
-  }
   get maxHpBonus() {
     return this._maxHpBonus;
   }
@@ -75,15 +70,11 @@ export class DeckLogic {
   }
 
   /**
-   * 카드 효과를 영구 적용한다.
+   * 플레이어 강화 카드 효과를 영구 적용한다. (강화 카드의 per-spell/분류 효과는 DeckManager가 라우팅)
    * @param card 선택한 카드
    */
   applyCard(card: ICardData): void {
     const e = card.effect;
-    if (e.damageMult !== undefined) this._damageMult += e.damageMult;
-    if (e.cooldownMult !== undefined) {
-      this._cooldownMult = Math.max(MIN_COOLDOWN_MULT, this._cooldownMult + e.cooldownMult);
-    }
     if (e.maxHpBonus !== undefined) this._maxHpBonus += e.maxHpBonus;
   }
 }

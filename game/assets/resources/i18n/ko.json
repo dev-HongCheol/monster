@@ -42,12 +42,40 @@
     "desc": "미보유 마법 합성 카드 설명. {category}는 분류명(category.* 해석값), {tier}는 등급 숫자",
     "params": ["category", "tier"]
   },
-  "card.damage_boost.name": { "message": "공격력 강화", "desc": "강화 카드 이름" },
-  "card.damage_boost.desc": { "message": "마법 대미지 +20%", "desc": "강화 카드 설명" },
-  "card.cooldown_reduce.name": { "message": "속사", "desc": "강화 카드 이름" },
-  "card.cooldown_reduce.desc": { "message": "쿨다운 -20%", "desc": "강화 카드 설명" },
+  "card.damage_boost.name": {
+    "message": "공격력 강화",
+    "desc": "전역(플레이어) 강화 카드 이름 — 모든 마법 공통"
+  },
+  "card.damage_boost.desc": {
+    "message": "모든 마법 데미지 +5%",
+    "desc": "전역 강화 카드 설명. 수치는 밸런싱 전 임시값(전역은 개별/분류보다 작게)"
+  },
+  "card.cooldown_reduce.name": {
+    "message": "속사",
+    "desc": "전역(플레이어) 강화 카드 이름 — 모든 마법 공통"
+  },
+  "card.cooldown_reduce.desc": {
+    "message": "모든 마법 쿨다운 -5%",
+    "desc": "전역 강화 카드 설명. 수치는 밸런싱 전 임시값"
+  },
   "card.hp_up.name": { "message": "생명력 강화", "desc": "패시브 카드 이름" },
   "card.hp_up.desc": { "message": "최대 HP +20", "desc": "패시브 카드 설명" },
+
+  "card.spell_upgrade.name": { "message": "마법 강화", "desc": "개별(선택 마법) 강화 카드 이름" },
+  "card.spell_upgrade.desc": {
+    "message": "{spell} {option} +1레벨",
+    "desc": "개별 강화 카드 설명. {spell}=마법명(spell.* 해석값), {option}=강화 옵션명(upgrade.* 해석값)",
+    "params": ["spell", "option"]
+  },
+  "card.category_upgrade.name": { "message": "분류 강화", "desc": "분류 강화 카드 이름" },
+  "card.category_upgrade.desc": {
+    "message": "{category} 마법 {option} +1레벨",
+    "desc": "분류 강화 카드 설명. {category}=분류명(category.* 해석값), {option}=강화 옵션명(upgrade.* 해석값)",
+    "params": ["category", "option"]
+  },
+
+  "upgrade.damage": { "message": "데미지", "desc": "강화 옵션명 — 1발 피해량 ↑" },
+  "upgrade.cooldown": { "message": "쿨다운", "desc": "강화 옵션명 — 자동 시전 간격 ↓" },
 
   "category.fire": { "message": "화염", "desc": "마법 분류명" },
   "category.ice": { "message": "얼음", "desc": "마법 분류명" },

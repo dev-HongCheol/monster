@@ -30,6 +30,29 @@ export enum SpellCategory {
 export type SpellTier = 1 | 2 | 3 | 4;
 
 /**
+ * 강화 옵션 5종 (기획 § 7.1) — JSON/카탈로그 문자열과 일치.
+ *
+ * 안정적 taxonomy로 5종 전부 정의하되, 이번 슬라이스는 `Damage`·`Cooldown`만 카드·적용에 배선한다.
+ * `ProjectileCount`는 후속(projectile-count-upgrade), `Range`·`Duration`은 splash/AOE/DOT 효과
+ * 레이어가 생기면 매트릭스·적용을 연결한다.
+ */
+export enum UpgradeOption {
+  Damage = 'damage',
+  Cooldown = 'cooldown',
+  ProjectileCount = 'projectile_count',
+  Range = 'range',
+  Duration = 'duration',
+}
+
+/** 강화 트랙 (기획 § 6.1) — 개별(선택 마법) / 분류. 두 트랙은 독립 관리(§ 7.2). */
+export enum UpgradeTrack {
+  /** 선택 마법 1종에만 적용 */
+  Individual = 'individual',
+  /** 해당 분류 마법 전체에 적용 */
+  Category = 'category',
+}
+
+/**
  * 마법 발사 패턴 (magic-system-mage.md § 3) — JSON 문자열과 일치.
  *
  * 이번 슬라이스는 `Directional` 하나(발사체 패턴 계열). 유효 발사체 수가 1이면 직선,
@@ -66,14 +89,24 @@ export interface ISpellData {
   spreadAngleDeg?: number;
 }
 
+/** 강화 카드가 올릴 대상 — 트랙·옵션·대상 키(개별=spellId, 분류=category) (기획 § 6.1·§ 8) */
+export interface IUpgradeEffect {
+  track: UpgradeTrack;
+  option: UpgradeOption;
+  /** 개별 트랙=마법 id, 분류 트랙=분류 값(SpellCategory) */
+  target: string;
+}
+
 /** 카드 효과 수치 */
 export interface ICardEffect {
-  /** 대미지 배율 가산 (예: 0.2 → +20%) */
-  damageMult?: number;
-  /** 쿨다운 배율 가산 (예: -0.2 → -20%) */
-  cooldownMult?: number;
-  /** 최대 HP 추가량 */
+  /** 최대 HP 추가량 (플레이어 강화) */
   maxHpBonus?: number;
+  /** 전역(플레이어) 데미지 factor 가산 — 모든 마법 공통, 위계상 개별·분류보다 작다(예: 0.05 → ×1.05) */
+  damageMult?: number;
+  /** 전역(플레이어) 쿨다운 factor 가산 — 양수=단축(예: 0.05 → 쿨다운 ÷1.05) */
+  cooldownMult?: number;
+  /** 강화 카드(type='upgrade')가 +1레벨 올릴 트랙/옵션/대상 */
+  upgrade?: IUpgradeEffect;
 }
 
 /**
@@ -84,8 +117,11 @@ export interface ICardEffect {
  */
 export interface ICardData {
   id: string;
-  /** enhancement/passive는 cards.json 정적 카드, magic은 미보유 마법에서 동적 합성 */
-  type: 'enhancement' | 'passive' | 'magic';
+  /**
+   * enhancement/passive는 cards.json 정적 카드, magic은 미보유 마법에서 동적 합성,
+   * upgrade는 개별/분류 강화 카드(보유 마법·분류 × 옵션)에서 동적 합성.
+   */
+  type: 'enhancement' | 'passive' | 'magic' | 'upgrade';
   effect: ICardEffect;
   /** type='magic'일 때 부여할 마법 id (spells.json) */
   spellId?: string;

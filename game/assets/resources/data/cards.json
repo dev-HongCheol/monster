@@ -2,12 +2,12 @@
   {
     "id": "damage_boost",
     "type": "enhancement",
-    "effect": { "damageMult": 0.2 }
+    "effect": { "damageMult": 0.05 }
   },
   {
     "id": "cooldown_reduce",
     "type": "enhancement",
-    "effect": { "cooldownMult": -0.2 }
+    "effect": { "cooldownMult": 0.05 }
   },
   {
     "id": "hp_up",
