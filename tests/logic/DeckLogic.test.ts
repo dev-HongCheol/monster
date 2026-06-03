@@ -44,35 +44,15 @@ describe('DeckLogic.drawCards', () => {
   });
 });
 
-describe('DeckLogic.applyCard', () => {
+describe('DeckLogic.applyCard — 플레이어 강화(전역 패시브)', () => {
   let deck: DeckLogic;
 
   beforeEach(() => {
     deck = new DeckLogic();
   });
 
-  it('초기값: damageMult=1, cooldownMult=1, maxHpBonus=0', () => {
-    expect(deck.damageMult).toBe(1);
-    expect(deck.cooldownMult).toBe(1);
+  it('초기값: maxHpBonus=0 (마법 데미지/쿨다운 합산은 EnhancementLogic 담당 — DeckLogic은 비전투 패시브만)', () => {
     expect(deck.maxHpBonus).toBe(0);
-  });
-
-  it('damageMult가 누적 가산된다', () => {
-    deck.applyCard(makeCard('x', { damageMult: 0.2 }));
-    deck.applyCard(makeCard('y', { damageMult: 0.3 }));
-    expect(deck.damageMult).toBeCloseTo(1.5);
-  });
-
-  it('cooldownMult가 누적 가산된다', () => {
-    deck.applyCard(makeCard('x', { cooldownMult: -0.2 }));
-    expect(deck.cooldownMult).toBeCloseTo(0.8);
-  });
-
-  it('cooldownMult는 MIN_COOLDOWN_MULT(0.1) 아래로 내려가지 않는다', () => {
-    for (let i = 0; i < 20; i++) {
-      deck.applyCard(makeCard(`x${i}`, { cooldownMult: -0.5 }));
-    }
-    expect(deck.cooldownMult).toBe(0.1);
   });
 
   it('maxHpBonus가 누적 가산된다', () => {
@@ -81,10 +61,8 @@ describe('DeckLogic.applyCard', () => {
     expect(deck.maxHpBonus).toBe(30);
   });
 
-  it('effect 필드가 undefined이면 해당 수치가 변경되지 않는다', () => {
+  it('effect가 비어 있으면 수치가 변경되지 않는다', () => {
     deck.applyCard(makeCard('x', {}));
-    expect(deck.damageMult).toBe(1);
-    expect(deck.cooldownMult).toBe(1);
     expect(deck.maxHpBonus).toBe(0);
   });
 });

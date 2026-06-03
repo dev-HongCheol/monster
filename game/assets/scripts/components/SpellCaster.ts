@@ -28,11 +28,14 @@ const { ccclass, property } = _decorator;
  * 플랜 § 4 근거:
  * - LoadoutLogic + FireSchedulerLogic 소유
  * - 매 프레임 스케줄러 tick → 가장 가까운 적을 향해 준비된 마법만 발사
- * - 전역 강화(DeckManager.damageMult/cooldownMult)는 모든 마법에 곱해 적용
+ * - per-spell/분류 강화(DeckManager.damageFactor/cooldownFactor)를 마법별로 적용
  */
 @ccclass('SpellCaster')
 export class SpellCaster extends Component {
   static instance!: SpellCaster;
+
+  /** 강화로 쿨다운이 줄어도 내려가지 않는 하한 (sec) */
+  private static readonly MIN_COOLDOWN_SEC = 0.05;
 
   /** 발사체 프리팹 (인스펙터에서 연결) */
   @property(Prefab) bulletPrefab: Prefab | null = null;
@@ -101,14 +104,18 @@ export class SpellCaster extends Component {
       const spell = DataManager.instance.getSpell(id);
       if (!spell) continue;
 
-      const cooldown = spell.cooldown * DeckManager.instance.cooldownMult;
+      // per-spell/분류 쿨다운 강화 — 기본 쿨다운을 배율로 나눠 간격 단축(하한 클램프).
+      const cooldown = Math.max(
+        spell.cooldown / DeckManager.instance.cooldownFactor(spell),
+        SpellCaster.MIN_COOLDOWN_SEC,
+      );
       this._scheduler.consume(id, cooldown);
 
       // 유효 발사체 수 = 기본값 (+ 향후 발사체 수 강화 보너스). 패턴 엔진이 부채꼴 형태를 결정.
       const plan = buildFirePlan(spell, { aimX: aim.x, aimY: aim.y, count: spell.projectileCount });
-      const damageMult = DeckManager.instance.damageMult;
+      const damageFactor = DeckManager.instance.damageFactor(spell);
       for (const shot of plan) {
-        this._spawnShot(shot, damageMult, spell.category);
+        this._spawnShot(shot, damageFactor, spell.category);
       }
     }
   }
@@ -136,10 +143,10 @@ export class SpellCaster extends Component {
   /**
    * ShotSpec 한 발을 발사체로 생성하고 발사한다.
    * @param shot 발사 사양 (방향 단위벡터·속도·기본 데미지·반경)
-   * @param damageMult 전역 데미지 배율 (DeckManager) — 기본 데미지에 곱한다
+   * @param damageFactor per-spell/분류 데미지 배율 (DeckManager) — 기본 데미지에 곱한다
    * @param category 마법 분류 (발사체 색 틴트용)
    */
-  private _spawnShot(shot: ShotSpec, damageMult: number, category: string): void {
+  private _spawnShot(shot: ShotSpec, damageFactor: number, category: string): void {
     if (!this.bulletPrefab || !this.bulletParent) return;
 
     const bullet = instantiate(this.bulletPrefab);
@@ -158,7 +165,7 @@ export class SpellCaster extends Component {
     projectile.init(
       new Vec3(shot.dirX, shot.dirY, 0),
       shot.speed,
-      shot.damage * damageMult,
+      shot.damage * damageFactor,
       shot.radius,
     );
   }

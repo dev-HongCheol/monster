@@ -19,11 +19,19 @@
 
   "card.add_magic": "New spell ({category} · Tier {tier})",
   "card.damage_boost.name": "Power Up",
-  "card.damage_boost.desc": "Spell damage +20%",
+  "card.damage_boost.desc": "All spell damage +5%",
   "card.cooldown_reduce.name": "Rapid Fire",
-  "card.cooldown_reduce.desc": "Cooldown -20%",
+  "card.cooldown_reduce.desc": "All spell cooldown -5%",
   "card.hp_up.name": "Vitality",
   "card.hp_up.desc": "Max HP +20",
+
+  "card.spell_upgrade.name": "Spell Upgrade",
+  "card.spell_upgrade.desc": "{spell} {option} +1",
+  "card.category_upgrade.name": "Category Upgrade",
+  "card.category_upgrade.desc": "{category} {option} +1",
+
+  "upgrade.damage": "Damage",
+  "upgrade.cooldown": "Cooldown",
 
   "category.fire": "Fire",
   "category.ice": "Ice",

@@ -16,6 +16,9 @@ export class CardSelectPanel extends Component {
   @property([Label]) cardNameLabels: Label[] = [];
   @property([Label]) cardDescLabels: Label[] = [];
 
+  /** descParams 중 값이 카탈로그 키(중첩 키)인 파라미터 — UI가 먼저 t()로 선해석한다 */
+  private static readonly NESTED_KEY_PARAMS = ['category', 'spell', 'option'];
+
   private _drawnCards: ICardData[] = [];
 
   // 패널이 열릴 때 카드 3장을 뽑아 버튼별 이름·설명을 채우고 선택 콜백을 배선한다
@@ -48,16 +51,21 @@ export class CardSelectPanel extends Component {
   }
 
   /**
-   * 카드 설명을 해석한다. 마법 카드의 `category` 파라미터는 카탈로그 키(`category.fire`)이므로
-   * 먼저 t()로 분류명을 해석한 뒤 설명 템플릿에 치환한다(중첩 키).
+   * 카드 설명을 해석한다. `category`/`spell`/`option` 파라미터는 카탈로그 키(`category.fire`,
+   * `spell.fireball.name`, `upgrade.damage`)이므로 먼저 t()로 해석한 뒤 설명 템플릿에 치환한다(중첩 키).
    */
   private _resolveDesc(card: ICardData): string {
     const i18n = I18n.instance;
     if (!card.descKey) return '';
     if (!i18n) return card.descKey;
     let params: I18nParams | undefined = card.descParams;
-    if (params && typeof params.category === 'string') {
-      params = { ...params, category: i18n.t(params.category) };
+    if (params) {
+      const resolved: I18nParams = { ...params };
+      for (const name of CardSelectPanel.NESTED_KEY_PARAMS) {
+        const value = resolved[name];
+        if (typeof value === 'string') resolved[name] = i18n.t(value);
+      }
+      params = resolved;
     }
     return i18n.t(card.descKey, params);
   }
