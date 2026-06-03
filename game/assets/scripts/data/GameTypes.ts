@@ -148,6 +148,19 @@ export interface IEnemyData {
   xpDrop: number;
 }
 
+/**
+ * 가중 스폰 테이블 한 구간 (spawn-table.json 항목).
+ *
+ * `fromWave` 오름차순 구간 목록으로, 현재 웨이브 이하인 마지막 구간의 `weights`로
+ * 적 종류를 가중 추출한다. (적 시스템 디자인 §8.1 — 후반 웨이브일수록 강한 적 가중치 ↑)
+ */
+export interface ISpawnTableEntry {
+  /** 이 구간이 적용되기 시작하는 웨이브 번호 (이상) */
+  fromWave: number;
+  /** enemyId → 가중치. 합이 100일 필요 없음(상대 비율). */
+  weights: Record<string, number>;
+}
+
 /** 경험치 공식 데이터 (experience.json) */
 export interface IXPData {
   /** 레벨 1→2에 필요한 기본 XP */

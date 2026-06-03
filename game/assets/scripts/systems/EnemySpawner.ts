@@ -1,6 +1,8 @@
 import { _decorator, Component, instantiate, Node, Prefab, Vec3 } from 'cc';
 import { EnemyController } from '../components/EnemyController';
 import { GameState } from '../data/GameTypes';
+import { SpawnDirectorLogic } from '../logic/SpawnDirectorLogic';
+import { DataManager } from './DataManager';
 import { GameManager } from './GameManager';
 import { WaveManager } from './WaveManager';
 
@@ -27,6 +29,8 @@ export class EnemySpawner extends Component {
   private readonly _spawnRadius: number = 350;
   private _spawnTimer: number = 0;
   private _canvas: Node | null = null;
+  /** 웨이브별 적 종류 선택 디렉터. 데이터 로드 후 첫 스폰 시점에 생성 */
+  private _director: SpawnDirectorLogic | null = null;
 
   // 필수 프로퍼티를 검증하고(실패 시 비활성화) 스폰 부모로 쓸 Canvas 참조를 캐시한다
   onLoad() {
@@ -46,6 +50,8 @@ export class EnemySpawner extends Component {
   update(dt: number) {
     if (!GameManager.instance) return;
     if (GameManager.instance.state !== GameState.Playing) return;
+    // 스폰 테이블 로드 전이면 보류(타이머 유지) — 데이터 준비 후 디렉터 생성
+    if (!this._ensureDirector()) return;
 
     this._spawnTimer -= dt;
     if (this._spawnTimer > 0) return;
@@ -59,12 +65,24 @@ export class EnemySpawner extends Component {
       this.spawnInterval - (wave - 1) * this.intervalReductionPerWave,
     );
     this._spawnTimer = interval;
-    this._spawnEnemy();
+    this._spawnEnemy(wave);
   }
 
-  /** 플레이어 주변 랜덤 위치에 적을 스폰하고 추적 대상을 설정한다. */
-  private _spawnEnemy(): void {
-    if (!this.enemyPrefab || !this.playerNode || !this._canvas) return;
+  /** 디렉터를 보장한다. 데이터 미로드면 false(스폰 보류). 최초 1회만 생성. */
+  private _ensureDirector(): boolean {
+    if (this._director) return true;
+    const dm = DataManager.instance;
+    if (!dm?.isReady) return false;
+    this._director = new SpawnDirectorLogic(dm.spawnTable);
+    return true;
+  }
+
+  /**
+   * 플레이어 주변 랜덤 위치에 적을 스폰하고, 디렉터가 고른 종류·추적 대상을 설정한다.
+   * @param wave 현재 웨이브 (스폰 디렉터의 종류 선택 게이팅에 사용)
+   */
+  private _spawnEnemy(wave: number): void {
+    if (!this.enemyPrefab || !this.playerNode || !this._canvas || !this._director) return;
 
     const angle = Math.random() * Math.PI * 2;
     const spawnPos = new Vec3(
@@ -73,11 +91,19 @@ export class EnemySpawner extends Component {
       0,
     );
 
+    const enemyId = this._director.selectEnemyId(wave, Math.random());
     const enemy = instantiate(this.enemyPrefab);
-    this._canvas.addChild(enemy);
     enemy.setPosition(spawnPos);
     const enemyCtrl = enemy.getComponent(EnemyController);
-    if (!enemyCtrl) return;
+    if (!enemyCtrl) {
+      enemy.destroy();
+      return;
+    }
+    // enemyId·playerNode는 컴포넌트 활성화(addChild→onLoad) 전에 주입해야 한다.
+    // EnemyController.onLoad가 enemyId로 데이터를 읽으므로, addChild 후 세팅하면
+    // 프리팹 기본값('skeleton')으로 먼저 로드돼 버린다.
+    enemyCtrl.enemyId = enemyId;
     enemyCtrl.playerNode = this.playerNode;
+    this._canvas.addChild(enemy);
   }
 }

@@ -6,6 +6,24 @@
     "speed": 150,
     "contactDamagePerSec": 20,
     "collisionRadius": 25,
-    "xpDrop": 10
+    "xpDrop": 20
+  },
+  {
+    "id": "skeleton_swift",
+    "name": "빠른 해골",
+    "maxHp": 50,
+    "speed": 230,
+    "contactDamagePerSec": 12,
+    "collisionRadius": 18,
+    "xpDrop": 18
+  },
+  {
+    "id": "skeleton_tank",
+    "name": "거대 해골",
+    "maxHp": 320,
+    "speed": 80,
+    "contactDamagePerSec": 35,
+    "collisionRadius": 38,
+    "xpDrop": 35
   }
 ]

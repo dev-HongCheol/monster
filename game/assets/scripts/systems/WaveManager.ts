@@ -9,8 +9,8 @@ const { ccclass, property } = _decorator;
 export class WaveManager extends Component {
   static instance!: WaveManager;
 
-  /** 웨이브당 지속 시간 (sec) */
-  @property waveDuration: number = 180;
+  /** 웨이브당 지속 시간 (sec). 테스트 편의로 60(1분) — 출시 전 밸런싱에서 재검토. */
+  @property waveDuration: number = 60;
 
   private _waveNumber: number = 0;
   private _waveTimer: number = 0;

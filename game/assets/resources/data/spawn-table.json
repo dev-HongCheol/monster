@@ -1,0 +1,14 @@
+[
+  {
+    "fromWave": 1,
+    "weights": { "skeleton": 80, "skeleton_swift": 20 }
+  },
+  {
+    "fromWave": 3,
+    "weights": { "skeleton": 35, "skeleton_swift": 50, "skeleton_tank": 15 }
+  },
+  {
+    "fromWave": 6,
+    "weights": { "skeleton_swift": 50, "skeleton_tank": 50 }
+  }
+]
