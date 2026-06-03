@@ -18,14 +18,14 @@ export class DeckManager extends Component {
     return this._logic.maxHpBonus;
   }
 
-  /** 마법의 데미지 배율 (개별×분류 강화 — 기본 데미지에 곱한다). */
+  /** 마법의 데미지 배율 (개별×분류×전역 강화 — 기본 데미지에 곱한다). */
   damageFactor(spell: ISpellData): number {
     return this._enhancement.damageFactor(spell);
   }
 
-  /** 마법의 쿨다운 배율 (기본 쿨다운을 이 값으로 나눈다 → 간격 단축). */
-  cooldownFactor(spell: ISpellData): number {
-    return this._enhancement.cooldownFactor(spell);
+  /** 강화 반영 후 실제 쿨다운(sec) — 기본 쿨다운에 개별×분류×전역 배율·하한 적용. */
+  effectiveCooldown(spell: ISpellData): number {
+    return this._enhancement.effectiveCooldown(spell, spell.cooldown);
   }
 
   onLoad() {
@@ -60,14 +60,13 @@ export class DeckManager extends Component {
   }
 
   /**
-   * 카드 효과를 영구 적용한다 — 강화 카드(개별/분류)는 per-spell/분류 트랙,
-   * 전역 데미지/쿨다운은 전역 강화 보너스, 그 외(HP 등)는 플레이어 패시브(DeckLogic).
+   * 카드 효과를 영구 적용한다. 각 effect는 독립이므로 early-return 없이 모두 반영한다 —
+   * 강화 카드(개별/분류)는 raise, 전역 데미지/쿨다운은 addGlobal, 나머지(HP)는 DeckLogic.
    */
   applyCard(card: ICardData): void {
     const e = card.effect;
-    if (card.type === 'upgrade' && e.upgrade) {
+    if (e.upgrade) {
       this._enhancement.raise(e.upgrade.track, e.upgrade.target, e.upgrade.option);
-      return;
     }
     // 전역(플레이어) 데미지/쿨다운 강화 — 모든 마법 공통 보너스
     if (e.damageMult !== undefined) this._enhancement.addGlobal(UpgradeOption.Damage, e.damageMult);

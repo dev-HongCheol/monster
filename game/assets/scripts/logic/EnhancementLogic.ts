@@ -19,6 +19,15 @@ export const INDIVIDUAL_CURVE = [1.0, 1.3, 1.65, 2.05, 2.5];
 /** 분류 강화 곡선 — 개별보다 작고 전역보다 큼 (§ 7.4 예시 기준) */
 export const CATEGORY_CURVE = [1.0, 1.2, 1.4, 1.7, 2.05];
 
+/** 강화로 쿨다운이 줄어도 내려가지 않는 하한 (sec) — factor가 커져도 발사 간격 0 방지 */
+export const MIN_COOLDOWN_SEC = 0.05;
+
+/**
+ * 전역 배율 `(1 + 보너스)`의 하한. 향후 디버프성 전역 보너스(≤ -1)가 들어와도
+ * factor가 0/음수가 되어 쿨다운 div-by-zero·음수가 나는 것을 막는다.
+ */
+const MIN_GLOBAL_MULT = 0.05;
+
 /** 일반 옵션이 적용되는 분류 (보조 분류는 일반 5종 옵션 제외 — § 7.5) */
 const GENERAL_OPTION_CATEGORIES: SpellCategory[] = [
   SpellCategory.Fire,
@@ -112,7 +121,8 @@ export class EnhancementLogic {
       CATEGORY_CURVE,
       this.getLevel(UpgradeTrack.Category, spell.category, option),
     );
-    const global = 1 + (this._global.get(option) ?? 0);
+    // 전역 배율은 0/음수 방지 하한으로 클램프 (디버프성 보너스 방어)
+    const global = Math.max(MIN_GLOBAL_MULT, 1 + (this._global.get(option) ?? 0));
     return indiv * cat * global;
   }
 
@@ -124,6 +134,16 @@ export class EnhancementLogic {
   /** 마법의 쿨다운 배율 (기본 쿨다운을 이 값으로 나눈다 → 간격 단축). */
   cooldownFactor(spell: ISpellData): number {
     return this.factor(spell, UpgradeOption.Cooldown);
+  }
+
+  /**
+   * 강화 반영 후 실제 쿨다운(sec)을 계산한다 — `기본 ÷ 쿨다운 배율`, 하한 클램프.
+   * 핵심 불변(배율↑ = 간격↓)을 순수 로직에 담아 단위 테스트로 고정한다.
+   * @param spell 대상 마법
+   * @param baseCooldown 기본 쿨다운(sec) — 보통 `spell.cooldown`
+   */
+  effectiveCooldown(spell: ISpellData, baseCooldown: number): number {
+    return Math.max(baseCooldown / this.cooldownFactor(spell), MIN_COOLDOWN_SEC);
   }
 
   /**

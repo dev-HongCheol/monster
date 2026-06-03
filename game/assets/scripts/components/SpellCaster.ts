@@ -28,14 +28,11 @@ const { ccclass, property } = _decorator;
  * 플랜 § 4 근거:
  * - LoadoutLogic + FireSchedulerLogic 소유
  * - 매 프레임 스케줄러 tick → 가장 가까운 적을 향해 준비된 마법만 발사
- * - per-spell/분류 강화(DeckManager.damageFactor/cooldownFactor)를 마법별로 적용
+ * - per-spell/분류/전역 강화(DeckManager.damageFactor/effectiveCooldown)를 마법별로 적용
  */
 @ccclass('SpellCaster')
 export class SpellCaster extends Component {
   static instance!: SpellCaster;
-
-  /** 강화로 쿨다운이 줄어도 내려가지 않는 하한 (sec) */
-  private static readonly MIN_COOLDOWN_SEC = 0.05;
 
   /** 발사체 프리팹 (인스펙터에서 연결) */
   @property(Prefab) bulletPrefab: Prefab | null = null;
@@ -104,12 +101,8 @@ export class SpellCaster extends Component {
       const spell = DataManager.instance.getSpell(id);
       if (!spell) continue;
 
-      // per-spell/분류 쿨다운 강화 — 기본 쿨다운을 배율로 나눠 간격 단축(하한 클램프).
-      const cooldown = Math.max(
-        spell.cooldown / DeckManager.instance.cooldownFactor(spell),
-        SpellCaster.MIN_COOLDOWN_SEC,
-      );
-      this._scheduler.consume(id, cooldown);
+      // per-spell/분류/전역 쿨다운 강화 반영(배율로 나눠 간격 단축 + 하한). 계산은 순수 로직에 위임.
+      this._scheduler.consume(id, DeckManager.instance.effectiveCooldown(spell));
 
       // 유효 발사체 수 = 기본값 (+ 향후 발사체 수 강화 보너스). 패턴 엔진이 부채꼴 형태를 결정.
       const plan = buildFirePlan(spell, { aimX: aim.x, aimY: aim.y, count: spell.projectileCount });

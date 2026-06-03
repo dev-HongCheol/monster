@@ -10,6 +10,7 @@ import {
   CATEGORY_CURVE,
   EnhancementLogic,
   INDIVIDUAL_CURVE,
+  MIN_COOLDOWN_SEC,
   UPGRADE_CAP,
 } from '../../game/assets/scripts/logic/EnhancementLogic';
 
@@ -110,6 +111,40 @@ describe('EnhancementLogic — 배율 합산(§7.3 곱셈)', () => {
     expect(e.cooldownFactor(fireball)).toBe(1);
     // 다른 마법(ice_missile)은 영향 없음
     expect(e.damageFactor(iceMissile)).toBe(1);
+  });
+});
+
+describe('EnhancementLogic.effectiveCooldown — 쿨다운 나눗셈 방향 + 하한', () => {
+  it('강화 없으면 기본 쿨다운 그대로', () => {
+    const e = new EnhancementLogic();
+    expect(e.effectiveCooldown(fireball, 0.5)).toBeCloseTo(0.5);
+  });
+
+  it('쿨다운 강화는 기본을 배율로 나눈다 (배율↑ = 간격↓)', () => {
+    const e = new EnhancementLogic();
+    e.raise(UpgradeTrack.Individual, 'fireball', UpgradeOption.Cooldown); // 배율 INDIVIDUAL_CURVE[1]
+    const cd = e.effectiveCooldown(fireball, 0.5);
+    expect(cd).toBeCloseTo(0.5 / INDIVIDUAL_CURVE[1]);
+    expect(cd).toBeLessThan(0.5); // 반드시 짧아진다(방향 고정 — `*`로 뒤집히면 실패)
+  });
+
+  it('아무리 강화해도 MIN_COOLDOWN_SEC 아래로 내려가지 않는다', () => {
+    const e = new EnhancementLogic();
+    for (let i = 0; i < UPGRADE_CAP; i++) {
+      e.raise(UpgradeTrack.Individual, 'fireball', UpgradeOption.Cooldown);
+      e.raise(UpgradeTrack.Category, SpellCategory.Fire, UpgradeOption.Cooldown);
+    }
+    expect(e.effectiveCooldown(fireball, 0.05)).toBe(MIN_COOLDOWN_SEC);
+  });
+
+  it('전역 보너스 ≤ -1이어도 factor가 0/음수로 떨어지지 않는다(방어)', () => {
+    const e = new EnhancementLogic();
+    e.addGlobal(UpgradeOption.Damage, -2); // (1 + -2) = -1 → 클램프
+    expect(e.damageFactor(fireball)).toBeGreaterThan(0);
+    e.addGlobal(UpgradeOption.Cooldown, -5);
+    const cd = e.effectiveCooldown(fireball, 0.5);
+    expect(Number.isFinite(cd)).toBe(true);
+    expect(cd).toBeGreaterThan(0);
   });
 });
 
