@@ -3,7 +3,7 @@
 - **작성일:** 2026-06-03
 - **세션:** superpowers:brainstorming (설계 합의) → 프로젝트 워크플로우 구현
 - **브랜치(예정):** feat/spell-enhancement-framework
-- **상태:** 구현·검증 진행 중 (자동 79/79 GREEN, /cso·코드리뷰 대기)
+- **상태:** AI 검증 완료 → 사용자 인게임 검증 대기 (자동 85/85 GREEN + /cso 0건 + 코드리뷰 MEDIUM1·LOW2 수정 후 재리뷰 CLEAN)
 - **관련 문서:**
   - [마법 시스템 디자인](../../planning/magic-system-mage.md) § 6.1, § 7.1~7.4, § 8 (강화 트랙·옵션·매트릭스)
   - [발사체 수 밸런스 설계 메모](../../planning/magic-system-mage.md#76-발사체-수-밸런스-룰--발사체당-데미지-페널티) § 7.6
@@ -95,7 +95,7 @@ export interface IUpgradeEffect { track: UpgradeTrack; option: UpgradeOption; ta
 
 - `tests/logic/SpellEnhancementFramework.test.ts` GREEN: raise/cap, factor 곱셈, 트랙·옵션 독립, buildUpgradeCards 생성·maxed/보조 제외, i18n 키/params.
 - 전체 vitest 스위트 GREEN(start-verification 게이트).
-- 인게임: 개별 강화 → 해당 마법만, 분류 강화 → 분류 전체, 개별+분류 곱셈 합산. 전역 강화 폐지 회귀 없음(수동 QA).
+- 인게임: 개별 강화 → 해당 마법만, 분류 강화 → 분류 전체, 개별×분류×전역 곱셈 합산(위계 개별>분류>전역). 전역 카드 수치↓ 후에도 정상 동작·회귀 없음(수동 QA).
 
 ## Impact Map
 
@@ -116,7 +116,7 @@ export interface IUpgradeEffect { track: UpgradeTrack; option: UpgradeOption; ta
 
 ## Open Questions (→ 밸런싱 단계 / 후속 슬라이스)
 
-- `UPGRADE_CURVE` 정확한 수치, 개별/분류 곡선 분리 (§ 7.4·§ 10).
+- `INDIVIDUAL_CURVE`/`CATEGORY_CURVE` 정확한 수치 + 전역 보너스·전역 cap (위계 점근 보장) (§ 7.4·§ 10).
 - 카드 종류별 가중치·웨이브 등급 게이팅 (§ 6.2·§ 10).
 - 발사체수 옵션 + 발사체당 데미지 페널티 `r` (§ 7.6) → `projectile-count-upgrade`.
 - 범위·지속시간 옵션 → splash/AOE/DOT 효과 레이어 도입 후.
