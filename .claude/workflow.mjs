@@ -102,6 +102,17 @@ function toPascal(slug) {
     .join("");
 }
 
+// 해당 기능 관련 계획 문서: docs/development/sessions/ 안에서 파일명에
+// feature 슬러그가 포함된 .md 를 찾는다(존재 여부만 검사 — 내용/형식은 무관).
+function planDocPath(state) {
+  const dir = path.join(ROOT, "docs", "development", "sessions");
+  if (!fs.existsSync(dir) || !state.feature) return null;
+  const hit = fs
+    .readdirSync(dir)
+    .find((f) => f.endsWith(".md") && f.includes(state.feature));
+  return hit ? path.join(dir, hit) : null;
+}
+
 function qaDocPath(state) {
   return path.join(ROOT, "docs", "qa", `${state.feature}-test.md`);
 }
@@ -122,10 +133,23 @@ const commands = {
   "approve-plan"() {
     const s = load();
     requirePhase(s, "planning");
+
+    // 문서 게이트: 해당 기능 관련 계획 문서가 없으면 전이 차단.
+    // (planning→qa-setup이 문서 없이 넘어가던 빈틈을 막는다. 존재 여부만 검사.)
+    const doc = planDocPath(s);
+    if (!doc) {
+      fail(
+        `계획 문서 없음: docs/development/sessions/ 에 "${s.feature}"가 포함된 .md가 없습니다.\n` +
+          `  계획 승인 전에 계획 문서를 먼저 작성하세요 (예: <YYYY-MM-DD>-${s.feature}-plan.md).`
+      );
+    }
+
     s.phase = "qa-setup";
     resetVerification(s);
     save(s);
-    console.log("✓ approve-plan → phase=qa-setup");
+    console.log(
+      `✓ approve-plan → phase=qa-setup (계획 문서 확인: ${path.relative(ROOT, doc)})`
+    );
   },
 
   // 순수 로직 없음 → 테스트 스킵 (사유 필수)

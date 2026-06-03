@@ -81,7 +81,7 @@ planning → qa-setup → implementation → verification → user-verification 
 | 명령 | 주체 | 전이 |
 |------|------|------|
 | `pnpm wf start <feature>` | AI | 전체 초기화 → `planning` |
-| `pnpm wf approve-plan` | 사용자 트리거(`계획 승인`)→AI | `planning` → `qa-setup` |
+| `pnpm wf approve-plan` | 사용자 트리거(`계획 승인`)→AI | `planning` → `qa-setup` (**해당 기능 계획 문서 존재** 확인 후 전환) |
 | `pnpm wf skip-test "<사유>"` | AI | 테스트 스킵 (순수 로직 없음, 사유 필수) |
 | `pnpm wf ready-impl` | AI | `qa-setup` → `implementation` (문서·테스트 파일 확인 + 스킵 아니면 피처 테스트 **RED** 검증) |
 | `pnpm wf start-verification` | AI | `implementation` → `verification` (전체 스위트 **GREEN** 검증 후 전환) |
@@ -112,9 +112,11 @@ planning → qa-setup → implementation → verification → user-verification 
 0. **워크플로우 상태 리셋:** `pnpm wf start <feature>` 실행 → 전체 초기화 + `phase: "planning"`.
 1. `/office-hours` — 요구사항 재구성 및 스코프 확인
 2. `/autoplan` — CEO+Eng 리뷰 → 사용자 승인
+2-1. **계획 문서 작성(필수):** 리뷰 결과를 `docs/development/sessions/<YYYY-MM-DD>-<feature>-plan.md`로 저장한다. 파일명에 `wf start`의 `<feature>` 슬러그가 포함되어야 한다(게이트가 파일명에서 이 슬러그를 찾는다). 내용·형식은 강제하지 않는다.
 
 #### 2단계: 계획 승인 (사용자)
 3. 사용자: **`계획 승인`** 입력 → AI가 `pnpm wf approve-plan` 실행 → `phase: "qa-setup"`
+   - **게이트:** 해당 기능 관련 계획 문서가 없으면 전이가 **차단**된다(문서 없이 다음 단계 진입 불가). 차단 시 계획 문서를 먼저 작성한 뒤 다시 승인한다.
 
 #### 3단계: QA 문서 + 테스트 코드 (AI 주도)
 4. `superpowers:executing-plans` 호출 → `superpowers:test-driven-development` 호출
@@ -147,7 +149,7 @@ planning → qa-setup → implementation → verification → user-verification 
 11. 기능 단위로 커밋 분리 후 순차 커밋 (husky가 staged 파일에 `biome check --write` 자동 실행)
 12. `superpowers:requesting-code-review` 패턴으로 별도 subagent dispatch — 코드 리뷰
     - `git rev-parse origin/main` → BASE_SHA, `git rev-parse HEAD` → HEAD_SHA
-    - Agent tool (`general-purpose` 타입)으로 `code-reviewer.md` 템플릿 사용해 dispatch
+    - **리뷰 템플릿은 프로젝트 파일이 아니다.** `superpowers:requesting-code-review` 스킬을 invoke하면 스킬에 동봉된 `code-reviewer.md` 템플릿 위치를 알려준다(플러그인 캐시 내, 버전 경로 포함). repo에서 `code-reviewer.md`를 찾지 말 것 — "없음"으로 뜬다. 스킬이 가리키는 템플릿을 Read해 `{DESCRIPTION}`/`{PLAN_OR_REQUIREMENTS}`/`{BASE_SHA}`/`{HEAD_SHA}`를 채운 뒤 Agent tool(`general-purpose` 타입)로 dispatch한다.
     - 모든 이슈 → `docs/qa/[feature]-review-issues.md`에 기록
       - **문서가 이미 존재하면 덮어쓰지 말고 업데이트한다.** 기존 항목은 보존하고, 신규 이슈만 하단에 "재리뷰 (커밋 SHA 또는 차수)" 섹션으로 추가. 이미 "수정됨" 표시된 항목은 그대로 둔다. 상단 "리뷰 커밋"은 최신 SHA로 갱신.
     - **코드 품질·타입 안전성·실제 버그** → 즉시 수정 후 문서에 "수정됨" 표시
