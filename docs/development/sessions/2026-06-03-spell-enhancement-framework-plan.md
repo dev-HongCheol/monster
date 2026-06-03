@@ -3,7 +3,7 @@
 - **작성일:** 2026-06-03
 - **세션:** superpowers:brainstorming (설계 합의) → 프로젝트 워크플로우 구현
 - **브랜치(예정):** feat/spell-enhancement-framework
-- **상태:** AI 검증 완료 → 사용자 인게임 검증 대기 (자동 87/87 GREEN + /cso 0건 + 코드리뷰 2회 CLEAN). DEV 강화 디버그 로그(console.table) 포함.
+- **상태:** 구현·검증·사용자 인게임 검증 완료 → PR (자동 87/87 GREEN + /cso 0건 + 코드리뷰 2회 CLEAN). DEV 강화 디버그 로그(console.table) 포함.
 - **관련 문서:**
   - [마법 시스템 디자인](../../planning/magic-system-mage.md) § 6.1, § 7.1~7.4, § 8 (강화 트랙·옵션·매트릭스)
   - [발사체 수 밸런스 설계 메모](../../planning/magic-system-mage.md#76-발사체-수-밸런스-룰--발사체당-데미지-페널티) § 7.6
