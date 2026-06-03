@@ -93,6 +93,29 @@ function runVitest(extraArgs = []) {
   return r.status;
 }
 
+// git 명령 실행 헬퍼. encoding="utf8"로 출력 캡처, 결과 객체 반환.
+function git(args, opts = {}) {
+  return spawnSync("git", args, { cwd: ROOT, encoding: "utf8", ...opts });
+}
+
+// feat/<feature> 브랜치를 보장한다 — 없으면 main 기준 생성, 있으면 전환.
+// 슬라이스 시작점 = 브랜치 시작점. planning 커밋이 main에 직접 쌓이는 사고를 막는다.
+function ensureFeatureBranch(feature) {
+  const branch = `feat/${feature}`;
+  const exists =
+    git(["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]).status === 0;
+  const r = exists
+    ? git(["switch", branch], { stdio: "inherit" })
+    : git(["switch", "-c", branch, "main"], { stdio: "inherit" });
+  if (r.status !== 0) {
+    fail(
+      `브랜치 전환/생성 실패: ${branch}\n` +
+        "  작업 트리에 충돌하는 변경이 있으면 정리(commit/stash) 후 다시 실행하세요."
+    );
+  }
+  return branch;
+}
+
 // kebab-case feature → PascalCase (테스트 파일명 일관성)
 function toPascal(slug) {
   return String(slug)
@@ -121,12 +144,16 @@ function testFilePath(state) {
 }
 
 const commands = {
-  // 새 기능 시작 — 모든 플래그 초기화
+  // 새 기능 시작 — feat/<feature> 브랜치 생성·전환 + 모든 플래그 초기화
   start(args) {
     const feature = args[0];
     if (!feature) fail("사용법: start <feature-slug>");
+    // 브랜치를 먼저 보장한 뒤, 그 브랜치의 작업 트리에 초기 상태를 기록한다.
+    const branch = ensureFeatureBranch(feature);
     save(freshState(feature));
-    console.log(`✓ start: feature="${feature}", phase=planning (전체 초기화)`);
+    console.log(
+      `✓ start: feature="${feature}", branch=${branch}, phase=planning (전체 초기화)`
+    );
   },
 
   // 사람의 계획 승인
