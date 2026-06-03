@@ -80,7 +80,7 @@ planning → qa-setup → implementation → verification → user-verification 
 
 | 명령 | 주체 | 전이 |
 |------|------|------|
-| `pnpm wf start <feature>` | AI | 전체 초기화 → `planning` |
+| `pnpm wf start <feature>` | AI | `feat/<feature>` 브랜치 생성·전환 + 전체 초기화 → `planning` |
 | `pnpm wf approve-plan` | 사용자 트리거(`계획 승인`)→AI | `planning` → `qa-setup` (**해당 기능 계획 문서 존재** 확인 후 전환) |
 | `pnpm wf skip-test "<사유>"` | AI | 테스트 스킵 (순수 로직 없음, 사유 필수) |
 | `pnpm wf ready-impl` | AI | `qa-setup` → `implementation` (문서·테스트 파일 확인 + 스킵 아니면 피처 테스트 **RED** 검증) |
@@ -109,7 +109,7 @@ planning → qa-setup → implementation → verification → user-verification 
 ### 기능 개발
 
 #### 1단계: 계획 (사용자 주도)
-0. **워크플로우 상태 리셋:** `pnpm wf start <feature>` 실행 → 전체 초기화 + `phase: "planning"`.
+0. **브랜치 생성 + 상태 리셋:** `pnpm wf start <feature>` 실행 → `feat/<feature>` 브랜치를 main 기준으로 **생성·전환**(이미 있으면 전환)한 뒤 전체 초기화 + `phase: "planning"`. 이 시점부터 브랜치가 실재하므로 이후 모든 planning 커밋이 그 브랜치에 쌓인다(main 직접 커밋 방지). **계획 문서에 브랜치를 `(예정)`으로 적지 않는다 — 이미 생성됐으므로 `브랜치: feat/<feature>`로 확정 표기.**
 1. `/office-hours` — 요구사항 재구성 및 스코프 확인
 2. `/autoplan` — CEO+Eng 리뷰 → 사용자 승인
 2-1. **계획 문서 작성(필수):** 리뷰 결과를 `docs/development/sessions/<YYYY-MM-DD>-<feature>-plan.md`로 저장한다. 파일명에 `wf start`의 `<feature>` 슬러그가 포함되어야 한다(게이트가 파일명에서 이 슬러그를 찾는다). 내용·형식은 강제하지 않는다.
