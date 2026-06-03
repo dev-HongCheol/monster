@@ -1,8 +1,8 @@
 # 코드 리뷰 이슈 — per-spell/분류 강화 프레임워크
 
-> **리뷰 커밋:** `01d0f0d` (base `6bbcc3b` / `main...HEAD`)
+> **리뷰 커밋:** `b4efd1c` (최초 리뷰 `01d0f0d`, base `6bbcc3b`)
 > **리뷰어:** general-purpose subagent (superpowers:requesting-code-review 패턴)
-> **결과:** BLOCKER/HIGH 0건. MEDIUM 1 + LOW 2(코드 품질·로버스트니스 → 즉시 수정) + 게임정책 2(note only).
+> **결과:** BLOCKER/HIGH 0건. MEDIUM 1 + LOW 2(코드 품질·로버스트니스 → 즉시 수정) + 게임정책 2(note only). 재리뷰(`b4efd1c`) CLEAN — 신규 이슈 0.
 
 ---
 
@@ -29,3 +29,13 @@
 
 ### #5 곡선·전역 수치는 placeholder (§10) — 조치 없음
 `INDIVIDUAL_CURVE`/`CATEGORY_CURVE`/±5% 전역은 JSDoc·설계 doc에 임시값 명시. 밸런싱 단계 확정.
+
+---
+
+## 재리뷰 (`b4efd1c`)
+
+#1·#2·#3 수정 커밋(`b4efd1c`) 집중 재리뷰 — **CLEAN, 신규 이슈 0**.
+- 쿨다운 추출: 나눗셈 방향·0.05s 하한 동작 동일, `MIN_COOLDOWN_SEC` logic 이관, dangling `cooldownFactor` 참조 없음.
+- 전역 클램프: +0.05 정상 보너스는 1.05로 미클램프(위계 유지), bonus ≤ -0.95에서만 발동.
+- `applyCard`: DeckLogic이 maxHpBonus만 처리하므로 무조건 위임해도 이중 적용 없음.
+- 신규 테스트 4종 비-tautological(방향·하한·음수 전역 방어 실검증). 전체 85/85 GREEN.
