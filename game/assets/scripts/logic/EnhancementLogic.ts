@@ -46,6 +46,43 @@ function generalOptions(category: SpellCategory): UpgradeOption[] {
   return category === SpellCategory.Support ? [] : SLICE_OPTIONS;
 }
 
+/** 디버그 로그용 마법 한 줄 스냅샷 (수치만 — 표시/포맷은 UI 책임) */
+export interface EnhancementDebugRow {
+  /** 마법 id */
+  id: string;
+  /** 기본 데미지 */
+  baseDamage: number;
+  /** 기본 쿨다운(sec) */
+  baseCooldown: number;
+  /** 개별 데미지 레벨 */
+  indivDmgLevel: number;
+  /** 분류 데미지 레벨 */
+  catDmgLevel: number;
+  /** 데미지 배율 = 개별 × 분류 × (1+전역) */
+  damageFactor: number;
+  /** 최종 데미지 = 기본 × 데미지 배율 */
+  effDamage: number;
+  /** 개별 쿨다운 레벨 */
+  indivCdLevel: number;
+  /** 분류 쿨다운 레벨 */
+  catCdLevel: number;
+  /** 쿨다운 배율 = 개별 × 분류 × (1+전역) */
+  cooldownFactor: number;
+  /** 최종 쿨다운(sec) = 기본 ÷ 쿨다운 배율(하한 적용) */
+  effCooldown: number;
+  /** 초당 데미지 = 최종 데미지 / 최종 쿨다운 */
+  dps: number;
+}
+
+/** 디버그 스냅샷 — 마법별 행 + 전역 보너스 */
+export interface EnhancementDebugSnapshot {
+  rows: EnhancementDebugRow[];
+  /** 전역 데미지 보너스 (예: 0.05) */
+  globalDamageBonus: number;
+  /** 전역 쿨다운 보너스 */
+  globalCooldownBonus: number;
+}
+
 /** level을 안전 인덱스로 클램프해 주어진 곡선의 배율을 반환한다. */
 function curveAt(curve: number[], level: number): number {
   const i = Math.max(0, Math.min(level, UPGRADE_CAP));
@@ -144,6 +181,44 @@ export class EnhancementLogic {
    */
   effectiveCooldown(spell: ISpellData, baseCooldown: number): number {
     return Math.max(baseCooldown / this.cooldownFactor(spell), MIN_COOLDOWN_SEC);
+  }
+
+  /** 전역(플레이어) 강화 보너스 값 (factor = 1 + 보너스). 미강화는 0. */
+  globalBonus(option: UpgradeOption): number {
+    return this._global.get(option) ?? 0;
+  }
+
+  /**
+   * 디버그 로그용 수치 스냅샷을 만든다 — 마법별 레벨·배율·최종값·DPS + 전역 보너스.
+   * 표시명/포맷/console 출력은 UI(CardSelectPanel) 책임. 여기선 숫자만 산출(테스트 가능).
+   * @param spells 보유 마법 데이터 (출력 순서 보존)
+   */
+  debugSnapshot(spells: ISpellData[]): EnhancementDebugSnapshot {
+    const rows: EnhancementDebugRow[] = spells.map((spell) => {
+      const damageFactor = this.damageFactor(spell);
+      const cooldownFactor = this.cooldownFactor(spell);
+      const effDamage = spell.damage * damageFactor;
+      const effCooldown = this.effectiveCooldown(spell, spell.cooldown);
+      return {
+        id: spell.id,
+        baseDamage: spell.damage,
+        baseCooldown: spell.cooldown,
+        indivDmgLevel: this.getLevel(UpgradeTrack.Individual, spell.id, UpgradeOption.Damage),
+        catDmgLevel: this.getLevel(UpgradeTrack.Category, spell.category, UpgradeOption.Damage),
+        damageFactor,
+        effDamage,
+        indivCdLevel: this.getLevel(UpgradeTrack.Individual, spell.id, UpgradeOption.Cooldown),
+        catCdLevel: this.getLevel(UpgradeTrack.Category, spell.category, UpgradeOption.Cooldown),
+        cooldownFactor,
+        effCooldown,
+        dps: effDamage / effCooldown,
+      };
+    });
+    return {
+      rows,
+      globalDamageBonus: this.globalBonus(UpgradeOption.Damage),
+      globalCooldownBonus: this.globalBonus(UpgradeOption.Cooldown),
+    };
   }
 
   /**

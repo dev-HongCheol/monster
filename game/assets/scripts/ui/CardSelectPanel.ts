@@ -1,6 +1,7 @@
 import { _decorator, Button, Component, Label } from 'cc';
+import { DEV } from 'cc/env';
 import { SpellCaster } from '../components/SpellCaster';
-import type { ICardData } from '../data/GameTypes';
+import type { ICardData, ISpellData } from '../data/GameTypes';
 import type { I18nParams } from '../logic/I18nLogic';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
@@ -79,6 +80,47 @@ export class CardSelectPanel extends Component {
     } else {
       DeckManager.instance.applyCard(card);
     }
+    this._logEnhancementDebug(card);
     GameManager.instance.resumeFromLevelUp();
+  }
+
+  /**
+   * [DEV 전용] 카드 픽 직후 보유 마법별 강화 수치를 console.table로 출력한다.
+   * `cc/env`의 `DEV`로 게이팅 — 에디터/프리뷰/디버그 빌드에서만 찍히고 릴리스 빌드에선 제거된다.
+   * 수치 계산은 순수 로직(EnhancementLogic.debugSnapshot), 여기선 표시명 해석·포맷·출력만 한다.
+   */
+  private _logEnhancementDebug(card: ICardData): void {
+    if (!DEV) return;
+    const loadout = SpellCaster.instance?.loadout;
+    if (!loadout || !DataManager.instance?.isReady) return;
+    const spells = loadout.spells
+      .map((id) => DataManager.instance.getSpell(id))
+      .filter((s): s is ISpellData => s !== null);
+    if (spells.length === 0) return;
+
+    const snap = DeckManager.instance.debugEnhancement(spells);
+    const i18n = I18n.instance;
+    const round = (v: number, n: number): number => Number(v.toFixed(n));
+    const table: Record<string, Record<string, number>> = {};
+    for (const r of snap.rows) {
+      const name = i18n ? i18n.t(`spell.${r.id}.name`) : r.id;
+      table[name] = {
+        개D: r.indivDmgLevel,
+        분D: r.catDmgLevel,
+        배율D: round(r.damageFactor, 2),
+        DMG: round(r.effDamage, 1),
+        기본: r.baseDamage,
+        개C: r.indivCdLevel,
+        분C: r.catCdLevel,
+        배율C: round(r.cooldownFactor, 2),
+        CD: round(r.effCooldown, 2),
+        DPS: Math.round(r.dps),
+      };
+    }
+    const pick = i18n ? this._resolveDesc(card) : card.id;
+    const gd = Math.round(snap.globalDamageBonus * 100);
+    const gc = Math.round(snap.globalCooldownBonus * 100);
+    console.log(`[강화] 픽: ${pick}   전역: DMG +${gd}% / CD +${gc}%`);
+    console.table(table);
   }
 }

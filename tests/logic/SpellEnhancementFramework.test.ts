@@ -148,6 +148,45 @@ describe('EnhancementLogic.effectiveCooldown — 쿨다운 나눗셈 방향 + �
   });
 });
 
+describe('EnhancementLogic.debugSnapshot — 디버그 로그용 수치 스냅샷', () => {
+  it('마법별 레벨·배율·최종값·DPS와 전역 보너스를 산출한다 (3-tier 반영)', () => {
+    const e = new EnhancementLogic();
+    e.raise(UpgradeTrack.Individual, 'fireball', UpgradeOption.Damage); // 개별 데미지 lv2
+    e.raise(UpgradeTrack.Individual, 'fireball', UpgradeOption.Damage);
+    e.raise(UpgradeTrack.Individual, 'fireball', UpgradeOption.Cooldown); // 개별 쿨다운 lv1
+    e.raise(UpgradeTrack.Category, SpellCategory.Fire, UpgradeOption.Damage); // 분류 데미지 lv1
+    e.addGlobal(UpgradeOption.Damage, 0.05); // 전역 데미지 +5%
+
+    const snap = e.debugSnapshot([fireball, iceMissile]);
+    expect(snap.globalDamageBonus).toBeCloseTo(0.05);
+    expect(snap.globalCooldownBonus).toBe(0);
+
+    const fb = snap.rows.find((r) => r.id === 'fireball');
+    expect(fb).toBeDefined();
+    if (!fb) return;
+    expect(fb.indivDmgLevel).toBe(2);
+    expect(fb.catDmgLevel).toBe(1);
+    expect(fb.indivCdLevel).toBe(1);
+    const dmgFactor = INDIVIDUAL_CURVE[2] * CATEGORY_CURVE[1] * 1.05;
+    expect(fb.damageFactor).toBeCloseTo(dmgFactor);
+    expect(fb.effDamage).toBeCloseTo(fireball.damage * dmgFactor);
+    expect(fb.cooldownFactor).toBeCloseTo(INDIVIDUAL_CURVE[1]);
+    expect(fb.effCooldown).toBeCloseTo(fireball.cooldown / INDIVIDUAL_CURVE[1]);
+    expect(fb.dps).toBeCloseTo(fb.effDamage / fb.effCooldown);
+
+    // 다른 마법(ice)은 개별·분류 미강화 → 전역 데미지만 반영
+    const ice = snap.rows.find((r) => r.id === 'ice_missile');
+    expect(ice?.damageFactor).toBeCloseTo(1.05);
+    expect(ice?.cooldownFactor).toBe(1);
+  });
+
+  it('rows 순서는 입력 마법 순서를 따른다', () => {
+    const e = new EnhancementLogic();
+    const snap = e.debugSnapshot([iceMissile, fireball]);
+    expect(snap.rows.map((r) => r.id)).toEqual(['ice_missile', 'fireball']);
+  });
+});
+
 describe('EnhancementLogic.buildUpgradeCards — 카드 동적 생성', () => {
   it('보유 마법 × {damage,cooldown} 개별 카드 + fire/ice/lightning × {damage,cooldown} 분류 카드를 만든다', () => {
     const e = new EnhancementLogic();

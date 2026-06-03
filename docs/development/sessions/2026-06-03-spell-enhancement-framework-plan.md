@@ -3,7 +3,7 @@
 - **작성일:** 2026-06-03
 - **세션:** superpowers:brainstorming (설계 합의) → 프로젝트 워크플로우 구현
 - **브랜치(예정):** feat/spell-enhancement-framework
-- **상태:** AI 검증 완료 → 사용자 인게임 검증 대기 (자동 85/85 GREEN + /cso 0건 + 코드리뷰 MEDIUM1·LOW2 수정 후 재리뷰 CLEAN)
+- **상태:** 사용자 검증 중 — DEV 강화 디버그 로그(console.table) 추가 리워크 → 재검증 진행 (자동 87/87 GREEN)
 - **관련 문서:**
   - [마법 시스템 디자인](../../planning/magic-system-mage.md) § 6.1, § 7.1~7.4, § 8 (강화 트랙·옵션·매트릭스)
   - [발사체 수 밸런스 설계 메모](../../planning/magic-system-mage.md#76-발사체-수-밸런스-룰--발사체당-데미지-페널티) § 7.6
@@ -86,6 +86,9 @@ export interface IUpgradeEffect { track: UpgradeTrack; option: UpgradeOption; ta
 
 ### UI (`ui/CardSelectPanel.ts` — 수정)
 `_resolveDesc`의 중첩키 선해석을 `category`뿐 아니라 `spell`/`option`까지 일반화(`NESTED_KEY_PARAMS`). `t()`는 1단계 치환만 하므로 카탈로그 키 파라미터는 UI가 사전 해석(ADR 005).
+
+### 강화 디버그 로그 (DEV 전용 — 2026-06-03 사용자 요청 추가)
+수동 검증 시 강화 수치를 눈으로 확인할 수 없어, 카드 픽 직후 보유 마법별 레벨·배율·최종 DMG/CD·DPS를 `console.table`로 출력. `cc/env`의 `DEV`(= DEBUG/EDITOR/PREVIEW)로 게이팅 → 에디터·프리뷰에서만 찍고 릴리스 빌드에선 제거. 수치 계산은 순수 `EnhancementLogic.debugSnapshot(spells)`(레벨·배율·최종값·DPS + 전역 보너스)로 분리해 단위 테스트로 고정하고, 표시명 해석·포맷·`console` 출력만 UI가 담당(ADR 002/005 유지). 포맷은 "레벨 컬럼 전개"형(개D/분D/배율D/DMG/기본/개C/분C/배율C/CD/DPS).
 
 ### 데이터·카탈로그
 - `cards.json`: `damage_boost`/`cooldown_reduce` **유지하되 수치↓**(±0.2 → ±0.05 placeholder), `hp_up` 유지.

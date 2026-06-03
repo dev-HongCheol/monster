@@ -1,7 +1,7 @@
 import { _decorator, Component } from 'cc';
 import { type ICardData, type ISpellData, UpgradeOption } from '../data/GameTypes';
 import { DeckLogic } from '../logic/DeckLogic';
-import { EnhancementLogic } from '../logic/EnhancementLogic';
+import { type EnhancementDebugSnapshot, EnhancementLogic } from '../logic/EnhancementLogic';
 import { DataManager } from './DataManager';
 
 const { ccclass } = _decorator;
@@ -26,6 +26,11 @@ export class DeckManager extends Component {
   /** 강화 반영 후 실제 쿨다운(sec) — 기본 쿨다운에 개별×분류×전역 배율·하한 적용. */
   effectiveCooldown(spell: ISpellData): number {
     return this._enhancement.effectiveCooldown(spell, spell.cooldown);
+  }
+
+  /** 디버그 로그용 강화 수치 스냅샷 (DEV 빌드의 카드 픽 로그에서 사용). */
+  debugEnhancement(spells: ISpellData[]): EnhancementDebugSnapshot {
+    return this._enhancement.debugSnapshot(spells);
   }
 
   onLoad() {
