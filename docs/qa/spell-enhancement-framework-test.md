@@ -44,7 +44,7 @@
 
 ## 5. 자동 테스트로 검증 (`tests/logic/SpellEnhancementFramework.test.ts`)
 
-> **GREEN 근거:** 피처 테스트 17/17 + 전체 스위트 85/85 통과 (코드리뷰 수정 반영, HEAD `af15cd2`). 검증 4종(cso/ts/lint/review) 통과 → user-verification.
+> **GREEN 근거:** 피처 테스트 19/19 + 전체 스위트 87/87 통과 (코드리뷰 2회 + DEV 디버그 로그 반영, HEAD `23ee047`). 검증 4종(cso/ts/lint/review) 통과 → user-verification.
 
 - [x] 초기 레벨 0, 배율 1.0
 - [x] `raise`가 레벨을 +1 하고 cap(4) 도달 시 `false` 반환
