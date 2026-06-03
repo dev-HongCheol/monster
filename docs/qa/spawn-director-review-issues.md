@@ -44,3 +44,12 @@
 ## 재검증
 
 수정(이슈 1-4)은 코드 품질·실제 버그 → `pnpm wf invalidate` 후 cso→ts→lint→commit→리뷰 재실행.
+
+### 재리뷰 (커밋 2a31040)
+
+동일 리뷰어 재검증 결과 **이슈 1-4 전부 RESOLVED, 신규 이슈 0건, "Ready to merge? Yes."**
+- 1: `_pickWeighted` `entries.length===0 → ''` 가드 확인.
+- 2: `total<=0 → 첫 키` 결정적 폴백 확인(음수 합 포함).
+- 3: `_entryForWave: ISpawnTableEntry | undefined`, `selectEnemyId` 빈 id 단락 확인.
+- 4: 엣지 테스트(빈 테이블/빈 weights/합0/roll 음수·≥1 + 정상시 무경고) 15/15 통과.
+- 다운스트림 계약 확인: `''` id → `EnemyController._data=null` → update/접촉/추적 early-return(불활성, 크래시 없음). `_validate()`는 생성자 1회만 경고(틱당 아님).
