@@ -12,7 +12,7 @@
     "id": "skeleton_swift",
     "name": "빠른 해골",
     "maxHp": 50,
-    "speed": 230,
+    "speed": 280,
     "contactDamagePerSec": 12,
     "collisionRadius": 18,
     "xpDrop": 18

@@ -40,11 +40,6 @@ export class WaveManager extends Component {
     this._started = true;
   }
 
-  /** 카드 선택 후 타이머만 리셋한다. 웨이브 번호는 변경하지 않는다. */
-  resumeWave() {
-    this._waveTimer = this.waveDuration;
-  }
-
   // 웨이브 타이머를 감소시키고, 만료되면 웨이브 번호를 올린 뒤 타이머를 리셋한다
   update(dt: number) {
     if (!this._started) return;

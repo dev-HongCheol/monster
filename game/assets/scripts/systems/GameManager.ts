@@ -118,7 +118,9 @@ export class GameManager extends Component {
       this._playerHp = Math.min(this._playerHp + hpDelta, this._maxPlayerHp);
     }
     this._state = GameState.Playing;
-    WaveManager.instance.resumeWave();
+    // 웨이브 타이머는 LevelUp 동안 WaveManager.update의 state 가드로 이미 멈춰 있으므로,
+    // 재개 시 별도 리셋 없이 그대로 이어서 흐른다. (과거 resumeWave()의 타이머 리셋은
+    // 잦은 레벨업마다 타이머를 60초로 되돌려 웨이브가 진행되지 않는 버그를 유발했다.)
   }
 
   /** result 씬으로 이동한다. */
