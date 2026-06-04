@@ -102,7 +102,7 @@ planning → qa-setup → implementation → verification → user-verification 
 >
 > 나머지 커맨드(`start`/`skip-test`/`ready-impl`/`start-verification`/`pass`/`invalidate`/`pr-done`)는 AI가 절차에 따라 자동 실행한다.
 >
-> **PR 승인 없이 PR 생성 불가.** `phase: "pr-ready"` 상태에서만 PR을 생성한다.
+> **머지 가능한 PR은 `PR 승인` 후에만.** `phase: "user-verification"` 진입 시(6단계 완료) AI가 **검토용 Draft PR**을 자동 생성한다 — Draft 상태라 GitHub Merge 버튼이 비활성화되어 실수 머지가 차단된다. Draft 해제(`gh pr ready` → 머지 가능)와 squash merge는 `phase: "pr-ready"`(= `PR 승인` 후)에서만 한다.
 
 ---
 
@@ -159,20 +159,30 @@ planning → qa-setup → implementation → verification → user-verification 
 13. `superpowers:verification-before-completion` 호출
 
 #### 7단계: 사용자 검증 (사용자 주도)
-> AI는 이 단계를 수행하지 않는다.
-> **6단계 완료 시 AI가 사용자에게 알림:** "7단계입니다. `docs/qa/[feature]-test.md` 체크리스트를 참고해 에디터 세팅 및 인게임 테스트를 진행해 주세요."
+> AI는 이 단계의 검증(에디터·인게임)을 수행하지 않는다. 단, **진입 시점의 Draft PR 생성만 AI가 수행**한다.
+>
+> **6단계 완료 시 AI가 순서대로 수행:**
+> 1. **검토용 Draft PR 생성** — 브랜치를 push한 뒤 `gh pr create --draft`로 PR을 만든다. 본문은 아래 **9단계의 PR 본문 작성 규칙**대로 코드를 상세히 설명하고, assignee로 레포 소유자를 지정한다. **이미 Draft PR이 있으면**(리워크 후 재진입) 새로 만들지 말고 push로 본문·diff만 최신화한다.
+> 2. **사용자에게 알림:** "7단계입니다. Draft PR(`<링크>`)의 Files changed와 `docs/qa/[feature]-test.md` 체크리스트를 참고해 에디터 세팅 및 인게임 테스트를 진행해 주세요."
 
 14. Cocos Creator 에디터 세팅 (씬 노드 구성, `@property` 연결 — `docs/qa/` 체크리스트 참고)
 15. 수동 인게임 테스트 (QA 체크리스트 수동 항목)
-    - **버그 발견 시:** 사용자 **`리워크`** 입력 → AI가 `pnpm wf rework` 실행 → `phase: "implementation"`으로 복귀, 검증 초기화, 스크립트 편집 재허용 → 5단계부터 다시 진행
+    - **버그 발견 시:** 사용자 **`리워크`** 입력 → AI가 `pnpm wf rework` 실행 → `phase: "implementation"`으로 복귀, 검증 초기화, 스크립트 편집 재허용 → 5단계부터 다시 진행. **Draft PR은 닫지 않는다** — 재구현·재검증 후 7단계 재진입 시 push만 하면 PR이 자동 갱신된다.
 
 #### 8단계: PR 승인 (사용자)
 16. 사용자: **`PR 승인`** 입력 → AI가 `pnpm wf approve-pr` 실행 → `phase: "pr-ready"`
 
-#### 9단계: PR (AI 주도)
-17. **PR 생성 전:** 관련 세션 문서·플랜 파일 완료 상태로 업데이트
-18. PR 생성 → squash merge → `pnpm wf pr-done`
-    - **PR 본문은 사용자가 코드 리뷰를 쉽게 할 수 있도록 자세히 작성한다.** 변경 배경/목적, 주요 변경 사항(파일·로직 단위), 리뷰 시 중점적으로 봐야 할 부분, 테스트·검증 방법을 포함한다.
+#### 9단계: PR 머지 (AI 주도)
+> Draft PR은 7단계 진입 시 이미 생성돼 있다. 이 단계는 **Draft 해제 + 머지**다.
+17. **Draft 해제 전:** 관련 세션 문서·플랜 파일을 완료 상태로 업데이트하고, 변경이 있었으면 push해 Draft PR 본문·diff를 최신화한다.
+18. `gh pr ready <PR>`로 Draft 해제(머지 가능 전환) → squash merge → `pnpm wf pr-done`
+
+##### PR 본문 작성 규칙 (Draft 생성·갱신·머지 공통)
+**사용자가 코드 리뷰를 쉽게 하도록 코드를 상세히 설명한다.** 다음을 포함한다.
+- **변경 배경/목적** — 무엇을, 왜 바꾸는가.
+- **파일·로직 단위 변경 설명** — 핵심 파일마다 "이 파일에서 무엇이 어떻게 바뀌었고 왜 그렇게 했는지"를 서술한다. 신규 로직은 동작 방식(입력 → 처리 → 출력)을 풀어 설명한다. 단순 파일 목록 나열이 아니라 리뷰어가 코드를 열기 전에 맥락을 잡을 수 있을 만큼 구체적으로.
+- **리뷰 중점 포인트** — 특히 봐야 할 부분, 트레이드오프, 의도적 결정.
+- **테스트·검증 방법** — 자동 테스트 결과(N/N), 수동 검증 항목.
 
 ---
 
