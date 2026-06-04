@@ -9,8 +9,8 @@ const { ccclass, property } = _decorator;
 export class WaveManager extends Component {
   static instance!: WaveManager;
 
-  /** 웨이브당 지속 시간 (sec) */
-  @property waveDuration: number = 180;
+  /** 웨이브당 지속 시간 (sec). 테스트 편의로 60(1분) — 출시 전 밸런싱에서 재검토. */
+  @property waveDuration: number = 60;
 
   private _waveNumber: number = 0;
   private _waveTimer: number = 0;
@@ -38,11 +38,6 @@ export class WaveManager extends Component {
     this._waveNumber = 1;
     this._waveTimer = this.waveDuration;
     this._started = true;
-  }
-
-  /** 카드 선택 후 타이머만 리셋한다. 웨이브 번호는 변경하지 않는다. */
-  resumeWave() {
-    this._waveTimer = this.waveDuration;
   }
 
   // 웨이브 타이머를 감소시키고, 만료되면 웨이브 번호를 올린 뒤 타이머를 리셋한다

@@ -88,8 +88,9 @@ planning → qa-setup → implementation → verification → user-verification 
 | `pnpm wf pass <cso\|ts\|lint\|review>` | AI | 개별 검증 통과 (4개 모두 통과 시 자동 `user-verification`) |
 | `pnpm wf invalidate` | AI | `verification` 중 코드 변경 → 전체 검증 초기화 |
 | `pnpm wf rework` | 사용자 트리거(`리워크`)→AI | `user-verification` → `implementation` (버그 발견 복귀) |
-| `pnpm wf approve-pr` | 사용자 트리거(`PR 승인`)→AI | `user-verification` → `pr-ready` |
+| `pnpm wf approve-pr` | 사용자 트리거(`PR 승인`)→AI | `user-verification` → `pr-ready` (**에셋 `.meta` 누락 게이트**: 누락 시 차단) |
 | `pnpm wf pr-done` | AI | `pr-ready` → `done` |
+| `pnpm wf check-meta` | AI/사용자 | 에셋 `.meta` 누락 검사 (전이 없음, 누락 시 종료코드 1) |
 | `pnpm wf status` | — | 현재 상태 + 편집 가능 여부 출력 |
 
 > **사람 게이트 (사용자 트리거 → AI 실행):** 아래 세 전이는 사람의 판단이 필요한 지점이다. 사용자가 자연어로 지시하면 **AI가 해당 커맨드를 대신 실행**한다.
@@ -102,7 +103,7 @@ planning → qa-setup → implementation → verification → user-verification 
 >
 > 나머지 커맨드(`start`/`skip-test`/`ready-impl`/`start-verification`/`pass`/`invalidate`/`pr-done`)는 AI가 절차에 따라 자동 실행한다.
 >
-> **PR 승인 없이 PR 생성 불가.** `phase: "pr-ready"` 상태에서만 PR을 생성한다.
+> **머지 가능한 PR은 `PR 승인` 후에만.** `phase: "user-verification"` 진입 시(6단계 완료) AI가 **검토용 Draft PR**을 자동 생성한다 — Draft 상태라 GitHub Merge 버튼이 비활성화되어 실수 머지가 차단된다. Draft 해제(`gh pr ready` → 머지 가능)와 squash merge는 `phase: "pr-ready"`(= `PR 승인` 후)에서만 한다.
 
 ---
 
@@ -159,20 +160,31 @@ planning → qa-setup → implementation → verification → user-verification 
 13. `superpowers:verification-before-completion` 호출
 
 #### 7단계: 사용자 검증 (사용자 주도)
-> AI는 이 단계를 수행하지 않는다.
-> **6단계 완료 시 AI가 사용자에게 알림:** "7단계입니다. `docs/qa/[feature]-test.md` 체크리스트를 참고해 에디터 세팅 및 인게임 테스트를 진행해 주세요."
+> AI는 이 단계의 검증(에디터·인게임)을 수행하지 않는다. 단, **진입 시점의 Draft PR 생성만 AI가 수행**한다.
+>
+> **6단계 완료 시 AI가 순서대로 수행:**
+> 1. **검토용 Draft PR 생성** — 브랜치를 push한 뒤 `gh pr create --draft`로 PR을 만든다. 본문은 아래 **9단계의 PR 본문 작성 규칙**대로 코드를 상세히 설명하고, assignee로 레포 소유자를 지정한다. **이미 Draft PR이 있으면**(리워크 후 재진입) 새로 만들지 말고 push로 본문·diff만 최신화한다.
+> 2. **사용자에게 알림:** "7단계입니다. Draft PR(`<링크>`)의 Files changed와 `docs/qa/[feature]-test.md` 체크리스트를 참고해 에디터 세팅 및 인게임 테스트를 진행해 주세요."
 
 14. Cocos Creator 에디터 세팅 (씬 노드 구성, `@property` 연결 — `docs/qa/` 체크리스트 참고)
 15. 수동 인게임 테스트 (QA 체크리스트 수동 항목)
-    - **버그 발견 시:** 사용자 **`리워크`** 입력 → AI가 `pnpm wf rework` 실행 → `phase: "implementation"`으로 복귀, 검증 초기화, 스크립트 편집 재허용 → 5단계부터 다시 진행
+    - **버그 발견 시:** 사용자 **`리워크`** 입력 → AI가 `pnpm wf rework` 실행 → `phase: "implementation"`으로 복귀, 검증 초기화, 스크립트 편집 재허용 → 5단계부터 다시 진행. **Draft PR은 닫지 않는다** — 재구현·재검증 후 7단계 재진입 시 push만 하면 PR이 자동 갱신된다.
 
 #### 8단계: PR 승인 (사용자)
-16. 사용자: **`PR 승인`** 입력 → AI가 `pnpm wf approve-pr` 실행 → `phase: "pr-ready"`
+16. 사용자: **`PR 승인`** 입력 → AI는 (1) **7단계 테스트 중 에디터가 생성한 신규 자산 `.meta`를 먼저 커밋·push**하고 (2) `pnpm wf approve-pr` 실행 → `phase: "pr-ready"`
+   - **에셋 `.meta` 게이트:** `approve-pr`이 추적되지 않은 `.meta`를 자동 검사해 누락 시 **차단**한다(머지 후 모든 환경에서 UUID 재생성 → 참조 깨짐 방지). 차단되면 누락 `.meta`를 커밋하고 다시 승인. 미리 `pnpm wf check-meta`로 확인 가능. → 아래 **에셋 `.meta` 관리 규칙** 참고
 
-#### 9단계: PR (AI 주도)
-17. **PR 생성 전:** 관련 세션 문서·플랜 파일 완료 상태로 업데이트
-18. PR 생성 → squash merge → `pnpm wf pr-done`
-    - **PR 본문은 사용자가 코드 리뷰를 쉽게 할 수 있도록 자세히 작성한다.** 변경 배경/목적, 주요 변경 사항(파일·로직 단위), 리뷰 시 중점적으로 봐야 할 부분, 테스트·검증 방법을 포함한다.
+#### 9단계: PR 머지 (AI 주도)
+> Draft PR은 7단계 진입 시 이미 생성돼 있다. 이 단계는 **Draft 해제 + 머지**다.
+17. **Draft 해제 전:** 관련 세션 문서·플랜 파일을 완료 상태로 업데이트하고, 변경이 있었으면 push해 Draft PR 본문·diff를 최신화한다.
+18. `gh pr ready <PR>`로 Draft 해제(머지 가능 전환) → squash merge → `pnpm wf pr-done`
+
+##### PR 본문 작성 규칙 (Draft 생성·갱신·머지 공통)
+**사용자가 코드 리뷰를 쉽게 하도록 코드를 상세히 설명한다.** 다음을 포함한다.
+- **변경 배경/목적** — 무엇을, 왜 바꾸는가.
+- **파일·로직 단위 변경 설명** — 핵심 파일마다 "이 파일에서 무엇이 어떻게 바뀌었고 왜 그렇게 했는지"를 서술한다. 신규 로직은 동작 방식(입력 → 처리 → 출력)을 풀어 설명한다. 단순 파일 목록 나열이 아니라 리뷰어가 코드를 열기 전에 맥락을 잡을 수 있을 만큼 구체적으로.
+- **리뷰 중점 포인트** — 특히 봐야 할 부분, 트레이드오프, 의도적 결정.
+- **테스트·검증 방법** — 자동 테스트 결과(N/N), 수동 검증 항목.
 
 ---
 
@@ -233,6 +245,21 @@ mcp__context7__get-library-docs: "/websites/cocos_creator_3_8_manual_en" topic="
 ```
 
 확인이 필요한 주제 예시: Canvas 계층 구조, 컴포넌트 생성 방법, SpriteFrame 경로, 좌표계, 레이어 설정.
+
+### 에셋 `.meta` 관리 규칙
+
+Cocos는 `game/assets/` 아래 **모든 파일·디렉터리에 `.meta`(UUID 보관)** 를 만든다. 엔진은 자산을 경로가 아니라 UUID로 참조하고, **씬/프리팹은 참조 대상의 UUID를 저장**한다. `.meta`가 커밋되지 않으면 클론·타 환경에서 UUID가 재생성돼 **씬/프리팹 참조가 깨진다**(공식 매뉴얼: ".meta should be included in version control"). 그래서 `.gitignore`도 `*.meta` 추적을 강제한다.
+
+**누가 언제 커밋하나 (자산 종류로 분리):**
+
+| 자산 종류 | 참조 방식 | `.meta` 처리 |
+|-----------|-----------|--------------|
+| 순수 로직 `.ts`(`import`), `resources/*.json`(`resources.load`) | **경로 참조** — UUID 런타임 무관 | **AI가 신규 파일 생성 시 즉시 `.meta`도 생성·커밋** (사용자 대기 0). 포맷은 기존 커밋된 `.meta` 참고(ver/importer/uuid). |
+| 씬 노드 컴포넌트, `@property`에 끼우는 스프라이트/프리팹 | **씬이 UUID로 참조** | **에디터가 생성** → 7단계 테스트 중 생성된 것을 **`PR 승인` 시 커밋** |
+
+**게이트:** `pnpm wf approve-pr`이 추적되지 않은 `.meta`를 자동 검사해 **누락 시 PR 승인을 차단**한다(머지 직전 마지막 안전장치). 언제든 `pnpm wf check-meta`로 확인. 구현은 `.claude/workflow.mjs`의 `listMissingAssetMeta()`.
+
+> **규칙: 신규 자산의 `.meta` 없이 머지 금지.** 로직·데이터 `.meta`는 AI가 즉시, 에디터 전용 자산 `.meta`는 PR 승인 시 커밋한다.
 
 ## 도구 스택
 

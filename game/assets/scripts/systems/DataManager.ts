@@ -3,6 +3,7 @@ import type {
   ICardData,
   IEnemyData,
   IPlayerBaseData,
+  ISpawnTableEntry,
   ISpellData,
   IXPData,
 } from '../data/GameTypes';
@@ -17,6 +18,7 @@ export class DataManager extends Component {
   private _playerData: IPlayerBaseData | null = null;
   private _spells: ISpellData[] = [];
   private _enemies: IEnemyData[] = [];
+  private _spawnTable: ISpawnTableEntry[] = [];
   private _cards: ICardData[] = [];
   private _xpData: IXPData | null = null;
   private _isReady = false;
@@ -33,6 +35,9 @@ export class DataManager extends Component {
   }
   get spells(): ISpellData[] {
     return this._spells;
+  }
+  get spawnTable(): ISpawnTableEntry[] {
+    return this._spawnTable;
   }
   get xpData(): IXPData {
     return this._xpData as IXPData;
@@ -71,16 +76,18 @@ export class DataManager extends Component {
   /** 모든 JSON 데이터 파일을 병렬 로드하고 완료 콜백을 실행한다. */
   private async _loadAll() {
     try {
-      const [player, spells, enemies, cards, xpData] = await Promise.all([
+      const [player, spells, enemies, spawnTable, cards, xpData] = await Promise.all([
         this._load<IPlayerBaseData>('data/player'),
         this._load<ISpellData[]>('data/spells'),
         this._load<IEnemyData[]>('data/enemies'),
+        this._load<ISpawnTableEntry[]>('data/spawn-table'),
         this._load<ICardData[]>('data/cards'),
         this._load<IXPData>('data/experience'),
       ]);
       this._playerData = player;
       this._spells = spells;
       this._enemies = enemies;
+      this._spawnTable = spawnTable;
       this._cards = cards;
       this._xpData = xpData;
       this._isReady = true;
