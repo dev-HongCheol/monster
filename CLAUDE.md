@@ -88,8 +88,9 @@ planning → qa-setup → implementation → verification → user-verification 
 | `pnpm wf pass <cso\|ts\|lint\|review>` | AI | 개별 검증 통과 (4개 모두 통과 시 자동 `user-verification`) |
 | `pnpm wf invalidate` | AI | `verification` 중 코드 변경 → 전체 검증 초기화 |
 | `pnpm wf rework` | 사용자 트리거(`리워크`)→AI | `user-verification` → `implementation` (버그 발견 복귀) |
-| `pnpm wf approve-pr` | 사용자 트리거(`PR 승인`)→AI | `user-verification` → `pr-ready` |
+| `pnpm wf approve-pr` | 사용자 트리거(`PR 승인`)→AI | `user-verification` → `pr-ready` (**에셋 `.meta` 누락 게이트**: 누락 시 차단) |
 | `pnpm wf pr-done` | AI | `pr-ready` → `done` |
+| `pnpm wf check-meta` | AI/사용자 | 에셋 `.meta` 누락 검사 (전이 없음, 누락 시 종료코드 1) |
 | `pnpm wf status` | — | 현재 상태 + 편집 가능 여부 출력 |
 
 > **사람 게이트 (사용자 트리거 → AI 실행):** 아래 세 전이는 사람의 판단이 필요한 지점이다. 사용자가 자연어로 지시하면 **AI가 해당 커맨드를 대신 실행**한다.
@@ -170,7 +171,8 @@ planning → qa-setup → implementation → verification → user-verification 
     - **버그 발견 시:** 사용자 **`리워크`** 입력 → AI가 `pnpm wf rework` 실행 → `phase: "implementation"`으로 복귀, 검증 초기화, 스크립트 편집 재허용 → 5단계부터 다시 진행. **Draft PR은 닫지 않는다** — 재구현·재검증 후 7단계 재진입 시 push만 하면 PR이 자동 갱신된다.
 
 #### 8단계: PR 승인 (사용자)
-16. 사용자: **`PR 승인`** 입력 → AI가 `pnpm wf approve-pr` 실행 → `phase: "pr-ready"`
+16. 사용자: **`PR 승인`** 입력 → AI는 (1) **7단계 테스트 중 에디터가 생성한 신규 자산 `.meta`를 먼저 커밋·push**하고 (2) `pnpm wf approve-pr` 실행 → `phase: "pr-ready"`
+   - **에셋 `.meta` 게이트:** `approve-pr`이 추적되지 않은 `.meta`를 자동 검사해 누락 시 **차단**한다(머지 후 모든 환경에서 UUID 재생성 → 참조 깨짐 방지). 차단되면 누락 `.meta`를 커밋하고 다시 승인. 미리 `pnpm wf check-meta`로 확인 가능. → 아래 **에셋 `.meta` 관리 규칙** 참고
 
 #### 9단계: PR 머지 (AI 주도)
 > Draft PR은 7단계 진입 시 이미 생성돼 있다. 이 단계는 **Draft 해제 + 머지**다.
@@ -243,6 +245,21 @@ mcp__context7__get-library-docs: "/websites/cocos_creator_3_8_manual_en" topic="
 ```
 
 확인이 필요한 주제 예시: Canvas 계층 구조, 컴포넌트 생성 방법, SpriteFrame 경로, 좌표계, 레이어 설정.
+
+### 에셋 `.meta` 관리 규칙
+
+Cocos는 `game/assets/` 아래 **모든 파일·디렉터리에 `.meta`(UUID 보관)** 를 만든다. 엔진은 자산을 경로가 아니라 UUID로 참조하고, **씬/프리팹은 참조 대상의 UUID를 저장**한다. `.meta`가 커밋되지 않으면 클론·타 환경에서 UUID가 재생성돼 **씬/프리팹 참조가 깨진다**(공식 매뉴얼: ".meta should be included in version control"). 그래서 `.gitignore`도 `*.meta` 추적을 강제한다.
+
+**누가 언제 커밋하나 (자산 종류로 분리):**
+
+| 자산 종류 | 참조 방식 | `.meta` 처리 |
+|-----------|-----------|--------------|
+| 순수 로직 `.ts`(`import`), `resources/*.json`(`resources.load`) | **경로 참조** — UUID 런타임 무관 | **AI가 신규 파일 생성 시 즉시 `.meta`도 생성·커밋** (사용자 대기 0). 포맷은 기존 커밋된 `.meta` 참고(ver/importer/uuid). |
+| 씬 노드 컴포넌트, `@property`에 끼우는 스프라이트/프리팹 | **씬이 UUID로 참조** | **에디터가 생성** → 7단계 테스트 중 생성된 것을 **`PR 승인` 시 커밋** |
+
+**게이트:** `pnpm wf approve-pr`이 추적되지 않은 `.meta`를 자동 검사해 **누락 시 PR 승인을 차단**한다(머지 직전 마지막 안전장치). 언제든 `pnpm wf check-meta`로 확인. 구현은 `.claude/workflow.mjs`의 `listMissingAssetMeta()`.
+
+> **규칙: 신규 자산의 `.meta` 없이 머지 금지.** 로직·데이터 `.meta`는 AI가 즉시, 에디터 전용 자산 `.meta`는 PR 승인 시 커밋한다.
 
 ## 도구 스택
 

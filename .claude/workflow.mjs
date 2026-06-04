@@ -98,6 +98,58 @@ function git(args, opts = {}) {
   return spawnSync("git", args, { cwd: ROOT, encoding: "utf8", ...opts });
 }
 
+// Cocos 규칙: assets/ 아래 모든 파일·디렉터리는 형제 `.meta`(UUID 보관)를 가진다.
+// `.meta`가 추적되지 않으면 클론·타 환경에서 UUID가 재생성돼 씬/프리팹 참조가 깨진다.
+// 추적(git index)되는 에셋 중 `<경로>.meta`가 추적되지 않는 항목 목록을 반환한다.
+// 반환: { error: string|null, missing: string[] }
+function listMissingAssetMeta() {
+  const r = git(["ls-files", "game/assets"]);
+  if (r.status !== 0) {
+    return { error: (r.stderr || "git ls-files 실패").trim(), missing: [] };
+  }
+  const tracked = r.stdout.split("\n").filter(Boolean);
+  const trackedSet = new Set(tracked);
+  const hasMeta = (p) => trackedSet.has(`${p}.meta`);
+  const missing = [];
+
+  // 1) 파일 메타: 모든 non-.meta 파일은 <file>.meta 가 추적돼야 한다.
+  for (const f of tracked) {
+    if (f.endsWith(".meta")) continue;
+    if (!hasMeta(f)) missing.push(f);
+  }
+
+  // 2) 디렉터리 메타: game/assets/ 하위 모든 디렉터리는 <dir>.meta 가 필요하다.
+  //    (game, game/assets 루트는 meta가 없으므로 제외 → i는 2부터)
+  const dirs = new Set();
+  for (const f of tracked) {
+    const parts = f.split("/");
+    for (let i = 2; i < parts.length - 1; i++) {
+      dirs.add(parts.slice(0, i + 1).join("/"));
+    }
+  }
+  for (const d of dirs) {
+    if (!hasMeta(d)) missing.push(`${d}/  (디렉터리)`);
+  }
+
+  return { error: null, missing: missing.sort() };
+}
+
+// 누락 메타가 있으면 목록을 출력하고 fail()로 차단한다. 없으면 통과 로그.
+function requireAssetMeta() {
+  const { error, missing } = listMissingAssetMeta();
+  if (error) fail(`에셋 메타 검사 실패: ${error}`);
+  if (missing.length > 0) {
+    process.stderr.write("✗ 추적되지 않은 .meta가 있는 에셋:\n");
+    for (const m of missing) process.stderr.write(`    - ${m}\n`);
+    fail(
+      `위 에셋의 .meta가 커밋되지 않았습니다. 머지 전 반드시 커밋해야 합니다 ` +
+        `(누락 시 타 환경에서 UUID 재생성 → 씬/프리팹 참조 깨짐). ` +
+        `에디터에서 생성된 .meta를 git add 후 커밋하고 다시 시도하세요.`,
+    );
+  }
+  console.log("✓ 에셋 .meta 누락 없음");
+}
+
 // feat/<feature> 브랜치를 보장한다 — 없으면 main 기준 생성, 있으면 전환.
 // 슬라이스 시작점 = 브랜치 시작점. planning 커밋이 main에 직접 쌓이는 사고를 막는다.
 function ensureFeatureBranch(feature) {
@@ -286,9 +338,18 @@ const commands = {
   "approve-pr"() {
     const s = load();
     requirePhase(s, "user-verification");
+    // 메타 게이트: 신규 자산의 .meta가 모두 커밋돼야 PR을 승인할 수 있다.
+    // (머지 직전 마지막 안전장치 — 누락 시 머지 후 모든 환경에서 참조가 깨진다.)
+    console.log("\n▶ 에셋 .meta 누락 검사");
+    requireAssetMeta();
     s.phase = "pr-ready";
     save(s);
     console.log("✓ approve-pr → phase=pr-ready");
+  },
+
+  // 에셋 .meta 누락 검사 (단독 실행 — 언제든 확인용). 누락 있으면 종료코드 1.
+  "check-meta"() {
+    requireAssetMeta();
   },
 
   // PR 생성·머지 완료
