@@ -53,3 +53,11 @@
 - 3: `_entryForWave: ISpawnTableEntry | undefined`, `selectEnemyId` 빈 id 단락 확인.
 - 4: 엣지 테스트(빈 테이블/빈 weights/합0/roll 음수·≥1 + 정상시 무경고) 15/15 통과.
 - 다운스트림 계약 확인: `''` id → `EnemyController._data=null` → update/접촉/추적 early-return(불활성, 크래시 없음). `_validate()`는 생성자 1회만 경고(틱당 아님).
+
+### 재리뷰 (리워크, 커밋 f53d20a / BASE e38cf17)
+
+user-verification 수동 테스트에서 발견한 2건 수정 후 재리뷰. 리뷰어 **"Ready to merge? Yes" — Critical 0, Important 0, Minor 2(비차단)**.
+- **Bug 1 (웨이브 정체) 수정 정확:** `WaveManager.update`가 `state !== Playing`에서 early-return해 LevelUp 동안 타이머가 이미 멈춤 → `resumeWave()`의 `_waveTimer` 리셋 제거가 근본 수정. 잔존 참조 0(주석 1건만), 다른 Playing-게이팅 타이머(startWave·gameDuration 승리 타이머·카드 패널 resume)에 회귀 없음.
+- **Bug 2 (swift 체감) 처리 타당:** swift speed 230→280(<플레이어 300, 카이팅 가능). 분포 로직·데이터 정상.
+- **이슈 #6(meta 부재) 실제 해소:** 누락 `.meta` 3종을 추적 커밋(GUID 참조 깨짐 방지). uuid 중복 없음·자산 매칭 확인.
+- **Minor 2건(비차단, 조치 불필요):** ① `SpellPatternLogic.ts.meta`는 무관 기능 — 사용자 결정으로 같은 종류의 hygiene 수정에 포함(PR에 공개). ② plan 문서 머리말 trailing 2-space는 의도된 hard line break.
