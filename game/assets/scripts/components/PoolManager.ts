@@ -46,12 +46,20 @@ export class PoolManager {
       this._parent.addChild(created);
       return created;
     });
+    // 재사용 노드는 release가 active=false만 했으므로 보통 여전히 _parent의 자식이다.
+    // 외부에서 분리됐다면 방어적으로 재부착해, 이 풀을 재사용할 후속(적·XP) 슬라이스에서도
+    // "꺼낸 노드는 항상 부모에 붙어 있다"를 보장한다.
+    if (node.parent !== this._parent) {
+      this._parent.addChild(node);
+    }
     node.active = true;
     return node;
   }
 
   /**
    * 노드를 풀로 반환한다. 보관하면 `active=false`로 숨기고, 보관 한도 초과면 `destroy`한다.
+   * **불변식:** 보관된 노드는 `parent`의 자식으로 유지된다(분리하지 않음) — `acquire`의 재부착
+   * 전제이자 비용 절감(부모 재설정 회피)의 근거.
    * @param node 반환할 노드.
    */
   release(node: Node): void {
