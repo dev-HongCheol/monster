@@ -14,7 +14,8 @@
 ### I-1. PoolManager.acquire가 재사용 노드를 재부착하지 않음 — 암묵적 불변식 — **수정됨**
 - **위치:** `components/PoolManager.ts` `acquire`/`release`
 - **내용:** `addChild`는 최초 생성 경로에서만 실행. 재사용 시 노드가 여전히 `_parent`의 자식이라는 전제(현재 `release`가 `active=false`만 하므로 성립)에 의존. 재사용 인프라(적·XP 슬라이스)에서 누군가 풀 노드를 분리하면 재사용 노드가 조용히 미부착될 footgun.
-- **조치:** `acquire`에 방어적 재부착(`node.parent !== _parent`면 `addChild`) 추가 + `release` JSDoc에 "반환 노드는 `parent`의 자식으로 유지된다" 불변식 명시. → **수정됨** (커밋 후 SHA 기재).
+- **조치:** `acquire`에 방어적 재부착(`node.parent !== _parent`면 `addChild`) 추가 + `release` JSDoc에 "반환 노드는 `parent`의 자식으로 유지된다" 불변식 명시. → **수정됨** (커밋 `20ae7eb`).
+- **재리뷰(`b02a787..20ae7eb`):** I-1 해결 확인. 가드는 모든 도달 경로에서 정상(최초 생성=동일 부모 → 스킵, 정상 재사용=동일 부모 → 스킵, 분리 후 재사용=재부착). active=true 이전에 재부착하는 순서도 정상. 신규 Critical/Important 0, 판정 **Ready to merge — Yes**.
 
 ### I-2. 씬 재시작 시 풀 미정리 — **비이슈(현 구조), 문서화**
 - **위치:** `components/SpellCaster.ts` (`_bulletPool` onLoad 생성, teardown 없음)
