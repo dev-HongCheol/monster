@@ -1,14 +1,4 @@
-import {
-  _decorator,
-  CCString,
-  Color,
-  Component,
-  instantiate,
-  Node,
-  Prefab,
-  Sprite,
-  Vec3,
-} from 'cc';
+import { _decorator, CCString, Color, Component, Node, Prefab, Sprite, Vec3 } from 'cc';
 import { GameState } from '../data/GameTypes';
 import { FireSchedulerLogic } from '../logic/FireSchedulerLogic';
 import { LoadoutLogic } from '../logic/LoadoutLogic';
@@ -17,6 +7,7 @@ import { spellCategoryColor } from '../logic/SpellVisual';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
+import { PoolManager } from './PoolManager';
 import { Projectile } from './Projectile';
 
 const { ccclass, property } = _decorator;
@@ -44,6 +35,12 @@ export class SpellCaster extends Component {
   private readonly _loadout = new LoadoutLogic();
   private readonly _scheduler = new FireSchedulerLogic();
   private _dataReady = false;
+  /** 발사체 재사용 풀 (onLoad에서 prefab/parent로 생성). */
+  private _bulletPool: PoolManager | null = null;
+  /** 발사체 반환 콜백 — 매 발사마다 closure를 새로 만들지 않도록 1회 바인딩해 재사용. */
+  private readonly _releaseBullet = (node: Node): void => {
+    this._bulletPool?.release(node);
+  };
 
   /** 보유 마법 로드아웃 (후속 슬라이스의 카드 시스템 연동용) */
   get loadout(): LoadoutLogic {
@@ -52,7 +49,9 @@ export class SpellCaster extends Component {
 
   onLoad() {
     SpellCaster.instance = this;
-    if (!this.bulletPrefab || !this.bulletParent) {
+    if (this.bulletPrefab && this.bulletParent) {
+      this._bulletPool = new PoolManager(this.bulletPrefab, this.bulletParent);
+    } else {
       console.error('[SpellCaster] bulletPrefab or bulletParent not assigned — attack disabled');
     }
   }
@@ -140,10 +139,11 @@ export class SpellCaster extends Component {
    * @param category 마법 분류 (발사체 색 틴트용)
    */
   private _spawnShot(shot: ShotSpec, damageFactor: number, category: string): void {
-    if (!this.bulletPrefab || !this.bulletParent) return;
+    if (!this._bulletPool) return;
 
-    const bullet = instantiate(this.bulletPrefab);
-    this.bulletParent.addChild(bullet);
+    // 풀에서 발사체를 꺼낸다(가용분 재사용 또는 신규 생성). 위치·색·init은 매 acquire마다
+    // 새로 적용하므로 재사용 노드에 이전 상태가 잔류하지 않는다.
+    const bullet = this._bulletPool.acquire();
     bullet.setPosition(this.node.position);
 
     // 마법별 전용 스프라이트가 없는 동안 분류 색으로 발사체를 구분한다.
@@ -160,6 +160,7 @@ export class SpellCaster extends Component {
       shot.speed,
       shot.damage * damageFactor,
       shot.radius,
+      this._releaseBullet,
     );
   }
 }
