@@ -119,12 +119,12 @@ export function isDeathDone(elapsed: number, duration: number): boolean;
 |------|------|-----------|
 | `data/GameTypes.ts` | `IEnemyData`에 4필드 추가 | 타입 컴파일, 기존 소비자 |
 | `resources/data/enemies.json` | 3종에 `movement`/`role`/`tint`/`threatScale` 추가 | 데이터 로드, 기존 스탯 무영향 |
-| `logic/EnemyVisualLogic.ts` | 신규(순수 로직) + `.meta` 즉시 생성 | (테스트) |
+| `logic/EnemyVisualLogic.ts` | 신규(순수 로직) | (테스트) |
 | `components/EnemyController.ts` | Sprite/scale 적용 + 플래시 + 사망 연출 | **스폰·추적·접촉 데미지·XP 드롭·사망** |
 | `tests/logic/EnemyVisuals.test.ts` | 신규 | — |
 
 > 5개 파일(코드 4 + 테스트 1) — "5개 이상 동시 수정" 안전 규칙 경계라 이 계획 문서로 사전 공유. 단일 기능(적 시각 구분)에 응집.
-> `.meta`: 신규 순수 로직 `EnemyVisualLogic.ts`는 AI가 즉시 생성·커밋(경로 참조). 에디터 자산 변경 없음(기존 Enemy.prefab의 Sprite/node를 코드로 제어).
+> `.meta`: **AI는 `.meta`를 만들지 않는다.** `EnemyVisualLogic.ts`의 `.meta`는 7단계 사용자 Cocos 테스트로 생성돼 8단계 `PR 승인` 시 커밋된다(에셋 `.meta` 관리 규칙). 에디터 자산 변경 없음(기존 Enemy.prefab의 Sprite/node를 코드로 제어).
 
 ---
 
