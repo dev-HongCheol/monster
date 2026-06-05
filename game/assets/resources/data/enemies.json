@@ -6,7 +6,11 @@
     "speed": 150,
     "contactDamagePerSec": 20,
     "collisionRadius": 25,
-    "xpDrop": 20
+    "xpDrop": 20,
+    "movement": "chase",
+    "role": "standard",
+    "tint": "#FFFFFF",
+    "threatScale": 1.0
   },
   {
     "id": "skeleton_swift",
@@ -15,7 +19,11 @@
     "speed": 280,
     "contactDamagePerSec": 12,
     "collisionRadius": 18,
-    "xpDrop": 18
+    "xpDrop": 18,
+    "movement": "chase",
+    "role": "swarmer",
+    "tint": "#7FE0D0",
+    "threatScale": 0.7
   },
   {
     "id": "skeleton_tank",
@@ -24,6 +32,10 @@
     "speed": 80,
     "contactDamagePerSec": 35,
     "collisionRadius": 38,
-    "xpDrop": 35
+    "xpDrop": 35,
+    "movement": "chase",
+    "role": "tank",
+    "tint": "#5A3A8A",
+    "threatScale": 1.4
   }
 ]

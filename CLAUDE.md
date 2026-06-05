@@ -164,6 +164,7 @@ planning → qa-setup → implementation → verification → user-verification 
 >
 > **6단계 완료 시 AI가 순서대로 수행:**
 > 1. **검토용 Draft PR 생성** — 브랜치를 push한 뒤 `gh pr create --draft`로 PR을 만든다. 본문은 아래 **9단계의 PR 본문 작성 규칙**대로 코드를 상세히 설명하고, assignee로 레포 소유자를 지정한다. **이미 Draft PR이 있으면**(리워크 후 재진입) 새로 만들지 말고 push로 본문·diff만 최신화한다.
+>    - **신규 `.meta` 비포함:** Draft PR에는 `.meta`가 1개도 새로 들어가면 안 된다. AI는 `.meta`를 만들지 않으며(에셋 `.meta` 관리 규칙), 작업 중 어떤 경로로든 `.meta`가 생겼다면 push 전에 제외한다. 모든 신규 `.meta`는 7단계 사용자 Cocos 테스트로 생성돼 8단계에서 커밋된다.
 > 2. **사용자에게 알림:** "7단계입니다. Draft PR(`<링크>`)의 Files changed와 `docs/qa/[feature]-test.md` 체크리스트를 참고해 에디터 세팅 및 인게임 테스트를 진행해 주세요."
 
 14. Cocos Creator 에디터 세팅 (씬 노드 구성, `@property` 연결 — `docs/qa/` 체크리스트 참고)
@@ -171,7 +172,7 @@ planning → qa-setup → implementation → verification → user-verification 
     - **버그 발견 시:** 사용자 **`리워크`** 입력 → AI가 `pnpm wf rework` 실행 → `phase: "implementation"`으로 복귀, 검증 초기화, 스크립트 편집 재허용 → 5단계부터 다시 진행. **Draft PR은 닫지 않는다** — 재구현·재검증 후 7단계 재진입 시 push만 하면 PR이 자동 갱신된다.
 
 #### 8단계: PR 승인 (사용자)
-16. 사용자: **`PR 승인`** 입력 → AI는 (1) **7단계 테스트 중 에디터가 생성한 신규 자산 `.meta`를 먼저 커밋·push**하고 (2) `pnpm wf approve-pr` 실행 → `phase: "pr-ready"`
+16. 사용자: **`PR 승인`** 입력 → AI는 (1) **7단계 테스트 중 Cocos가 생성한 모든 신규 `.meta`(로직·데이터·씬 자산 포함)를 먼저 커밋·push**하고 (2) `pnpm wf approve-pr` 실행 → `phase: "pr-ready"`
    - **에셋 `.meta` 게이트:** `approve-pr`이 추적되지 않은 `.meta`를 자동 검사해 누락 시 **차단**한다(머지 후 모든 환경에서 UUID 재생성 → 참조 깨짐 방지). 차단되면 누락 `.meta`를 커밋하고 다시 승인. 미리 `pnpm wf check-meta`로 확인 가능. → 아래 **에셋 `.meta` 관리 규칙** 참고
 
 #### 9단계: PR 머지 (AI 주도)
@@ -250,16 +251,22 @@ mcp__context7__get-library-docs: "/websites/cocos_creator_3_8_manual_en" topic="
 
 Cocos는 `game/assets/` 아래 **모든 파일·디렉터리에 `.meta`(UUID 보관)** 를 만든다. 엔진은 자산을 경로가 아니라 UUID로 참조하고, **씬/프리팹은 참조 대상의 UUID를 저장**한다. `.meta`가 커밋되지 않으면 클론·타 환경에서 UUID가 재생성돼 **씬/프리팹 참조가 깨진다**(공식 매뉴얼: ".meta should be included in version control"). 그래서 `.gitignore`도 `*.meta` 추적을 강제한다.
 
-**누가 언제 커밋하나 (자산 종류로 분리):**
+**핵심 원칙: `.meta`는 Cocos 에디터만 생성한다. AI는 `.meta`를 절대 직접 만들지 않는다.**
+- `.meta`는 Cocos가 자산을 임포트할 때 **동적으로 생성하는 산출물**이다. AI가 포맷만 맞춰 손으로 만들면 최종 Cocos가 생성하는 것과 내용이 달라질 수 있다(특히 구현이 바뀌면 작업 중 임시 `.meta`와 최종본이 불일치). **최종 사용 주체인 Cocos가 만든 것이 유일한 진실**이다.
+- 따라서 순수 로직 `.ts`·`resources/*.json`을 포함한 **모든 `.meta`는 사용자가 7단계에서 Cocos로 최종 테스트할 때 생성**되고, **8단계 `PR 승인` 시점에 일괄 커밋**한다. (테스트·빌드는 `.meta`가 없어도 동작 — vitest/tsc는 경로로 import한다.)
 
-| 자산 종류 | 참조 방식 | `.meta` 처리 |
-|-----------|-----------|--------------|
-| 순수 로직 `.ts`(`import`), `resources/*.json`(`resources.load`) | **경로 참조** — UUID 런타임 무관 | **AI가 신규 파일 생성 시 즉시 `.meta`도 생성·커밋** (사용자 대기 0). 포맷은 기존 커밋된 `.meta` 참고(ver/importer/uuid). |
-| 씬 노드 컴포넌트, `@property`에 끼우는 스프라이트/프리팹 | **씬이 UUID로 참조** | **에디터가 생성** → 7단계 테스트 중 생성된 것을 **`PR 승인` 시 커밋** |
+**누가 언제:**
 
-**게이트:** `pnpm wf approve-pr`이 추적되지 않은 `.meta`를 자동 검사해 **누락 시 PR 승인을 차단**한다(머지 직전 마지막 안전장치). 언제든 `pnpm wf check-meta`로 확인. 구현은 `.claude/workflow.mjs`의 `listMissingAssetMeta()`.
+| 시점 | `.meta` 처리 |
+|------|--------------|
+| AI 구현 중 (5~6단계) | AI는 신규 `.ts`/`.json`만 만들고 **`.meta`는 만들지 않는다.** |
+| 7단계 진입 Draft PR | **신규 `.meta` 0개.** AI가 만든 것도, 작업 중 테스트로 생긴 것도 **비포함**한다. |
+| 7단계 사용자 테스트 | 사용자가 Cocos 에디터로 인게임 테스트 → Cocos가 신규 자산의 `.meta`를 모두 생성 |
+| 8단계 `PR 승인` | Cocos가 생성한 **모든 신규 `.meta`를 먼저 커밋·push**한 뒤 `pnpm wf approve-pr` |
 
-> **규칙: 신규 자산의 `.meta` 없이 머지 금지.** 로직·데이터 `.meta`는 AI가 즉시, 에디터 전용 자산 `.meta`는 PR 승인 시 커밋한다.
+**게이트:** `pnpm wf approve-pr`이 추적되지 않은 `.meta`를 자동 검사해 **누락 시 PR 승인을 차단**한다(8단계에서 Cocos가 만든 `.meta`가 모두 커밋됐는지 확인하는 마지막 안전장치). 언제든 `pnpm wf check-meta`로 확인. 구현은 `.claude/workflow.mjs`의 `listMissingAssetMeta()`.
+
+> **규칙: AI는 `.meta`를 직접 생성·커밋하지 않는다.** 모든 `.meta`는 Cocos 에디터가 생성하며, 사용자의 최종 테스트(7단계)를 거쳐 `PR 승인`(8단계) 시점에 커밋한다.
 
 ## 도구 스택
 
