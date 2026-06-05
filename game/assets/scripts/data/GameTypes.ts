@@ -146,6 +146,14 @@ export interface IEnemyData {
   collisionRadius: number;
   /** 사망 시 드롭하는 XP 량 */
   xpDrop: number;
+  /** 이동 알고리즘 (적 시스템 §3). v1은 "chase" 고정 — 데이터 자리만(런타임 분기 없음) */
+  movement: string;
+  /** 역할·스탯 프로필 라벨 (적 시스템 §4). standard|swarmer|tank — 그룹화/도감용 */
+  role: string;
+  /** placeholder 색 (적 시스템 §7). hex 문자열. Sprite 컬러에 적용 */
+  tint: string;
+  /** 시각 크기 배율 (적 시스템 §7). node scale에 적용 */
+  threatScale: number;
 }
 
 /**
