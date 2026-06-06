@@ -1,6 +1,6 @@
 {
-  "feature": "enemy-visuals",
-  "phase": "pr-ready",
+  "feature": "object-pooling",
+  "phase": "user-verification",
   "test_skipped": false,
   "test_skip_reason": null,
   "verification": {
