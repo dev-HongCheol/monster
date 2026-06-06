@@ -1,5 +1,6 @@
-import { _decorator, Component, instantiate, Node, Prefab, Vec3 } from 'cc';
+import { _decorator, Component, Node, Prefab, Vec3 } from 'cc';
 import { EnemyController } from '../components/EnemyController';
+import { PoolManager } from '../components/PoolManager';
 import { GameState } from '../data/GameTypes';
 import { SpawnDirectorLogic } from '../logic/SpawnDirectorLogic';
 import { DataManager } from './DataManager';
@@ -31,8 +32,14 @@ export class EnemySpawner extends Component {
   private _canvas: Node | null = null;
   /** 웨이브별 적 종류 선택 디렉터. 데이터 로드 후 첫 스폰 시점에 생성 */
   private _director: SpawnDirectorLogic | null = null;
+  /** 적 노드 재사용 풀 (onLoad에서 enemyPrefab/Canvas로 생성). */
+  private _enemyPool: PoolManager | null = null;
+  /** 적 반환 콜백 — 매 스폰마다 closure를 새로 만들지 않도록 1회 바인딩해 재사용. */
+  private readonly _releaseEnemy = (node: Node): void => {
+    this._enemyPool?.release(node);
+  };
 
-  // 필수 프로퍼티를 검증하고(실패 시 비활성화) 스폰 부모로 쓸 Canvas 참조를 캐시한다
+  // 필수 프로퍼티를 검증하고(실패 시 비활성화) 스폰 부모로 쓸 Canvas 참조와 적 풀을 준비한다
   onLoad() {
     if (!this.enemyPrefab || !this.playerNode) {
       console.error('[EnemySpawner] required properties not assigned');
@@ -43,7 +50,9 @@ export class EnemySpawner extends Component {
     if (!this._canvas) {
       console.error('[EnemySpawner] Canvas not found');
       this.enabled = false;
+      return;
     }
+    this._enemyPool = new PoolManager(this.enemyPrefab, this._canvas);
   }
 
   // 스폰 타이머가 차면 웨이브 스케일링(최대 적 수↑·간격↓) 한도 내에서 적 1마리를 스폰한다
@@ -82,7 +91,7 @@ export class EnemySpawner extends Component {
    * @param wave 현재 웨이브 (스폰 디렉터의 종류 선택 게이팅에 사용)
    */
   private _spawnEnemy(wave: number): void {
-    if (!this.enemyPrefab || !this.playerNode || !this._canvas || !this._director) return;
+    if (!this.playerNode || !this._director || !this._enemyPool) return;
 
     const angle = Math.random() * Math.PI * 2;
     const spawnPos = new Vec3(
@@ -92,18 +101,15 @@ export class EnemySpawner extends Component {
     );
 
     const enemyId = this._director.selectEnemyId(wave, Math.random());
-    const enemy = instantiate(this.enemyPrefab);
+    // 풀에서 적을 꺼낸다(가용분 재사용 또는 신규 instantiate). acquire가 Canvas 부착·active=true까지
+    // 보장하므로, 종류별 데이터·연출 상태는 acquire 직후 reset()이 매번 새로 적용한다(잔류 방지).
+    const enemy = this._enemyPool.acquire();
     enemy.setPosition(spawnPos);
     const enemyCtrl = enemy.getComponent(EnemyController);
     if (!enemyCtrl) {
-      enemy.destroy();
+      this._enemyPool.release(enemy);
       return;
     }
-    // enemyId·playerNode는 컴포넌트 활성화(addChild→onLoad) 전에 주입해야 한다.
-    // EnemyController.onLoad가 enemyId로 데이터를 읽으므로, addChild 후 세팅하면
-    // 프리팹 기본값('skeleton')으로 먼저 로드돼 버린다.
-    enemyCtrl.enemyId = enemyId;
-    enemyCtrl.playerNode = this.playerNode;
-    this._canvas.addChild(enemy);
+    enemyCtrl.reset(enemyId, this.playerNode, this._releaseEnemy);
   }
 }

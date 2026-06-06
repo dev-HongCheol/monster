@@ -1,9 +1,9 @@
-import { _decorator, Color, Component, instantiate, Node, Prefab, Sprite, Vec3 } from 'cc';
+import { _decorator, Color, Component, Node, Prefab, Sprite, Vec3 } from 'cc';
 import { GameState, type IEnemyData } from '../data/GameTypes';
 import { deathAlpha, deathScale, hitFlashBlend, isDeathDone } from '../logic/EnemyVisualLogic';
 import { DataManager } from '../systems/DataManager';
+import { ExperienceManager } from '../systems/ExperienceManager';
 import { GameManager } from '../systems/GameManager';
-import { XPItemController } from './XPItemController';
 
 const { ccclass, property } = _decorator;
 
@@ -44,24 +44,51 @@ export class EnemyController extends Component {
   private _dead: boolean = false;
   /** 사망 후 경과시간 (sec) */
   private _deathElapsed: number = 0;
+  /** 사망 연출 종료 시 호출할 풀 반환 콜백 (reset에서 주입). null이면 destroy로 폴백. */
+  private _onDespawn: ((node: Node) => void) | null = null;
+  /** 이미 풀로 반환/소멸 처리됐는지 — 이중 반환 방어(멱등). */
+  private _despawned: boolean = false;
 
-  // 활성 적 목록에 자신을 등록하고, 데이터 준비 후 HP·충돌 반경·시각(색·크기)을 초기화한다
+  // Sprite 참조만 캐시한다(컴포넌트는 풀 재사용해도 유지되므로 1회면 충분).
+  // 활성 등록은 onEnable, 데이터·시각·연출 상태 적용은 reset()이 담당한다(재사용마다 재적용 필요).
   onLoad() {
     this._sprite = this.getComponent(Sprite);
-    GameManager.instance.registerEnemy(this);
-    DataManager.instance.onReady(() => {
-      this._data = DataManager.instance.getEnemy(this.enemyId);
-      if (this._data) {
-        this._hp = this._data.maxHp;
-        this.collisionRadius = this._data.collisionRadius;
-        this._applyVisualBaseline(this._data);
-      }
-      this._playerCollisionRadius = DataManager.instance.playerData.collisionRadius;
-    });
   }
 
-  onDestroy() {
+  // 활성화(최초 + 풀 재사용)마다 활성 적 목록에 자신을 등록한다.
+  onEnable() {
+    GameManager.instance?.registerEnemy(this);
+  }
+
+  // 비활성화(풀 반환 active=false, 씬 해제 모두 포함)마다 목록에서 제거한다(멱등 — 이미 빠졌으면 no-op).
+  onDisable() {
     GameManager.instance?.unregisterEnemy(this);
+  }
+
+  /**
+   * 풀에서 꺼낸 적을 재사용 가능 상태로 초기화한다. 스포너가 acquire 직후 호출한다.
+   * 데이터는 스폰 시점에 항상 로드 완료(EnemySpawner가 DataManager.isReady를 게이트)이므로
+   * 동기로 즉시 적용하며, 재사용마다 다른 enemyId의 스탯·시각(색·크기)과 연출 상태를 새로 설정한다.
+   * @param enemyId enemies.json id (종류별 스탯·색·크기 결정)
+   * @param playerNode 추적 대상 플레이어 노드
+   * @param onDespawn 사망 연출 종료 시 호출할 풀 반환 콜백 (자신의 node 전달)
+   */
+  reset(enemyId: string, playerNode: Node, onDespawn: (node: Node) => void): void {
+    this.enemyId = enemyId;
+    this.playerNode = playerNode;
+    this._onDespawn = onDespawn;
+    this._despawned = false;
+    this._dead = false;
+    this._deathElapsed = 0;
+    this._flashing = false;
+    this._flashElapsed = 0;
+    this._data = DataManager.instance.getEnemy(enemyId);
+    if (this._data) {
+      this._hp = this._data.maxHp;
+      this.collisionRadius = this._data.collisionRadius;
+      this._applyVisualBaseline(this._data);
+    }
+    this._playerCollisionRadius = DataManager.instance.playerData.collisionRadius;
   }
 
   // 데이터 준비 시 update 분기: 사망 연출 중이면 그것만, 아니면 플래시 갱신 + (Playing일 때) 추적·접촉
@@ -151,21 +178,30 @@ export class EnemyController extends Component {
       this._sprite.color = this._scratchColor;
     }
     if (isDeathDone(this._deathElapsed, this.deathDuration)) {
-      this.node.destroy();
+      this._returnToPool();
     }
   }
 
-  /** 현재 위치에 XP 아이템을 스폰한다. */
+  /** 사망 연출 종료 시 풀로 반환한다(콜백 없으면 destroy 폴백). 이중 호출은 무시(멱등). */
+  private _returnToPool(): void {
+    if (this._despawned) return;
+    this._despawned = true;
+    if (this._onDespawn) this._onDespawn(this.node);
+    else this.node.destroy();
+  }
+
+  /** 현재 위치에 XP 아이템을 스폰한다(ExperienceManager의 풀에 위임). */
   private _dropXpItem(): void {
     if (!this.xpItemPrefab || !this.playerNode || !this._data) return;
-    const item = instantiate(this.xpItemPrefab);
-    this.node.parent?.addChild(item);
-    item.setPosition(this.node.position);
-    const ctrl = item.getComponent(XPItemController);
-    if (ctrl) {
-      ctrl.playerNode = this.playerNode;
-      ctrl.xpValue = this._data.xpDrop;
-    }
+    const parent = this.node.parent;
+    if (!parent) return;
+    ExperienceManager.instance?.spawnXpItem(
+      this.xpItemPrefab,
+      parent,
+      this.node.position,
+      this._data.xpDrop,
+      this.playerNode,
+    );
   }
 
   /** 플레이어 방향으로 이동한다. */
