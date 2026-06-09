@@ -2,7 +2,7 @@
 
 > - **작성일:** 2026-06-07
 > - **브랜치:** feat/enemy-xp-pooling
-> - **상태:** 계획 (승인 대기)
+> - **상태:** 완료 — 구현·AI 검증(cso/ts/lint/리뷰)·수동 QA 전 항목 통과. [PR #28](https://github.com/dev-HongCheol/monster/pull/28) 머지 대기.
 > - **상위 설계:** [로드맵 v0.2](../../planning/roadmap.md) §7(객체 풀링 — MVP)·§9·§12(성능 위험)
 > - **선행 슬라이스:** [발사체 풀링(PR #27)](2026-06-06-object-pooling-plan.md) — `ObjectPoolLogic`+`PoolManager` 공용 인프라 구축 완료
 > - **슬라이스 위치:** 객체 풀링의 **두 번째 수직 슬라이스 = 적·XP.** 선행 슬라이스가 만든 인프라를 그대로 재사용한다.
