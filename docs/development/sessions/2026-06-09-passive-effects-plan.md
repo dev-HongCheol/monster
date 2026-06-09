@@ -88,6 +88,17 @@ private readonly _pickupRadius = (): number =>
 - `cards.json` — 정적 패시브 카드 2장 추가: `move_speed_up`(`{ moveSpeedBonus: 0.10 }`), `pickup_range_up`(`{ pickupRangeBonus: 0.30 }`). 표시 키는 `buildDrawPool`이 `card.<id>.name/desc`로 부여(기존 규칙).
 - `resources/i18n/ko.json`·`en.json` — `card.move_speed_up.{name,desc}`, `card.pickup_range_up.{name,desc}` 4키 추가(기존 정적 카드 키와 동일 구조).
 
+### 3.5 DEV 디버그 로그 — 패시브 수치 관찰
+
+패시브 효과는 인게임에서 눈으로 수치를 확인하기 어렵다(이동속도/픽업범위가 "조금 빨라졌다/넓어졌다" 수준). 그래서 이미 DEV 전용으로 강화 수치를 `console.table`로 찍는 `CardSelectPanel._logEnhancementDebug`에 **패시브 한 줄**을 추가해, 카드 픽 직후 누적 보너스와 실효값을 출력한다:
+
+```
+[패시브] HP +N (실효 maxHp=X) · 이동속도 +M% (실효 speed=Y) · 픽업범위 +P% (실효 반경=Z)
+```
+
+- 보너스는 `DeckManager` getter(`maxHpBonus`/`moveSpeedBonus`/`pickupRangeBonus`)에서, 베이스는 `DataManager.playerData`(maxHp/speed/pickupRadius)에서 읽어 실효값(`base × (1+bonus)`)을 계산해 표시. 수치 산출은 단순 곱이라 표시·포맷은 UI 책임으로 둔다(기존 강화 로그와 동일 altitude).
+- `cc/env`의 `DEV` 게이팅 — 에디터/프리뷰/디버그 빌드에서만 출력되고 릴리스 빌드에선 제거된다.
+
 ---
 
 ## 4. Impact Map (변경 파일별 확인 범위)
@@ -103,6 +114,7 @@ private readonly _pickupRadius = (): number =>
 | `components/XPItemController.ts` | `init`에 `getPickupRadius` 주입, `update` 라이브 판정 | 풀 재사용 시 getter 재주입 |
 | `data/cards.json` | 패시브 카드 2장 | 드로우 풀 합성 |
 | `resources/i18n/{ko,en}.json` | 카드 4키 | 카드 표시 |
+| `ui/CardSelectPanel.ts` | `_logEnhancementDebug`에 `[패시브]` 한 줄 추가(DEV) | 기존 강화 로그 회귀 없음 |
 | `tests/logic/PassiveEffects.test.ts` | 신규 — 누적 단위 테스트 | — |
 
 ---
@@ -113,6 +125,7 @@ private readonly _pickupRadius = (): number =>
 
 - `tests/logic/PassiveEffects.test.ts`(피처명 PascalCase — wf RED 게이트 대상): `DeckLogic`의 `moveSpeedBonus`/`pickupRangeBonus`가 카드 선택마다 가산 누적되는지, 미강화 시 0인지 검증.
 - cc 배선(`PlayerController` 속도, `ExperienceManager`/`XPItemController` 픽업 라이브 적용)은 수동 QA로 검증(QA 문서 체크리스트).
+- **수동 QA 관찰성:** 카드 픽 시 DEV 콘솔의 `[패시브]` 로그(§3.5)로 누적 보너스·실효값(speed/반경)을 직접 확인 → "수치가 실제로 올랐는지"를 눈으로 검증.
 
 ---
 
@@ -137,4 +150,5 @@ private readonly _pickupRadius = (): number =>
 - `DeckLogic` 이동속도·픽업 누적 단위 테스트 GREEN + 전체 스위트 GREEN.
 - 인게임: 이동속도 카드 픽 → 플레이어가 즉시 빨라짐. 픽업 카드 픽 → 화면의 **기존** XP 포함 흡수 반경이 즉시 넓어짐.
 - 두 카드가 i18n(ko/en)으로 올바르게 표시되고 드로우 풀에 등장.
+- DEV 빌드에서 패시브 카드 픽 시 `[패시브]` 로그가 갱신된 보너스·실효값을 출력.
 - cso / ts / lint / 코드리뷰 통과.
