@@ -13,5 +13,15 @@
     "id": "hp_up",
     "type": "passive",
     "effect": { "maxHpBonus": 20 }
+  },
+  {
+    "id": "move_speed_up",
+    "type": "passive",
+    "effect": { "moveSpeedBonus": 0.1 }
+  },
+  {
+    "id": "pickup_range_up",
+    "type": "passive",
+    "effect": { "pickupRangeBonus": 0.3 }
   }
 ]

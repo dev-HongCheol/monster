@@ -81,7 +81,31 @@ export class CardSelectPanel extends Component {
       DeckManager.instance.applyCard(card);
     }
     this._logEnhancementDebug(card);
+    this._logPassiveDebug();
     GameManager.instance.resumeFromLevelUp();
+  }
+
+  /**
+   * [DEV 전용] 카드 픽 직후 패시브 누적 보너스·실효값을 한 줄로 출력한다.
+   * 패시브(이동속도/픽업범위)는 인게임에서 수치를 눈으로 확인하기 어려워 관찰용 로그를 남긴다.
+   * 보너스는 `DeckManager` getter, 베이스는 `DataManager.playerData`에서 읽어 실효값(base×(1+bonus))을
+   * 표시한다. 마법 강화와 독립이라 보유 마법이 없어도 출력된다. `cc/env` `DEV`로 게이팅 — 릴리스 제거.
+   */
+  private _logPassiveDebug(): void {
+    if (!DEV) return;
+    if (!DataManager.instance?.isReady) return;
+    const deck = DeckManager.instance;
+    const base = DataManager.instance.playerData;
+    const hpBonus = deck?.maxHpBonus ?? 0;
+    const msBonus = deck?.moveSpeedBonus ?? 0;
+    const prBonus = deck?.pickupRangeBonus ?? 0;
+    const pct = (v: number): number => Math.round(v * 100);
+    const round1 = (v: number): number => Number(v.toFixed(1));
+    console.log(
+      `[패시브] HP +${hpBonus} (실효 maxHp=${base.maxHp + hpBonus}) · ` +
+        `이동속도 +${pct(msBonus)}% (실효 speed=${round1(base.speed * (1 + msBonus))}) · ` +
+        `픽업범위 +${pct(prBonus)}% (실효 반경=${round1(base.pickupRadius * (1 + prBonus))})`,
+    );
   }
 
   /**

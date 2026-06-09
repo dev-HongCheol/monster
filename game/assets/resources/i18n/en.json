@@ -24,6 +24,10 @@
   "card.cooldown_reduce.desc": "All spell cooldown -5%",
   "card.hp_up.name": "Vitality",
   "card.hp_up.desc": "Max HP +20",
+  "card.move_speed_up.name": "Swiftness",
+  "card.move_speed_up.desc": "Move speed +10%",
+  "card.pickup_range_up.name": "Magnetism",
+  "card.pickup_range_up.desc": "XP pickup range +30%",
 
   "card.spell_upgrade.name": "Spell Upgrade",
   "card.spell_upgrade.desc": "{spell} {option} +1",
