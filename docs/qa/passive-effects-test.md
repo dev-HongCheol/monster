@@ -45,7 +45,7 @@
 
 ## 4. 자동 테스트로 검증
 
-> **GREEN 근거:** 피처 테스트 5/5 + 전체 스위트 133/133 통과(`start-verification` GREEN 게이트). 통과 커밋: 본 피처 구현 커밋.
+> **GREEN 근거:** 피처 테스트 5/5 + 전체 스위트 133/133 통과(`start-verification` GREEN 게이트). 통과 커밋: `8f426ed`.
 
 - [x] `tests/logic/PassiveEffects.test.ts` GREEN — `DeckLogic`의 `moveSpeedBonus`/`pickupRangeBonus`가 카드 선택마다 가산 누적되고, 미강화 시 0이며, HP·이동속도·픽업이 서로 독립 누적됨(5 케이스).
 - [x] 전체 스위트 GREEN — 기존 회귀 없음(`start-verification` GREEN 게이트로 검증, 133/133).
