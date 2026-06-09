@@ -99,6 +99,14 @@ private readonly _pickupRadius = (): number =>
 - 보너스는 `DeckManager` getter(`maxHpBonus`/`moveSpeedBonus`/`pickupRangeBonus`)에서, 베이스는 `DataManager.playerData`(maxHp/speed/pickupRadius)에서 읽어 실효값(`base × (1+bonus)`)을 계산해 표시. 수치 산출은 단순 곱이라 표시·포맷은 UI 책임으로 둔다(기존 강화 로그와 동일 altitude).
 - `cc/env`의 `DEV` 게이팅 — 에디터/프리뷰/디버그 빌드에서만 출력되고 릴리스 빌드에선 제거된다.
 
+### 3.6 분류 강화 카드 임시 숨김 (DEV QA 보조)
+
+패시브 카드(2종)가 뽑기 3장에 잘 뜨도록, QA 동안 **마법 분류(category) 강화 카드를 드로우 풀에서 임시로 제외**한다. 시작 시 분류 카드만 화염·얼음·번개 × 데미지·쿨다운 = 최대 6장이라 패시브가 묻히기 때문이다.
+
+- **위치:** `DeckManager.drawCards` — `EnhancementLogic.buildUpgradeCards` 결과에서 `effect.upgrade.track === Category`인 카드를 필터. **`EnhancementLogic`(순수 로직)은 건드리지 않는다** → 분류 카드 생성/단위 테스트·릴리스 동작 불변. 필터는 cc 레이어의 DEV 전용 표시 조정일 뿐.
+- **게이팅:** `cc/env` `DEV` + 상수 `HIDE_CATEGORY_UPGRADE_CARDS`(기본 `true`, 이번 슬라이스 QA용) → 릴리스 빌드 영향 0. 개별 마법 강화·패시브·마법 추가 카드는 그대로 노출.
+- **임시·복원:** 패시브 QA 편의용. 워크플로우상 `user-verification` 단계엔 스크립트 편집이 잠기므로 PR 직전 복원이 불가 → DEV 게이팅으로 릴리스 안전을 보장하고, `false` 복원은 **후속 편집 가능 단계(다음 슬라이스/별도 chore)** 에서 수행한다.
+
 ---
 
 ## 4. Impact Map (변경 파일별 확인 범위)
@@ -106,7 +114,7 @@ private readonly _pickupRadius = (): number =>
 | 파일 | 변경 | 회귀 확인 |
 |------|------|----------|
 | `logic/DeckLogic.ts` | 이동속도·픽업 누적 필드/getter + `applyCard` | HP 누적 회귀 없음 |
-| `systems/DeckManager.ts` | getter 위임 2개 | 기존 강화 라우팅 무영향 |
+| `systems/DeckManager.ts` | getter 위임 2개 + (DEV) 분류 강화 카드 필터(§3.6) | 기존 강화 라우팅 무영향 |
 | `data/GameTypes.ts` | `ICardEffect`+2, `IPlayerBaseData`+1 | 타입 컴파일 |
 | `data/player.json` | `pickupRadius` 추가 | DataManager 로드 |
 | `components/PlayerController.ts` | `_move` 속도 보너스 | 기본 이동(보너스 0) 동일 |
