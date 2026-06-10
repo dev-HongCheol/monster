@@ -1,10 +1,19 @@
 import { _decorator, Component } from 'cc';
-import { type ICardData, type ISpellData, UpgradeOption } from '../data/GameTypes';
+import { DEV } from 'cc/env';
+import { type ICardData, type ISpellData, UpgradeOption, UpgradeTrack } from '../data/GameTypes';
 import { DeckLogic } from '../logic/DeckLogic';
 import { type EnhancementDebugSnapshot, EnhancementLogic } from '../logic/EnhancementLogic';
 import { DataManager } from './DataManager';
 
 const { ccclass } = _decorator;
+
+/**
+ * [DEV QA 보조 · 임시] 마법 분류(category) 강화 카드를 드로우 풀에서 숨길지.
+ * passive-effects 슬라이스 QA용 — 패시브 카드(2종)가 3장 드로우에 잘 뜨게 하려고 분류 카드(최대 6장)를
+ * 임시로 제외한다. `cc/env` DEV와 함께 게이팅되므로 릴리스 빌드엔 영향 없음. 후속 편집 가능 단계에서
+ * `false`로 복원한다. (순수 로직 EnhancementLogic은 불변 — 여기 cc 레이어에서만 표시 조정)
+ */
+const HIDE_CATEGORY_UPGRADE_CARDS = true;
 
 /** 카드 풀 관리, 드로우, 강화 적용(플레이어 패시브 + per-spell/분류)을 담당하는 싱글톤 */
 @ccclass('DeckManager')
@@ -16,6 +25,16 @@ export class DeckManager extends Component {
 
   get maxHpBonus() {
     return this._logic.maxHpBonus;
+  }
+
+  /** 이동속도 보너스 누적값 (가산·상한 없음). 소비처: PlayerController._move */
+  get moveSpeedBonus() {
+    return this._logic.moveSpeedBonus;
+  }
+
+  /** 픽업범위 보너스 누적값 (가산·상한 없음). 소비처: ExperienceManager 픽업 반경 getter */
+  get pickupRangeBonus() {
+    return this._logic.pickupRangeBonus;
   }
 
   /** 마법의 데미지 배율 (개별×분류×전역 강화 — 기본 데미지에 곱한다). */
@@ -60,7 +79,11 @@ export class DeckManager extends Component {
     const ownedSpells = ownedSpellIds
       .map((id) => DataManager.instance.getSpell(id))
       .filter((s): s is ISpellData => s !== null);
-    const upgradeCards = this._enhancement.buildUpgradeCards(ownedSpells);
+    let upgradeCards = this._enhancement.buildUpgradeCards(ownedSpells);
+    // [DEV QA · 임시] 패시브 카드가 잘 뜨도록 분류 강화 카드를 드로우에서 제외(개별·마법추가·패시브는 유지).
+    if (DEV && HIDE_CATEGORY_UPGRADE_CARDS) {
+      upgradeCards = upgradeCards.filter((c) => c.effect.upgrade?.track !== UpgradeTrack.Category);
+    }
     return this._logic.drawCards([...pool, ...upgradeCards], n);
   }
 

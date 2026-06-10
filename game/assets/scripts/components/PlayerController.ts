@@ -1,6 +1,7 @@
 import { _decorator, Component, type EventKeyboard, Input, input, KeyCode, Vec3 } from 'cc';
 import { GameState } from '../data/GameTypes';
 import { DataManager } from '../systems/DataManager';
+import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
 
 const { ccclass } = _decorator;
@@ -70,9 +71,10 @@ export class PlayerController extends Component {
     }
   }
 
-  /** 이동 방향으로 플레이어를 이동시킨다. */
+  /** 이동 방향으로 플레이어를 이동시킨다. 매 프레임 이동속도 패시브 보너스를 곱해 라이브 반영한다. */
   private _move(dt: number): void {
-    const speed = DataManager.instance.playerData.speed;
+    const speed =
+      DataManager.instance.playerData.speed * (1 + (DeckManager.instance?.moveSpeedBonus ?? 0));
     const pos = this.node.position;
     this.node.setPosition(
       pos.x + this._moveDir.x * speed * dt,

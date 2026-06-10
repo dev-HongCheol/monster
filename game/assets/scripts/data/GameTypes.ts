@@ -16,6 +16,8 @@ export interface IPlayerBaseData {
   speed: number;
   /** 거리 기반 충돌 반경 */
   collisionRadius: number;
+  /** XP 자동 흡수 반경 (units) — 픽업범위 패시브의 베이스값 */
+  pickupRadius: number;
 }
 
 /** 마법 분류 (기획 § 1) — JSON 문자열과 일치 */
@@ -101,6 +103,10 @@ export interface IUpgradeEffect {
 export interface ICardEffect {
   /** 최대 HP 추가량 (플레이어 강화) */
   maxHpBonus?: number;
+  /** 이동속도 보너스 factor 가산 (가산·상한 없음, 예: 0.10 → 속도 ×1.10) */
+  moveSpeedBonus?: number;
+  /** 픽업범위 보너스 factor 가산 (가산·상한 없음, 예: 0.30 → 반경 ×1.30) */
+  pickupRangeBonus?: number;
   /** 전역(플레이어) 데미지 factor 가산 — 모든 마법 공통, 위계상 개별·분류보다 작다(예: 0.05 → ×1.05) */
   damageMult?: number;
   /** 전역(플레이어) 쿨다운 factor 가산 — 양수=단축(예: 0.05 → 쿨다운 ÷1.05) */

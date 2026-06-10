@@ -3,6 +3,7 @@ import { PoolManager } from '../components/PoolManager';
 import { XPItemController } from '../components/XPItemController';
 import { ExperienceLogic } from '../logic/ExperienceLogic';
 import { DataManager } from './DataManager';
+import { DeckManager } from './DeckManager';
 
 const { ccclass } = _decorator;
 
@@ -23,6 +24,14 @@ export class ExperienceManager extends Component {
     this.addXp(xpValue);
     this._xpPool?.release(node);
   };
+  /**
+   * 현재 픽업 반경 getter — 매 스폰마다 새 closure를 만들지 않도록 1회 바인딩해 재사용.
+   * 베이스(player.json pickupRadius)에 픽업범위 패시브 보너스를 곱한다. XP 아이템이 매 프레임
+   * 호출하므로 보너스가 오르면 이미 떠 있는 XP에도 즉시 넓어진 반경이 적용된다(라이브).
+   */
+  private readonly _pickupRadius = (): number =>
+    DataManager.instance.playerData.pickupRadius *
+    (1 + (DeckManager.instance?.pickupRangeBonus ?? 0));
 
   get level() {
     return this._logic?.level ?? 1;
@@ -91,6 +100,6 @@ export class ExperienceManager extends Component {
       this._xpPool.release(node);
       return;
     }
-    ctrl.init(playerNode, value, this._absorb);
+    ctrl.init(playerNode, value, this._pickupRadius, this._absorb);
   }
 }

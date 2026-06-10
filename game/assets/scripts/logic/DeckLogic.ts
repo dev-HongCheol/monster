@@ -8,9 +8,21 @@ import type { ICardData, ISpellData } from '../data/GameTypes';
  */
 export class DeckLogic {
   private _maxHpBonus = 0;
+  private _moveSpeedBonus = 0;
+  private _pickupRangeBonus = 0;
 
   get maxHpBonus() {
     return this._maxHpBonus;
+  }
+
+  /** 이동속도 보너스 누적값 (가산·상한 없음). 소비처: PlayerController._move */
+  get moveSpeedBonus() {
+    return this._moveSpeedBonus;
+  }
+
+  /** 픽업범위 보너스 누적값 (가산·상한 없음). 소비처: ExperienceManager 픽업 반경 getter */
+  get pickupRangeBonus() {
+    return this._pickupRangeBonus;
   }
 
   /**
@@ -76,5 +88,7 @@ export class DeckLogic {
   applyCard(card: ICardData): void {
     const e = card.effect;
     if (e.maxHpBonus !== undefined) this._maxHpBonus += e.maxHpBonus;
+    if (e.moveSpeedBonus !== undefined) this._moveSpeedBonus += e.moveSpeedBonus;
+    if (e.pickupRangeBonus !== undefined) this._pickupRangeBonus += e.pickupRangeBonus;
   }
 }

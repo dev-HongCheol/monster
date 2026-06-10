@@ -60,6 +60,16 @@
   },
   "card.hp_up.name": { "message": "생명력 강화", "desc": "패시브 카드 이름" },
   "card.hp_up.desc": { "message": "최대 HP +20", "desc": "패시브 카드 설명" },
+  "card.move_speed_up.name": { "message": "신속", "desc": "이동속도 패시브 카드 이름" },
+  "card.move_speed_up.desc": {
+    "message": "이동속도 +10%",
+    "desc": "이동속도 패시브 카드 설명. 수치는 밸런싱 전 임시값"
+  },
+  "card.pickup_range_up.name": { "message": "자력", "desc": "픽업범위 패시브 카드 이름" },
+  "card.pickup_range_up.desc": {
+    "message": "경험치 획득 범위 +30%",
+    "desc": "픽업범위 패시브 카드 설명. 수치는 밸런싱 전 임시값"
+  },
 
   "card.spell_upgrade.name": { "message": "마법 강화", "desc": "개별(선택 마법) 강화 카드 이름" },
   "card.spell_upgrade.desc": {
