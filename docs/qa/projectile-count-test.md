@@ -31,7 +31,7 @@
 
 ## 4. 자동 테스트로 검증 (순수 로직 — `tests/logic/ProjectileCount.test.ts`)
 
-> **GREEN 통과:** 피처 테스트 20/20 + 전체 스위트 153/153. (통과 커밋 SHA는 구현 커밋 직후 기재)
+> **GREEN 통과:** 피처 테스트 21/21 + 전체 스위트 154/154. 통과 커밋 `916baa4`(코드리뷰 수정 포함, 누수 차단 테스트 +1).
 
 - [x] `projectileBonus` 초기 0, 개별+분류 가산 누적, 각 트랙 cap 4(최대 8).
 - [x] `effectiveProjectileCount` = base + bonus (예: base 1 + bonus 2 = 3).

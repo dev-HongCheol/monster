@@ -4,6 +4,7 @@
 > - **리뷰 커밋:** cfa9a95 (base 7c5f322)
 > - **리뷰어:** general-purpose subagent (superpowers:requesting-code-review 패턴)
 > - **판정:** Yes (with one recommended follow-up) — Critical 0, Important 1, Minor 3
+> - **재리뷰 (916baa4):** I-1·M-1 수정 검증 — "Ready to merge? Yes", 신규 이슈 0. 소스 게이트가 개별·분류 양 경로를 단일 chokepoint에서 차단, 클램프는 정상 도메인 no-op 확인.
 
 ---
 
