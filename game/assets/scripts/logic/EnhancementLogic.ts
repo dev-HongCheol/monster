@@ -47,7 +47,8 @@ const MIN_PROJECTILE_PENALTY = 0.05;
  * @param bonus 강화로 늘어난 발사체 수(기본 발사체는 페널티 없음)
  */
 export function penaltyFor(bonus: number): number {
-  return Math.max(MIN_PROJECTILE_PENALTY, 1 - PROJECTILE_DAMAGE_PENALTY_R * bonus);
+  // 상한 1(음수 bonus가 데미지 부스트가 되지 않게), 하한 MIN(0/음수 방어). 정상 bonus는 0~8.
+  return Math.min(1, Math.max(MIN_PROJECTILE_PENALTY, 1 - PROJECTILE_DAMAGE_PENALTY_R * bonus));
 }
 
 /** 일반 옵션이 적용되는 분류 (보조 분류는 일반 5종 옵션 제외 — § 7.5) */
@@ -228,6 +229,8 @@ export class EnhancementLogic {
    * @param spell 대상 마법 (개별 키=id, 분류 키=category)
    */
   projectileBonus(spell: ISpellData): number {
+    // §8 게이트(소스): 자기중심 AOE는 발사체 보너스 0 — 분류 트랙으로도 새지 않게 한 점에서 막는다.
+    if (spell.allowsProjectileCount === false) return 0;
     return (
       this.getLevel(UpgradeTrack.Individual, spell.id, UpgradeOption.ProjectileCount) +
       this.getLevel(UpgradeTrack.Category, spell.category, UpgradeOption.ProjectileCount)

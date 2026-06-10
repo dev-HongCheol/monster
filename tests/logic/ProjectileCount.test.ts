@@ -65,6 +65,16 @@ describe('EnhancementLogic — 발사체 수 보너스 (§7.6 가산)', () => {
     expect(e.projectileBonus(fireball)).toBe(1);
     expect(e.projectileBonus(iceMissile)).toBe(0);
   });
+
+  it('§8 소스 게이트: allowsProjectileCount=false 마법은 분류 트랙 보너스도 0 (누수 차단)', () => {
+    const e = new EnhancementLogic();
+    // 같은 Fire 분류의 발사체 트랙을 올려도 자기중심 AOE(inferno)엔 새지 않는다.
+    e.raise(UpgradeTrack.Category, SpellCategory.Fire, PC);
+    e.raise(UpgradeTrack.Individual, 'inferno', PC); // 개별을 올려도(비정상 경로) 0이어야
+    expect(e.projectileBonus(inferno)).toBe(0);
+    expect(e.effectiveProjectileCount(inferno)).toBe(inferno.projectileCount);
+    expect(e.projectilePenaltyFactor(inferno)).toBeCloseTo(1.0);
+  });
 });
 
 describe('EnhancementLogic — 유효 발사체 수', () => {
