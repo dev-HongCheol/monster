@@ -28,6 +28,28 @@ export const MIN_COOLDOWN_SEC = 0.05;
  */
 const MIN_GLOBAL_MULT = 0.05;
 
+/**
+ * 발사체당 데미지 페널티 비율 r (기획 §7.6 초안값 ~10%). 발사체를 늘릴수록 발사체 하나의
+ * 데미지가 `r × 증가수`만큼 감소해 "다발 = 군집 이득·단일 손해" 트레이드오프를 만든다.
+ * **정확한 값은 밸런싱 단계(로드맵 11-12주)에서 확정.**
+ *
+ * 참고: 다발이 전부 명중할 때 총출력 `(1+증가수)×(1−r×증가수)`는 증가수≈4.5에서 정점(×3.0) 후
+ * cap(8)에서 ×1.8로 하락한다(의도된 diminishing-returns — 버그 아님).
+ */
+export const PROJECTILE_DAMAGE_PENALTY_R = 0.1;
+
+/** 발사체당 데미지 페널티 하한 — 페널티가 0/음수가 되지 않도록 방어(현 r·cap에선 미발동). */
+const MIN_PROJECTILE_PENALTY = 0.05;
+
+/**
+ * 발사체 증가수에 대한 발사체당 데미지 페널티 배율 `×(1 − r×증가수)` (§7.6). 하한 클램프.
+ * 순수 함수로 분리해 범위 밖 증가수로 하한 도달까지 단위 테스트 가능하게 한다.
+ * @param bonus 강화로 늘어난 발사체 수(기본 발사체는 페널티 없음)
+ */
+export function penaltyFor(bonus: number): number {
+  return Math.max(MIN_PROJECTILE_PENALTY, 1 - PROJECTILE_DAMAGE_PENALTY_R * bonus);
+}
+
 /** 일반 옵션이 적용되는 분류 (보조 분류는 일반 5종 옵션 제외 — § 7.5) */
 const GENERAL_OPTION_CATEGORIES: SpellCategory[] = [
   SpellCategory.Fire,
@@ -36,10 +58,15 @@ const GENERAL_OPTION_CATEGORIES: SpellCategory[] = [
 ];
 
 /**
- * 이번 슬라이스에서 카드로 생성·적용하는 옵션 (기획 § 8 매트릭스).
- * 데미지·쿨다운은 모든 비-보조 공격 마법이 ✅. 발사체수/범위/지속시간은 후속.
+ * 카드로 생성·적용하는 옵션 (기획 § 8 매트릭스).
+ * 데미지·쿨다운은 모든 비-보조 공격 마법이 ✅. 발사체 수는 자기중심 AOE만 ❌(§8 게이트).
+ * 범위·지속시간은 splash/AOE/DOT 레이어 후속.
  */
-const SLICE_OPTIONS: UpgradeOption[] = [UpgradeOption.Damage, UpgradeOption.Cooldown];
+const SLICE_OPTIONS: UpgradeOption[] = [
+  UpgradeOption.Damage,
+  UpgradeOption.Cooldown,
+  UpgradeOption.ProjectileCount,
+];
 
 /** 분류가 일반 강화 옵션을 허용하는지 (보조 분류는 제외 § 7.5) */
 function generalOptions(category: SpellCategory): UpgradeOption[] {
@@ -72,6 +99,12 @@ export interface EnhancementDebugRow {
   effCooldown: number;
   /** 초당 데미지 = 최종 데미지 / 최종 쿨다운 */
   dps: number;
+  /** 발사체 수 강화 보너스(개별+분류 가산) */
+  projectileBonus: number;
+  /** 발사체당 데미지 페널티 배율 `×(1−r×증가수)` */
+  projectilePenalty: number;
+  /** 유효 발사체 수 = 기본 + 보너스 */
+  effProjectileCount: number;
 }
 
 /** 디버그 스냅샷 — 마법별 행 + 전역 보너스 */
@@ -150,6 +183,12 @@ export class EnhancementLogic {
    * @param option 강화 옵션
    */
   factor(spell: ISpellData, option: UpgradeOption): number {
+    // factor()는 곱셈 곡선 옵션(데미지·쿨다운) 전용이다. 발사체 수는 가산(+1)이라 곡선 배율을
+    // 적용하면 안 된다 — projectileBonus/projectilePenaltyFactor 경로를 쓴다(§7.6).
+    console.assert(
+      option !== UpgradeOption.ProjectileCount,
+      '[EnhancementLogic] factor()는 발사체 수에 쓰지 않는다 — projectileBonus를 사용',
+    );
     const indiv = curveAt(
       INDIVIDUAL_CURVE,
       this.getLevel(UpgradeTrack.Individual, spell.id, option),
@@ -183,6 +222,28 @@ export class EnhancementLogic {
     return Math.max(baseCooldown / this.cooldownFactor(spell), MIN_COOLDOWN_SEC);
   }
 
+  /**
+   * 발사체 수 강화 보너스 = 개별 레벨 + 분류 레벨 (가산, §7.6 — 곡선·전역 없음).
+   * 데미지/쿨다운과 달리 레벨당 +1 발사체이고 전역 트랙이 없다.
+   * @param spell 대상 마법 (개별 키=id, 분류 키=category)
+   */
+  projectileBonus(spell: ISpellData): number {
+    return (
+      this.getLevel(UpgradeTrack.Individual, spell.id, UpgradeOption.ProjectileCount) +
+      this.getLevel(UpgradeTrack.Category, spell.category, UpgradeOption.ProjectileCount)
+    );
+  }
+
+  /** 강화 반영 후 유효 발사체 수 = 기본 발사체 수 + 발사체 보너스. caster가 패턴 엔진에 넘긴다. */
+  effectiveProjectileCount(spell: ISpellData): number {
+    return spell.projectileCount + this.projectileBonus(spell);
+  }
+
+  /** 마법의 발사체당 데미지 페널티 배율 `×(1−r×증가수)` (§7.6). 기본 데미지에 곱한다. */
+  projectilePenaltyFactor(spell: ISpellData): number {
+    return penaltyFor(this.projectileBonus(spell));
+  }
+
   /** 전역(플레이어) 강화 보너스 값 (factor = 1 + 보너스). 미강화는 0. */
   globalBonus(option: UpgradeOption): number {
     return this._global.get(option) ?? 0;
@@ -212,6 +273,9 @@ export class EnhancementLogic {
         cooldownFactor,
         effCooldown,
         dps: effDamage / effCooldown,
+        projectileBonus: this.projectileBonus(spell),
+        projectilePenalty: this.projectilePenaltyFactor(spell),
+        effProjectileCount: this.effectiveProjectileCount(spell),
       };
     });
     return {
@@ -236,6 +300,10 @@ export class EnhancementLogic {
     for (const spell of ownedSpells) {
       for (const option of generalOptions(spell.category)) {
         if (this.getLevel(UpgradeTrack.Individual, spell.id, option) >= UPGRADE_CAP) continue;
+        // §8 게이트: 자기중심 AOE 마법(allowsProjectileCount=false)은 발사체 수 카드 제외.
+        if (option === UpgradeOption.ProjectileCount && spell.allowsProjectileCount === false) {
+          continue;
+        }
         cards.push({
           id: `upg_${spell.id}_${option}`,
           type: 'upgrade',

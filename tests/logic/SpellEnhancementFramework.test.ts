@@ -188,14 +188,14 @@ describe('EnhancementLogic.debugSnapshot — 디버그 로그용 수치 스냅�
 });
 
 describe('EnhancementLogic.buildUpgradeCards — 카드 동적 생성', () => {
-  it('보유 마법 × {damage,cooldown} 개별 카드 + fire/ice/lightning × {damage,cooldown} 분류 카드를 만든다', () => {
+  it('보유 마법 × {damage,cooldown,projectile_count} 개별 카드 + fire/ice/lightning × 3옵션 분류 카드를 만든다', () => {
     const e = new EnhancementLogic();
     const cards = e.buildUpgradeCards([fireball, iceMissile]);
-    // 개별 2마법 × 2옵션 = 4, 분류 3개 × 2옵션 = 6
+    // 개별 2마법 × 3옵션 = 6, 분류 3개 × 3옵션 = 9 (projectile_count 추가, fixture는 allowsProjectileCount 미지정=허용)
     const individual = cards.filter((c) => c.effect.upgrade?.track === UpgradeTrack.Individual);
     const category = cards.filter((c) => c.effect.upgrade?.track === UpgradeTrack.Category);
-    expect(individual).toHaveLength(4);
-    expect(category).toHaveLength(6);
+    expect(individual).toHaveLength(6);
+    expect(category).toHaveLength(9);
     expect(cards.every((c) => c.type === 'upgrade')).toBe(true);
   });
 

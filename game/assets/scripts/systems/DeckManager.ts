@@ -1,19 +1,10 @@
 import { _decorator, Component } from 'cc';
-import { DEV } from 'cc/env';
-import { type ICardData, type ISpellData, UpgradeOption, UpgradeTrack } from '../data/GameTypes';
+import { type ICardData, type ISpellData, UpgradeOption } from '../data/GameTypes';
 import { DeckLogic } from '../logic/DeckLogic';
 import { type EnhancementDebugSnapshot, EnhancementLogic } from '../logic/EnhancementLogic';
 import { DataManager } from './DataManager';
 
 const { ccclass } = _decorator;
-
-/**
- * [DEV QA 보조 · 임시] 마법 분류(category) 강화 카드를 드로우 풀에서 숨길지.
- * passive-effects 슬라이스 QA용 — 패시브 카드(2종)가 3장 드로우에 잘 뜨게 하려고 분류 카드(최대 6장)를
- * 임시로 제외한다. `cc/env` DEV와 함께 게이팅되므로 릴리스 빌드엔 영향 없음. 후속 편집 가능 단계에서
- * `false`로 복원한다. (순수 로직 EnhancementLogic은 불변 — 여기 cc 레이어에서만 표시 조정)
- */
-const HIDE_CATEGORY_UPGRADE_CARDS = true;
 
 /** 카드 풀 관리, 드로우, 강화 적용(플레이어 패시브 + per-spell/분류)을 담당하는 싱글톤 */
 @ccclass('DeckManager')
@@ -47,6 +38,16 @@ export class DeckManager extends Component {
     return this._enhancement.effectiveCooldown(spell, spell.cooldown);
   }
 
+  /** 강화 반영 후 유효 발사체 수 — 기본 발사체 수 + 개별·분류 발사체 보너스(전역 없음 §7.6). */
+  effectiveProjectileCount(spell: ISpellData): number {
+    return this._enhancement.effectiveProjectileCount(spell);
+  }
+
+  /** 발사체당 데미지 페널티 배율 `×(1−r×증가수)` — 기본 데미지에 damageFactor와 함께 곱한다(§7.6). */
+  projectilePenaltyFactor(spell: ISpellData): number {
+    return this._enhancement.projectilePenaltyFactor(spell);
+  }
+
   /** 디버그 로그용 강화 수치 스냅샷 (DEV 빌드의 카드 픽 로그에서 사용). */
   debugEnhancement(spells: ISpellData[]): EnhancementDebugSnapshot {
     return this._enhancement.debugSnapshot(spells);
@@ -75,15 +76,11 @@ export class DeckManager extends Component {
       ownedSpellIds,
       isFull,
     );
-    // 보유 마법·분류의 개별/분류 강화 카드를 합성해 풀에 더한다(레벨4·보조 제외는 EnhancementLogic이 처리).
+    // 보유 마법·분류의 개별/분류 강화 카드를 합성해 풀에 더한다(레벨4·보조·발사체 적격은 EnhancementLogic이 처리).
     const ownedSpells = ownedSpellIds
       .map((id) => DataManager.instance.getSpell(id))
       .filter((s): s is ISpellData => s !== null);
-    let upgradeCards = this._enhancement.buildUpgradeCards(ownedSpells);
-    // [DEV QA · 임시] 패시브 카드가 잘 뜨도록 분류 강화 카드를 드로우에서 제외(개별·마법추가·패시브는 유지).
-    if (DEV && HIDE_CATEGORY_UPGRADE_CARDS) {
-      upgradeCards = upgradeCards.filter((c) => c.effect.upgrade?.track !== UpgradeTrack.Category);
-    }
+    const upgradeCards = this._enhancement.buildUpgradeCards(ownedSpells);
     return this._logic.drawCards([...pool, ...upgradeCards], n);
   }
 

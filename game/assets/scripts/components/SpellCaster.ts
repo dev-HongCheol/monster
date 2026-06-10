@@ -103,11 +103,15 @@ export class SpellCaster extends Component {
       // per-spell/분류/전역 쿨다운 강화 반영(배율로 나눠 간격 단축 + 하한). 계산은 순수 로직에 위임.
       this._scheduler.consume(id, DeckManager.instance.effectiveCooldown(spell));
 
-      // 유효 발사체 수 = 기본값 (+ 향후 발사체 수 강화 보너스). 패턴 엔진이 부채꼴 형태를 결정.
-      const plan = buildFirePlan(spell, { aimX: aim.x, aimY: aim.y, count: spell.projectileCount });
-      const damageFactor = DeckManager.instance.damageFactor(spell);
+      // 유효 발사체 수 = 기본 + 개별·분류 발사체 보너스(§7.6). 패턴 엔진이 부채꼴 형태를 결정.
+      const count = DeckManager.instance.effectiveProjectileCount(spell);
+      const plan = buildFirePlan(spell, { aimX: aim.x, aimY: aim.y, count });
+      // 데미지 = per-spell/분류/전역 배율 × 발사체당 페널티(발사체 늘수록 발당 약화 §7.6).
+      const damageMult =
+        DeckManager.instance.damageFactor(spell) *
+        DeckManager.instance.projectilePenaltyFactor(spell);
       for (const shot of plan) {
-        this._spawnShot(shot, damageFactor, spell.category);
+        this._spawnShot(shot, damageMult, spell.category);
       }
     }
   }
@@ -135,10 +139,10 @@ export class SpellCaster extends Component {
   /**
    * ShotSpec 한 발을 발사체로 생성하고 발사한다.
    * @param shot 발사 사양 (방향 단위벡터·속도·기본 데미지·반경)
-   * @param damageFactor per-spell/분류 데미지 배율 (DeckManager) — 기본 데미지에 곱한다
+   * @param damageMult 기본 데미지에 곱할 배율 = per-spell/분류/전역 데미지 배율 × 발사체당 페널티(§7.6)
    * @param category 마법 분류 (발사체 색 틴트용)
    */
-  private _spawnShot(shot: ShotSpec, damageFactor: number, category: string): void {
+  private _spawnShot(shot: ShotSpec, damageMult: number, category: string): void {
     if (!this._bulletPool) return;
 
     // 풀에서 발사체를 꺼낸다(가용분 재사용 또는 신규 생성). 위치·색·init은 매 acquire마다
@@ -158,7 +162,7 @@ export class SpellCaster extends Component {
     projectile.init(
       new Vec3(shot.dirX, shot.dirY, 0),
       shot.speed,
-      shot.damage * damageFactor,
+      shot.damage * damageMult,
       shot.radius,
       this._releaseBullet,
     );

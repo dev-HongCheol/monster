@@ -139,6 +139,8 @@ export class CardSelectPanel extends Component {
         배율C: round(r.cooldownFactor, 2),
         CD: round(r.effCooldown, 2),
         DPS: Math.round(r.dps),
+        발수: r.effProjectileCount,
+        발배: round(r.projectilePenalty, 2),
       };
     }
     const pick = i18n ? this._resolveDesc(card) : card.id;
