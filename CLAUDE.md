@@ -9,7 +9,8 @@ docs/
 ├── planning/               # 기획 (게임 디자인, 컨셉, 로드맵)
 ├── design/                 # 디자인 (아트 디렉션, UI/UX, 에셋 파이프라인)
 ├── development/            # 개발 (아키텍처, 환경 설정)
-│   └── sessions/           # 개발 세션/의사결정 기록 (날짜-주제.md)
+│   ├── sessions/           # 개발 세션/의사결정 기록 (날짜-주제.md)
+│   └── troubleshooting/    # 운영/도구 이슈 + 복구 절차 (에러 발생 시 참조)
 ├── decisions/              # Architecture Decision Records (ADR, NNN-title.md)
 ├── qa/                     # QA (테스트 체크리스트, 버그 리포트)
 └── etc/                    # 미정리 초안 문서
@@ -61,11 +62,15 @@ docs/
 - `docs/development/sessions/` — 개발 세션 및 의사결정 기록 (맥락 파악 필요 시 참조)
 - `docs/decisions/` — ADR (설계 결정 확인 시 참조)
 - `docs/qa/` — QA 체크리스트 (구현·검증 단계에서 참조)
+- `docs/development/backlog.md` — **개발 백로그. 슬라이스를 가로지르는 차기 TODO의 단일 정본. 구현·테스트 중 떠오른 후속/이월/밸런싱 항목을 여기 한 곳에 모은다(흩뿌리지 않는다)**
+- `docs/development/troubleshooting/` — 워크플로우·도구·환경 운영 이슈와 복구 절차 (에러·이상 동작 발생 시 참조)
 
 지식 추가 기준:
 - 주요 기술/설계 결정 → `docs/decisions/NNN-title.md` ADR로 작성
 - 개발 세션 기록 → `docs/development/sessions/YYYY-MM-DD-topic.md`
+- 재발하는 운영/도구 이슈 + 복구 절차 → `docs/development/troubleshooting/<topic>.md` (세션 기록 아님 — 에러 발생 시 찾아보는 레퍼런스)
 - 새 기획/디자인 문서 → gstack 스킬로 정리 후 해당 폴더에 저장
+- **슬라이스 밖 차기 TODO**(구현·테스트 중 발견한 후속·이월·밸런싱·로버스트니스 항목) → `docs/development/backlog.md`에 추가한다. 각 슬라이스 `*-review-issues.md`·`*-followups.md`에 흩어 두지 말 것 — 그 출처 문서는 시점 기록으로 **보존**하고, 백로그가 **출처 역링크로 집약**한다. 항목이 한 슬라이스 분량으로 커지면 plan 문서로 승격하고 백로그엔 취소선+링크로 남긴다. 운영 규칙·테마 구분은 backlog.md 머리말 참조.
 
 ## Workflow
 
@@ -111,6 +116,7 @@ planning → qa-setup → implementation → verification → user-verification 
 
 #### 1단계: 계획 (사용자 주도)
 0. **브랜치 생성 + 상태 리셋:** `pnpm wf start <feature>` 실행 → `feat/<feature>` 브랜치를 main 기준으로 **생성·전환**(이미 있으면 전환)한 뒤 전체 초기화 + `phase: "planning"`. 이 시점부터 브랜치가 실재하므로 이후 모든 planning 커밋이 그 브랜치에 쌓인다(main 직접 커밋 방지). **계획 문서에 브랜치를 `(예정)`으로 적지 않는다 — 이미 생성됐으므로 `브랜치: feat/<feature>`로 확정 표기.**
+0-1. **백로그 확인(필수):** `docs/development/backlog.md`를 열어 이번 슬라이스의 테마/영향 범위에 해당하는 항목이 있는지 본다. 같은 영역의 후속·이월·로버스트니스 항목 중 **이번에 함께 처리하는 게 합리적인 것**을 골라 슬라이스 스코프에 포함하고, 계획 문서에 "이 슬라이스가 닫는 백로그 항목" 목록으로 명시한다. (구현 완료 후 6~9단계에서 해당 항목을 백로그 「승격됨/완료」로 옮긴다.)
 1. `/office-hours` — 요구사항 재구성 및 스코프 확인
 2. `/autoplan` — CEO+Eng 리뷰 → 사용자 승인
 2-1. **계획 문서 작성(필수):** 리뷰 결과를 `docs/development/sessions/<YYYY-MM-DD>-<feature>-plan.md`로 저장한다. 파일명에 `wf start`의 `<feature>` 슬러그가 포함되어야 한다(게이트가 파일명에서 이 슬러그를 찾는다). 내용·형식은 강제하지 않는다.
