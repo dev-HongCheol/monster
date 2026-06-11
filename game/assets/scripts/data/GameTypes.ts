@@ -34,9 +34,8 @@ export type SpellTier = 1 | 2 | 3 | 4;
 /**
  * 강화 옵션 5종 (기획 § 7.1) — JSON/카탈로그 문자열과 일치.
  *
- * 안정적 taxonomy로 5종 전부 정의하되, 이번 슬라이스는 `Damage`·`Cooldown`만 카드·적용에 배선한다.
- * `ProjectileCount`는 후속(projectile-count-upgrade), `Range`·`Duration`은 splash/AOE/DOT 효과
- * 레이어가 생기면 매트릭스·적용을 연결한다.
+ * 안정적 taxonomy로 5종 전부 정의한다. `Damage`·`Cooldown`·`ProjectileCount`가 카드·적용에 배선됨.
+ * `Range`·`Duration`은 splash/AOE/DOT 효과 레이어가 생기면 매트릭스·적용을 연결한다(후속).
  */
 export enum UpgradeOption {
   Damage = 'damage',
@@ -89,6 +88,11 @@ export interface ISpellData {
   pattern: SpellPattern;
   /** count>=2일 때 총 부채꼴 각도(deg). 생략 시 DEFAULT_SPREAD_ANGLE_DEG */
   spreadAngleDeg?: number;
+  /**
+   * 발사체 수 강화 허용 여부 (기획 §8). 자기중심 광역(인페르노·프로스트 노바)만 `false` —
+   * 부채꼴로 퍼질 방향이 없어 발사체 수가 의미 없다. 생략 시 허용(기본 true).
+   */
+  allowsProjectileCount?: boolean;
 }
 
 /** 강화 카드가 올릴 대상 — 트랙·옵션·대상 키(개별=spellId, 분류=category) (기획 § 6.1·§ 8) */

@@ -86,6 +86,10 @@
 
   "upgrade.damage": { "message": "데미지", "desc": "강화 옵션명 — 1발 피해량 ↑" },
   "upgrade.cooldown": { "message": "쿨다운", "desc": "강화 옵션명 — 자동 시전 간격 ↓" },
+  "upgrade.projectile_count": {
+    "message": "발사체 수",
+    "desc": "강화 옵션명 — 동시 발사 수 +1(발사체당 데미지 페널티)"
+  },
 
   "category.fire": { "message": "화염", "desc": "마법 분류명" },
   "category.ice": { "message": "얼음", "desc": "마법 분류명" },
