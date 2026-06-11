@@ -1,7 +1,7 @@
 import { type ISpellData, SpellPattern } from '../data/GameTypes';
 
 /** count>=2일 때 적용하는 기본 총 부채꼴 각도(deg). 마법별 spreadAngleDeg로 덮어쓸 수 있다. */
-export const DEFAULT_SPREAD_ANGLE_DEG = 30;
+export const DEFAULT_SPREAD_ANGLE_DEG = 10;
 
 /**
  * 한 발의 발사 사양 — cc 비의존(숫자만).

@@ -64,7 +64,7 @@ describe('buildFirePlan — directional', () => {
   });
 
   it('count=3 → 3발, 중앙은 aim, 외곽 2발은 ±(θ/2) 대칭', () => {
-    const theta = DEFAULT_SPREAD_ANGLE_DEG; // 30
+    const theta = DEFAULT_SPREAD_ANGLE_DEG; // 10
     const plan = buildFirePlan(spell(), { ...AIM, count: 3 });
     expect(plan).toHaveLength(3);
 
@@ -115,12 +115,16 @@ describe('buildFirePlan — directional', () => {
     }
   });
 
-  it('spreadAngleDeg 생략 시 기본값(30°)을 쓴다', () => {
+  it('spreadAngleDeg 생략 시 기본값(10°)을 쓴다', () => {
     const plan = buildFirePlan(spell({ spreadAngleDeg: undefined }), { ...AIM, count: 2 });
     const expectedOuter = Math.cos((DEFAULT_SPREAD_ANGLE_DEG / 2) * (Math.PI / 180));
     for (const shot of plan) {
       expect(dotWithAim(shot)).toBeCloseTo(expectedOuter, 5);
     }
+  });
+
+  it('기본 부채꼴 각도는 10°다 (튜닝: 기존 30°에서 축소)', () => {
+    expect(DEFAULT_SPREAD_ANGLE_DEG).toBe(10);
   });
 });
 
