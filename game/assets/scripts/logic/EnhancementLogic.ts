@@ -63,7 +63,7 @@ const GENERAL_OPTION_CATEGORIES: SpellCategory[] = [
  * 데미지·쿨다운은 모든 비-보조 공격 마법이 ✅. 발사체 수는 자기중심 AOE만 ❌(§8 게이트).
  * 범위·지속시간은 splash/AOE/DOT 레이어 후속.
  */
-const SLICE_OPTIONS: UpgradeOption[] = [
+export const SLICE_OPTIONS: UpgradeOption[] = [
   UpgradeOption.Damage,
   UpgradeOption.Cooldown,
   UpgradeOption.ProjectileCount,

@@ -1,5 +1,5 @@
 {
-  "feature": "passive-effects",
+  "feature": "i18n-key-guard",
   "phase": "user-verification",
   "test_skipped": false,
   "test_skip_reason": null,
