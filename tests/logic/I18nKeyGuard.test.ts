@@ -27,19 +27,35 @@ function* walkTs(dir: string): Generator<string> {
   }
 }
 
+/** 블록·라인 주석을 제거한다 — 주석 속 키 모양 문자열이 가짜 used-literal로 잡히는 것을 막는다. `://`(URL)의 //는 보존. */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+}
+
+// t( 앞 문자가 영숫자가 아닐 때만 — 번역 함수·그 래퍼(`i18n.t(` / `this._t(`)는 잡고
+// t로 끝나는 다른 식별자(`emit(` / `assert(` / `getComponent(`)의 문자열 인자는 배제한다.
+const CALL_RE = /(?<![A-Za-z0-9])_?t\(['"]([^'"]+)/g;
+const KEY_RE = /(?:name|desc)Key:\s*['"]([^'"]+)/g;
+
 /**
- * `game/assets/scripts/**\/*.ts`에서 정적 리터럴 키를 수집한다(가드 design §3.2).
- * 두 출처: `t('...')` 호출과 `nameKey`/`descKey: '...'` 객체 속성. 동적 패밀리 키(template literal)는
- * 스캔하지 않고 데이터 도메인 규칙으로 별도 커버하므로 여기서 빠져도 정상이다.
+ * 한 .ts 소스 문자열에서 정적 리터럴 키를 뽑는다(순수 — 디스크 접근 없음).
+ * 두 출처: 번역 함수 호출의 첫 문자열 인자 + nameKey/descKey 속성의 문자열 리터럴.
+ * 동적 패밀리 키(template literal)는 일부러 스캔하지 않고 데이터 도메인 규칙으로 별도 커버한다.
+ * 견고성(코드리뷰 반영): 주석을 먼저 제거하고 호출 정규식을 영숫자 경계로 앵커한다.
  */
+function extractLiteralsFromSource(src: string): string[] {
+  const clean = stripComments(src);
+  const out = new Set<string>();
+  for (const m of clean.matchAll(CALL_RE)) out.add(m[1]);
+  for (const m of clean.matchAll(KEY_RE)) out.add(m[1]);
+  return [...out];
+}
+
+/** `game/assets/scripts` 아래 .ts 전부를 읽어 정적 리터럴 키를 모은다(가드 design §3.2). */
 function scanUsedLiterals(dir: string): string[] {
   const literals = new Set<string>();
-  const T_RE = /t\(['"]([^'"]+)/g;
-  const KEY_RE = /(?:name|desc)Key:\s*['"]([^'"]+)/g;
   for (const file of walkTs(dir)) {
-    const src = fs.readFileSync(file, 'utf8');
-    for (const m of src.matchAll(T_RE)) literals.add(m[1]);
-    for (const m of src.matchAll(KEY_RE)) literals.add(m[1]);
+    for (const key of extractLiteralsFromSource(fs.readFileSync(file, 'utf8'))) literals.add(key);
   }
   return [...literals];
 }
@@ -154,6 +170,33 @@ describe('findCatalogIssues — fixture', () => {
     expect(issues.map((i) => i.key)).not.toContain('upgrade.range');
     expect(issues.map((i) => i.key)).not.toContain('upgrade.duration');
     expect(issues).toEqual([]);
+  });
+});
+
+describe('소스 스캔 견고성 (extractLiteralsFromSource)', () => {
+  it('번역 함수 호출과 그 래퍼의 첫 인자를 잡는다', () => {
+    const src = `i18n.t('hud.hp', { cur: 1 }); this._t("hud.wave"); I18n.instance.t('result.victory');`;
+    expect(extractLiteralsFromSource(src).sort()).toEqual(['hud.hp', 'hud.wave', 'result.victory']);
+  });
+
+  it('t로 끝나는 다른 식별자(emit·assert·getComponent)는 키로 오인하지 않는다', () => {
+    const src = `node.emit('death'); console.assert('msg'); this.getComponent('cc.Label');`;
+    expect(extractLiteralsFromSource(src)).toEqual([]);
+  });
+
+  it('주석 속 키 모양 문자열은 스캔하지 않는다(라인·블록 주석)', () => {
+    const src = [
+      "// 예시: t('comment.line') 는 잡히면 안 됨",
+      '/* descKey: "comment.block" 도 마찬가지 */',
+      "i18n.t('real.key');",
+    ].join('\n');
+    expect(extractLiteralsFromSource(src)).toEqual(['real.key']);
+  });
+
+  it('nameKey/descKey 문자열 리터럴을 잡되 template literal은 잡지 않는다', () => {
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: ${id}는 스캔 대상 소스의 template literal 원문을 담은 테스트 입력이다
+    const src = "descKey: 'card.add_magic', nameKey: `card.${id}.name`";
+    expect(extractLiteralsFromSource(src)).toEqual(['card.add_magic']);
   });
 });
 

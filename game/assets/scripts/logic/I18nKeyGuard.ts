@@ -37,14 +37,19 @@ export interface I18nKeyGuardInput {
 
 const TOKEN_RE = /\{(\w+)\}/g;
 
-/** 카탈로그 엔트리에서 message 문자열을 뽑는다 (`I18nLogic`과 동일 규칙: 객체면 `.message`, 문자열이면 그대로). */
+/**
+ * 카탈로그 엔트리에서 message 문자열을 뽑는다 — `I18nLogic._extract`와 동일 규칙:
+ * 객체면 `.message`, 문자열이면 그대로, **빈 문자열은 미번역으로 보고 미스(undefined)** 처리.
+ * (빈 문자열을 살려 두면 빈 ko 소스가 가짜 paramMismatch를 만들 수 있어 런타임 규칙과 맞춘다.)
+ */
 function extractMessage(entry: unknown): string | undefined {
-  if (typeof entry === 'string') return entry;
-  if (entry !== null && typeof entry === 'object' && 'message' in entry) {
-    const message = (entry as { message: unknown }).message;
-    return typeof message === 'string' ? message : undefined;
-  }
-  return undefined;
+  const raw =
+    typeof entry === 'string'
+      ? entry
+      : entry !== null && typeof entry === 'object' && 'message' in entry
+        ? (entry as { message: unknown }).message
+        : undefined;
+  return typeof raw === 'string' && raw !== '' ? raw : undefined;
 }
 
 /** 메시지의 `{token}` 이름 집합을 추출한다 (`I18nLogic`의 치환 토큰 규칙과 동일). */
@@ -54,7 +59,11 @@ function extractTokens(message: string): Set<string> {
   return tokens;
 }
 
-/** 코드·데이터가 참조하는 동적 패밀리 키 전체를 도메인(데이터/enum)으로부터 조립한다. */
+/**
+ * 코드·데이터가 참조하는 동적 패밀리 키 전체를 도메인(데이터/enum)으로부터 조립한다.
+ * 새 동적 키 패밀리(예: 적 이름 키)를 코드에 도입하면 여기에 도메인 한 줄을 추가해야 가드가 정합을 본다.
+ * `card.<id>`는 정적 카드가 name·desc 키를 **둘 다** 갖는다는 전제다(이름만 있는 카드가 생기면 desc가 missing으로 잡힌다).
+ */
 function buildFamilyKeys(input: I18nKeyGuardInput): Set<string> {
   const keys = new Set<string>();
   for (const id of input.spellIds) keys.add(`spell.${id}.name`);
