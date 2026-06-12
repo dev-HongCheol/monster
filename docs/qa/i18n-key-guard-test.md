@@ -30,7 +30,7 @@
 
 ## 4. 자동 테스트로 검증 (순수 로직 — `tests/logic/I18nKeyGuard.test.ts`)
 
-> **GREEN 통과:** 피처 테스트 9/9 + 전체 스위트 164/164. 통과 커밋 SHA는 커밋 후 기재.
+> **GREEN 통과:** 피처 테스트 13/13(코드리뷰 견고성 테스트 +4) + 전체 스위트 168/168. 통과 커밋 `75228b3`.
 
 ### fixture 단위 테스트 (인위 입력으로 이슈 4종 + allowlist 검증)
 - [x] 정합한 입력은 이슈 0건을 반환한다.
@@ -40,6 +40,12 @@
 - [x] **enOrphan**: en에만 있고 ko에 없는 키를 플래그한다(ko 폴백 불가 = en 오타).
 - [x] **paramMismatch**: en이 ko에 없는 `{token}`을 쓰면 플래그한다(치환 누락). 반대로 en 토큰이 ko의 부분집합이면 정상.
 - [x] **upgrade 도메인 갭**: 도메인을 `SLICE_OPTIONS`(damage·cooldown·projectile_count 3종)로 한정하므로 `upgrade.range`/`upgrade.duration` 부재는 어떤 이슈에도 잡히지 않는다(의도된 갭 = 비-이슈).
+
+### 소스 스캔 견고성 (코드리뷰 I1 반영 — `extractLiteralsFromSource`)
+- [x] 번역 함수 호출과 그 래퍼(`i18n.t(`/`this._t(`/`I18n.instance.t(`)의 첫 문자열 인자를 잡는다.
+- [x] `t`로 끝나는 다른 식별자(`emit('x')`/`assert('x')`/`getComponent('x')`)의 인자는 키로 오인하지 않는다.
+- [x] 라인·블록 주석 속 키 모양 문자열은 스캔하지 않는다(주석 오염 방지).
+- [x] `nameKey`/`descKey` 문자열 리터럴은 잡되 template literal(백틱)은 잡지 않는다.
 
 ### 실제 카탈로그 게이트 (영구 CI 게이트)
 - [x] 진짜 `ko.json`/`en.json`/`spells.json`/`cards.json`을 읽고 `game/assets/scripts/**/*.ts`를 스캔해 `usedLiterals`를 모은 뒤 `findCatalogIssues`로 **이슈 0건**을 단언한다. 이후 누락·고아·불일치 회귀가 들어오면 RED.
