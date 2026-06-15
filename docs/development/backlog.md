@@ -35,7 +35,7 @@
 
 | # | 태그 | 항목 | 맥락 · Why | 출처 | 우선 |
 |---|------|------|-----------|------|------|
-| B1 | ⚖️ | 발사체당 데미지 페널티 비율 `r`(현재 0.1 초안) 확정 | 기획 §7.6 초안값. 다발=군집 이득/단일 손해 트레이드오프 곡선의 강도를 좌우. | `../qa/projectile-count-review-issues.md`, `EnhancementLogic.ts:32-34` | 보류(시점) |
+| B1 | ⚖️ | 발사체당 데미지 페널티 비율 `r`(현재 0.1 초안) 확정 + **선형→곱연산 전환 검토** | 기획 §7.6 초안값. 다발=군집 이득/단일 손해 트레이드오프 곡선의 강도를 좌우. 현재 식 `(1 − r × 증가수)`는 선형이라 cap 부근에서 0/음수로 떨어져 하한 클램프에 의존 → 20 Minutes Till Dawn식 곱연산 `(1 − r)^증가수`(음수 없이 부드럽게 감쇠)로 전환할지 함께 확정. | `../qa/projectile-count-review-issues.md`, `../planning/magic-system-mage.md` §7.6, `EnhancementLogic.ts:32-34` | 보류(시점) |
 | B2 | ⚖️ | 전역 강화 트랙 cap 검토 | 개별·분류 곡선은 cap 4인데 전역(`addGlobal`)은 무한 누적 → "개별>분류>전역" 위계가 1픽 기준은 보장돼도 다수 누적 시 점근적으로 깨질 수 있음. | `../qa/spell-enhancement-framework-review-issues.md` #4 | 보류(시점) |
 | B3 | ⚖️ | 강화 곡선·전역 수치 placeholder 확정 | `INDIVIDUAL_CURVE`/`CATEGORY_CURVE`/전역 ±5% 모두 임시값(설계 §10 TBD). | `../qa/spell-enhancement-framework-review-issues.md` #5 | 보류(시점) |
 | B4 | ⚖️ | `spreadAngleDeg` 기본 30° 튜닝 | 총 부채꼴 각도라 발사체가 많아도 외곽 ±15° 고정(촘촘). | `../qa/spell-pattern-engine-review-issues.md` | 보류(시점) |
