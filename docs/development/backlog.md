@@ -40,7 +40,7 @@
 | B3 | ⚖️ | 강화 곡선·전역 수치 placeholder 확정 | `INDIVIDUAL_CURVE`/`CATEGORY_CURVE`/전역 ±5% 모두 임시값(설계 §10 TBD). | `../qa/spell-enhancement-framework-review-issues.md` #5 | 보류(시점) |
 | B4 | ⚖️ | `spreadAngleDeg` 기본 30° 튜닝 | 총 부채꼴 각도라 발사체가 많아도 외곽 ±15° 고정(촘촘). | `../qa/spell-pattern-engine-review-issues.md` | 보류(시점) |
 | B5 | ⚖️ | 마법 카드 추첨 가중치 / 웨이브 등급 게이팅 | 현재 합성 카드가 base 카드와 평면 풀에서 균등 무작위. 마법 종수 늘수록 특정 강화 카드 확률 희석. 기획 §6.2 가중치 추첨 미구현. | `../qa/magic-add-card-review-issues.md` #1, `sessions/2026-06-03-spell-enhancement-framework-plan.md` §43 | 중 |
-| B6 | ⚖️ | 무제한 풀(`maxFree=0`)·무상한 `maxEnemies` 메모리 한도 | 풀링이 피크 할당은 캡하지만 수렴 상한은 밸런싱 과제. | `../qa/enemy-xp-pooling-review-issues.md` M-3 | 보류(시점) |
+| B6 | ⚖️ | 무제한 풀(`maxFree=0`)·무상한 `maxEnemies` 메모리 한도 | 풀링이 피크 할당은 캡하지만 수렴 상한은 밸런싱 과제. **→ 대량 적 성능 슬라이스 G1에 흡수**(상한 제거 시 풀 수렴점 재설계 필요). | `../qa/enemy-xp-pooling-review-issues.md` M-3, [G1] | 보류(→G1) |
 | B7 | ⚖️ | 레벨업 재개 시 웨이브 타이머 풀 리셋 재검토 | `resumeFromLevelUp`이 `_waveTimer`를 풀 리셋 → 레벨업 잦으면 웨이브가 안 넘어갈 수 있음. 네이밍만 정리하고 행동 미변경 상태(2026-06-02 결정). 웨이브 난이도 곡선 설계 시 재검토. | `sessions/2026-06-01-magic-followups.md` §2 | 중 |
 
 ---
@@ -85,6 +85,18 @@
 | F8 | 🐛 | 카드 설명 라벨 텍스트 잘림 — 긴 설명이 양끝부터 잘려 다른 카드로 오인 | `CardDescLabel_0/1/2`가 너비 150·`overflow=CLAMP`·중앙정렬·`wrapText=false`. 예: `"파이어볼 발사체 수 +1레벨"` → 화면엔 `"이어볼 발사체 수 +1레"`로 잘려 **아이스볼 카드로 오인**. 발사체 로직·드로우는 정상(순수 표시 버그). 수정 방향(택1): 라벨 `overflow=SHRINK` / `wrapText`+`RESIZE_HEIGHT` / 라벨·카드 너비 확대. (증거 스크린샷은 미커밋) | projectile-count 7단계 인게임 테스트 (2026-06-11) | 중 |
 | F9 | 🔧 | 씬 카메라 크로스머신 churn — MacBook 작업 / Windows 테스트 시 `main.scene` Camera 노드 `_lpos.y`·`_orthoHeight`가 재계산돼 무관 diff 발생 | 장비별 화면/해상도 차이로 에디터가 카메라를 재fit→재직렬화. 매 PR 테스트마다 반복. 커밋 전 `git diff *.scene`로 거르거나, 카메라 fit 정책/고정값으로 안정화 검토. | projectile-count 테스트 중 확인 (2026-06-11) | 낮음 |
 | F10 | 🔧 | `workflow-state.json` 크로스머신 동기화 정책 결정 | 전이 미커밋→타 장비 stale(겪음) / 전이 커밋→main 오염·머지 충돌·락 상속(반대). 추적 유지+핸드오프 시점만 커밋(권장) vs `.gitignore` 제외 중 택해 ADR 004에 반영. | `troubleshooting/workflow-state-cross-machine.md`, ADR 004 | 중 |
+
+---
+
+## G. 성능 · 스케일 (대량 적 — 동시 적 수 상한 제거의 전제)
+
+> 동시 적 수 상한(`maxEnemies`)은 설계 문서(`enemy-system.md` §8)에 없는 비공식 구현 스로틀이고, 지금 난이도 조절과 성능 안전망 두 역할을 겸하고 있다(2026-06-16 확인). 상한을 없애려면 그 두 역할을 의도적으로 대체해야 한다 — 아래 G1이 그 묶음이다. "수백 마리 적도 프레임 드랍 없이"가 목표(사용자 우선순위).
+
+| # | 태그 | 항목 | 맥락 · Why | 출처 | 우선 |
+|---|------|------|-----------|------|------|
+| G1 | 🔧📐 | **동시 적 수 상한 제거 + 대량 적 성능 슬라이스** — (a) `maxEnemies` 캡 제거 + 의도적 스폰 속도 곡선으로 난이도 대체, (b) 공간 그리드 순수 모듈(`logic/SpatialGrid.ts`)로 충돌·최근접·AoE·체인·빔 질의를 O(p×n)→~O(p+n)로, (c) 핫패스 할당 제거(스크래치 Vec3·발사체 `[...enemies]` 복사 제거·제곱거리·`unregisterEnemy` swap-remove·Color 캐시[F6 흡수]), (d) 적/발사체 스프라이트 아틀라스 배칭(드로우콜), (e) 풀 idle 보관 한도/제자리 리셋(B6 흡수) | 현재 전수 비교(all-pairs) 구조라 ~100마리에서 흔들리고 300+에서 깨짐. 병목 순서: 할당/GC > `Projectile._checkEnemyHit` O(p×n)+배열복사 > 드로우콜 > `GameManager.unregisterEnemy` O(n) splice. 그리드 + 할당 위생 + 배칭으로 수백~1000마리 60fps 달성 가능(이 장르 표준 기법). 토대 우호적(순수 로직 분리·풀링 기존). **마법 효과 타겟팅은 전부 반경/라인 질의라 그리드가 모든 효과 슬라이스에 공유 이득.** 적 발사체(미래)는 대상이 플레이어 1명이라 단일 대상 O(e)로 쌈 — 다대다는 그리드가 이미 커버. | `sessions/2026-06-16-magic-explosion-plan.md` §3(그리드-레디 노트), `EnemySpawner.ts:69-70`, `Projectile.ts:68`, `GameManager.ts:90`, `EnemyController.ts:212`, [B6]·[F6]·[F4] 흡수 | 높음 |
+
+> **S1과의 접점:** S1(`magic-explosion`)의 `selectExplosionHits`는 후보 적 목록을 인자로 받게 설계해, 지금은 전체 목록·나중엔 그리드 질의 결과를 같은 인터페이스로 넘긴다(재작업 없이 그리드-레디). G1 착수 전까진 폭발 테스트용으로 인스펙터에서 `maxEnemies`만 임시로 올린다(비커밋).
 
 ---
 
