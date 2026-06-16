@@ -37,6 +37,7 @@
   "upgrade.damage": "Damage",
   "upgrade.cooldown": "Cooldown",
   "upgrade.projectile_count": "Projectiles",
+  "upgrade.range": "Range",
 
   "category.fire": "Fire",
   "category.ice": "Ice",

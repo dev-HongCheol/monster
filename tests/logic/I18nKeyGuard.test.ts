@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { SpellCategory } from '../../game/assets/scripts/data/GameTypes';
-import { SLICE_OPTIONS } from '../../game/assets/scripts/logic/EnhancementLogic';
+import { CARD_LABEL_OPTIONS } from '../../game/assets/scripts/logic/EnhancementLogic';
 import {
   findCatalogIssues,
   type I18nKeyGuardInput,
@@ -215,7 +215,7 @@ describe('findCatalogIssues — 실제 카탈로그 게이트 (영구 CI 게이�
       spellIds: spells.map((s) => s.id),
       cardIds: cards.map((c) => c.id),
       categories: Object.values(SpellCategory),
-      options: SLICE_OPTIONS,
+      options: CARD_LABEL_OPTIONS,
       sceneKeyPrefixes: ['menu.', 'result.', 'gameover.'],
     });
 

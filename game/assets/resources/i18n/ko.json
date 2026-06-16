@@ -90,6 +90,7 @@
     "message": "발사체 수",
     "desc": "강화 옵션명 — 동시 발사 수 +1(발사체당 데미지 페널티)"
   },
+  "upgrade.range": { "message": "범위", "desc": "강화 옵션명 — 폭발·범위 반경 ↑" },
 
   "category.fire": { "message": "화염", "desc": "마법 분류명" },
   "category.ice": { "message": "얼음", "desc": "마법 분류명" },

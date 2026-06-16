@@ -1,5 +1,5 @@
 import { _decorator, CCString, Color, Component, Node, Prefab, Sprite, Vec3 } from 'cc';
-import { GameState } from '../data/GameTypes';
+import { GameState, type ISpellData } from '../data/GameTypes';
 import { FireSchedulerLogic } from '../logic/FireSchedulerLogic';
 import { LoadoutLogic } from '../logic/LoadoutLogic';
 import { buildFirePlan, type ShotSpec } from '../logic/SpellPatternLogic';
@@ -8,9 +8,14 @@ import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
 import { PoolManager } from './PoolManager';
-import { Projectile } from './Projectile';
+import { Projectile, type ProjectileExplosion } from './Projectile';
 
 const { ccclass, property } = _decorator;
+
+/** 폭발 VFX 표시 시간 (sec) — 이 시간 뒤 풀로 반환. */
+const EXPLOSION_VFX_DURATION = 0.25;
+/** 폭발 VFX 기준 반경 — 이 반경에서 스케일 1. 유효 반경에 비례해 VFX를 키운다(범위 강화 시 커짐). */
+const EXPLOSION_VFX_BASE_RADIUS = 70;
 
 /**
  * 로드아웃(보유 마법)을 들고 보유 마법 전부를 각자 쿨다운으로 자동 발사하는 컴포넌트.
@@ -31,15 +36,28 @@ export class SpellCaster extends Component {
   @property(Node) bulletParent: Node | null = null;
   /** 시작 시 로드아웃에 채울 마법 id 목록 (spells.json) */
   @property({ type: [CCString] }) startingSpellIds: string[] = ['fireball'];
+  /** 폭발 VFX 프리팹 (인스펙터에서 연결 — 폭발형 마법 명중 시 표시). 미연결이면 VFX 생략. */
+  @property(Prefab) explosionVfxPrefab: Prefab | null = null;
 
   private readonly _loadout = new LoadoutLogic();
   private readonly _scheduler = new FireSchedulerLogic();
   private _dataReady = false;
   /** 발사체 재사용 풀 (onLoad에서 prefab/parent로 생성). */
   private _bulletPool: PoolManager | null = null;
+  /** 폭발 VFX 재사용 풀 (onLoad에서 prefab/parent로 생성). prefab 미연결이면 null(VFX 생략). */
+  private _vfxPool: PoolManager | null = null;
   /** 발사체 반환 콜백 — 매 발사마다 closure를 새로 만들지 않도록 1회 바인딩해 재사용. */
   private readonly _releaseBullet = (node: Node): void => {
     this._bulletPool?.release(node);
+  };
+  /** 폭발 VFX를 명중 지점에 띄우는 콜백 — 발사체에 1회 바인딩해 재사용. prefab 미연결이면 no-op. */
+  private readonly _spawnExplosionVfx = (x: number, y: number, radius: number): void => {
+    if (!this._vfxPool) return;
+    const vfx = this._vfxPool.acquire();
+    vfx.setPosition(x, y, 0);
+    const s = radius / EXPLOSION_VFX_BASE_RADIUS;
+    vfx.setScale(s, s, 1);
+    this.scheduleOnce(() => this._vfxPool?.release(vfx), EXPLOSION_VFX_DURATION);
   };
 
   /** 보유 마법 로드아웃 (후속 슬라이스의 카드 시스템 연동용) */
@@ -53,6 +71,10 @@ export class SpellCaster extends Component {
       this._bulletPool = new PoolManager(this.bulletPrefab, this.bulletParent);
     } else {
       console.error('[SpellCaster] bulletPrefab or bulletParent not assigned — attack disabled');
+    }
+    // 폭발 VFX 풀은 선택 — 미연결이면 폭발 피해는 그대로 동작하고 VFX만 생략한다.
+    if (this.explosionVfxPrefab && this.bulletParent) {
+      this._vfxPool = new PoolManager(this.explosionVfxPrefab, this.bulletParent);
     }
   }
 
@@ -110,10 +132,27 @@ export class SpellCaster extends Component {
       const damageMult =
         DeckManager.instance.damageFactor(spell) *
         DeckManager.instance.projectilePenaltyFactor(spell);
+      // 폭발형이면 이번 시전의 dedup 공유 집합 + 유효 반경을 만들어 모든 발사체가 공유한다(§10.2·§10.3).
+      const explosion = this._buildExplosion(spell);
       for (const shot of plan) {
-        this._spawnShot(shot, damageMult, spell.category);
+        this._spawnShot(shot, damageMult, spell.category, explosion);
       }
     }
+  }
+
+  /**
+   * 폭발형 마법이면 이번 시전의 폭발 설정을 만든다 (단일 명중 마법이면 null).
+   * 시전 단위 dedup 집합은 시전마다 새로 만들어 그 시전의 모든 발사체가 공유한다(§10.2).
+   * 유효 폭발 반경 = 기본 반경 × 범위 강화 배율(§10.3 A3).
+   * @param spell 발사 중인 마법
+   */
+  private _buildExplosion(spell: ISpellData): ProjectileExplosion | null {
+    if (spell.hitEffect !== 'explosion' || spell.explosionRadius === undefined) return null;
+    return {
+      radius: spell.explosionRadius * DeckManager.instance.rangeFactor(spell),
+      hitSet: new Set<number>(),
+      onVfx: this._spawnExplosionVfx,
+    };
   }
 
   /** 활성 적 중 가장 가까운 적 노드를 반환한다. 없으면 null. */
@@ -141,8 +180,14 @@ export class SpellCaster extends Component {
    * @param shot 발사 사양 (방향 단위벡터·속도·기본 데미지·반경)
    * @param damageMult 기본 데미지에 곱할 배율 = per-spell/분류/전역 데미지 배율 × 발사체당 페널티(§7.6)
    * @param category 마법 분류 (발사체 색 틴트용)
+   * @param explosion 명중 시 폭발 설정 — null이면 단일 명중
    */
-  private _spawnShot(shot: ShotSpec, damageMult: number, category: string): void {
+  private _spawnShot(
+    shot: ShotSpec,
+    damageMult: number,
+    category: string,
+    explosion: ProjectileExplosion | null,
+  ): void {
     if (!this._bulletPool) return;
 
     // 풀에서 발사체를 꺼낸다(가용분 재사용 또는 신규 생성). 위치·색·init은 매 acquire마다
@@ -165,6 +210,7 @@ export class SpellCaster extends Component {
       shot.damage * damageMult,
       shot.radius,
       this._releaseBullet,
+      explosion,
     );
   }
 }

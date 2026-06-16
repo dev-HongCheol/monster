@@ -40,8 +40,9 @@
 | B3 | ⚖️ | 강화 곡선·전역 수치 placeholder 확정 | `INDIVIDUAL_CURVE`/`CATEGORY_CURVE`/전역 ±5% 모두 임시값(설계 §10 TBD). | `../qa/spell-enhancement-framework-review-issues.md` #5 | 보류(시점) |
 | B4 | ⚖️ | `spreadAngleDeg` 기본 30° 튜닝 | 총 부채꼴 각도라 발사체가 많아도 외곽 ±15° 고정(촘촘). | `../qa/spell-pattern-engine-review-issues.md` | 보류(시점) |
 | B5 | ⚖️ | 마법 카드 추첨 가중치 / 웨이브 등급 게이팅 | 현재 합성 카드가 base 카드와 평면 풀에서 균등 무작위. 마법 종수 늘수록 특정 강화 카드 확률 희석. 기획 §6.2 가중치 추첨 미구현. | `../qa/magic-add-card-review-issues.md` #1, `sessions/2026-06-03-spell-enhancement-framework-plan.md` §43 | 중 |
-| B6 | ⚖️ | 무제한 풀(`maxFree=0`)·무상한 `maxEnemies` 메모리 한도 | 풀링이 피크 할당은 캡하지만 수렴 상한은 밸런싱 과제. | `../qa/enemy-xp-pooling-review-issues.md` M-3 | 보류(시점) |
+| B6 | ⚖️ | 무제한 풀(`maxFree=0`)·무상한 `maxEnemies` 메모리 한도 | 풀링이 피크 할당은 캡하지만 수렴 상한은 밸런싱 과제. **→ 대량 적 성능 슬라이스 G1에 흡수**(상한 제거 시 풀 수렴점 재설계 필요). | `../qa/enemy-xp-pooling-review-issues.md` M-3, [G1] | 보류(→G1) |
 | B7 | ⚖️ | 레벨업 재개 시 웨이브 타이머 풀 리셋 재검토 | `resumeFromLevelUp`이 `_waveTimer`를 풀 리셋 → 레벨업 잦으면 웨이브가 안 넘어갈 수 있음. 네이밍만 정리하고 행동 미변경 상태(2026-06-02 결정). 웨이브 난이도 곡선 설계 시 재검토. | `sessions/2026-06-01-magic-followups.md` §2 | 중 |
+| B8 | ⚖️ | 발사체 수 강화 × 폭발 dedup 상호작용 — 폭발형은 "커버리지만" 이득 | 폭발 발사체도 발사체당 페널티가 곱해진 데미지를 든다. dedup이 군집 내 한 적을 시전당 1회로 캡하므로, 이미 한 폭발로 덮인 촘촘한 군집에선 발사체 수 강화가 발당 데미지를 낮추기만 한다(누적 없음 — 의도된 동작). 단일 명중 마법과 다른 트레이드오프 곡선이라 발사체 수 페널티 `r` 확정(B1) 시 함께 의식. | `../qa/magic-explosion-review-issues.md` #3 | 보류(시점) |
 
 ---
 
@@ -85,6 +86,33 @@
 | F8 | 🐛 | 카드 설명 라벨 텍스트 잘림 — 긴 설명이 양끝부터 잘려 다른 카드로 오인 | `CardDescLabel_0/1/2`가 너비 150·`overflow=CLAMP`·중앙정렬·`wrapText=false`. 예: `"파이어볼 발사체 수 +1레벨"` → 화면엔 `"이어볼 발사체 수 +1레"`로 잘려 **아이스볼 카드로 오인**. 발사체 로직·드로우는 정상(순수 표시 버그). 수정 방향(택1): 라벨 `overflow=SHRINK` / `wrapText`+`RESIZE_HEIGHT` / 라벨·카드 너비 확대. (증거 스크린샷은 미커밋) | projectile-count 7단계 인게임 테스트 (2026-06-11) | 중 |
 | F9 | 🔧 | 씬 카메라 크로스머신 churn — MacBook 작업 / Windows 테스트 시 `main.scene` Camera 노드 `_lpos.y`·`_orthoHeight`가 재계산돼 무관 diff 발생 | 장비별 화면/해상도 차이로 에디터가 카메라를 재fit→재직렬화. 매 PR 테스트마다 반복. 커밋 전 `git diff *.scene`로 거르거나, 카메라 fit 정책/고정값으로 안정화 검토. | projectile-count 테스트 중 확인 (2026-06-11) | 낮음 |
 | F10 | 🔧 | `workflow-state.json` 크로스머신 동기화 정책 결정 | 전이 미커밋→타 장비 stale(겪음) / 전이 커밋→main 오염·머지 충돌·락 상속(반대). 추적 유지+핸드오프 시점만 커밋(권장) vs `.gitignore` 제외 중 택해 ADR 004에 반영. | `troubleshooting/workflow-state-cross-machine.md`, ADR 004 | 중 |
+| F11 | ♻️ | `Projectile._despawn`에서 `_explosion = null`로 공유 dedup 집합 즉시 해제 | 풀 반환된 발사체가 다음 `init`까지 이전 시전의 `ProjectileExplosion`(및 `hitSet`) 참조를 보유. 풀 크기로 유계·비활성 노드는 update 안 돌아 무해. 한 줄 정리. | `../qa/magic-explosion-review-issues.md` #2 | 낮음 |
+| F12 | 📐 | 범위 카드 게이트 술어 — `explosionRadius` 보유 vs `hitEffect='explosion'`까지 요구 | `isRangeCapable`은 `explosionRadius` 보유만 본다(계획 D5·미래 반경형 효과 호환). `explosionRadius`만 있고 `hitEffect`가 explosion이 아닌 마법을 작성하면 아무것도 안 키우는 "죽은" 카드가 가능(현재 미발현). 둘째 폭발/반경형 마법을 추가할 때 "explosionRadius ⇒ hitEffect explosion" 불변식을 데이터 검증(D2)으로 강제할지 함께 결정. | `../qa/magic-explosion-review-issues.md` #1 | 낮음 |
+| F13 | 🎨 | 폭발 VFX 기준 반경(`EXPLOSION_VFX_BASE_RADIUS=70`) 마법 데이터 커플링 | VFX 스케일 = `radius/70`이 파이어볼 기본 반경과 중복. 기본 반경이 다른 미래 폭발 마법은 `rangeFactor=1`에서도 비-1 스케일로 렌더. 기본값을 마법에서 유도하거나 커플링 문서화. | `../qa/magic-explosion-review-issues.md` #4 | 낮음 |
+
+---
+
+## G. 성능 · 스케일 (대량 적 — 동시 적 수 상한 제거의 전제)
+
+> 동시 적 수 상한(`maxEnemies`)은 설계 문서(`enemy-system.md` §8)에 없는 비공식 구현 스로틀이고, 지금 난이도 조절과 성능 안전망 두 역할을 겸하고 있다(2026-06-16 확인). 상한을 없애려면 그 두 역할을 의도적으로 대체해야 한다 — 아래 G1이 그 묶음이다. "수백 마리 적도 프레임 드랍 없이"가 목표(사용자 우선순위).
+
+| # | 태그 | 항목 | 맥락 · Why | 출처 | 우선 |
+|---|------|------|-----------|------|------|
+| G1 | 🔧📐 | **동시 적 수 상한 제거 + 대량 적 성능 슬라이스** — (a) `maxEnemies` 캡 제거 + 의도적 스폰 속도 곡선으로 난이도 대체, (b) 공간 그리드 순수 모듈(`logic/SpatialGrid.ts`)로 충돌·최근접·AoE·체인·빔 질의를 O(p×n)→~O(p+n)로, (c) 핫패스 할당 제거(스크래치 Vec3·발사체 `[...enemies]` 복사 제거·제곱거리·`unregisterEnemy` swap-remove·Color 캐시[F6 흡수]), (d) 적/발사체 스프라이트 아틀라스 배칭(드로우콜), (e) 풀 idle 보관 한도/제자리 리셋(B6 흡수) | 현재 전수 비교(all-pairs) 구조라 ~100마리에서 흔들리고 300+에서 깨짐. 병목 순서: 할당/GC > `Projectile._checkEnemyHit` O(p×n)+배열복사 > 드로우콜 > `GameManager.unregisterEnemy` O(n) splice. 그리드 + 할당 위생 + 배칭으로 수백~1000마리 60fps 달성 가능(이 장르 표준 기법). 토대 우호적(순수 로직 분리·풀링 기존). **마법 효과 타겟팅은 전부 반경/라인 질의라 그리드가 모든 효과 슬라이스에 공유 이득.** 적 발사체(미래)는 대상이 플레이어 1명이라 단일 대상 O(e)로 쌈 — 다대다는 그리드가 이미 커버. | `sessions/2026-06-16-magic-explosion-plan.md` §3(그리드-레디 노트), `EnemySpawner.ts:69-70`, `Projectile.ts:68`, `GameManager.ts:90`, `EnemyController.ts:212`, [B6]·[F6]·[F4] 흡수 | 높음 |
+
+> **S1과의 접점:** S1(`magic-explosion`)의 `selectExplosionHits`는 후보 적 목록을 인자로 받게 설계해, 지금은 전체 목록·나중엔 그리드 질의 결과를 같은 인터페이스로 넘긴다(재작업 없이 그리드-레디). G1 착수 전까진 폭발 테스트용으로 인스펙터에서 `maxEnemies`만 임시로 올린다(비커밋).
+
+---
+
+## H. UI 렌더 / 레이어 (다음 슬라이스 — `card-layer-fix`, magic-explosion 머지 후)
+
+> magic-explosion 7단계 인게임 테스트(2026-06-17)에서 발견. 레벨업 카드 선택 패널 위로 적·플레이어가 겹쳐 보임. **근본 원인:** 씬이 단일 Canvas + 단일 카메라(`main.scene` cc.Camera 하나, visibility=DEFAULT+UI_2D) 구조라 2D 렌더 순서가 **Canvas 자식 배열 순서**로 정해진다. 그런데 적은 `EnemySpawner.ts:49,55`에서 `playerNode.parent`(=Canvas)에 **런타임 `addChild`** → 항상 배열 맨 뒤(=위)로 붙는다. 따라서 **에디터에서 카드 패널을 마지막 자식으로 옮기는 것만으로는 안 고쳐진다**(스폰된 적이 또 뒤에 붙음). 레벨업 중에는 새 적이 안 생기지만(`GameManager.enterLevelUp`→`LevelUp`, `EnemySpawner.update` state 가드), 정공법으로 분리하기로 결정.
+
+| # | 태그 | 항목 | 맥락 · Why | 출처 | 우선 |
+|---|------|------|-----------|------|------|
+| H1 | 🎨🔧 | **UI 항상-위 렌더 — UI 카메라 + 레이어 분리** | 결정된 접근(2026-06-17): 게임 카메라는 DEFAULT만(priority 0), 신규 **UI 카메라**는 UI_2D만(priority↑, clearFlags=DEPTH_ONLY)으로 위에 렌더. HUD·GameOverPanel·CardSelectPanel을 UI_2D 레이어로 통일(현재 HUD는 UI_2D=33554432인데 CardSelectPanel은 DEFAULT=1073741824로 어긋나 있음 — 이 불일치가 패널만 가려진 한 원인). 계층/런타임 append와 무관하게 UI가 항상 위. Cocos 카메라/레이어 API는 구현 시 Context7로 확인. | 이 슬라이스(magic-explosion) user-verification 인게임 테스트 (2026-06-17) | 높음 |
+
+> **같이 처리 후보:** [F8] 카드 설명 라벨 텍스트 잘림 — 같은 `CardSelectPanel`·씬 UI를 건드리므로 `card-layer-fix` 슬라이스에서 함께 닫는 게 합리적.
 
 ---
 
