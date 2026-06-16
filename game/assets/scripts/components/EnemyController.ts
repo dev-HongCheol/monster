@@ -7,6 +7,13 @@ import { GameManager } from '../systems/GameManager';
 
 const { ccclass, property } = _decorator;
 
+/** 풀 재사용마다 증가하는 전역 카운터 — 적 개체 식별자(spawnId)의 출처. */
+let _spawnIdCounter = 0;
+/** 다음 적 개체 식별자를 발급한다. 살아 있는 적끼리 항상 유일(§10.2 dedup 안정 id). */
+function nextSpawnId(): number {
+  return ++_spawnIdCounter;
+}
+
 /** 플레이어를 추적하고 접촉 시 데미지를 주는 적 AI */
 @ccclass('EnemyController')
 export class EnemyController extends Component {
@@ -24,6 +31,8 @@ export class EnemyController extends Component {
   @property deathPopScale: number = 1.3;
 
   collisionRadius: number = 25;
+  /** 풀 재사용마다 증가하는 개체 식별자 — 폭발 등 시전 단위 dedup의 안정 id(§10.2). reset마다 새 값. */
+  spawnId: number = 0;
 
   private _data: IEnemyData | null = null;
   private _hp: number = 0;
@@ -75,6 +84,7 @@ export class EnemyController extends Component {
    */
   reset(enemyId: string, playerNode: Node, onDespawn: (node: Node) => void): void {
     this.enemyId = enemyId;
+    this.spawnId = nextSpawnId();
     this.playerNode = playerNode;
     this._onDespawn = onDespawn;
     this._despawned = false;

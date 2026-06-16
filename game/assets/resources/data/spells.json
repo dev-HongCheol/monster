@@ -8,7 +8,9 @@
     "projectileRadius": 8,
     "cooldown": 0.5,
     "projectileCount": 1,
-    "pattern": "directional"
+    "pattern": "directional",
+    "hitEffect": "explosion",
+    "explosionRadius": 70
   },
   {
     "id": "ice_missile",
