@@ -46,10 +46,26 @@
 
 | 노드/프리팹 | 변경 | 비고 |
 |---|---|---|
-| **폭발 VFX 프리팹 (신규)** | 명중 지점에 짧게 표시되는 placeholder 폭발 효과(확장+페이드 스프라이트 권장). 풀 재사용. | 구현 단계에서 방식 확정. 최종 아트는 7-9주차. |
+| **폭발 VFX 프리팹 (신규 — 사용자 생성)** | 명중 지점에 짧게 표시되는 placeholder 폭발 효과. 풀 재사용. 아래 **생성 레시피** 참고. | 트리거 방식 확정됨(구현 후 갱신). 최종 아트는 7-9주차. |
 | `EnemySpawner` 노드 (임시·비커밋) | 폭발 다중 타격 검증용으로 `maxEnemies`↑·`spawnInterval`↓ | 아래 §4 참고. **테스트 후 원복, 커밋 금지.** |
 
-> 폭발 VFX의 정확한 트리거 경로(발사체가 VFX 스폰 콜백을 받는지, 전용 이펙트 노드인지)는 구현에서 확정한다. 발사체 풀과 동일 패턴(소유자가 prefab/parent `@property` 보유)을 권장.
+#### 폭발 VFX 프리팹 생성 레시피 (사용자가 Cocos 에디터에서 생성)
+
+> AI는 프리팹·`.meta`를 만들지 않는다(에셋 `.meta` 규칙). 이 프리팹은 7단계에서 사용자가 만들고, `.meta`는 `PR 승인`(8단계) 시점에 일괄 커밋한다. 구현(`SpellCaster.ts`)은 받을 자리(`explosionVfxPrefab` `@property`)와 풀·스폰 로직을 이미 갖추고 있다.
+
+| 항목 | 값 | 근거 |
+|---|---|---|
+| **파일/위치** | `game/assets/prefabs/ExplosionVfx.prefab` (PascalCase, `XPItem`과 같은 `prefabs/` 폴더 권장 — UUID 참조라 위치 자유) | conventions.md 네이밍 |
+| **루트 노드** | `cc.Node` 1개 (`ExplosionVfx`) | `Bullet.prefab` 구조 참고 |
+| **컴포넌트 1 — `cc.UITransform`** | anchor `(0.5, 0.5)`(중심 기준 — 코드가 명중 지점을 노드 position으로 세팅), contentSize ≈ **140×140** | 아래 스케일 근거 |
+| **컴포넌트 2 — `cc.Sprite`** | placeholder 원형/방사형 스프라이트(`Bullet`의 원형 SpriteFrame 재사용 가능). 색은 폭발 느낌(주황~노랑), 반투명 + 알파 블렌드(`Bullet` Sprite의 블렌드 설정과 동일) | 시각 placeholder |
+| **컴포넌트 3 (선택) — `cc.Animation`** | 0.25초 **확장+페이드** 클립. **없으면 정적 스프라이트로 표시됨**(코드는 스케일을 1회 세팅 후 표시만 함 — 자체 애니메이션 없음). placeholder 단계엔 생략 가능 | 폴리시 |
+| **부모 노드** | 별도 `@property` 없음 — `SpellCaster.bulletParent`를 재사용 | 코드: `if (this.explosionVfxPrefab && this.bulletParent)` |
+
+**코드에서 확정된 동작 (`SpellCaster.ts`):**
+- `EXPLOSION_VFX_BASE_RADIUS = 70` → **scale 1 = 폭발 반경 70**. 코드가 `유효 반경 / 70`으로 자동 스케일하므로, 범위 강화 시 VFX도 비례해 커진다. 그래서 프리팹은 scale 1에서 반경 70(지름 ~140)을 덮도록 만든다.
+- `EXPLOSION_VFX_DURATION = 0.25` → 명중 0.25초 뒤 풀로 반환.
+- **VFX는 옵션:** 프리팹 미연결이면 폭발 **피해는 정상 동작**하고 화면 효과만 생략된다(콜백 no-op). §6의 "VFX 표시" 항목까지 통과하려면 연결 필요.
 
 ---
 
@@ -68,12 +84,12 @@
 
 | 컴포넌트 | `@property` | 연결 대상 | 상태 |
 |---|---|---|---|
-| 폭발 VFX 소유 컴포넌트(구현서 확정) | VFX 프리팹 | 신규 폭발 VFX 프리팹 | ❌ |
-| 폭발 VFX 소유 컴포넌트 | VFX 부모 노드 | Canvas(또는 발사체 부모) | ❌ |
+| `SpellCaster` | `explosionVfxPrefab` | 신규 `ExplosionVfx.prefab`(위 §3 레시피) | ❌ |
+| `SpellCaster` | (VFX 부모) | **연결 불필요** — `bulletParent`를 재사용(전용 프로퍼티 없음) | — |
 | `EnemySpawner`(임시) | `maxEnemies` | 60 | ❌ |
 | `EnemySpawner`(임시) | `spawnInterval` | 0.3 | ❌ |
 
-> 구체 `@property` 이름은 구현 단계에서 폭발 VFX 트리거 방식 확정 후 갱신한다.
+> 폭발 VFX 트리거 방식이 구현에서 확정됨: `SpellCaster`가 `explosionVfxPrefab`로 풀을 만들고, 명중 콜백에서 `bulletParent` 아래로 스폰한다. 새로 배선할 프로퍼티는 `explosionVfxPrefab` **하나뿐**이다.
 
 ---
 

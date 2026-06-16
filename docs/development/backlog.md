@@ -104,6 +104,18 @@
 
 ---
 
+## H. UI 렌더 / 레이어 (다음 슬라이스 — `card-layer-fix`, magic-explosion 머지 후)
+
+> magic-explosion 7단계 인게임 테스트(2026-06-17)에서 발견. 레벨업 카드 선택 패널 위로 적·플레이어가 겹쳐 보임. **근본 원인:** 씬이 단일 Canvas + 단일 카메라(`main.scene` cc.Camera 하나, visibility=DEFAULT+UI_2D) 구조라 2D 렌더 순서가 **Canvas 자식 배열 순서**로 정해진다. 그런데 적은 `EnemySpawner.ts:49,55`에서 `playerNode.parent`(=Canvas)에 **런타임 `addChild`** → 항상 배열 맨 뒤(=위)로 붙는다. 따라서 **에디터에서 카드 패널을 마지막 자식으로 옮기는 것만으로는 안 고쳐진다**(스폰된 적이 또 뒤에 붙음). 레벨업 중에는 새 적이 안 생기지만(`GameManager.enterLevelUp`→`LevelUp`, `EnemySpawner.update` state 가드), 정공법으로 분리하기로 결정.
+
+| # | 태그 | 항목 | 맥락 · Why | 출처 | 우선 |
+|---|------|------|-----------|------|------|
+| H1 | 🎨🔧 | **UI 항상-위 렌더 — UI 카메라 + 레이어 분리** | 결정된 접근(2026-06-17): 게임 카메라는 DEFAULT만(priority 0), 신규 **UI 카메라**는 UI_2D만(priority↑, clearFlags=DEPTH_ONLY)으로 위에 렌더. HUD·GameOverPanel·CardSelectPanel을 UI_2D 레이어로 통일(현재 HUD는 UI_2D=33554432인데 CardSelectPanel은 DEFAULT=1073741824로 어긋나 있음 — 이 불일치가 패널만 가려진 한 원인). 계층/런타임 append와 무관하게 UI가 항상 위. Cocos 카메라/레이어 API는 구현 시 Context7로 확인. | 이 슬라이스(magic-explosion) user-verification 인게임 테스트 (2026-06-17) | 높음 |
+
+> **같이 처리 후보:** [F8] 카드 설명 라벨 텍스트 잘림 — 같은 `CardSelectPanel`·씬 UI를 건드리므로 `card-layer-fix` 슬라이스에서 함께 닫는 게 합리적.
+
+---
+
 ## 승격됨 / 완료 (히스토리)
 
 - ~~`projectileCount` 미사용 필드 (spells.json에 있으나 미사용)~~ → **완료**: 발사체 수 강화 슬라이스(`feat/projectile-count`)에서 다발·부채꼴 발사에 사용. 출처: `sessions/2026-06-01-magic-followups.md` §2 4번째 항목.
