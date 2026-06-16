@@ -69,9 +69,38 @@ export const SLICE_OPTIONS: UpgradeOption[] = [
   UpgradeOption.ProjectileCount,
 ];
 
+/**
+ * 카드 라벨로 등장할 수 있는 강화 옵션 — i18n `upgrade.<opt>` 키가 존재해야 하는 집합.
+ * 항상 켜진 SLICE_OPTIONS + 조건부(반경류 마법만) 범위(Range). i18n 키 정합 가드의 도메인이다.
+ * 지속시간(Duration)은 아직 카드로 안 나오므로 제외(미배선 — 후속 슬라이스에서 추가).
+ */
+export const CARD_LABEL_OPTIONS: UpgradeOption[] = [...SLICE_OPTIONS, UpgradeOption.Range];
+
 /** 분류가 일반 강화 옵션을 허용하는지 (보조 분류는 제외 § 7.5) */
 function generalOptions(category: SpellCategory): UpgradeOption[] {
   return category === SpellCategory.Support ? [] : SLICE_OPTIONS;
+}
+
+/**
+ * 범위(Range) 강화 적격 여부 (기획 §10.3 A3 게이트). 폭발 반경 등 반경류 효과를 실제로
+ * 가진 마법만 범위 카드를 만든다. 현재 적격 기준은 `explosionRadius` 보유.
+ */
+function isRangeCapable(spell: ISpellData): boolean {
+  return spell.explosionRadius !== undefined;
+}
+
+/** 개별 마법에 적용할 강화 옵션 — 일반 3종 + (반경류 효과를 가진 마법이면) 범위(§10.3 A3). */
+function individualOptionsFor(spell: ISpellData): UpgradeOption[] {
+  const base = generalOptions(spell.category);
+  return base.length > 0 && isRangeCapable(spell) ? [...base, UpgradeOption.Range] : base;
+}
+
+/** 분류에 적용할 강화 옵션 — 일반 3종 + (그 분류에 반경류 적격 마법이 있으면) 범위(§10.3 A3). */
+function categoryOptionsFor(category: SpellCategory, ownedSpells: ISpellData[]): UpgradeOption[] {
+  const base = generalOptions(category);
+  if (base.length === 0) return base;
+  const hasRangeCapable = ownedSpells.some((s) => s.category === category && isRangeCapable(s));
+  return hasRangeCapable ? [...base, UpgradeOption.Range] : base;
 }
 
 /** 디버그 로그용 마법 한 줄 스냅샷 (수치만 — 표시/포맷은 UI 책임) */
@@ -301,7 +330,7 @@ export class EnhancementLogic {
     const cards: ICardData[] = [];
 
     for (const spell of ownedSpells) {
-      for (const option of generalOptions(spell.category)) {
+      for (const option of individualOptionsFor(spell)) {
         if (this.getLevel(UpgradeTrack.Individual, spell.id, option) >= UPGRADE_CAP) continue;
         // §8 게이트: 자기중심 AOE 마법(allowsProjectileCount=false)은 발사체 수 카드 제외.
         if (option === UpgradeOption.ProjectileCount && spell.allowsProjectileCount === false) {
@@ -319,7 +348,7 @@ export class EnhancementLogic {
     }
 
     for (const category of GENERAL_OPTION_CATEGORIES) {
-      for (const option of generalOptions(category)) {
+      for (const option of categoryOptionsFor(category, ownedSpells)) {
         if (this.getLevel(UpgradeTrack.Category, category, option) >= UPGRADE_CAP) continue;
         cards.push({
           id: `cupg_${category}_${option}`,

@@ -48,6 +48,11 @@ export class DeckManager extends Component {
     return this._enhancement.projectilePenaltyFactor(spell);
   }
 
+  /** 마법의 범위 배율 (개별×분류×전역 강화) — 폭발/AOE 반경 등에 곱한다(§10.3 A3). */
+  rangeFactor(spell: ISpellData): number {
+    return this._enhancement.factor(spell, UpgradeOption.Range);
+  }
+
   /** 디버그 로그용 강화 수치 스냅샷 (DEV 빌드의 카드 픽 로그에서 사용). */
   debugEnhancement(spells: ISpellData[]): EnhancementDebugSnapshot {
     return this._enhancement.debugSnapshot(spells);

@@ -93,6 +93,16 @@ export interface ISpellData {
    * 부채꼴로 퍼질 방향이 없어 발사체 수가 의미 없다. 생략 시 허용(기본 true).
    */
   allowsProjectileCount?: boolean;
+  /**
+   * 명중 시 효과 (기획 §9.3·§11). `'explosion'`이면 명중 지점 반경 폭발(직격 피해 없이 폭발만),
+   * 생략/`'single'`이면 단일 명중. 폭발형은 `explosionRadius`가 필요하다.
+   */
+  hitEffect?: 'single' | 'explosion';
+  /**
+   * 기본 폭발 반경 (units). `hitEffect='explosion'`일 때 사용한다. 범위(Range) 강화가
+   * 곱하는 대상이며(§10.3·A3), 이 필드 유무가 범위 강화 카드 적격을 가른다.
+   */
+  explosionRadius?: number;
 }
 
 /** 강화 카드가 올릴 대상 — 트랙·옵션·대상 키(개별=spellId, 분류=category) (기획 § 6.1·§ 8) */
