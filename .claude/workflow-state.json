@@ -1,8 +1,8 @@
 {
-  "feature": "magic-explosion",
-  "phase": "user-verification",
-  "test_skipped": false,
-  "test_skip_reason": null,
+  "feature": "card-layer-fix",
+  "phase": "pr-ready",
+  "test_skipped": true,
+  "test_skip_reason": "전부 Cocos 카메라/레이어/프리팹 에디터 설정 변경 — 순수 로직 .ts 변경 없음(레이어를 코드로 만지지 않고 프리팹 루트 레이어를 인스턴스가 물려받음)",
   "verification": {
     "cso_done": true,
     "ts_check_clean": true,
