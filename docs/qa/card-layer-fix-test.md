@@ -27,35 +27,39 @@
 
 레이어 값: `DEFAULT = 1073741824`, `UI_2D = 33554432`. 에디터에서는 노드의 **Layer** 드롭다운, 카메라의 **Visibility** 체크박스로 설정한다.
 
-### 2-1. 신규 노드 — UI 카메라 (사용자가 Cocos 에디터에서 생성)
+> **접근 수정 (step-7 인게임 테스트, 2026-06-17):** 처음엔 단일 Canvas + 카메라 2개로 시도했으나 인게임에서 게임 월드가 전부 사라졌다. Cocos 3.8에서 **2D 객체는 자신이 속한 Canvas에 연결된 카메라로만 렌더**되기 때문이다(공식 "First Game 2D" 패턴: `Canvas/Camera`는 DEFAULT만, `UICanvas/Camera`는 UI_2D만 렌더). 단일 Canvas는 카메라 하나에만 묶이므로, 게임 월드를 DEFAULT로 내리면 그 Canvas의 카메라(UICamera/UI_2D)에서 컬링돼 보이지 않고, 게임 Camera에는 묶인 Canvas가 없어 아무것도 그리지 않는다. 그래서 계획 §5 폴백대로 **Canvas를 둘로** 나눈다.
 
-| 항목 | 값 | 근거 |
+### 2-1. 구조 — 두 Canvas로 게임/UI 분리 (핵심)
+
+| Canvas | 연결 카메라(cameraComponent) | 담는 노드 | 레이어 |
+|---|---|---|---|
+| `Canvas`(기존) | 게임 `Camera` (priority 0, ClearFlags `SOLID_COLOR`) | Player·BulletParent·매니저·EnemySpawner + 런타임 적·발사체·경험치·폭발 | DEFAULT |
+| `UICanvas`(신규) | `UICamera` (priority 1, ClearFlags `DEPTH_ONLY`) | HUD·GameOverPanel·CardSelectPanel | UI_2D |
+
+각 Canvas가 자기 카메라로 서브트리를 렌더하고, `UICamera`의 priority(1)가 게임 `Camera`(0)보다 높아 UI가 항상 위에 그려진다. 카메라가 정지(플레이어를 따라가지 않음)라 게임/UI 모두 같은 전화면 직교 뷰를 쓴다.
+
+### 2-2. 에디터 작업 순서
+
+| # | 작업 | 비고 |
 |---|---|---|
-| **노드 이름** | `UICamera` | 기존 `Camera`와 구분 |
-| **부모** | `Canvas` 아래(기존 `Camera`와 같은 부모) | 같은 화면 정렬 |
-| **컴포넌트** | `cc.Camera` 1개 | — |
-| **Projection** | `ORTHO`(직교) | 기존 게임 카메라와 동일(2D) |
-| **Visibility** | **`UI_2D`만** 체크(나머지 해제) | UI 레이어만 본다 |
-| **ClearFlags** | **`DEPTH_ONLY`** | 게임 카메라가 그린 화면을 지우지 않고 그 위에 UI만 덧그린다 |
-| **Priority** | **1**(게임 카메라 0보다 높게) | Cocos는 priority 낮은 카메라부터 그림 → 높은 UI 카메라가 나중에 = 위에 |
-| **OrthoHeight / Near / Far / Position** | 기존 `Camera`와 동일(OrthoHeight ≈ 788.9, Near 0, Far 2000) | 화면 정렬 일치 |
+| 1 | `Canvas`(기존)의 Canvas 컴포넌트 `Camera` 필드를 **게임 `Camera`로 되돌림** | step-7 중 `UICamera`로 바꿔뒀던 것을 원복 |
+| 2 | 새 Canvas 노드 생성 → 이름 `UICanvas`. 자동 생성된 자식 Camera는 **삭제** | 카메라가 3개 되는 것 방지 |
+| 3 | 기존 `UICamera`를 `UICanvas` 자식으로 이동 → `UICanvas`의 `Camera` 필드 = `UICamera` | 이동 후 화면을 같게 덮는 위치인지 확인 |
+| 4 | `HUD`·`GameOverPanel`·`CardSelectPanel`을 `UICanvas` 밑으로 이동 | UI 서브트리 이동 |
+| 5 | 게임 월드(Player·BulletParent·매니저·EnemySpawner)는 기존 `Canvas`에 그대로 | `EnemySpawner`가 `playerNode.parent`로 스폰하므로 자동으로 기존 `Canvas`에 붙음(코드 변경 없음) |
 
-### 2-2. 기존 노드 수정
+**카메라 설정 (이미 맞음 — 확인만):** 게임 `Camera` Visibility `DEFAULT`만·priority 0·ClearFlags `SOLID_COLOR`. `UICamera` Visibility `UI_2D`만·priority 1·ClearFlags `DEPTH_ONLY`.
 
-| 노드/프리팹 | 변경 | 현재 → 목표 |
-|---|---|---|
-| `Camera`(기존, 게임용) | **Visibility를 `DEFAULT`만**으로 축소(현재 DEFAULT+UI_2D+IGNORE_RAYCAST) | visibility 1108344832 → 1073741824 |
-| `Camera`(기존) | ClearFlags `SOLID_COLOR` 유지, Priority 0 유지 | 변경 없음 |
-| `Canvas` | `Camera` 프로퍼티(cameraComponent)를 **`UICamera`로** 변경 | 기존 `Camera` → `UICamera` (둘 다 전화면 직교라 정렬 영향 적음. UI 어긋나면 기존 `Camera`로 되돌려 확인) |
-| **`CardSelectPanel` + 모든 자식** | Layer `DEFAULT` → **`UI_2D`** | 에디터에서 부모 레이어 변경 시 "자식도 함께 변경" 적용. 대상: `CardSelectPanel`, `CardButton_0/1/2`, `CardNameLabel_0/1/2`, `CardDescLabel_0/1/2` |
-| `Enemy.prefab` 루트 | Layer `UI_2D` → **`DEFAULT`** | 프리팹 열어 루트 노드 레이어 변경 후 저장 |
-| `Bullet.prefab` 루트 | Layer `UI_2D` → **`DEFAULT`** | 〃 |
-| `XPItem.prefab` 루트 | Layer `UI_2D` → **`DEFAULT`** | 〃 |
-| `ExplosionVfx.prefab` 루트 | Layer `UI_2D` → **`DEFAULT`** | 〃 |
+**레이어 (이미 맞음 — 확인만):**
 
-> **중복 렌더 방지(중요):** 두 카메라의 Visibility가 겹치면 안 된다. 한 노드 레이어가 두 마스크에 모두 걸리면 두 번 그려진다. 그래서 **레이어 정리(2-2 레이어 행)를 먼저 끝낸 뒤** 카메라 Visibility를 좁힌다.
+| 대상 | 레이어 |
+|---|---|
+| Player (씬) | DEFAULT |
+| `Enemy`·`Bullet`·`XPItem`·`ExplosionVfx` 프리팹 루트 | DEFAULT |
+| `CardSelectPanel` + 자식·HUD·GameOverPanel | UI_2D |
 
 > 매니저 노드(DataManager·I18n·WaveManager·DeckManager·GameManager·EnemySpawner·ExperienceManager)는 그릴 것이 없어 레이어 무관 — 손대지 않는다.
+> **중복 렌더 방지:** 두 카메라 Visibility가 겹치지 않게(게임=`DEFAULT`만, UI=`UI_2D`만) 유지한다.
 
 ### 2-3. F8 — 카드 설명 라벨 넘침
 
@@ -73,11 +77,11 @@
 
 | 항목 | 대상 | 상태 |
 |---|---|---|
-| `Canvas.cameraComponent` | `UICamera`로 변경됨 | ❌ |
-| `UICamera` Visibility | `UI_2D`만 | ❌ |
-| `UICamera` ClearFlags / Priority | `DEPTH_ONLY` / 1 | ❌ |
-| 기존 `Camera` Visibility | `DEFAULT`만 | ❌ |
-| `CardSelectPanel` 서브트리 Layer | `UI_2D` | ❌ |
+| 기존 `Canvas.Camera` | 게임 `Camera`로 되돌림(DEFAULT) | ❌ |
+| `UICanvas` 생성 + `UICanvas.Camera` | `UICamera`(UI_2D) | ❌ |
+| `UICamera` Visibility / ClearFlags / Priority | `UI_2D`만 / `DEPTH_ONLY` / 1 | ❌ |
+| 기존 `Camera` Visibility / Priority | `DEFAULT`만 / 0 | ❌ |
+| HUD·GameOverPanel·CardSelectPanel | `UICanvas` 밑으로 이동(레이어 UI_2D) | ❌ |
 | `Enemy`/`Bullet`/`XPItem`/`ExplosionVfx` 프리팹 Layer | `DEFAULT` | ❌ |
 | `CardDescLabel_0/1/2` Overflow | `SHRINK`(또는 택일안) | ❌ |
 
@@ -90,22 +94,22 @@
 코드로 검증 불가한 인게임 렌더/입력 동작만 담는다.
 
 **렌더 순서(H1 핵심):**
-- [ ] 게임 시작 후 적·발사체·플레이어·경험치 아이템·폭발 VFX가 모두 정상 표시되고, **누락이나 이중 렌더(겹쳐 두 번 그려짐)가 없다**.
-- [ ] 레벨업(웨이브 클리어) 시 **카드 선택 패널이 적·플레이어 위에 온전히** 보인다(겹쳐 가려지지 않음).
-- [ ] HUD(체력·웨이브·타이머·레벨·XP 라벨)가 게임 플레이 중 **항상 게임 월드 위에** 보인다.
-- [ ] 게임오버 시 GameOverPanel이 **항상 위에** 보인다.
+- [x] 게임 시작 후 적·발사체·플레이어·경험치 아이템·폭발 VFX가 모두 정상 표시되고, **누락이나 이중 렌더(겹쳐 두 번 그려짐)가 없다**.
+- [x] 레벨업(웨이브 클리어) 시 **카드 선택 패널이 적·플레이어 위에 온전히** 보인다(겹쳐 가려지지 않음).
+- [x] HUD(체력·웨이브·타이머·레벨·XP 라벨)가 게임 플레이 중 **항상 게임 월드 위에** 보인다.
+- [x] 게임오버 시 GameOverPanel이 **항상 위에** 보인다.
 
 **입력(레이어 이동 부작용 확인):**
-- [ ] 레벨업 카드 **버튼 3개를 클릭하면 정상 선택**된다(레이어를 UI_2D로 옮긴 뒤 입력 히트테스트가 깨지지 않았다).
-- [ ] RestartButton·MenuButton(GameOverPanel) 클릭도 정상이다.
+- [x] 레벨업 카드 **버튼 3개를 클릭하면 정상 선택**된다(레이어를 UI_2D로 옮긴 뒤 입력 히트테스트가 깨지지 않았다).
+- [x] RestartButton·MenuButton(GameOverPanel) 클릭도 정상이다.
 
 **F8 — 라벨 잘림:**
-- [ ] 카드 설명 라벨이 **양끝부터 잘리지 않는다**. 긴 설명(예: `"파이어볼 발사체 수 +1레벨"`)도 전체가 읽혀 다른 카드로 오인되지 않는다.
+- [x] 카드 설명 라벨이 **양끝부터 잘리지 않는다**. 긴 설명(예: `"파이어볼 발사체 수 +1레벨"`)도 전체가 읽혀 다른 카드로 오인되지 않는다.
 
 **회귀(magic-explosion):**
-- [ ] 폭발형 마법(파이어볼) 명중 시 폭발 VFX가 명중 지점에 정상 표시되고 피해도 정상(레이어 변경이 폭발 연출/판정에 영향 없음).
+- [x] 폭발형 마법(파이어볼) 명중 시 폭발 VFX가 명중 지점에 정상 표시되고 피해도 정상(레이어 변경이 폭발 연출/판정에 영향 없음).
 
-> **주 리스크 검증:** 위 "렌더 순서" 4항목이 모두 통과하면 단일 Canvas + 2-카메라 분리가 성립한 것이다. 만약 게임 월드가 안 보이거나 이중 렌더가 나거나 UI가 여전히 가려지면, 계획 §5의 **폴백(UI 노드를 별도 Canvas로 분리)** 으로 `리워크`한다.
+> **검증 핵심:** 위 "렌더 순서" 4항목이 모두 통과하면 두-Canvas 분리가 성립한 것이다. (단일 Canvas + 2-카메라는 step-7에서 게임 월드가 사라져 폐기했고, §2 머리말 근거로 두-Canvas로 전환했다.) 그래도 게임 월드가 안 보이거나 UI가 가려지면 `리워크` 후 카메라 priority(UI>게임)·각 Canvas의 Camera 연결·레이어 일치를 다시 점검한다.
 
 ---
 
