@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SpatialGrid } from '../../game/assets/scripts/logic/SpatialGrid';
+import { enemyQueryRadius, SpatialGrid } from '../../game/assets/scripts/logic/SpatialGrid';
 
 /**
  * 계획 문서(2026-06-17-spatial-grid-plan.md)의 순수 공간 그리드.
@@ -157,5 +157,45 @@ describe('SpatialGrid — 맵 크기 비의존 (T8)', () => {
     // 같은 질의 → 거리가 1000이든 100만이든 첫 군집만, 결과 동일
     expect(near.queryRadius(0, 0, 60)).toEqual([1]);
     expect(far.queryRadius(0, 0, 60)).toEqual([1]);
+  });
+});
+
+describe('SpatialGrid — 적별 충돌 반경 parity (T9)', () => {
+  it('enemyQueryRadius 마진이 정밀 임계값을 통과할 적을 절대 빠뜨리지 않는다', () => {
+    // 적마다 충돌 반경이 다른 상황에서, 그리드 광역 후보가 전수 비교 정밀 명중을 빠짐없이 포함하는지.
+    const grid = new SpatialGrid<number>(64);
+    const rng = makeRng(424242);
+    const enemies: Array<{ id: number; x: number; y: number; cr: number }> = [];
+
+    for (let i = 1; i <= 200; i++) {
+      const x = Math.round((rng() - 0.5) * 4000);
+      const y = Math.round((rng() - 0.5) * 4000);
+      const cr = 10 + Math.round(rng() * 40); // 충돌 반경 10~50로 다양화
+      enemies.push({ id: i, x, y, cr });
+      grid.insert(i, x, y);
+    }
+    const maxEnemyRadius = Math.max(...enemies.map((e) => e.cr));
+
+    for (let q = 0; q < 40; q++) {
+      const px = Math.round((rng() - 0.5) * 4000);
+      const py = Math.round((rng() - 0.5) * 4000);
+      const reach = 8 + Math.round(rng() * 200); // 발사체/폭발 반경
+
+      // 정밀 명중: GameManager 호출부와 동일한 strict 임계값(reach + 적 충돌 반경)
+      const preciseHits = enemies
+        .filter((e) => {
+          const dx = e.x - px;
+          const dy = e.y - py;
+          return dx * dx + dy * dy < (reach + e.cr) * (reach + e.cr);
+        })
+        .map((e) => e.id);
+
+      // 그리드 광역 후보: 프로덕션과 동일한 마진 공식
+      const candidates = new Set(grid.queryRadius(px, py, enemyQueryRadius(reach, maxEnemyRadius)));
+
+      for (const id of preciseHits) {
+        expect(candidates.has(id)).toBe(true); // 누락 0
+      }
+    }
   });
 });

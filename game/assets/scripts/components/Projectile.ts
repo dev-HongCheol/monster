@@ -89,6 +89,7 @@ export class Projectile extends Component {
     for (const enemy of GameManager.instance.queryEnemiesInRadius(pos.x, pos.y, this._radius)) {
       if (!enemy?.isValid) continue;
       const ep = enemy.node.position;
+      // 2D 평면 가정(모두 z=0) — z 성분은 보지 않는다. 종전 Vec3.distance(3D) 대비 평면상 동일.
       const dx = pos.x - ep.x;
       const dy = pos.y - ep.y;
       // 제곱거리 비교 — sqrt 없이 (반경 합)² 와 비교(핫패스 sqrt 제거).

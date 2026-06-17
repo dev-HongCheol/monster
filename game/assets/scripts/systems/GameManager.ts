@@ -1,7 +1,7 @@
 import { _decorator, Component, director } from 'cc';
 import type { EnemyController } from '../components/EnemyController';
 import { GameResult, GameState } from '../data/GameTypes';
-import { SpatialGrid } from '../logic/SpatialGrid';
+import { enemyQueryRadius, SpatialGrid } from '../logic/SpatialGrid';
 import { DataManager } from './DataManager';
 import { DeckManager } from './DeckManager';
 import { ExperienceManager } from './ExperienceManager';
@@ -11,8 +11,6 @@ const { ccclass, property } = _decorator;
 
 /** 공간 그리드 셀 한 변 (월드 단위). 질의 반경을 한두 칸에 담을 크기 — 추후 프로파일링으로 조정. */
 const GRID_CELL_SIZE = 128;
-/** 질의 반경에 더하는 슬랙 (월드 단위) — 한 프레임 사이 적 이동분을 흡수해 후보 누락을 막는다. */
-const GRID_QUERY_SLACK = 32;
 
 /** 게임 전체 상태와 플레이어 HP를 관리하는 싱글톤 */
 @ccclass('GameManager')
@@ -109,15 +107,17 @@ export class GameManager extends Component {
 
   /**
    * (x, y) 반경 reach 안에 있을 수 있는 적 후보를 돌려준다 (충돌·폭발 광역 1차 선별).
-   * 그리드는 프레임당 1회 적 위치로 다시 채워지고(지연 재구축), 질의 반경에는 최대 적
-   * 충돌 반경과 한 프레임 이동분(슬랙)을 더해 충돌 가능한 적을 빠뜨리지 않는다. 정밀
-   * 명중 판정(적별 충돌 반경·현재 위치)은 호출부가 후보에 대해 다시 한다.
+   * 그리드는 프레임당 1회 적 위치로 다시 채워지고(지연 재구축), 질의 반경은 enemyQueryRadius로
+   * 최대 적 충돌 반경과 슬랙을 더해 충돌 가능한 적을 빠뜨리지 않는다. 호출 컴포넌트가 같은
+   * 프레임의 GameManager.update보다 먼저 돌면 직전 프레임 그리드를 재사용할 수 있어 후보 위치가
+   * 최대 약 2프레임 낡을 수 있으나, 슬랙이 그 이동분을 덮는다. 정밀 명중 판정(적별 충돌 반경·
+   * 현재 위치)은 호출부가 후보에 대해 다시 한다.
    * @param reach 발사체/폭발의 반경
    * @returns 반경 + 마진 안의 적 후보 (순서 미보장)
    */
   queryEnemiesInRadius(x: number, y: number, reach: number): EnemyController[] {
     this._refreshEnemyGrid();
-    return this._enemyGrid.queryRadius(x, y, reach + this._maxEnemyRadius + GRID_QUERY_SLACK);
+    return this._enemyGrid.queryRadius(x, y, enemyQueryRadius(reach, this._maxEnemyRadius));
   }
 
   /** 프레임이 바뀌었으면 그리드를 현재 적 위치로 다시 채운다(프레임당 1회). 같은 루프에서 최대 적 반경도 갱신. */

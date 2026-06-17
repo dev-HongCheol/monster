@@ -66,3 +66,19 @@ export class SpatialGrid<T> {
     return `${Math.floor(x / this._cellSize)},${Math.floor(y / this._cellSize)}`;
   }
 }
+
+/** 적 질의 반경에 더하는 슬랙 (월드 단위) — 그리드가 최대 약 2프레임 낡을 수 있는 적 이동분을 흡수해 후보 누락을 막는다. */
+export const ENEMY_QUERY_SLACK = 32;
+
+/**
+ * 적 충돌·폭발 광역 1차 선별에 쓸 그리드 질의 반경을 구한다 (순수 함수 — parity 단위 테스트 대상).
+ * 발사체/폭발 반경에 최대 적 충돌 반경과 슬랙을 더한다. maxEnemyRadius는 모든 적 충돌 반경의
+ * 최댓값이므로 (reach + maxEnemyRadius) ≥ (reach + 임의의 적 충돌 반경)이고, 따라서 정밀 임계값
+ * `reach + 적.collisionRadius`를 통과할 적은 반드시 이 반경 안에 든다(누락 없음). 슬랙은 그 위에
+ * 프레임 사이 위치 낡음까지 덮는다.
+ * @param reach 발사체/폭발의 반경
+ * @param maxEnemyRadius 현재 살아 있는 적들의 충돌 반경 최댓값
+ */
+export function enemyQueryRadius(reach: number, maxEnemyRadius: number): number {
+  return reach + maxEnemyRadius + ENEMY_QUERY_SLACK;
+}
