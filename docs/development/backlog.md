@@ -83,7 +83,7 @@
 | F5 | ♻️ | `Projectile.ts:70` 노후 주석 갱신 | "takeDamage→destroy→unregisterEnemy"가 이제 "연출 후 release"로 바뀜. 한 줄 정리. | `../qa/enemy-xp-pooling-review-issues.md` M-4 | 낮음 |
 | F6 | ♻️ | `spellCategoryColor` 발사마다 `new Color` 할당 → 분류별 Color 캐시 | hot path에 있으나 풀링 이전부터 존재. 후속 최적화. | `../qa/object-pooling-review-issues.md` M-2 | 낮음 |
 | F7 | 🔧 | `PoolManager` cap/destroy 경로 테스트 + in-place 리셋 도입 시 `clear()` | 현재 `maxFree=0`(무제한)이라 폐기 경로는 dead path. 재시작도 씬 리로드라 teardown 불필요. 한도/제자리 리셋이 생기면 함께. | `../qa/object-pooling-review-issues.md` I-2·I-3 | 낮음 |
-| F8 | 🐛 | 카드 설명 라벨 텍스트 잘림 — 긴 설명이 양끝부터 잘려 다른 카드로 오인 | `CardDescLabel_0/1/2`가 너비 150·`overflow=CLAMP`·중앙정렬·`wrapText=false`. 예: `"파이어볼 발사체 수 +1레벨"` → 화면엔 `"이어볼 발사체 수 +1레"`로 잘려 **아이스볼 카드로 오인**. 발사체 로직·드로우는 정상(순수 표시 버그). 수정 방향(택1): 라벨 `overflow=SHRINK` / `wrapText`+`RESIZE_HEIGHT` / 라벨·카드 너비 확대. (증거 스크린샷은 미커밋) | projectile-count 7단계 인게임 테스트 (2026-06-11) | 중 |
+| F8 | 🐛 | 카드 설명 라벨 텍스트 잘림 — 긴 설명이 양끝부터 잘려 다른 카드로 오인 | `CardDescLabel_0/1/2`가 너비 150·`overflow=CLAMP`·중앙정렬·`wrapText=false`. 예: `"파이어볼 발사체 수 +1레벨"` → 화면엔 `"이어볼 발사체 수 +1레"`로 잘려 **아이스볼 카드로 오인**. 발사체 로직·드로우는 정상(순수 표시 버그). 수정 방향(택1): 라벨 `overflow=SHRINK` / `wrapText`+`RESIZE_HEIGHT` / 라벨·카드 너비 확대. (증거 스크린샷은 미커밋) | projectile-count 7단계 인게임 테스트 (2026-06-11) | ✅완료(card-layer-fix) |
 | F9 | 🔧 | 씬 카메라 크로스머신 churn — MacBook 작업 / Windows 테스트 시 `main.scene` Camera 노드 `_lpos.y`·`_orthoHeight`가 재계산돼 무관 diff 발생 | 장비별 화면/해상도 차이로 에디터가 카메라를 재fit→재직렬화. 매 PR 테스트마다 반복. 커밋 전 `git diff *.scene`로 거르거나, 카메라 fit 정책/고정값으로 안정화 검토. | projectile-count 테스트 중 확인 (2026-06-11) | 낮음 |
 | F10 | 🔧 | `workflow-state.json` 크로스머신 동기화 정책 결정 | 전이 미커밋→타 장비 stale(겪음) / 전이 커밋→main 오염·머지 충돌·락 상속(반대). 추적 유지+핸드오프 시점만 커밋(권장) vs `.gitignore` 제외 중 택해 ADR 004에 반영. | `troubleshooting/workflow-state-cross-machine.md`, ADR 004 | 중 |
 | F11 | ♻️ | `Projectile._despawn`에서 `_explosion = null`로 공유 dedup 집합 즉시 해제 | 풀 반환된 발사체가 다음 `init`까지 이전 시전의 `ProjectileExplosion`(및 `hitSet`) 참조를 보유. 풀 크기로 유계·비활성 노드는 update 안 돌아 무해. 한 줄 정리. | `../qa/magic-explosion-review-issues.md` #2 | 낮음 |
@@ -104,13 +104,13 @@
 
 ---
 
-## H. UI 렌더 / 레이어 (다음 슬라이스 — `card-layer-fix`, magic-explosion 머지 후)
+## H. UI 렌더 / 레이어 (✅ 완료 — `card-layer-fix`, PR #35)
 
 > magic-explosion 7단계 인게임 테스트(2026-06-17)에서 발견. 레벨업 카드 선택 패널 위로 적·플레이어가 겹쳐 보임. **근본 원인:** 씬이 단일 Canvas + 단일 카메라(`main.scene` cc.Camera 하나, visibility=DEFAULT+UI_2D) 구조라 2D 렌더 순서가 **Canvas 자식 배열 순서**로 정해진다. 그런데 적은 `EnemySpawner.ts:49,55`에서 `playerNode.parent`(=Canvas)에 **런타임 `addChild`** → 항상 배열 맨 뒤(=위)로 붙는다. 따라서 **에디터에서 카드 패널을 마지막 자식으로 옮기는 것만으로는 안 고쳐진다**(스폰된 적이 또 뒤에 붙음). 레벨업 중에는 새 적이 안 생기지만(`GameManager.enterLevelUp`→`LevelUp`, `EnemySpawner.update` state 가드), 정공법으로 분리하기로 결정.
 
 | # | 태그 | 항목 | 맥락 · Why | 출처 | 우선 |
 |---|------|------|-----------|------|------|
-| H1 | 🎨🔧 | **UI 항상-위 렌더 — UI 카메라 + 레이어 분리** | 결정된 접근(2026-06-17): 게임 카메라는 DEFAULT만(priority 0), 신규 **UI 카메라**는 UI_2D만(priority↑, clearFlags=DEPTH_ONLY)으로 위에 렌더. HUD·GameOverPanel·CardSelectPanel을 UI_2D 레이어로 통일(현재 HUD는 UI_2D=33554432인데 CardSelectPanel은 DEFAULT=1073741824로 어긋나 있음 — 이 불일치가 패널만 가려진 한 원인). 계층/런타임 append와 무관하게 UI가 항상 위. Cocos 카메라/레이어 API는 구현 시 Context7로 확인. | 이 슬라이스(magic-explosion) user-verification 인게임 테스트 (2026-06-17) | 높음 |
+| H1 | 🎨🔧 | **UI 항상-위 렌더 — UI 카메라 + 레이어 분리** | 결정된 접근(2026-06-17): 게임 카메라는 DEFAULT만(priority 0), 신규 **UI 카메라**는 UI_2D만(priority↑, clearFlags=DEPTH_ONLY)으로 위에 렌더. HUD·GameOverPanel·CardSelectPanel을 UI_2D 레이어로 통일(현재 HUD는 UI_2D=33554432인데 CardSelectPanel은 DEFAULT=1073741824로 어긋나 있음 — 이 불일치가 패널만 가려진 한 원인). 계층/런타임 append와 무관하게 UI가 항상 위. Cocos 카메라/레이어 API는 구현 시 Context7로 확인. | 이 슬라이스(magic-explosion) user-verification 인게임 테스트 (2026-06-17) | ✅완료(card-layer-fix) |
 
 > **같이 처리 후보:** [F8] 카드 설명 라벨 텍스트 잘림 — 같은 `CardSelectPanel`·씬 UI를 건드리므로 `card-layer-fix` 슬라이스에서 함께 닫는 게 합리적.
 
@@ -120,3 +120,5 @@
 
 - ~~`projectileCount` 미사용 필드 (spells.json에 있으나 미사용)~~ → **완료**: 발사체 수 강화 슬라이스(`feat/projectile-count`)에서 다발·부채꼴 발사에 사용. 출처: `sessions/2026-06-01-magic-followups.md` §2 4번째 항목.
 - ~~`HIDE_CATEGORY_UPGRADE_CARDS = false` 복원 (passive-effects가 QA용으로 켜둔 DEV 플래그)~~ → **완료**: `feat/projectile-count` 구현 진입 첫 작업으로 복원(현재 `DeckManager.ts`에서 플래그 제거됨). 출처: `../qa/passive-effects-review-issues.md` #1, `sessions/2026-06-10-projectile-count-plan.md` §113.
+- ~~H1: UI 항상-위 렌더 — UI 카메라 + 레이어 분리~~ → **완료**: `card-layer-fix` 슬라이스(PR #35)에서 게임/UI를 두 Canvas로 분리(게임 `Camera`/DEFAULT/priority 0, `UICamera`/UI_2D/priority 1·DEPTH_ONLY)해 닫음. 단일 Canvas+2카메라 시도는 게임 월드가 그 Canvas의 UICamera에서 컬링돼 폐기하고 공식 두-Canvas 패턴을 채택. 출처: `sessions/2026-06-17-card-layer-fix-plan.md`.
+- ~~F8: 카드 설명 라벨 텍스트 잘림~~ → **완료**: 같은 슬라이스에서 `CardDescLabel_0/1/2`의 overflow를 SHRINK로 바꿔 양끝 잘림을 해소. 출처: 위 계획 문서, `../qa/card-layer-fix-test.md` §2-3.
