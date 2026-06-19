@@ -84,11 +84,17 @@ export class Projectile extends Component {
   /** 적과 충돌 여부를 검사해 명중 시 (폭발이면 반경 AoE, 아니면 단일) 데미지를 주고 자신을 제거한다. */
   private _checkEnemyHit(): void {
     const pos = this.node.position;
-    // 스냅샷: takeDamage → destroy → unregisterEnemy가 원본 배열을 변경해도 순회 누락 방지
-    for (const enemy of [...GameManager.instance.enemies]) {
+    // 그리드가 돌려준 후보 배열은 질의마다 새로 생성되므로, takeDamage → unregisterEnemy가
+    // 원본 적 목록을 변경해도 순회 누락이 없다(기존 [...enemies] 스냅샷 역할을 대체).
+    for (const enemy of GameManager.instance.queryEnemiesInRadius(pos.x, pos.y, this._radius)) {
       if (!enemy?.isValid) continue;
-      const dist = Vec3.distance(pos, enemy.node.position);
-      if (dist < this._radius + enemy.collisionRadius) {
+      const ep = enemy.node.position;
+      // 2D 평면 가정(모두 z=0) — z 성분은 보지 않는다. 종전 Vec3.distance(3D) 대비 평면상 동일.
+      const dx = pos.x - ep.x;
+      const dy = pos.y - ep.y;
+      // 제곱거리 비교 — sqrt 없이 (반경 합)² 와 비교(핫패스 sqrt 제거).
+      const reach = this._radius + enemy.collisionRadius;
+      if (dx * dx + dy * dy < reach * reach) {
         // 폭발이면 직격 없이 명중 지점 반경 AoE만(§9.3) — 충돌한 적도 폭발 반경 안이라 1회 받음.
         if (this._explosion) this._detonate(pos);
         else enemy.takeDamage(this._damage);
@@ -100,14 +106,19 @@ export class Projectile extends Component {
 
   /**
    * 명중 지점 반경에 폭발 피해를 준다 (직격 보너스 없음 — §9.3). 시전 단위 dedup으로
-   * 같은 시전의 겹친 폭발이 한 적을 1회만 때린다. 후보 적 목록은 여기서 구성한다(그리드-레디 G1).
+   * 같은 시전의 겹친 폭발이 한 적을 1회만 때린다. 후보 적은 폭발 반경으로 그리드를 질의해
+   * 추리고(G1), selectExplosionHits가 그 후보에 정밀 판정·dedup을 적용한다.
    * @param center 폭발 중심 (발사체 명중 위치)
    */
   private _detonate(center: Readonly<Vec3>): void {
     if (!this._explosion) return;
     const targets: ExplosionTarget[] = [];
     const ctrls: EnemyController[] = [];
-    for (const enemy of GameManager.instance.enemies) {
+    for (const enemy of GameManager.instance.queryEnemiesInRadius(
+      center.x,
+      center.y,
+      this._explosion.radius,
+    )) {
       if (!enemy?.isValid) continue;
       const p = enemy.node.position;
       targets.push({ x: p.x, y: p.y, collisionRadius: enemy.collisionRadius, id: enemy.spawnId });

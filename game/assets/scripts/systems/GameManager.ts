@@ -1,12 +1,16 @@
 import { _decorator, Component, director } from 'cc';
 import type { EnemyController } from '../components/EnemyController';
 import { GameResult, GameState } from '../data/GameTypes';
+import { enemyQueryRadius, SpatialGrid } from '../logic/SpatialGrid';
 import { DataManager } from './DataManager';
 import { DeckManager } from './DeckManager';
 import { ExperienceManager } from './ExperienceManager';
 import { WaveManager } from './WaveManager';
 
 const { ccclass, property } = _decorator;
+
+/** 공간 그리드 셀 한 변 (월드 단위). 질의 반경을 한두 칸에 담을 크기 — 추후 프로파일링으로 조정. */
+const GRID_CELL_SIZE = 128;
 
 /** 게임 전체 상태와 플레이어 HP를 관리하는 싱글톤 */
 @ccclass('GameManager')
@@ -22,6 +26,14 @@ export class GameManager extends Component {
   private _gameTimer: number = 0;
   private _started: boolean = false;
   private _enemies: EnemyController[] = [];
+  /** 적 충돌·폭발 후보를 빠르게 찾는 공간 그리드. 프레임당 1회 적 위치로 다시 채운다. */
+  private readonly _enemyGrid = new SpatialGrid<EnemyController>(GRID_CELL_SIZE);
+  /** 매 프레임 update에서 증가. 그리드가 어느 프레임 기준인지 비교하는 토큰(엔진 프레임 API 비의존). */
+  private _frameToken: number = 0;
+  /** _enemyGrid가 마지막으로 채워진 프레임 토큰. -1이면 아직 미채움. */
+  private _gridFrame: number = -1;
+  /** 직전 재구축 시점의 최대 적 충돌 반경 — 질의 마진을 매직 넘버 없이 잡는다. */
+  private _maxEnemyRadius: number = 0;
 
   get state() {
     return this._state;
@@ -49,8 +61,10 @@ export class GameManager extends Component {
     DataManager.instance.onReady(() => this._onDataReady());
   }
 
-  // 전체 게임 타이머를 감소시키고, 0이 되면 승리로 전환해 result 씬으로 보낸다
+  // 프레임 토큰 증가(그리드 지연 재구축 키) → 전체 게임 타이머를 감소시키고, 0이 되면 승리로 전환해 result 씬으로 보낸다
   update(dt: number) {
+    // 가드보다 먼저 증가시켜 프레임당 정확히 한 번 그리드가 재구축되게 한다.
+    this._frameToken++;
     if (!this._started) return;
     if (this._state !== GameState.Playing) return;
     this._gameTimer -= dt;
@@ -89,6 +103,37 @@ export class GameManager extends Component {
   unregisterEnemy(enemy: EnemyController): void {
     const idx = this._enemies.indexOf(enemy);
     if (idx !== -1) this._enemies.splice(idx, 1);
+  }
+
+  /**
+   * (x, y) 반경 reach 안에 있을 수 있는 적 후보를 돌려준다 (충돌·폭발 광역 1차 선별).
+   * 그리드는 프레임당 1회 적 위치로 다시 채워지고(지연 재구축), 질의 반경은 enemyQueryRadius로
+   * 최대 적 충돌 반경과 슬랙을 더해 충돌 가능한 적을 빠뜨리지 않는다. 호출 컴포넌트가 같은
+   * 프레임의 GameManager.update보다 먼저 돌면 직전 프레임 그리드를 재사용할 수 있어 후보 위치가
+   * 최대 약 2프레임 낡을 수 있으나, 슬랙이 그 이동분을 덮는다. 정밀 명중 판정(적별 충돌 반경·
+   * 현재 위치)은 호출부가 후보에 대해 다시 한다.
+   * @param reach 발사체/폭발의 반경
+   * @returns 반경 + 마진 안의 적 후보 (순서 미보장)
+   */
+  queryEnemiesInRadius(x: number, y: number, reach: number): EnemyController[] {
+    this._refreshEnemyGrid();
+    return this._enemyGrid.queryRadius(x, y, enemyQueryRadius(reach, this._maxEnemyRadius));
+  }
+
+  /** 프레임이 바뀌었으면 그리드를 현재 적 위치로 다시 채운다(프레임당 1회). 같은 루프에서 최대 적 반경도 갱신. */
+  private _refreshEnemyGrid(): void {
+    if (this._gridFrame === this._frameToken) return;
+    this._gridFrame = this._frameToken;
+    this._enemyGrid.clear();
+    this._maxEnemyRadius = 0;
+    for (const enemy of this._enemies) {
+      if (!enemy?.isValid) continue;
+      const p = enemy.node.position;
+      this._enemyGrid.insert(enemy, p.x, p.y);
+      if (enemy.collisionRadius > this._maxEnemyRadius) {
+        this._maxEnemyRadius = enemy.collisionRadius;
+      }
+    }
   }
 
   /** 플레이어에게 피해를 주고 HP가 0 이하면 GameOver 상태로 전환 후 result 씬으로 이동한다. */
