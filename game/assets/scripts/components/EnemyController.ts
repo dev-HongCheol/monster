@@ -1,11 +1,23 @@
 import { _decorator, Color, Component, Node, Prefab, Sprite, Vec3 } from 'cc';
 import { GameState, type IEnemyData } from '../data/GameTypes';
 import { deathAlpha, deathScale, hitFlashBlend, isDeathDone } from '../logic/EnemyVisualLogic';
+import {
+  type ControlState,
+  ControlStrength,
+  dealsContactDamage,
+  emptyControl,
+  applyControl as mergeControl,
+  moveSpeedFactor,
+  tickControl,
+} from '../logic/StatusEffectLogic';
 import { DataManager } from '../systems/DataManager';
 import { ExperienceManager } from '../systems/ExperienceManager';
 import { GameManager } from '../systems/GameManager';
 
 const { ccclass, property } = _decorator;
+
+/** 정지(CC) 동안 baseTint를 CC 색 쪽으로 섞는 비율 (placeholder, §14). */
+const CC_TINT_BLEND = 0.6;
 
 /** 풀 재사용마다 증가하는 전역 카운터 — 적 개체 식별자(spawnId)의 출처. */
 let _spawnIdCounter = 0;
@@ -57,6 +69,12 @@ export class EnemyController extends Component {
   private _onDespawn: ((node: Node) => void) | null = null;
   /** 이미 풀로 반환/소멸 처리됐는지 — 이중 반환 방어(멱등). */
   private _despawned: boolean = false;
+  /** 컨트롤(CC) 슬롯 상태 — 정지/슬로우/빙결의 강도·잔여 지속(§9.4). 매 reset에서 비운다. */
+  private _control: ControlState = emptyControl();
+  /** CC 틴트가 현재 적용돼 있는지 — 제어가 풀릴 때 baseTint로 1회 복원하기 위한 플래그. */
+  private _ccTinted: boolean = false;
+  /** 정지(CC) 동안 적용할 틴트 색 (placeholder, §14) — 번개 정체성의 옅은 노랑. */
+  private readonly _ccTint: Color = new Color(255, 240, 150, 255);
 
   // Sprite 참조만 캐시한다(컴포넌트는 풀 재사용해도 유지되므로 1회면 충분).
   // 활성 등록은 onEnable, 데이터·시각·연출 상태 적용은 reset()이 담당한다(재사용마다 재적용 필요).
@@ -92,6 +110,8 @@ export class EnemyController extends Component {
     this._deathElapsed = 0;
     this._flashing = false;
     this._flashElapsed = 0;
+    this._control = emptyControl();
+    this._ccTinted = false;
     this._data = DataManager.instance.getEnemy(enemyId);
     if (this._data) {
       this._hp = this._data.maxHp;
@@ -110,8 +130,10 @@ export class EnemyController extends Component {
     }
     this._updateFlash(dt);
     if (GameManager.instance.state !== GameState.Playing) return;
+    this._control = tickControl(this._control, dt);
     this._followPlayer(dt);
     this._checkContactDamage(dt);
+    this._updateControlTint();
   }
 
   /**
@@ -127,6 +149,16 @@ export class EnemyController extends Component {
     }
     this._flashing = true;
     this._flashElapsed = 0;
+  }
+
+  /**
+   * 컨트롤(CC) 슬롯에 상태이상을 건다 (§9.4) — 강도는 더 센 쪽으로, 지속은 더 긴 값으로 합쳐진다.
+   * `Projectile`이 명중 시(확률 통과 시) 호출한다.
+   * @param strength 적용할 컨트롤 강도 (정지/슬로우/빙결)
+   * @param durationSec 지속시간 (sec)
+   */
+  applyControl(strength: ControlStrength, durationSec: number): void {
+    this._control = mergeControl(this._control, strength, durationSec);
   }
 
   /** 데이터의 색(tint)·크기(threatScale)를 Sprite/node에 적용한다(스폰 시 1회). */
@@ -214,26 +246,55 @@ export class EnemyController extends Component {
     );
   }
 
-  /** 플레이어 방향으로 이동한다. */
+  /** 플레이어 방향으로 이동한다. 컨트롤(CC) 강도에 따라 감속(슬로우)하거나 멈춘다(정지·빙결, §9.4). */
   private _followPlayer(dt: number): void {
     if (!this.playerNode || !this._data) return;
+    // 정지·빙결이면 배율 0이라 이동을 건너뛴다. 슬로우면 1 미만 배율로 감속한다.
+    const speedFactor = moveSpeedFactor(this._control.strength);
+    if (speedFactor === 0) return;
     const myPos = this.node.position;
     const targetPos = this.playerNode.position;
     const dir = new Vec3();
     Vec3.subtract(dir, targetPos, myPos);
     if (dir.lengthSqr() < 1) return;
     dir.normalize();
-    dir.multiplyScalar(this._data.speed * dt);
+    dir.multiplyScalar(this._data.speed * speedFactor * dt);
     this.node.setPosition(myPos.x + dir.x, myPos.y + dir.y, myPos.z);
   }
 
-  /** 플레이어와 접촉 거리 내에 있으면 초당 데미지를 준다. */
+  /** 플레이어와 접촉 거리 내에 있으면 초당 데미지를 준다. 빙결 상태면 접촉 피해를 차단한다(§9.4). */
   private _checkContactDamage(dt: number): void {
     if (!this.playerNode || !this._data) return;
+    // 빙결만 접촉 피해를 막는다(완전 무력화). 정지·슬로우는 닿아 있으면 그대로 아프다.
+    if (!dealsContactDamage(this._control.strength)) return;
     const dist = Vec3.distance(this.node.position, this.playerNode.position);
     const touchRadius = this.collisionRadius + this._playerCollisionRadius;
     if (dist < touchRadius) {
       GameManager.instance.damagePlayer(this._data.contactDamagePerSec * dt);
+    }
+  }
+
+  /**
+   * 컨트롤(CC) 틴트를 적용한다 — 제어 중(정지 등)이면 baseTint를 CC 색 쪽으로 섞고, 제어가
+   * 풀리면 baseTint로 1회 복원한다. 피격 플래시 중에는 플래시가 색을 소유하므로 양보한다
+   * (틴트 우선순위: 사망 > 플래시 > CC > 기본).
+   */
+  private _updateControlTint(): void {
+    if (!this._sprite || this._flashing) return;
+    if (this._control.strength !== ControlStrength.None) {
+      const b = this._baseTint;
+      const t = this._ccTint;
+      this._scratchColor.set(
+        Math.round(b.r + (t.r - b.r) * CC_TINT_BLEND),
+        Math.round(b.g + (t.g - b.g) * CC_TINT_BLEND),
+        Math.round(b.b + (t.b - b.b) * CC_TINT_BLEND),
+        b.a,
+      );
+      this._sprite.color = this._scratchColor;
+      this._ccTinted = true;
+    } else if (this._ccTinted) {
+      this._sprite.color = this._baseTint;
+      this._ccTinted = false;
     }
   }
 }

@@ -91,6 +91,10 @@
     "desc": "강화 옵션명 — 동시 발사 수 +1(발사체당 데미지 페널티)"
   },
   "upgrade.range": { "message": "범위", "desc": "강화 옵션명 — 폭발·범위 반경 ↑" },
+  "upgrade.duration": {
+    "message": "지속시간",
+    "desc": "강화 옵션명 — DOT·CC(슬로우·정지·빙결) 지속 ↑"
+  },
 
   "category.fire": { "message": "화염", "desc": "마법 분류명" },
   "category.ice": { "message": "얼음", "desc": "마법 분류명" },

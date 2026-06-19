@@ -53,6 +53,11 @@ export class DeckManager extends Component {
     return this._enhancement.factor(spell, UpgradeOption.Range);
   }
 
+  /** 마법의 지속시간 배율 (개별×분류×전역 강화) — CC·DOT 지속에 곱한다(§10.3 A3). */
+  durationFactor(spell: ISpellData): number {
+    return this._enhancement.factor(spell, UpgradeOption.Duration);
+  }
+
   /** 디버그 로그용 강화 수치 스냅샷 (DEV 빌드의 카드 픽 로그에서 사용). */
   debugEnhancement(spells: ISpellData[]): EnhancementDebugSnapshot {
     return this._enhancement.debugSnapshot(spells);
