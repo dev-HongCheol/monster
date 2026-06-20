@@ -10,7 +10,7 @@
 
 ## 자동 테스트로 검증
 
-> **GREEN 통과:** 피처 테스트 `MagicCc` 18/18 + 전체 스위트 210/210 (2026-06-20, feat/magic-cc). biome lint·format 깨끗, TS 진단 0(편집 파일 전체). 통과 커밋 SHA는 구현 커밋(아래 11단계에서 기재).
+> **GREEN 통과:** 피처 테스트 `MagicCc` 22/22 + 전체 스위트 214/214 (2026-06-20, feat/magic-cc, 코드 리뷰 수정 반영 후). biome lint·format 깨끗, TS 진단 0(편집 파일 전체). 통과 커밋 SHA는 구현 커밋(아래 11단계에서 기재).
 
 `tests/logic/MagicCc.test.ts` — CC 해석기(`logic/StatusEffectLogic.ts`)의 순수 동작:
 
@@ -18,7 +18,11 @@
 - [x] `tickControl` — 지속 감소, 0 이하에서 슬롯 비움(강도 None), 빈 슬롯 멱등
 - [x] `moveSpeedFactor` — None=1, Slow=1 미만, Stun·Freeze=0
 - [x] `dealsContactDamage` — None·Slow·Stun 유지, Freeze만 차단
-- [x] `shouldApplyStun` — 난수<확률 발동, 같거나 크면 미발동, 확률 0이면 항상 미발동
+- [x] `shouldApplyControl` — 난수<확률 발동, 같거나 크면 미발동, 확률 0이면 항상 미발동
+
+`tests/logic/MagicCc.test.ts` — 지속(Duration) 강화 게이트(`logic/EnhancementLogic.ts` A3, 코드 리뷰 #1로 추가):
+
+- [x] CC(`onHitStatus`) 보유 마법만 개별·분류 Duration 카드 생성, CC 없는 마법(폭발만 가진 것 포함)은 미생성, Duration maxed면 제외
 
 ---
 
