@@ -130,7 +130,10 @@ export class EnemyController extends Component {
     }
     this._updateFlash(dt);
     if (GameManager.instance.state !== GameState.Playing) return;
-    this._control = tickControl(this._control, dt);
+    // 빈 슬롯은 틱해도 빈 슬롯이라(만료 시 즉시 None) 제어 중일 때만 진행해 매 프레임 할당을 피한다.
+    if (this._control.strength !== ControlStrength.None) {
+      this._control = tickControl(this._control, dt);
+    }
     this._followPlayer(dt);
     this._checkContactDamage(dt);
     this._updateControlTint();

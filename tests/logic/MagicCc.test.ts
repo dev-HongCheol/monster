@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'vitest';
 import {
+  type ISpellData,
+  SpellCategory,
+  SpellPattern,
+  UpgradeOption,
+  UpgradeTrack,
+} from '../../game/assets/scripts/data/GameTypes';
+import { EnhancementLogic, UPGRADE_CAP } from '../../game/assets/scripts/logic/EnhancementLogic';
+import {
   applyControl,
   type ControlState,
   ControlStrength,
@@ -7,7 +15,7 @@ import {
   emptyControl,
   moveSpeedFactor,
   SLOW_SPEED_FACTOR,
-  shouldApplyStun,
+  shouldApplyControl,
   tickControl,
 } from '../../game/assets/scripts/logic/StatusEffectLogic';
 
@@ -32,6 +40,9 @@ describe('applyControl — 합치기(강도 max·지속 max)', () => {
     const frozen: ControlState = { strength: ControlStrength.Freeze, remaining: 0.3 };
     const next = applyControl(frozen, ControlStrength.Slow, 1.0);
     expect(next.strength).toBe(ControlStrength.Freeze);
+    // 단일 슬롯 max/max라 약한·긴 소스가 강한 강도의 지속을 max로 연장한다(현재 의도된 동작).
+    // cross-strength per-source 의미 정밀화는 S3·S6에서 결정한다(백로그 F14).
+    expect(next.remaining).toBeCloseTo(1.0);
   });
 
   test('지속은 현재와 새 값 중 더 긴 쪽으로 갱신된다', () => {
@@ -106,20 +117,84 @@ describe('dealsContactDamage — 강도별 접촉 피해 유지 여부', () => {
   });
 });
 
-describe('shouldApplyStun — 확률 판정(난수 주입)', () => {
+describe('shouldApplyControl — 확률 판정(난수 주입)', () => {
   test('난수가 확률보다 작으면 발동', () => {
-    expect(shouldApplyStun(0.1, 0.2)).toBe(true);
+    expect(shouldApplyControl(0.1, 0.2)).toBe(true);
   });
 
   test('난수가 확률보다 크면 미발동', () => {
-    expect(shouldApplyStun(0.5, 0.2)).toBe(false);
+    expect(shouldApplyControl(0.5, 0.2)).toBe(false);
   });
 
   test('경계: 난수가 확률과 같으면 미발동', () => {
-    expect(shouldApplyStun(0.2, 0.2)).toBe(false);
+    expect(shouldApplyControl(0.2, 0.2)).toBe(false);
   });
 
   test('확률 0이면 항상 미발동', () => {
-    expect(shouldApplyStun(0, 0)).toBe(false);
+    expect(shouldApplyControl(0, 0)).toBe(false);
+  });
+});
+
+// CC(onHitStatus)를 가진 마법 — 지속(Duration) 강화 적격
+const makeCcSpell = (id: string, category: SpellCategory): ISpellData => ({
+  id,
+  category,
+  tier: 1,
+  damage: 10,
+  projectileSpeed: 400,
+  projectileRadius: 8,
+  cooldown: 0.5,
+  projectileCount: 1,
+  pattern: SpellPattern.Directional,
+  onHitStatus: { kind: 'stun', chance: 0.25, durationSec: 0.6 },
+});
+
+// CC가 없는 마법(폭발 반경만 보유) — 범위 적격이나 지속 부적격
+const makePlainSpell = (id: string, category: SpellCategory): ISpellData => ({
+  id,
+  category,
+  tier: 1,
+  damage: 10,
+  projectileSpeed: 400,
+  projectileRadius: 8,
+  cooldown: 0.5,
+  projectileCount: 1,
+  pattern: SpellPattern.Directional,
+  explosionRadius: 80,
+});
+
+describe('EnhancementLogic.buildUpgradeCards — 지속시간(Duration) 강화 게이트 (A3)', () => {
+  test('CC(onHitStatus)를 가진 마법은 개별 Duration 카드가 생성된다', () => {
+    const e = new EnhancementLogic();
+    const bolt = makeCcSpell('lightning_bolt', SpellCategory.Lightning);
+    const ids = e.buildUpgradeCards([bolt]).map((c) => c.id);
+    expect(ids).toContain('upg_lightning_bolt_duration');
+  });
+
+  test('CC가 없는 마법은 Duration 카드가 생성되지 않는다(폭발만 가진 마법도 제외)', () => {
+    const e = new EnhancementLogic();
+    const fireball = makePlainSpell('fireball', SpellCategory.Fire);
+    const ids = e.buildUpgradeCards([fireball]).map((c) => c.id);
+    expect(ids.some((id) => id.endsWith('_duration'))).toBe(false);
+  });
+
+  test('CC 적격 마법이 있는 분류만 분류 Duration 카드가 생성된다', () => {
+    const e = new EnhancementLogic();
+    const bolt = makeCcSpell('lightning_bolt', SpellCategory.Lightning);
+    const ids = e.buildUpgradeCards([bolt]).map((c) => c.id);
+    expect(ids).toContain('cupg_lightning_duration'); // 번개엔 적격 마법(라이트닝 볼트)이 있음
+    expect(ids).not.toContain('cupg_fire_duration'); // 화염엔 적격 마법 없음
+    expect(ids).not.toContain('cupg_ice_duration');
+  });
+
+  test('Duration 레벨 4(maxed)면 그 마법의 Duration 카드는 제외된다', () => {
+    const e = new EnhancementLogic();
+    const bolt = makeCcSpell('lightning_bolt', SpellCategory.Lightning);
+    for (let i = 0; i < UPGRADE_CAP; i++) {
+      e.raise(UpgradeTrack.Individual, 'lightning_bolt', UpgradeOption.Duration);
+    }
+    const ids = e.buildUpgradeCards([bolt]).map((c) => c.id);
+    expect(ids).not.toContain('upg_lightning_bolt_duration');
+    expect(ids).toContain('upg_lightning_bolt_damage'); // 다른 옵션은 남는다
   });
 });

@@ -1,6 +1,6 @@
 import { _decorator, Component, type Node, Vec3, view } from 'cc';
 import { type ExplosionTarget, selectExplosionHits } from '../logic/ExplosionLogic';
-import { type ControlStrength, shouldApplyStun } from '../logic/StatusEffectLogic';
+import { type ControlStrength, shouldApplyControl } from '../logic/StatusEffectLogic';
 import { GameManager } from '../systems/GameManager';
 import type { EnemyController } from './EnemyController';
 
@@ -158,13 +158,13 @@ export class Projectile extends Component {
 
   /**
    * 단일 명중한 적에게 확률로 상태이상(정지 등)을 건다 (§9.4). 난수는 여기서 굴리고 발동 판정은
-   * 순수 함수(`shouldApplyStun`)에 위임해, 발동 규칙을 결정적으로 테스트할 수 있게 한다.
+   * 순수 함수(`shouldApplyControl`)에 위임해, 발동 규칙을 결정적으로 테스트할 수 있게 한다.
    * @param enemy 방금 명중한 적
    */
   private _applyStatus(enemy: EnemyController): void {
     const s = this._status;
     if (!s) return;
-    if (shouldApplyStun(Math.random(), s.chance)) {
+    if (shouldApplyControl(Math.random(), s.chance)) {
       enemy.applyControl(s.strength, s.durationSec);
     }
   }

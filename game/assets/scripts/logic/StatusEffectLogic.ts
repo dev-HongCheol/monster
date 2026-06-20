@@ -96,11 +96,12 @@ export function dealsContactDamage(strength: ControlStrength): boolean {
 }
 
 /**
- * 정지 발동 여부를 판정한다 — 난수가 확률보다 작으면 발동. 난수는 호출부가 생성해 주입하고
- * 판정만 순수 함수로 떼어 결정적으로 테스트한다.
+ * 상태이상(CC) 발동 여부를 판정한다 — 난수가 확률보다 작으면 발동. 정지·슬로우·빙결 공통의
+ * 확률 롤이며(강도 무관), 난수는 호출부가 생성해 주입하고 판정만 순수 함수로 떼어 결정적으로
+ * 테스트한다.
  * @param rand 0 이상 1 미만 난수 (호출부가 주입)
  * @param chance 발동 확률 (0~1)
  */
-export function shouldApplyStun(rand: number, chance: number): boolean {
+export function shouldApplyControl(rand: number, chance: number): boolean {
   return rand < chance;
 }
