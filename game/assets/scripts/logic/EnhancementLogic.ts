@@ -71,10 +71,14 @@ export const SLICE_OPTIONS: UpgradeOption[] = [
 
 /**
  * 카드 라벨로 등장할 수 있는 강화 옵션 — i18n `upgrade.<opt>` 키가 존재해야 하는 집합.
- * 항상 켜진 SLICE_OPTIONS + 조건부(반경류 마법만) 범위(Range). i18n 키 정합 가드의 도메인이다.
- * 지속시간(Duration)은 아직 카드로 안 나오므로 제외(미배선 — 후속 슬라이스에서 추가).
+ * 항상 켜진 SLICE_OPTIONS + 조건부 범위(Range, 반경류 마법만)·지속(Duration, CC·DOT 마법만).
+ * i18n 키 정합 가드의 도메인이다.
  */
-export const CARD_LABEL_OPTIONS: UpgradeOption[] = [...SLICE_OPTIONS, UpgradeOption.Range];
+export const CARD_LABEL_OPTIONS: UpgradeOption[] = [
+  ...SLICE_OPTIONS,
+  UpgradeOption.Range,
+  UpgradeOption.Duration,
+];
 
 /** 분류가 일반 강화 옵션을 허용하는지 (보조 분류는 제외 § 7.5) */
 function generalOptions(category: SpellCategory): UpgradeOption[] {
@@ -89,18 +93,37 @@ function isRangeCapable(spell: ISpellData): boolean {
   return spell.explosionRadius !== undefined;
 }
 
-/** 개별 마법에 적용할 강화 옵션 — 일반 3종 + (반경류 효과를 가진 마법이면) 범위(§10.3 A3). */
-function individualOptionsFor(spell: ISpellData): UpgradeOption[] {
-  const base = generalOptions(spell.category);
-  return base.length > 0 && isRangeCapable(spell) ? [...base, UpgradeOption.Range] : base;
+/**
+ * 지속시간(Duration) 강화 적격 여부 (기획 §10.3 A3 게이트). CC·DOT 등 지속 효과를 실제로
+ * 가진 마법만 지속 카드를 만든다. 현재 적격 기준은 `onHitStatus`(CC) 보유 — DOT·오라 지속
+ * (인페르노 등)은 magic-S4에서 OR로 더한다.
+ */
+function isDurationCapable(spell: ISpellData): boolean {
+  return spell.onHitStatus !== undefined;
 }
 
-/** 분류에 적용할 강화 옵션 — 일반 3종 + (그 분류에 반경류 적격 마법이 있으면) 범위(§10.3 A3). */
+/** 개별 마법에 적용할 강화 옵션 — 일반 3종 + (반경류면) 범위 + (지속류면) 지속(§10.3 A3). */
+function individualOptionsFor(spell: ISpellData): UpgradeOption[] {
+  const base = generalOptions(spell.category);
+  if (base.length === 0) return base;
+  const opts = [...base];
+  if (isRangeCapable(spell)) opts.push(UpgradeOption.Range);
+  if (isDurationCapable(spell)) opts.push(UpgradeOption.Duration);
+  return opts;
+}
+
+/** 분류에 적용할 강화 옵션 — 일반 3종 + (분류에 반경류 있으면) 범위 + (지속류 있으면) 지속(§10.3 A3). */
 function categoryOptionsFor(category: SpellCategory, ownedSpells: ISpellData[]): UpgradeOption[] {
   const base = generalOptions(category);
   if (base.length === 0) return base;
-  const hasRangeCapable = ownedSpells.some((s) => s.category === category && isRangeCapable(s));
-  return hasRangeCapable ? [...base, UpgradeOption.Range] : base;
+  const opts = [...base];
+  if (ownedSpells.some((s) => s.category === category && isRangeCapable(s))) {
+    opts.push(UpgradeOption.Range);
+  }
+  if (ownedSpells.some((s) => s.category === category && isDurationCapable(s))) {
+    opts.push(UpgradeOption.Duration);
+  }
+  return opts;
 }
 
 /** 디버그 로그용 마법 한 줄 스냅샷 (수치만 — 표시/포맷은 UI 책임) */

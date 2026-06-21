@@ -4,11 +4,12 @@ import { FireSchedulerLogic } from '../logic/FireSchedulerLogic';
 import { LoadoutLogic } from '../logic/LoadoutLogic';
 import { buildFirePlan, type ShotSpec } from '../logic/SpellPatternLogic';
 import { spellCategoryColor } from '../logic/SpellVisual';
+import { ControlStrength } from '../logic/StatusEffectLogic';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
 import { PoolManager } from './PoolManager';
-import { Projectile, type ProjectileExplosion } from './Projectile';
+import { Projectile, type ProjectileExplosion, type ProjectileStatus } from './Projectile';
 
 const { ccclass, property } = _decorator;
 
@@ -16,6 +17,13 @@ const { ccclass, property } = _decorator;
 const EXPLOSION_VFX_DURATION = 0.25;
 /** 폭발 VFX 기준 반경 — 이 반경에서 스케일 1. 유효 반경에 비례해 VFX를 키운다(범위 강화 시 커짐). */
 const EXPLOSION_VFX_BASE_RADIUS = 70;
+
+/** spells.json `onHitStatus.kind` 문자열 → CC 강도(`ControlStrength`) 매핑. */
+const STATUS_KIND_STRENGTH: Record<'stun' | 'slow' | 'freeze', ControlStrength> = {
+  stun: ControlStrength.Stun,
+  slow: ControlStrength.Slow,
+  freeze: ControlStrength.Freeze,
+};
 
 /**
  * 로드아웃(보유 마법)을 들고 보유 마법 전부를 각자 쿨다운으로 자동 발사하는 컴포넌트.
@@ -34,7 +42,10 @@ export class SpellCaster extends Component {
   @property(Prefab) bulletPrefab: Prefab | null = null;
   /** 발사체가 생성될 부모 노드 (인스펙터에서 연결) */
   @property(Node) bulletParent: Node | null = null;
-  /** 시작 시 로드아웃에 채울 마법 id 목록 (spells.json) */
+  /**
+   * 시작 시 로드아웃에 채울 마법 id 목록 (spells.json).
+   * 씬 인스펙터에 값이 지정돼 있으면 인스펙터가 이 기본값보다 우선하므로 인스펙터에서 바꾼다.
+   */
   @property({ type: [CCString] }) startingSpellIds: string[] = ['fireball'];
   /** 폭발 VFX 프리팹 (인스펙터에서 연결 — 폭발형 마법 명중 시 표시). 미연결이면 VFX 생략. */
   @property(Prefab) explosionVfxPrefab: Prefab | null = null;
@@ -134,8 +145,10 @@ export class SpellCaster extends Component {
         DeckManager.instance.projectilePenaltyFactor(spell);
       // 폭발형이면 이번 시전의 dedup 공유 집합 + 유효 반경을 만들어 모든 발사체가 공유한다(§10.2·§10.3).
       const explosion = this._buildExplosion(spell);
+      // 명중 시 상태이상(CC)을 거는 마법이면 유효 지속까지 계산한 설정을 만든다(§9.4·§10.3 A3).
+      const status = this._buildStatusEffect(spell);
       for (const shot of plan) {
-        this._spawnShot(shot, damageMult, spell.category, explosion);
+        this._spawnShot(shot, damageMult, spell.category, explosion, status);
       }
     }
   }
@@ -152,6 +165,22 @@ export class SpellCaster extends Component {
       radius: spell.explosionRadius * DeckManager.instance.rangeFactor(spell),
       hitSet: new Set<number>(),
       onVfx: this._spawnExplosionVfx,
+    };
+  }
+
+  /**
+   * 명중 시 상태이상(CC)을 거는 마법이면 이번 시전의 상태이상 설정을 만든다 (없으면 null).
+   * 데이터의 `kind` 문자열을 CC 강도로 매핑하고, 유효 지속 = 기본 지속 × 지속(Duration) 강화
+   * 배율을 계산한다(§9.4·§10.3 A3).
+   * @param spell 발사 중인 마법
+   */
+  private _buildStatusEffect(spell: ISpellData): ProjectileStatus | null {
+    const s = spell.onHitStatus;
+    if (!s) return null;
+    return {
+      strength: STATUS_KIND_STRENGTH[s.kind],
+      chance: s.chance,
+      durationSec: s.durationSec * DeckManager.instance.durationFactor(spell),
     };
   }
 
@@ -181,12 +210,14 @@ export class SpellCaster extends Component {
    * @param damageMult 기본 데미지에 곱할 배율 = per-spell/분류/전역 데미지 배율 × 발사체당 페널티(§7.6)
    * @param category 마법 분류 (발사체 색 틴트용)
    * @param explosion 명중 시 폭발 설정 — null이면 단일 명중
+   * @param status 명중 시 상태이상(CC) 설정 — null이면 없음(단일 명중 경로에서만 적용)
    */
   private _spawnShot(
     shot: ShotSpec,
     damageMult: number,
     category: string,
     explosion: ProjectileExplosion | null,
+    status: ProjectileStatus | null,
   ): void {
     if (!this._bulletPool) return;
 
@@ -211,6 +242,7 @@ export class SpellCaster extends Component {
       shot.radius,
       this._releaseBullet,
       explosion,
+      status,
     );
   }
 }

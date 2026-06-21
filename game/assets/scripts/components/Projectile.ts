@@ -1,5 +1,6 @@
 import { _decorator, Component, type Node, Vec3, view } from 'cc';
 import { type ExplosionTarget, selectExplosionHits } from '../logic/ExplosionLogic';
+import { type ControlStrength, shouldApplyControl } from '../logic/StatusEffectLogic';
 import { GameManager } from '../systems/GameManager';
 import type { EnemyController } from './EnemyController';
 
@@ -13,6 +14,16 @@ export interface ProjectileExplosion {
   hitSet: Set<number>;
   /** 명중 지점에 폭발 VFX를 띄우는 콜백 (없으면 생략) */
   onVfx?: (x: number, y: number, radius: number) => void;
+}
+
+/** 발사체 명중 시 거는 상태이상(CC) 설정 (단일 명중 마법의 확률 정지 등 — §9.4). */
+export interface ProjectileStatus {
+  /** 적용할 컨트롤 강도 (정지/슬로우/빙결) */
+  strength: ControlStrength;
+  /** 발동 확률 (0~1) */
+  chance: number;
+  /** 유효 지속시간 (sec) — 지속(Duration) 강화 반영 후 값 */
+  durationSec: number;
 }
 
 /** 플레이어가 발사하는 마법 발사체 */
@@ -30,6 +41,8 @@ export class Projectile extends Component {
   private _despawned: boolean = false;
   /** 명중 시 폭발 동작 (단일 명중이면 null). */
   private _explosion: ProjectileExplosion | null = null;
+  /** 명중 시 거는 상태이상 (없으면 null). 단일 명중 경로에서 확률로 적용한다. */
+  private _status: ProjectileStatus | null = null;
 
   /**
    * 발사체를 초기화한다. 풀에서 꺼낸 직후(또는 instantiate 직후) 반드시 호출해야 한다.
@@ -40,6 +53,7 @@ export class Projectile extends Component {
    * @param radius 충돌 반경
    * @param onDespawn 명중·화면밖 시 호출할 풀 반환 콜백 (자신의 node 전달)
    * @param explosion 명중 시 폭발 설정 — null이면 단일 명중(기존 동작)
+   * @param status 명중 시 거는 상태이상(CC) 설정 — null이면 없음(단일 명중 경로에서만 적용)
    */
   init(
     direction: Vec3,
@@ -48,6 +62,7 @@ export class Projectile extends Component {
     radius: number,
     onDespawn: (node: Node) => void,
     explosion: ProjectileExplosion | null = null,
+    status: ProjectileStatus | null = null,
   ): void {
     this._direction = direction.clone();
     this._speed = speed;
@@ -56,6 +71,7 @@ export class Projectile extends Component {
     this._onDespawn = onDespawn;
     this._despawned = false;
     this._explosion = explosion;
+    this._status = status;
   }
 
   // 화면 밖 제거 기준 거리를 계산한다 — 좌표계 원점이 화면 중앙이므로 절반 + 여유 100
@@ -96,8 +112,13 @@ export class Projectile extends Component {
       const reach = this._radius + enemy.collisionRadius;
       if (dx * dx + dy * dy < reach * reach) {
         // 폭발이면 직격 없이 명중 지점 반경 AoE만(§9.3) — 충돌한 적도 폭발 반경 안이라 1회 받음.
-        if (this._explosion) this._detonate(pos);
-        else enemy.takeDamage(this._damage);
+        if (this._explosion) {
+          this._detonate(pos);
+        } else {
+          // 단일 명중: 데미지 + (설정돼 있으면) 확률 상태이상(정지 등 §9.4).
+          enemy.takeDamage(this._damage);
+          this._applyStatus(enemy);
+        }
         this._despawn();
         return;
       }
@@ -133,6 +154,19 @@ export class Projectile extends Component {
     );
     for (const idx of hits) ctrls[idx].takeDamage(this._damage);
     this._explosion.onVfx?.(center.x, center.y, this._explosion.radius);
+  }
+
+  /**
+   * 단일 명중한 적에게 확률로 상태이상(정지 등)을 건다 (§9.4). 난수는 여기서 굴리고 발동 판정은
+   * 순수 함수(`shouldApplyControl`)에 위임해, 발동 규칙을 결정적으로 테스트할 수 있게 한다.
+   * @param enemy 방금 명중한 적
+   */
+  private _applyStatus(enemy: EnemyController): void {
+    const s = this._status;
+    if (!s) return;
+    if (shouldApplyControl(Math.random(), s.chance)) {
+      enemy.applyControl(s.strength, s.durationSec);
+    }
   }
 
   /** 화면 경계를 벗어나면 풀로 반환한다. */

@@ -65,6 +65,20 @@ export enum SpellPattern {
 }
 
 /**
+ * 명중 시 거는 상태이상(CC) 설정 (기획 §9.4·§11). `Projectile`이 단일 명중 시 확률을 굴려
+ * 적의 컨트롤 슬롯에 건다. `kind`는 CC 종류로 `StatusEffectLogic.ControlStrength`에 대응한다
+ * (이번 슬라이스는 `'stun'`만 배선 — `'slow'`·`'freeze'`는 후속 슬라이스).
+ */
+export interface ISpellStatusEffect {
+  /** CC 종류 — 정지/슬로우/빙결 */
+  kind: 'stun' | 'slow' | 'freeze';
+  /** 발동 확률 (0~1) */
+  chance: number;
+  /** 기본 지속시간 (sec) — 지속(Duration) 강화가 곱하는 대상(§10.3 A3) */
+  durationSec: number;
+}
+
+/**
  * 마법 데이터 (spells.json 항목) — 언어 중립.
  * 표시명은 `spell.<id>.name` 카탈로그 키로 해석한다(데이터에 표시 문자열 없음).
  */
@@ -103,6 +117,11 @@ export interface ISpellData {
    * 곱하는 대상이며(§10.3·A3), 이 필드 유무가 범위 강화 카드 적격을 가른다.
    */
   explosionRadius?: number;
+  /**
+   * 명중 시 거는 상태이상(CC) — 라이트닝 볼트의 확률 정지 등(§9.4·§11). 이 필드 유무가
+   * 지속시간(Duration) 강화 카드 적격을 가른다(§10.3 A3, `isDurationCapable`).
+   */
+  onHitStatus?: ISpellStatusEffect;
 }
 
 /** 강화 카드가 올릴 대상 — 트랙·옵션·대상 키(개별=spellId, 분류=category) (기획 § 6.1·§ 8) */

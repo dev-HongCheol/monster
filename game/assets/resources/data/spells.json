@@ -32,6 +32,7 @@
     "projectileRadius": 6,
     "cooldown": 0.35,
     "projectileCount": 1,
-    "pattern": "directional"
+    "pattern": "directional",
+    "onHitStatus": { "kind": "stun", "chance": 0.25, "durationSec": 0.6 }
   }
 ]
