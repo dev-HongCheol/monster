@@ -44,12 +44,9 @@ export class SpellCaster extends Component {
   @property(Node) bulletParent: Node | null = null;
   /**
    * 시작 시 로드아웃에 채울 마법 id 목록 (spells.json).
-   *
-   * TEMP magic-cc 테스트: 정지(CC) 인게임 검증을 위해 시작 마법을 라이트닝 볼트로 둔다.
-   * **머지 전 반드시 `['fireball']`로 복원**(테스트 전용·비배포 — 계획 §7, QA 체크리스트).
    * 씬 인스펙터에 값이 지정돼 있으면 인스펙터가 이 기본값보다 우선하므로 인스펙터에서 바꾼다.
    */
-  @property({ type: [CCString] }) startingSpellIds: string[] = ['lightning_bolt'];
+  @property({ type: [CCString] }) startingSpellIds: string[] = ['fireball'];
   /** 폭발 VFX 프리팹 (인스펙터에서 연결 — 폭발형 마법 명중 시 표시). 미연결이면 VFX 생략. */
   @property(Prefab) explosionVfxPrefab: Prefab | null = null;
 
