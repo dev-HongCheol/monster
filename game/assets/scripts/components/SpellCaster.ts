@@ -46,7 +46,8 @@ export class SpellCaster extends Component {
    * 시작 시 로드아웃에 채울 마법 id 목록 (spells.json).
    * 씬 인스펙터에 값이 지정돼 있으면 인스펙터가 이 기본값보다 우선하므로 인스펙터에서 바꾼다.
    */
-  @property({ type: [CCString] }) startingSpellIds: string[] = ['fireball'];
+  // TEMP magic-slow 테스트: 슬로우 단독 + 정지와 겹치는 다중 타이머 확인용. 머지 전 ['fireball']로 복원.
+  @property({ type: [CCString] }) startingSpellIds: string[] = ['ice_missile', 'lightning_bolt'];
   /** 폭발 VFX 프리팹 (인스펙터에서 연결 — 폭발형 마법 명중 시 표시). 미연결이면 VFX 생략. */
   @property(Prefab) explosionVfxPrefab: Prefab | null = null;
 

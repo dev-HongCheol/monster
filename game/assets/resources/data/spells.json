@@ -21,7 +21,8 @@
     "projectileRadius": 8,
     "cooldown": 0.7,
     "projectileCount": 1,
-    "pattern": "directional"
+    "pattern": "directional",
+    "onHitStatus": { "kind": "slow", "chance": 0.9, "durationSec": 2 }
   },
   {
     "id": "lightning_bolt",

@@ -2,10 +2,12 @@ import { _decorator, Color, Component, Node, Prefab, Sprite, Vec3 } from 'cc';
 import { GameState, type IEnemyData } from '../data/GameTypes';
 import { deathAlpha, deathScale, hitFlashBlend, isDeathDone } from '../logic/EnemyVisualLogic';
 import {
-  type ControlState,
+  appliedStrength,
   ControlStrength,
+  type ControlTimers,
   dealsContactDamage,
   emptyControl,
+  hasActiveControl,
   applyControl as mergeControl,
   moveSpeedFactor,
   tickControl,
@@ -16,7 +18,7 @@ import { GameManager } from '../systems/GameManager';
 
 const { ccclass, property } = _decorator;
 
-/** 정지(CC) 동안 baseTint를 CC 색 쪽으로 섞는 비율 (placeholder, §14). */
+/** 제어(CC) 중 baseTint를 적용 강도의 CC 색 쪽으로 섞는 비율 (placeholder, §14). */
 const CC_TINT_BLEND = 0.6;
 
 /** 풀 재사용마다 증가하는 전역 카운터 — 적 개체 식별자(spawnId)의 출처. */
@@ -69,12 +71,16 @@ export class EnemyController extends Component {
   private _onDespawn: ((node: Node) => void) | null = null;
   /** 이미 풀로 반환/소멸 처리됐는지 — 이중 반환 방어(멱등). */
   private _despawned: boolean = false;
-  /** 컨트롤(CC) 슬롯 상태 — 정지/슬로우/빙결의 강도·잔여 지속(§9.4). 매 reset에서 비운다. */
-  private _control: ControlState = emptyControl();
+  /** 컨트롤(CC) 강도별 타이머 — 정지/슬로우/빙결이 각자 독립으로 감소(§9.4). 매 reset에서 비운다. */
+  private _control: ControlTimers = emptyControl();
   /** CC 틴트가 현재 적용돼 있는지 — 제어가 풀릴 때 baseTint로 1회 복원하기 위한 플래그. */
   private _ccTinted: boolean = false;
-  /** 정지(CC) 동안 적용할 틴트 색 (placeholder, §14) — 번개 정체성의 옅은 노랑. */
-  private readonly _ccTint: Color = new Color(255, 240, 150, 255);
+  /** 정지 틴트 (placeholder, §14) — 번개 정체성의 옅은 노랑. magic-S2 룩 유지(값 불변). */
+  private readonly _stunTint: Color = new Color(255, 240, 150, 255);
+  /** 슬로우 틴트 (placeholder, §14) — 얼음 정체성의 하늘색. */
+  private readonly _slowTint: Color = new Color(130, 200, 255, 255);
+  /** 빙결 틴트 (placeholder, §14) — 짙은 얼음 톤. 후속 magic-S6에서 실사용. */
+  private readonly _freezeTint: Color = new Color(120, 160, 230, 255);
 
   // Sprite 참조만 캐시한다(컴포넌트는 풀 재사용해도 유지되므로 1회면 충분).
   // 활성 등록은 onEnable, 데이터·시각·연출 상태 적용은 reset()이 담당한다(재사용마다 재적용 필요).
@@ -130,13 +136,15 @@ export class EnemyController extends Component {
     }
     this._updateFlash(dt);
     if (GameManager.instance.state !== GameState.Playing) return;
-    // 빈 슬롯은 틱해도 빈 슬롯이라(만료 시 즉시 None) 제어 중일 때만 진행해 매 프레임 할당을 피한다.
-    if (this._control.strength !== ControlStrength.None) {
+    // 제어 중일 때만 틱한다(빈 적은 건너뛰어 매 프레임 할당 회피). appliedStrength는 반드시
+    // 틱 *이후* 한 번 산출해 이동·접촉·틴트에 넘긴다 — 틱 전에 읽으면 만료가 한 프레임 늦는다.
+    if (hasActiveControl(this._control)) {
       this._control = tickControl(this._control, dt);
     }
-    this._followPlayer(dt);
-    this._checkContactDamage(dt);
-    this._updateControlTint();
+    const applied = appliedStrength(this._control);
+    this._followPlayer(dt, applied);
+    this._checkContactDamage(dt, applied);
+    this._updateControlTint(applied);
   }
 
   /**
@@ -155,8 +163,8 @@ export class EnemyController extends Component {
   }
 
   /**
-   * 컨트롤(CC) 슬롯에 상태이상을 건다 (§9.4) — 강도는 더 센 쪽으로, 지속은 더 긴 값으로 합쳐진다.
-   * `Projectile`이 명중 시(확률 통과 시) 호출한다.
+   * 컨트롤(CC)을 건다 (§9.4) — 해당 강도의 타이머만 max(현재, durationSec)로 갱신하고 다른
+   * 강도는 독립으로 둔다. `Projectile`이 명중 시(확률 통과 시) 호출한다.
    * @param strength 적용할 컨트롤 강도 (정지/슬로우/빙결)
    * @param durationSec 지속시간 (sec)
    */
@@ -249,11 +257,15 @@ export class EnemyController extends Component {
     );
   }
 
-  /** 플레이어 방향으로 이동한다. 컨트롤(CC) 강도에 따라 감속(슬로우)하거나 멈춘다(정지·빙결, §9.4). */
-  private _followPlayer(dt: number): void {
+  /**
+   * 플레이어 방향으로 이동한다. 컨트롤(CC) 강도에 따라 감속(슬로우)하거나 멈춘다(정지·빙결, §9.4).
+   * @param dt 프레임 경과 시간 (sec)
+   * @param applied 이번 프레임 적용 강도 (update에서 틱 이후 산출해 주입)
+   */
+  private _followPlayer(dt: number, applied: ControlStrength): void {
     if (!this.playerNode || !this._data) return;
     // 정지·빙결이면 배율 0이라 이동을 건너뛴다. 슬로우면 1 미만 배율로 감속한다.
-    const speedFactor = moveSpeedFactor(this._control.strength);
+    const speedFactor = moveSpeedFactor(applied);
     if (speedFactor === 0) return;
     const myPos = this.node.position;
     const targetPos = this.playerNode.position;
@@ -265,11 +277,15 @@ export class EnemyController extends Component {
     this.node.setPosition(myPos.x + dir.x, myPos.y + dir.y, myPos.z);
   }
 
-  /** 플레이어와 접촉 거리 내에 있으면 초당 데미지를 준다. 빙결 상태면 접촉 피해를 차단한다(§9.4). */
-  private _checkContactDamage(dt: number): void {
+  /**
+   * 플레이어와 접촉 거리 내에 있으면 초당 데미지를 준다. 빙결 상태면 접촉 피해를 차단한다(§9.4).
+   * @param dt 프레임 경과 시간 (sec)
+   * @param applied 이번 프레임 적용 강도 (update에서 틱 이후 산출해 주입)
+   */
+  private _checkContactDamage(dt: number, applied: ControlStrength): void {
     if (!this.playerNode || !this._data) return;
     // 빙결만 접촉 피해를 막는다(완전 무력화). 정지·슬로우는 닿아 있으면 그대로 아프다.
-    if (!dealsContactDamage(this._control.strength)) return;
+    if (!dealsContactDamage(applied)) return;
     const dist = Vec3.distance(this.node.position, this.playerNode.position);
     const touchRadius = this.collisionRadius + this._playerCollisionRadius;
     if (dist < touchRadius) {
@@ -278,15 +294,17 @@ export class EnemyController extends Component {
   }
 
   /**
-   * 컨트롤(CC) 틴트를 적용한다 — 제어 중(정지 등)이면 baseTint를 CC 색 쪽으로 섞고, 제어가
-   * 풀리면 baseTint로 1회 복원한다. 피격 플래시 중에는 플래시가 색을 소유하므로 양보한다
+   * 컨트롤(CC) 틴트를 적용한다 — 제어 중이면 baseTint를 적용 강도의 CC 색 쪽으로 섞고, 제어가
+   * 풀리면 baseTint로 1회 복원한다. 강도가 바뀌면(빙결→정지→슬로우) 색도 매 프레임 다시 고른다
+   * (전이 시점에 래치하지 않는다). 피격 플래시 중에는 플래시가 색을 소유하므로 양보한다
    * (틴트 우선순위: 사망 > 플래시 > CC > 기본).
+   * @param applied 이번 프레임 적용 강도 (update에서 틱 이후 산출해 주입)
    */
-  private _updateControlTint(): void {
+  private _updateControlTint(applied: ControlStrength): void {
     if (!this._sprite || this._flashing) return;
-    if (this._control.strength !== ControlStrength.None) {
+    if (applied !== ControlStrength.None) {
       const b = this._baseTint;
-      const t = this._ccTint;
+      const t = this._ccTintFor(applied);
       this._scratchColor.set(
         Math.round(b.r + (t.r - b.r) * CC_TINT_BLEND),
         Math.round(b.g + (t.g - b.g) * CC_TINT_BLEND),
@@ -298,6 +316,18 @@ export class EnemyController extends Component {
     } else if (this._ccTinted) {
       this._sprite.color = this._baseTint;
       this._ccTinted = false;
+    }
+  }
+
+  /** 적용 강도별 CC 틴트 색 — 슬로우=하늘색, 정지=노랑, 빙결=짙은 얼음(placeholder, §14). */
+  private _ccTintFor(strength: ControlStrength): Color {
+    switch (strength) {
+      case ControlStrength.Slow:
+        return this._slowTint;
+      case ControlStrength.Freeze:
+        return this._freezeTint;
+      default:
+        return this._stunTint;
     }
   }
 }
