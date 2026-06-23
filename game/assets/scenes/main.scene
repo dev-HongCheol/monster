@@ -33,12 +33,15 @@
       },
       {
         "__id__": 135
+      },
+      {
+        "__id__": 143
       }
     ],
     "_active": true,
     "_components": [],
     "_prefab": {
-      "__id__": 143
+      "__id__": 151
     },
     "_lpos": {
       "__type__": "cc.Vec3",
@@ -69,7 +72,7 @@
     },
     "autoReleaseAssets": false,
     "_globals": {
-      "__id__": 144
+      "__id__": 152
     },
     "_id": "fe110078-a100-4640-bf09-9443c23bbd3a"
   },
@@ -3434,7 +3437,7 @@
   {
     "__type__": "cc.Node",
     "_name": "Canvas",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 1
@@ -3516,7 +3519,7 @@
   {
     "__type__": "cc.Node",
     "_name": "Camera",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 81
@@ -3607,7 +3610,7 @@
   {
     "__type__": "cc.Node",
     "_name": "Player",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 81
@@ -3755,12 +3758,16 @@
       "__uuid__": "5ebf16f8-b190-4174-8e35-34ff5c29e6f9",
       "__expectedType__": "cc.Prefab"
     },
+    "novaVfxPrefab": {
+      "__uuid__": "420982bc-fbdd-42c7-9368-9c60b905a5e0",
+      "__expectedType__": "cc.Prefab"
+    },
     "_id": "c5lplblStDWoPS3nMoskvR"
   },
   {
     "__type__": "cc.Node",
     "_name": "BulletParent",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 81
@@ -3801,7 +3808,7 @@
   {
     "__type__": "cc.Node",
     "_name": "DataManager",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 81
@@ -3858,7 +3865,7 @@
   {
     "__type__": "cc.Node",
     "_name": "I18n",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 81
@@ -3940,7 +3947,7 @@
   {
     "__type__": "cc.Node",
     "_name": "WaveManager",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 81
@@ -3998,7 +4005,7 @@
   {
     "__type__": "cc.Node",
     "_name": "DeckManager",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 81
@@ -4055,7 +4062,7 @@
   {
     "__type__": "cc.Node",
     "_name": "GameManager",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 81
@@ -4100,7 +4107,7 @@
   {
     "__type__": "cc.Node",
     "_name": "GameManager",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 99
@@ -4158,7 +4165,7 @@
   {
     "__type__": "cc.Node",
     "_name": "EnemySpawner",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 81
@@ -4203,7 +4210,7 @@
   {
     "__type__": "cc.Node",
     "_name": "EnemySpawner",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 102
@@ -4272,7 +4279,7 @@
   {
     "__type__": "cc.Node",
     "_name": "ExperienceManager",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 81
@@ -4754,7 +4761,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_objFlags": 0,
+    "_objFlags": 512,
     "_parent": {
       "__id__": 1
     },
@@ -4864,6 +4871,117 @@
     }
   },
   {
+    "__type__": "cc.Node",
+    "_objFlags": 0,
+    "_parent": {
+      "__id__": 1
+    },
+    "_prefab": {
+      "__id__": 144
+    },
+    "__editorExtras__": {}
+  },
+  {
+    "__type__": "cc.PrefabInfo",
+    "root": {
+      "__id__": 143
+    },
+    "asset": {
+      "__uuid__": "420982bc-fbdd-42c7-9368-9c60b905a5e0",
+      "__expectedType__": "cc.Prefab"
+    },
+    "fileId": "0d7X73Z1NBJJGLMX0ffL8x",
+    "instance": {
+      "__id__": 145
+    },
+    "targetOverrides": null,
+    "nestedPrefabInstanceRoots": null
+  },
+  {
+    "__type__": "cc.PrefabInstance",
+    "fileId": "7fmq8OmrRNEbVhXxSXlfW0",
+    "prefabRootNode": null,
+    "mountedChildren": [],
+    "mountedComponents": [],
+    "propertyOverrides": [
+      {
+        "__id__": 146
+      },
+      {
+        "__id__": 148
+      },
+      {
+        "__id__": 149
+      },
+      {
+        "__id__": 150
+      }
+    ],
+    "removedComponents": []
+  },
+  {
+    "__type__": "CCPropertyOverrideInfo",
+    "targetInfo": {
+      "__id__": 147
+    },
+    "propertyPath": [
+      "_name"
+    ],
+    "value": "NovaVfx"
+  },
+  {
+    "__type__": "cc.TargetInfo",
+    "localID": [
+      "0d7X73Z1NBJJGLMX0ffL8x"
+    ]
+  },
+  {
+    "__type__": "CCPropertyOverrideInfo",
+    "targetInfo": {
+      "__id__": 147
+    },
+    "propertyPath": [
+      "_lpos"
+    ],
+    "value": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    }
+  },
+  {
+    "__type__": "CCPropertyOverrideInfo",
+    "targetInfo": {
+      "__id__": 147
+    },
+    "propertyPath": [
+      "_lrot"
+    ],
+    "value": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    }
+  },
+  {
+    "__type__": "CCPropertyOverrideInfo",
+    "targetInfo": {
+      "__id__": 147
+    },
+    "propertyPath": [
+      "_euler"
+    ],
+    "value": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    }
+  },
+  {
     "__type__": "cc.PrefabInfo",
     "root": null,
     "asset": null,
@@ -4882,34 +5000,37 @@
       },
       {
         "__id__": 135
+      },
+      {
+        "__id__": 143
       }
     ]
   },
   {
     "__type__": "cc.SceneGlobals",
     "ambient": {
-      "__id__": 145
+      "__id__": 153
     },
     "shadows": {
-      "__id__": 146
+      "__id__": 154
     },
     "_skybox": {
-      "__id__": 147
+      "__id__": 155
     },
     "fog": {
-      "__id__": 148
+      "__id__": 156
     },
     "octree": {
-      "__id__": 149
+      "__id__": 157
     },
     "skin": {
-      "__id__": 150
+      "__id__": 158
     },
     "lightProbeInfo": {
-      "__id__": 151
+      "__id__": 159
     },
     "postSettings": {
-      "__id__": 152
+      "__id__": 160
     },
     "bakedWithStationaryMainLight": false,
     "bakedWithHighpLightmap": false
