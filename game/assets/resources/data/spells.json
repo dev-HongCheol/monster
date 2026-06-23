@@ -35,5 +35,18 @@
     "projectileCount": 1,
     "pattern": "directional",
     "onHitStatus": { "kind": "stun", "chance": 0.25, "durationSec": 0.6 }
+  },
+  {
+    "id": "frost_nova",
+    "category": "ice",
+    "tier": 3,
+    "damage": 30,
+    "projectileSpeed": 0,
+    "projectileRadius": 0,
+    "cooldown": 2.0,
+    "projectileCount": 1,
+    "pattern": "nova",
+    "allowsProjectileCount": false,
+    "explosionRadius": 120
   }
 ]

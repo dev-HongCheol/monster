@@ -62,6 +62,8 @@ export enum UpgradeTrack {
 export enum SpellPattern {
   /** aim 방향 발사체 — 유효 count만큼 부채꼴 발사(count=1이면 직선) */
   Directional = 'directional',
+  /** 자기중심 즉발 버스트 — 시전 시 플레이어 위치 반경에 1회 피해(발사체 없음). 기획 §9.2 Self-AoE/Nova */
+  Nova = 'nova',
 }
 
 /**

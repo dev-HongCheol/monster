@@ -1,5 +1,6 @@
 import { _decorator, CCString, Color, Component, Node, Prefab, Sprite, Vec3 } from 'cc';
-import { GameState, type ISpellData } from '../data/GameTypes';
+import { GameState, type ISpellData, SpellPattern } from '../data/GameTypes';
+import { type ExplosionTarget, selectExplosionHits } from '../logic/ExplosionLogic';
 import { FireSchedulerLogic } from '../logic/FireSchedulerLogic';
 import { LoadoutLogic } from '../logic/LoadoutLogic';
 import { buildFirePlan, type ShotSpec } from '../logic/SpellPatternLogic';
@@ -8,6 +9,7 @@ import { ControlStrength } from '../logic/StatusEffectLogic';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
+import type { EnemyController } from './EnemyController';
 import { PoolManager } from './PoolManager';
 import { Projectile, type ProjectileExplosion, type ProjectileStatus } from './Projectile';
 
@@ -17,6 +19,10 @@ const { ccclass, property } = _decorator;
 const EXPLOSION_VFX_DURATION = 0.25;
 /** 폭발 VFX 기준 반경 — 이 반경에서 스케일 1. 유효 반경에 비례해 VFX를 키운다(범위 강화 시 커짐). */
 const EXPLOSION_VFX_BASE_RADIUS = 70;
+/** 노바 VFX 표시 시간 (sec) — 이 시간 뒤 풀로 반환. */
+const NOVA_VFX_DURATION = 0.25;
+/** 노바 VFX 기준 반경 — 이 반경에서 스케일 1. 유효 반경에 비례해 VFX를 키운다(범위 강화 시 커짐). frost_nova 기본 반경과 동일. */
+const NOVA_VFX_BASE_RADIUS = 120;
 
 /** spells.json `onHitStatus.kind` 문자열 → CC 강도(`ControlStrength`) 매핑. */
 const STATUS_KIND_STRENGTH: Record<'stun' | 'slow' | 'freeze', ControlStrength> = {
@@ -49,6 +55,8 @@ export class SpellCaster extends Component {
   @property({ type: [CCString] }) startingSpellIds: string[] = ['fireball'];
   /** 폭발 VFX 프리팹 (인스펙터에서 연결 — 폭발형 마법 명중 시 표시). 미연결이면 VFX 생략. */
   @property(Prefab) explosionVfxPrefab: Prefab | null = null;
+  /** 노바 VFX 프리팹 (인스펙터에서 연결 — 자기중심 노바 발동 시 표시). 미연결이면 VFX 생략. */
+  @property(Prefab) novaVfxPrefab: Prefab | null = null;
 
   private readonly _loadout = new LoadoutLogic();
   private readonly _scheduler = new FireSchedulerLogic();
@@ -57,6 +65,8 @@ export class SpellCaster extends Component {
   private _bulletPool: PoolManager | null = null;
   /** 폭발 VFX 재사용 풀 (onLoad에서 prefab/parent로 생성). prefab 미연결이면 null(VFX 생략). */
   private _vfxPool: PoolManager | null = null;
+  /** 노바 VFX 재사용 풀 (onLoad에서 prefab/parent로 생성). prefab 미연결이면 null(VFX 생략). */
+  private _novaVfxPool: PoolManager | null = null;
   /** 발사체 반환 콜백 — 매 발사마다 closure를 새로 만들지 않도록 1회 바인딩해 재사용. */
   private readonly _releaseBullet = (node: Node): void => {
     this._bulletPool?.release(node);
@@ -69,6 +79,15 @@ export class SpellCaster extends Component {
     const s = radius / EXPLOSION_VFX_BASE_RADIUS;
     vfx.setScale(s, s, 1);
     this.scheduleOnce(() => this._vfxPool?.release(vfx), EXPLOSION_VFX_DURATION);
+  };
+  /** 노바 VFX를 플레이어 위치에 띄우는 콜백 — 유효 반경에 비례해 스케일. prefab 미연결이면 no-op. */
+  private readonly _spawnNovaVfx = (x: number, y: number, radius: number): void => {
+    if (!this._novaVfxPool) return;
+    const vfx = this._novaVfxPool.acquire();
+    vfx.setPosition(x, y, 0);
+    const s = radius / NOVA_VFX_BASE_RADIUS;
+    vfx.setScale(s, s, 1);
+    this.scheduleOnce(() => this._novaVfxPool?.release(vfx), NOVA_VFX_DURATION);
   };
 
   /** 보유 마법 로드아웃 (후속 슬라이스의 카드 시스템 연동용) */
@@ -86,6 +105,10 @@ export class SpellCaster extends Component {
     // 폭발 VFX 풀은 선택 — 미연결이면 폭발 피해는 그대로 동작하고 VFX만 생략한다.
     if (this.explosionVfxPrefab && this.bulletParent) {
       this._vfxPool = new PoolManager(this.explosionVfxPrefab, this.bulletParent);
+    }
+    // 노바 VFX 풀도 선택 — 미연결이면 노바 피해는 그대로 동작하고 VFX만 생략한다.
+    if (this.novaVfxPrefab && this.bulletParent) {
+      this._novaVfxPool = new PoolManager(this.novaVfxPrefab, this.bulletParent);
     }
   }
 
@@ -111,7 +134,7 @@ export class SpellCaster extends Component {
     });
   }
 
-  // 스케줄러 tick → 최근접 적 조준 → 쿨다운 소진된 보유 마법만 전역 강화 적용해 발사
+  // 스케줄러 tick → 자기중심(Nova)은 적 무관 발동, 발사체 마법은 최근접 적 조준 시에만 발동
   update(dt: number) {
     if (!this._dataReady) return;
     if (GameManager.instance.state !== GameState.Playing) return;
@@ -119,19 +142,32 @@ export class SpellCaster extends Component {
     const spells = this._loadout.spells;
     this._scheduler.tick(dt, spells);
 
+    // 최근접 적 조준 단위벡터 — 적이 있을 때만 계산(없으면 null). 발사체 마법만 필요하다.
+    // 자기중심(Nova)은 조준이 필요 없어(§10.1 self) 적이 없어도 아래에서 발동한다.
     const target = this._findNearestEnemy();
-    if (!target) return;
-
-    // 발사 기준 조준 단위벡터(플레이어 → 최근접 적). 적이 self와 겹쳐 영벡터면 위쪽 폴백.
-    const aim = new Vec3();
-    Vec3.subtract(aim, target.position, this.node.position);
-    if (aim.lengthSqr() < 1e-8) aim.set(0, 1, 0);
-    else aim.normalize();
+    let aim: Vec3 | null = null;
+    if (target) {
+      aim = new Vec3();
+      Vec3.subtract(aim, target.position, this.node.position);
+      // 적이 self와 겹쳐 영벡터면 위쪽 폴백.
+      if (aim.lengthSqr() < 1e-8) aim.set(0, 1, 0);
+      else aim.normalize();
+    }
 
     for (const id of spells) {
       if (!this._scheduler.isReady(id)) continue;
       const spell = DataManager.instance.getSpell(id);
       if (!spell) continue;
+
+      if (spell.pattern === SpellPattern.Nova) {
+        // 자기중심 즉발 버스트 — 적 유무와 무관하게 쿨다운마다 발동(조준 불필요).
+        this._scheduler.consume(id, DeckManager.instance.effectiveCooldown(spell));
+        this._castNova(spell);
+        continue;
+      }
+
+      // 발사체 마법은 조준이 필요하다 — 적이 없으면 이 마법만 발사 보류(쿨다운도 유지).
+      if (!aim) continue;
 
       // per-spell/분류/전역 쿨다운 강화 반영(배율로 나눠 간격 단축 + 하한). 계산은 순수 로직에 위임.
       this._scheduler.consume(id, DeckManager.instance.effectiveCooldown(spell));
@@ -182,6 +218,36 @@ export class SpellCaster extends Component {
       chance: s.chance,
       durationSec: s.durationSec * DeckManager.instance.durationFactor(spell),
     };
+  }
+
+  /**
+   * 자기중심 노바를 발동한다 (기획 §9.2 Self-AoE/Nova). 플레이어 위치를 중심으로 유효 반경 안
+   * 적에게 1회 피해를 준다. 발사체가 아니며 적 유무와 무관하게 시전된다.
+   *
+   * 후보 적 질의·dedup·데미지 적용은 `Projectile._detonate`와 같은 경로(`queryEnemiesInRadius`
+   * + `selectExplosionHits`)를 재사용한다 — 차이는 중심이 플레이어 위치, 트리거가 시전이라는 점뿐이다.
+   * 발사체 수 페널티는 없다(노바는 발사체 수 ❌, §7.6).
+   * @param spell 발동 중인 노바 마법
+   */
+  private _castNova(spell: ISpellData): void {
+    if (spell.explosionRadius === undefined) return; // 데이터 방어 — 반경 없으면 발동 불가
+    const radius = spell.explosionRadius * DeckManager.instance.rangeFactor(spell);
+    const damage = spell.damage * DeckManager.instance.damageFactor(spell);
+    const center = this.node.position;
+
+    // 폭발과 동일: 반경으로 그리드를 질의해 후보를 추리고(G1) 컨트롤러를 병렬 수집한다.
+    const targets: ExplosionTarget[] = [];
+    const ctrls: EnemyController[] = [];
+    for (const enemy of GameManager.instance.queryEnemiesInRadius(center.x, center.y, radius)) {
+      if (!enemy?.isValid) continue;
+      const p = enemy.node.position;
+      targets.push({ x: p.x, y: p.y, collisionRadius: enemy.collisionRadius, id: enemy.spawnId });
+      ctrls.push(enemy);
+    }
+    // 시전당 dedup 집합은 1회 버스트라 매번 새로 만든다(§10.2).
+    const hits = selectExplosionHits(center.x, center.y, radius, targets, new Set<number>());
+    for (const idx of hits) ctrls[idx].takeDamage(damage);
+    this._spawnNovaVfx(center.x, center.y, radius);
   }
 
   /** 활성 적 중 가장 가까운 적 노드를 반환한다. 없으면 null. */

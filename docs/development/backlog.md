@@ -24,9 +24,9 @@
 
 | # | 태그 | 항목 | 맥락 · Why | 출처 | 우선 |
 |---|------|------|-----------|------|------|
-| A1 | ✨ | **마법별 효과 레이어 구현** — 폭발-on-impact / 자기중심 AOE(노바) / DOT / CC(슬로우·빙결) / 호밍 / 체인 / 지정위치 낙하(메테오·썬더스톰) / 무작위 폭풍(블리자드) / 빔 | 현재 패턴 엔진은 `Directional`(직선·부채꼴) 하나뿐. `SpellPatternLogic`의 switch에 case를 추가하는 구조로 설계돼 있다. 마법 10종이 실제 고유 동작을 가지려면 이 레이어가 핵심. 각 마법↔패턴 매핑은 기획서 참조. **진행(2026-06-21):** CC 축 — 정지(magic-S2)·슬로우(magic-S3, F14 강도별 다중 타이머 모델 동반) 구현. 빙결·노바·DOT·호밍·체인·낙하·폭풍·빔 잔여 → A1 계속 열림. | [spell-pattern-engine 메모리], `../planning/magic-system-mage.md` | 높음 |
+| A1 | ✨ | **마법별 효과 레이어 구현** — 폭발-on-impact / 자기중심 AOE(노바) / DOT / CC(슬로우·빙결) / 호밍 / 체인 / 지정위치 낙하(메테오·썬더스톰) / 무작위 폭풍(블리자드) / 빔 | 현재 패턴 엔진은 `Directional`(직선·부채꼴) 하나뿐. `SpellPatternLogic`의 switch에 case를 추가하는 구조로 설계돼 있다. 마법 10종이 실제 고유 동작을 가지려면 이 레이어가 핵심. 각 마법↔패턴 매핑은 기획서 참조. **진행(2026-06-21):** CC 축 — 정지(magic-S2)·슬로우(magic-S3, F14 강도별 다중 타이머 모델 동반) 구현. **진행(2026-06-23):** 자기중심 Nova 순간버스트 프리미티브 + 프로스트 노바(frost-nova) — Self-AoE 축 개시(디스패치 옵션 B = 별도 버스트 경로, §12.1 출력 일반화는 이월). 빙결·인페르노(Aura+DOT)·호밍·체인·낙하·폭풍·빔 잔여 → A1 계속 열림. | [spell-pattern-engine 메모리], `../planning/magic-system-mage.md` | 높음 |
 | A2 | ✨ | **적 없을 때 facing 방향 발사**(지속형 마법) | 사거리 내 적이 없으면 현재는 발사 보류 → 블리자드 등 설치/지속형 마법의 효용이 반감. "적 있음=조준 / 없음=facing 방향" 규칙 필요. **선행 과제:** 플레이어가 8방향 이동만 있고 facing 상태가 없음 → facing 정의(마지막 이동 방향?)부터 정해야 함. | `sessions/2026-06-01-magic-followups.md` §1 ⭐ | 높음 |
-| A3 | ✨ | **범위·지속시간 강화 활성화** | 강화 프레임워크에 `UpgradeOption`으로 범위·지속시간이 enum·매트릭스에만 존재하고 **no-op**이다. splash/AOE/DOT 효과 레이어(A1)가 생겨야 곱할 대상이 생긴다 → A1과 한 묶음. | `sessions/2026-06-03-spell-enhancement-framework-plan.md` §42, [spell-enhancement 메모리] | 중 |
+| A3 | ✨ | **범위·지속시간 강화 활성화** | 강화 프레임워크에 `UpgradeOption`으로 범위·지속시간이 enum·매트릭스에만 존재하고 **no-op**이다. splash/AOE/DOT 효과 레이어(A1)가 생겨야 곱할 대상이 생긴다 → A1과 한 묶음. **진행(2026-06-23):** 프로스트 노바(frost-nova)로 **범위** 강화가 첫 실제 대상(노바 반경 = `explosionRadius` × rangeFactor)을 얻어 활성화됐다. **지속시간**은 여전히 곱할 대상 없음(노바는 순수 피해 = `onHitStatus` 없음) → 빙결·DOT 등 CC 효과가 생겨야 활성화, A3 계속 열림. | `sessions/2026-06-03-spell-enhancement-framework-plan.md` §42, [spell-enhancement 메모리] | 중 |
 | A4 | 🎨 | **마법별 전용 스프라이트/이펙트** | 현재는 분류 색 틴트(화염=빨강/얼음=하늘/번개=노랑)로만 구분. 아트 단계(로드맵 7-9주)에서 마법별 고유 비주얼. | `sessions/2026-06-01-magic-followups.md` §2 | 낮음 |
 
 ---
@@ -59,7 +59,7 @@
 | # | 태그 | 항목 | 맥락 · Why | 출처 | 우선 |
 |---|------|------|-----------|------|------|
 | D1 | 🔧 | `IEnemyData.name` → `enemy.<id>.name` 키화 | i18n 1차는 spells/cards만 키화. 현재 `enemy.name` 표시 소비처 없음 → 콘텐츠 단계에 마이그레이션. | `../qa/i18n-foundation-review-issues.md` #3 | 낮음 |
-| D2 | 🔧 | DataManager JSON `as T` 캐스팅 → 스키마 검증(zod/assertion) | 필드 누락 시 런타임에 undefined 유입 가능. 현재 적 1종이라 위험 낮음, 콘텐츠 늘면 방어 필요. `xpDrop:0` 같은 의도적 0 vs 누락 구분도 포함. | `../qa/xp-drop-per-enemy-review-issues.md` Recommendations | 중 |
+| D2 | 🔧 | DataManager JSON `as T` 캐스팅 → 스키마 검증(zod/assertion) | 필드 누락 시 런타임에 undefined 유입 가능. 현재 적 1종이라 위험 낮음, 콘텐츠 늘면 방어 필요. `xpDrop:0` 같은 의도적 0 vs 누락 구분도 포함. **frost-nova 리뷰 M-2:** 마법 단위 테스트가 실 spells.json이 아닌 픽스처를 써서 데이터 드리프트(오타·필드 누락)를 못 잡는다 — 실데이터를 로드해 마법별 필드(pattern/allowsProjectileCount/explosionRadius)를 단언하는 sanity 테스트를 이 검증과 함께 도입. | `../qa/xp-drop-per-enemy-review-issues.md` Recommendations, `../qa/frost-nova-review-issues.md` M-2 | 중 |
 | D3 | ♻️ | `en.json`/`ko.json` 포맷 비대칭 정리 | en은 flat string, ko는 `{message,desc}` 객체. 현재 각 파일 내부 컨벤션은 일관(신규 결함 아님). | `../qa/passive-effects-review-issues.md` #4 | 낮음 |
 
 ---
@@ -91,6 +91,7 @@
 | F13 | 🎨 | 폭발 VFX 기준 반경(`EXPLOSION_VFX_BASE_RADIUS=70`) 마법 데이터 커플링 | VFX 스케일 = `radius/70`이 파이어볼 기본 반경과 중복. 기본 반경이 다른 미래 폭발 마법은 `rangeFactor=1`에서도 비-1 스케일로 렌더. 기본값을 마법에서 유도하거나 커플링 문서화. | `../qa/magic-explosion-review-issues.md` #4 | 낮음 |
 | F14 | 📐 | **CC 다중 타이머 모델 전환** — 강도별 독립 타이머·동시 감소·"가장 센 것" 적용 (모델 결정됨 2026-06-21) | **결정(2026-06-21):** F14의 열린 질문(per-source vs max/max)을 동시 타이머로 확정. 단일 슬롯(강도 max·지속 max)을 폐기하고, 슬로우·정지·빙결이 **각자 타이머를 들고 동시에 감소**하며 매 순간 살아 있는 것 중 **가장 센 강도**를 적용한다. 재적중은 그 강도의 타이머만 max로 재충전하고 다른 강도는 독립으로 계속 흐른다. 시나리오1) 스턴3·슬로우5·빙결1 동시 적용 → 빙결 1초 → 스턴 2초 → 슬로우 2초(총 5초, 가장 긴 단일 지속). 시나리오2) t=1에 빙결을 다시 걸면 빙결이 1초 재충전돼 다시 1초 보이고, 그 밑에서 스턴 타이머가 같이 흘러 스턴은 남은 2초 중 1초만 노출. **현 문제:** 기존 `applyControl`은 강도·지속을 각각 max로 합쳐, 약하고 긴 소스가 강한 강도의 잔여를 늘린다(설계 오류). **휴면:** 지금은 `spells.json`이 stun만 생산해 강도가 안 섞여 미발현 — 단일 슬롯과 적용 결과 동일이라 magic-cc(S2)는 현 상태로 정상·머지 가능. **슬로우(S3)에서 두 번째 강도가 처음 생길 때 관측되므로 S3에서 함께 구현**한다. **변경 범위:** `StatusEffectLogic.ts`(자료구조→강도별 타이머 + `applyControl`/`tickControl` 재작성 + 신규 `appliedStrength`/`hasActiveControl` + 헤더 JSDoc), `EnemyController.ts`(`_control.strength` 읽는 4곳→`appliedStrength`·틱 가드→`hasActiveControl`), `MagicCc.test.ts`(cross-strength·tick 재작성 + 동시감소·재충전 시나리오 추가), `magic-cc-test.md`, 기획 §9.4(단일 슬롯→다중 타이머로 재서술). | `../qa/magic-cc-review-issues.md` #2, 이 대화(2026-06-21 사용자 결정) | ✅완료(magic-S3) |
 | F15 | 🐛 | `hitEffect='explosion'` + `onHitStatus` 동시 보유 마법은 폭발 경로가 CC를 조용히 누락 | `Projectile._checkEnemyHit`에서 폭발이면 `_detonate`만 타고 `_applyStatus`를 안 거쳐, 폭발 마법에 CC를 붙여도 적용되지 않는다. 현재 그런 마법이 없어 미발현. 폭발+CC 마법을 추가할 때 폭발 경로로 CC를 확장하거나, "explosion과 onHitStatus는 공존 불가" 불변식을 데이터 검증(D2)으로 강제할지 결정. | `../qa/magic-cc-review-issues.md` #5 | 낮음 |
+| F16 | ♻️ | 그리드 질의 → 타겟 수집 루프 중복 (`SpellCaster._castNova` ↔ `Projectile._detonate`) | 두 곳이 같은 "반경으로 그리드 질의 → `ExplosionTarget[]` + `EnemyController[]` 병렬 수집" 블록이라 `ExplosionTarget` 필드 변경 시 두 군데를 고쳐야 함. `collectExplosionTargets(cx,cy,r)→{targets,ctrls}` 공유 헬퍼로 추출 가능. frost-nova 디스패치 옵션 B의 의도된 트레이드오프 — 두 번째 비발사체 패턴(S5 낙하·S8 빔) + §12.1 출력 일반화 시 함께 해소. | `../qa/frost-nova-review-issues.md` M-1, `../planning/magic-system-mage.md` §12.1 | 낮음 |
 
 ---
 
