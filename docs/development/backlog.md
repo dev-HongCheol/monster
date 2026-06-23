@@ -26,7 +26,7 @@
 |---|------|------|-----------|------|------|
 | A1 | ✨ | **마법별 효과 레이어 구현** — 폭발-on-impact / 자기중심 AOE(노바) / DOT / CC(슬로우·빙결) / 호밍 / 체인 / 지정위치 낙하(메테오·썬더스톰) / 무작위 폭풍(블리자드) / 빔 | 현재 패턴 엔진은 `Directional`(직선·부채꼴) 하나뿐. `SpellPatternLogic`의 switch에 case를 추가하는 구조로 설계돼 있다. 마법 10종이 실제 고유 동작을 가지려면 이 레이어가 핵심. 각 마법↔패턴 매핑은 기획서 참조. **진행(2026-06-21):** CC 축 — 정지(magic-S2)·슬로우(magic-S3, F14 강도별 다중 타이머 모델 동반) 구현. **진행(2026-06-23):** 자기중심 Nova 순간버스트 프리미티브 + 프로스트 노바(frost-nova) — Self-AoE 축 개시(디스패치 옵션 B = 별도 버스트 경로, §12.1 출력 일반화는 이월). 빙결·인페르노(Aura+DOT)·호밍·체인·낙하·폭풍·빔 잔여 → A1 계속 열림. | [spell-pattern-engine 메모리], `../planning/magic-system-mage.md` | 높음 |
 | A2 | ✨ | **적 없을 때 facing 방향 발사**(지속형 마법) | 사거리 내 적이 없으면 현재는 발사 보류 → 블리자드 등 설치/지속형 마법의 효용이 반감. "적 있음=조준 / 없음=facing 방향" 규칙 필요. **선행 과제:** 플레이어가 8방향 이동만 있고 facing 상태가 없음 → facing 정의(마지막 이동 방향?)부터 정해야 함. | `sessions/2026-06-01-magic-followups.md` §1 ⭐ | 높음 |
-| A3 | ✨ | **범위·지속시간 강화 활성화** | 강화 프레임워크에 `UpgradeOption`으로 범위·지속시간이 enum·매트릭스에만 존재하고 **no-op**이다. splash/AOE/DOT 효과 레이어(A1)가 생겨야 곱할 대상이 생긴다 → A1과 한 묶음. | `sessions/2026-06-03-spell-enhancement-framework-plan.md` §42, [spell-enhancement 메모리] | 중 |
+| A3 | ✨ | **범위·지속시간 강화 활성화** | 강화 프레임워크에 `UpgradeOption`으로 범위·지속시간이 enum·매트릭스에만 존재하고 **no-op**이다. splash/AOE/DOT 효과 레이어(A1)가 생겨야 곱할 대상이 생긴다 → A1과 한 묶음. **진행(2026-06-23):** 프로스트 노바(frost-nova)로 **범위** 강화가 첫 실제 대상(노바 반경 = `explosionRadius` × rangeFactor)을 얻어 활성화됐다. **지속시간**은 여전히 곱할 대상 없음(노바는 순수 피해 = `onHitStatus` 없음) → 빙결·DOT 등 CC 효과가 생겨야 활성화, A3 계속 열림. | `sessions/2026-06-03-spell-enhancement-framework-plan.md` §42, [spell-enhancement 메모리] | 중 |
 | A4 | 🎨 | **마법별 전용 스프라이트/이펙트** | 현재는 분류 색 틴트(화염=빨강/얼음=하늘/번개=노랑)로만 구분. 아트 단계(로드맵 7-9주)에서 마법별 고유 비주얼. | `sessions/2026-06-01-magic-followups.md` §2 | 낮음 |
 
 ---
