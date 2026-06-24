@@ -36,4 +36,17 @@
 
 ## 판정
 
-리뷰어 최종: **With fixes** — Critical/실버그 없음, 260/260 GREEN, TS 에러 0. 유일한 실질 지적(I1 락아웃 키)을 즉시 수정했고 나머지는 문서/성능 폴리시였다. I1 수정에 따라 `pnpm wf invalidate` 후 /cso부터 전체 검증을 재실행한다.
+리뷰어 최초: **With fixes** — Critical/실버그 없음, 260/260 GREEN, TS 에러 0. 유일한 실질 지적(I1 락아웃 키)을 즉시 수정했고 나머지는 문서/성능 폴리시였다. I1 수정에 따라 `pnpm wf invalidate` 후 /cso부터 전체 검증을 재실행했다.
+
+## 재리뷰 (I1 수정 후 — 커밋 `fa1e0f0`, 새 HEAD `732eb58`)
+
+I1 수정만 집중 재리뷰(별도 subagent)했다. 결과:
+
+- **수정 판정: 정확·완전.** 락아웃 키가 `${spellId}:${orbIndex}:${spawnId}`로 바뀌었고 `canHit`·`registerHit`·`_applyOrbHit` 선언과 `_advanceOrbits`의 호출부까지 모든 호출 지점에 `spellId`가 전달된다. 레포 전역 grep으로 누락 호출부·잔존 `${orbIndex}:${spawnId}` 문자열 0건 확인. `tickRehit`는 키를 제네릭하게 순회해 수정 불필요.
+- **회귀: 없음.** 기존 락아웃 테스트는 새 시그니처로 갱신되며 의미 동일, 신규 "다른 궤도 마법과 독립" 테스트가 충돌 케이스(같은 오브 인덱스+같은 적, 다른 spellId)를 정확히 증명. `OrbitLogic.test.ts` 18/18, 전체 261/261 GREEN.
+- **신규 이슈: 0건.** JSDoc/주석도 `(마법, 오브, 적)` 삼중으로 갱신됨.
+- **머지 가능 판정: Yes.**
+
+선택적 잔여(미반영): 재리뷰어가 교차 독립 테스트에 대칭 단언 1줄을 더하면 약간 강해진다고 했으나, 현 단언으로 키 구별이 이미 증명되어 추가하지 않음.
+
+검증 재실행 결과: cso/ts/lint 모두 재통과(261/261 GREEN). review 게이트 통과 → user-verification 진입.
