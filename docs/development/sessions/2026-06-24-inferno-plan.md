@@ -341,3 +341,49 @@ _applyOrbHit(orbIndex, pos, orbSize, damage):
 | 7 | 발사체 수 페널티 | §7.6 적용(타격당 피해에 곱) | 궤도 발사체 수는 단일·군집 순이득 → 프레임워크 일관 | 미적용 — 순수 이득 방치 |
 | 8 | 구현 접근 | A(`SpellCaster` 궤도 경로 + 순수 `OrbitLogic`) | 기존 발사체 경로 무변경·회귀 최소·확립된 패턴 | B(`Projectile` 개조) / C(환형 지대) |
 | 9 | F16 수집 헬퍼 | 수집 서브루프만 추출 | 드리프트 차단 + 순 LOC ±0 | 주석만 / 전체 추출(스코프 확대) |
+
+---
+
+## 13. 추가 작업 — 강화 테스트 도구 + 궤도 패킹(orbGap) (2026-06-25)
+
+> 이 절은 인페르노가 `user-verification`(6단계 완료, 검토용 Draft PR 존재)에 있던 중 추가한 작업을 기록한다. 강화 밸런스를 직접 확인하려다 나온 두 갈래이며, `리워크`로 `implementation`에 복귀해 작업했다. (원래 별도 세션 문서였으나 이 플랜에 병합했다.)
+
+### 13.1 배경
+
+강화는 개별·분류·전역 × 5종 옵션이라 조합이 많아, 인게임에서 레벨업 카드를 일일이 뽑아 특정 레벨 조합을 만들기가 번거로웠다. 사용자가 "데이터로 강화 레벨을 미리 주입해 시작하고 싶다"고 했다. 처음엔 `spells.json`의 인페르노 기본 수치를 강화 효과값으로 바꿔 미리보는 방안을 시도했으나, 강화 배율 곡선을 실제로 태우는 게 아니라 기본값을 바꾸는 것이라 의도와 달랐다. 그래서 강화 시스템을 실제로 거치는 시드 방식으로 방향을 잡았다.
+
+### 13.2 DEV 강화 시드 도구
+
+카드 픽 없이 강화 레벨을 주입하는 DEV 전용 도구다.
+
+- 파싱·검증은 순수 로직 `logic/DebugEnhancementSeed.ts`로 분리했다(ADR 002). 시드 JSON을 개별·분류 `raise` op과 전역 보너스 op으로 정규화하고, 알 수 없는 옵션·범위 밖 레벨을 방어적으로 거른다.
+- 적용은 `systems/DeckManager.ts`가 맡는다. `start()`에서 `cc/env`의 `DEV`일 때만 `data/debug-enhancements.json`을 로드해 `applyDebugSeed`로 강화 트랙에 누적한다. 릴리스 빌드는 로드 자체를 안 하고, 파일이 없으면 조용히 무시한다(시드 미사용 = 정상).
+- 시드 데이터는 `resources/data/debug-enhancements.json`. 마법별 개별/분류 강화 레벨과 전역 보너스를 적는다. 사용법은 QA 문서 §8 참고.
+
+### 13.3 궤도 패킹을 데이터로 — orbGap (B안)
+
+"발사체가 많을 때 오브가 조금씩 겹치고 플레이어에 더 가까이 돌면 좋겠다"는 요구가 나왔다. 기존 링 반경은 `OrbitLogic.ringRadius`가 간격·파묻힘 여유·바닥값의 최댓값으로 정하는데, 겹침 간격을 정하는 `ORB_GAP`(0.15)이 **코드 상수**여서 데이터만으로는 조절할 수 없었다. (A) 상수를 직접 낮추기와 (B) spell 데이터에 `orbGap` 필드를 추가해 마법별로 조절하기 중, 사용자가 데이터 튜닝 흐름을 원해 **B안**을 택했다.
+
+- `ISpellData.orbGap?`를 추가하고(생략 시 기본 `ORB_GAP`), `ringRadius`에 `gap` 파라미터(기본값 `ORB_GAP`)를 더했다. `SpellCaster._advanceOrbits`가 `spell?.orbGap`을 넘긴다.
+- `gap`이 음수면 인접 오브 간 현이 `2·orbSize`보다 작아져 겹침을 허용하고, 그만큼 간격 항이 줄어 링이 안쪽으로 당겨진다. 오브가 적을 때는 바닥값(`orbitRadius`)·파묻힘 여유가 지배해 영향이 거의 없다 — 즉 발사체가 많아질수록 자연스럽게 겹치며 가까워진다.
+- 인페르노는 `orbGap: -0.1`로 두되 `spells.json`에서 자유롭게 조절한다. §6.2 `ringRadius` 의사코드의 `ORB_GAP` 상수 자리에 이제 데이터 `orbGap`(미지정 시 `ORB_GAP`)이 들어온다.
+
+### 13.4 변경 파일 (추가분)
+
+| 파일 | 변경 |
+|---|---|
+| `logic/DebugEnhancementSeed.ts` (신규) | 시드 JSON → 강화 op 정규화(순수, 방어적 검증) |
+| `systems/DeckManager.ts` | DEV 게이트 `start()` 로드 + `applyDebugSeed` |
+| `resources/data/debug-enhancements.json` (신규) | 강화 시드 데이터 |
+| `data/GameTypes.ts` | `ISpellData.orbGap?` |
+| `logic/OrbitLogic.ts` | `ringRadius`에 `gap` 파라미터 |
+| `components/SpellCaster.ts` | `ringRadius`에 `spell?.orbGap` 전달 |
+| `resources/data/spells.json` | 인페르노 `orbGap: -0.1` |
+| `tests/logic/DebugEnhancementSeed.test.ts` (신규) | 파서 7케이스 |
+| `tests/logic/OrbitLogic.test.ts` | gap 케이스 2개 |
+
+검증(로컬): 전체 스위트 270/270, 편집 파일 TS 진단 0건, lint clean.
+
+### 13.5 미결 — 스코프 결정 대기
+
+DEV 강화 시드 도구는 인페르노에 한정되지 않는 **재사용 가능한 테스트 인프라**다. 인페르노 PR에 함께 넣을지, 별도 슬라이스로 분리할지는 사용자 판단을 기다린다. 반면 `orbGap`은 인페르노 자체 동작(링 패킹) 변경이라 인페르노 작업 범위에 포함된다. 7단계 재진입 시 검증 파이프라인(`start-verification` → cso·ts·lint·review)을 다시 통과시키고 Draft PR을 push로 갱신한다.
