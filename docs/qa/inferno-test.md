@@ -15,7 +15,7 @@
 | `logic/OrbitLogic.ts` | 신규 순수 로직 (회전·활성 수명·재타격 락아웃·링 반경) | 신규 파일 — 기존 로직 무영향 |
 | `logic/SpellPatternLogic.ts` | `buildFirePlan`에 `case Orbit → []` | **발사체 패턴 회귀** — `SpellPatternEngine.test`의 directional·폴백(미지 pattern→directional)이 그대로 통과해야 함. 'orbit'만 빈 배열, 'bogus_pattern'은 여전히 directional 폴백 |
 | `logic/EnhancementLogic.ts` | `isRangeCapable`에 `orbitRadius` OR + `isDurationCapable`에 `lifetimeSec` OR + JSDoc 예시에서 인페르노 제거 | **카드 적격 회귀** — 기존 폭발형(범위)·CC형(지속) 마법 적격이 변하면 안 됨. frost-nova·라이트닝볼트·아이스미사일 적격 그대로 |
-| `components/SpellCaster.ts` | `update` 디스패치에 Orbit 분기(`consume` + `_castOrbit`) + `_advanceOrbits`·`_applyOrbHit`·`_reconcileOrbVfx`·`_positionOrbVfx`·`_releaseAllOrbVfx` + 오브 VFX 풀·맵 + `@property orbVfxPrefab` | **발사·노바 회귀** — 발사체 마법은 적 있을 때만 발사, 노바는 적 무관 시전. Orbit 분기가 둘을 깨지 않아야 함 |
+| `components/SpellCaster.ts` | `update` 디스패치에 Orbit 분기(`consume` + `_castOrbit`) + `_advanceOrbits`(오브 위치 배치 인라인)·`_applyOrbHit`·`_reconcileOrbVfx`·`_releaseAllOrbVfx` + 오브 VFX 풀·맵 + `@property orbVfxPrefab` | **발사·노바 회귀** — 발사체 마법은 적 있을 때만 발사, 노바는 적 무관 시전. Orbit 분기가 둘을 깨지 않아야 함 |
 | `systems/GameManager.ts` | 신규 헬퍼 `collectTargetsInRadius(cx, cy, r) → {targets, ctrls}` (F16 부분) | **동작 무변경 리팩터** — 헬퍼 추출만. 폭발·노바 명중 결과 동일 |
 | `components/Projectile.ts` | `_detonate`의 인라인 수집 루프를 `collectTargetsInRadius` 호출로 교체 (F16 부분) | **동작 무변경** — `MagicExplosion.test` 폭발 명중 결과 그대로 |
 | `resources/data/spells.json` | `inferno` 항목 추가 | **i18n 키 가드** — `spell.inferno.name` 누락 시 `I18nKeyGuard` RED. `MagicAddCard` 등 실데이터 의존 테스트는 inferno가 "마법 추가" 풀에 포함됨을 전제로 통과 |
