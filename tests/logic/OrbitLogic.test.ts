@@ -159,24 +159,31 @@ describe('OrbitLogic — 동적 링 반경', () => {
 describe('OrbitLogic — 재타격 락아웃', () => {
   it('타격 등록 후 그 (오브, 적)은 락아웃 동안 다시 못 맞는다', () => {
     const logic = new OrbitLogic();
-    expect(logic.canHit(0, 7)).toBe(true); // 등록 전엔 가능
-    logic.registerHit(0, 7, 0.5);
-    expect(logic.canHit(0, 7)).toBe(false);
+    expect(logic.canHit('inferno', 0, 7)).toBe(true); // 등록 전엔 가능
+    logic.registerHit('inferno', 0, 7, 0.5);
+    expect(logic.canHit('inferno', 0, 7)).toBe(false);
   });
 
   it('락아웃은 다른 오브·다른 적과 독립이다', () => {
     const logic = new OrbitLogic();
-    logic.registerHit(0, 7, 0.5);
-    expect(logic.canHit(1, 7)).toBe(true); // 다른 오브
-    expect(logic.canHit(0, 8)).toBe(true); // 다른 적
+    logic.registerHit('inferno', 0, 7, 0.5);
+    expect(logic.canHit('inferno', 1, 7)).toBe(true); // 다른 오브
+    expect(logic.canHit('inferno', 0, 8)).toBe(true); // 다른 적
+  });
+
+  it('락아웃은 다른 궤도 마법과 독립이다 (키에 spellId 포함)', () => {
+    const logic = new OrbitLogic();
+    logic.registerHit('inferno', 0, 7, 0.5);
+    // 같은 (오브 인덱스, 적)이라도 마법 id가 다르면 서로의 락아웃을 안 건드린다.
+    expect(logic.canHit('other-orbit', 0, 7)).toBe(true);
   });
 
   it('tickRehit로 락아웃이 경과하면 다시 맞을 수 있다', () => {
     const logic = new OrbitLogic();
-    logic.registerHit(0, 7, 0.5);
+    logic.registerHit('inferno', 0, 7, 0.5);
     logic.tickRehit(0.3);
-    expect(logic.canHit(0, 7)).toBe(false); // 아직 남음
+    expect(logic.canHit('inferno', 0, 7)).toBe(false); // 아직 남음
     logic.tickRehit(0.2);
-    expect(logic.canHit(0, 7)).toBe(true); // 경과
+    expect(logic.canHit('inferno', 0, 7)).toBe(true); // 경과
   });
 });

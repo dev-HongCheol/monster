@@ -320,7 +320,15 @@ export class SpellCaster extends Component {
       const nodes = this._orbNodes.get(orbit.spellId);
       for (let i = 0; i < positions.length; i++) {
         const pos = positions[i];
-        this._applyOrbHit(i, pos.x, pos.y, orbit.orbSize, orbit.damage, rehitCooldown);
+        this._applyOrbHit(
+          orbit.spellId,
+          i,
+          pos.x,
+          pos.y,
+          orbit.orbSize,
+          orbit.damage,
+          rehitCooldown,
+        );
         nodes?.[i]?.setPosition(pos.x, pos.y, 0);
       }
     }
@@ -328,8 +336,9 @@ export class SpellCaster extends Component {
   }
 
   /**
-   * 한 오브 위치 반경에 접촉한 적에게 타격을 준다 — (오브, 적) 짝이 재타격 락아웃에 걸려 있지 않을 때만.
+   * 한 오브 위치 반경에 접촉한 적에게 타격을 준다 — (마법, 오브, 적) 짝이 재타격 락아웃에 걸려 있지 않을 때만.
    * 후보 수집은 collectTargetsInRadius(F16 공유), 정밀 판정은 selectExplosionHits를 재사용한다(오브당 새 집합).
+   * @param spellId 마법 id (재타격 락아웃 키 — 궤도별 독립)
    * @param orbIndex 오브 인덱스 (재타격 락아웃 키)
    * @param x 오브 중심 x
    * @param y 오브 중심 y
@@ -338,6 +347,7 @@ export class SpellCaster extends Component {
    * @param rehitCooldown 재타격 락아웃 (sec)
    */
   private _applyOrbHit(
+    spellId: string,
     orbIndex: number,
     x: number,
     y: number,
@@ -349,9 +359,9 @@ export class SpellCaster extends Component {
     const hits = selectExplosionHits(x, y, orbSize, targets, new Set<number>());
     for (const idx of hits) {
       const spawnId = targets[idx].id;
-      if (this._orbitLogic.canHit(orbIndex, spawnId)) {
+      if (this._orbitLogic.canHit(spellId, orbIndex, spawnId)) {
         ctrls[idx].takeDamage(damage);
-        this._orbitLogic.registerHit(orbIndex, spawnId, rehitCooldown);
+        this._orbitLogic.registerHit(spellId, orbIndex, spawnId, rehitCooldown);
       }
     }
   }

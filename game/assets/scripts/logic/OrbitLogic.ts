@@ -60,7 +60,8 @@ interface OrbitState {
 export class OrbitLogic {
   /** spellId → 궤도 상태 (단일 인스턴스) */
   private _orbits = new Map<string, OrbitState>();
-  /** `${orbIndex}:${spawnId}` → 잔여 재타격 락아웃(sec) */
+  /** `${spellId}:${orbIndex}:${spawnId}` → 잔여 재타격 락아웃(sec). spellId까지 키에 넣어 둘 이상의 궤도
+   *  마법이 같은 (오브 인덱스, 적)에서 서로의 락아웃을 덮어쓰지 않게 한다(궤도별 독립). */
   private _rehit = new Map<string, number>();
 
   /**
@@ -155,21 +156,23 @@ export class OrbitLogic {
   }
 
   /**
-   * 이 (오브, 적) 짝이 지금 타격 가능한지 — 락아웃에 없으면 가능.
+   * 이 (마법, 오브, 적) 짝이 지금 타격 가능한지 — 락아웃에 없으면 가능.
+   * @param spellId 마법 id (궤도별 독립 락아웃)
    * @param orbIndex 오브 인덱스
    * @param spawnId 적 spawnId (풀 재사용 안정 식별자)
    */
-  canHit(orbIndex: number, spawnId: number): boolean {
-    return !this._rehit.has(`${orbIndex}:${spawnId}`);
+  canHit(spellId: string, orbIndex: number, spawnId: number): boolean {
+    return !this._rehit.has(`${spellId}:${orbIndex}:${spawnId}`);
   }
 
   /**
-   * 이 (오브, 적) 짝에 재타격 락아웃을 건다.
+   * 이 (마법, 오브, 적) 짝에 재타격 락아웃을 건다.
+   * @param spellId 마법 id (궤도별 독립 락아웃)
    * @param orbIndex 오브 인덱스
    * @param spawnId 적 spawnId
    * @param cooldownSec 락아웃 시간 (sec)
    */
-  registerHit(orbIndex: number, spawnId: number, cooldownSec: number): void {
-    this._rehit.set(`${orbIndex}:${spawnId}`, cooldownSec);
+  registerHit(spellId: string, orbIndex: number, spawnId: number, cooldownSec: number): void {
+    this._rehit.set(`${spellId}:${orbIndex}:${spawnId}`, cooldownSec);
   }
 }
