@@ -57,7 +57,10 @@ export function buildFirePlan(spell: ISpellData, ctx: FireContext): ShotSpec[] {
     case SpellPattern.Nova:
       // 자기중심 즉발 버스트는 발사체를 만들지 않는다(§9.2). 실제 발동은 SpellCaster._castNova(컴포넌트).
       return [];
-    // 후속 패턴(Aura/메테오/체인/무작위 폭풍)은 여기에 case 추가.
+    case SpellPattern.Orbit:
+      // 궤도 회전 오브는 발사체를 만들지 않는다(§9.2). 실제 발동은 SpellCaster._castOrbit(컴포넌트).
+      return [];
+    // 후속 패턴(메테오/체인/무작위 폭풍/빔)은 여기에 case 추가.
     default:
       // 미지정/미지 패턴은 Directional로 폴백(데이터 누락 시 크래시 방지)
       return directionalPlan(spell, ctx);

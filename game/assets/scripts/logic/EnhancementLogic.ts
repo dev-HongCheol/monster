@@ -87,19 +87,19 @@ function generalOptions(category: SpellCategory): UpgradeOption[] {
 
 /**
  * 범위(Range) 강화 적격 여부 (기획 §10.3 A3 게이트). 폭발 반경 등 반경류 효과를 실제로
- * 가진 마법만 범위 카드를 만든다. 현재 적격 기준은 `explosionRadius` 보유.
+ * 가진 마법만 범위 카드를 만든다. 적격 기준은 `explosionRadius`(폭발·노바 반경) 또는
+ * `orbitRadius`(궤도 — 범위 강화가 오브 크기를 키운다) 보유.
  */
 function isRangeCapable(spell: ISpellData): boolean {
-  return spell.explosionRadius !== undefined;
+  return spell.explosionRadius !== undefined || spell.orbitRadius !== undefined;
 }
 
 /**
- * 지속시간(Duration) 강화 적격 여부 (기획 §10.3 A3 게이트). CC·DOT 등 지속 효과를 실제로
- * 가진 마법만 지속 카드를 만든다. 현재 적격 기준은 `onHitStatus`(CC) 보유 — DOT·오라 지속
- * (인페르노 등)은 magic-S4에서 OR로 더한다.
+ * 지속시간(Duration) 강화 적격 여부 (기획 §10.3 A3 게이트). 지속 효과를 실제로 가진 마법만
+ * 지속 카드를 만든다. 적격 기준은 `onHitStatus`(CC 지속) 또는 `lifetimeSec`(궤도 활성 수명 — 인페르노) 보유.
  */
 function isDurationCapable(spell: ISpellData): boolean {
-  return spell.onHitStatus !== undefined;
+  return spell.onHitStatus !== undefined || spell.lifetimeSec !== undefined;
 }
 
 /** 개별 마법에 적용할 강화 옵션 — 일반 3종 + (반경류면) 범위 + (지속류면) 지속(§10.3 A3). */
