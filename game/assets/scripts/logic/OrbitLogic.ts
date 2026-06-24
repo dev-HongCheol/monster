@@ -111,11 +111,19 @@ export class OrbitLogic {
    * @param orbSize 오브 충돌 반경
    * @param playerRadius 플레이어 충돌 반경
    * @param baseRing 기본(최소) 링 반경 = 데이터 `orbitRadius`
+   * @param gap 인접 오브 간격 여유 비율 (데이터 `orbGap`, 생략 시 `ORB_GAP`). 음수면 겹침을 허용해
+   *   간격 항이 작아져 링이 안쪽으로 당겨진다.
    */
-  ringRadius(count: number, orbSize: number, playerRadius: number, baseRing: number): number {
-    // ① 인접 오브 안 겹치게: 중심간 현 2R·sin(π/N) ≥ 2·orbSize → R ≥ orbSize·(1+GAP)/sin(π/N).
-    //    count<2면 분모 sin(π/1)=0이라 0 나눗셈 → 간격 항을 0으로 둔다(방어).
-    const spacingRing = count >= 2 ? (orbSize * (1 + ORB_GAP)) / Math.sin(Math.PI / count) : 0;
+  ringRadius(
+    count: number,
+    orbSize: number,
+    playerRadius: number,
+    baseRing: number,
+    gap: number = ORB_GAP,
+  ): number {
+    // ① 인접 오브 안 겹치게: 중심간 현 2R·sin(π/N) ≥ 2·orbSize → R ≥ orbSize·(1+gap)/sin(π/N).
+    //    gap<0이면 겹침 허용(현 < 2·orbSize). count<2면 분모 sin(π/1)=0이라 0 나눗셈 → 간격 항 0(방어).
+    const spacingRing = count >= 2 ? (orbSize * (1 + gap)) / Math.sin(Math.PI / count) : 0;
     // ② 플레이어에 안 파묻히게.
     const clearanceRing = playerRadius + orbSize + ORB_MARGIN;
     return Math.max(spacingRing, clearanceRing, baseRing);

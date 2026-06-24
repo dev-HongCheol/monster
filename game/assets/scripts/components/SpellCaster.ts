@@ -308,7 +308,14 @@ export class SpellCaster extends Component {
       const spell = DataManager.instance.getSpell(orbit.spellId);
       const baseRing = spell?.orbitRadius ?? 0;
       const rehitCooldown = spell?.rehitCooldownSec ?? 0;
-      const ring = this._orbitLogic.ringRadius(orbit.count, orbit.orbSize, playerRadius, baseRing);
+      // spell?.orbGap이 undefined면 ringRadius의 기본값(ORB_GAP)이 적용된다(데이터 미지정 = 기존 동작).
+      const ring = this._orbitLogic.ringRadius(
+        orbit.count,
+        orbit.orbSize,
+        playerRadius,
+        baseRing,
+        spell?.orbGap,
+      );
       const positions = this._orbitLogic.orbPositions(
         orbit.spellId,
         orbit.count,

@@ -154,6 +154,24 @@ describe('OrbitLogic — 동적 링 반경', () => {
     expect(Number.isFinite(r)).toBe(true);
     expect(r).toBeCloseTo(80);
   });
+
+  it('gap 생략 시 기본값(ORB_GAP)으로 동작한다 (기존 호출 호환)', () => {
+    const logic = new OrbitLogic();
+    const explicit = logic.ringRadius(10, 40, 10, 0, ORB_GAP);
+    const omitted = logic.ringRadius(10, 40, 10, 0);
+    expect(omitted).toBeCloseTo(explicit);
+  });
+
+  it('gap을 음수로 낮추면 겹침을 허용해 링이 안쪽으로 당겨진다 (간격 지배 구간)', () => {
+    // baseRing=0으로 둬 간격 항만 비교 (count·orbSize는 spacing이 지배하도록 크게)
+    const logic = new OrbitLogic();
+    const wide = logic.ringRadius(10, 40, 10, 0, 0.15);
+    const tight = logic.ringRadius(10, 40, 10, 0, -0.2);
+    expect(tight).toBeLessThan(wide);
+    // 음수 gap = 겹침: 인접 오브 중심간 현(2R·sin(π/N))이 2·orbSize보다 작아진다
+    const chord = 2 * tight * Math.sin(Math.PI / 10);
+    expect(chord).toBeLessThan(2 * 40);
+  });
 });
 
 describe('OrbitLogic — 재타격 락아웃', () => {

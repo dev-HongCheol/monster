@@ -136,6 +136,13 @@ export interface ISpellData {
    * 범위 강화가 곱하는 대상은 오브 크기(`projectileRadius`)다.
    */
   orbitRadius?: number;
+  /**
+   * 궤도(Orbit) 패턴 — 인접 오브 간격 여유 비율 (생략 시 기본 `ORB_GAP`=0.15). 동적 링이 오브끼리
+   * 안 겹치게 둘 때 쓰는 여유다. **음수면 겹침을 허용**해, 오브가 많을수록(간격 항 지배) 링이 그만큼
+   * 안쪽으로 당겨진다(발사체 많을 때 조금씩 겹치며 가까이). 오브가 적을 땐 바닥값(`orbitRadius`)·
+   * 파묻힘 여유가 지배해 영향이 거의 없다. 소비처: `OrbitLogic.ringRadius`.
+   */
+  orbGap?: number;
   /** 궤도(Orbit) 패턴 — 오브 회전 속도 (deg/sec). 고정값(강화 대상 아님). */
   rotationSpeedDeg?: number;
   /** 궤도(Orbit) 패턴 — 같은 (오브, 적) 짝의 재타격 락아웃 (sec). 매 프레임 도배 방지(§6.1). */

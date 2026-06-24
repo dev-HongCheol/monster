@@ -61,6 +61,7 @@
     "pattern": "orbit",
     "allowsProjectileCount": true,
     "orbitRadius": 80,
+    "orbGap": -0.1,
     "rotationSpeedDeg": 120,
     "rehitCooldownSec": 0.5,
     "lifetimeSec": 3.0
