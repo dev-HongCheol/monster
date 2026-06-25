@@ -1,6 +1,6 @@
 # 인페르노(궤도형) 코드 리뷰 이슈
 
-- 리뷰 커밋: `76fc1419e22b18701467edbc90dd51853c6002a4` (base `fc0c6d53aca1ba96af453c5578ca607030aa4021`)
+- 리뷰 커밋: `76fc1419e22b18701467edbc90dd51853c6002a4` (base `fc0c6d53aca1ba96af453c5578ca607030aa4021`) · 최신 재리뷰 `8d307631c118e1a1fa4af96b254492b07c4bca53` (리워크 추가분, base `3bb7f78`)
 - 리뷰 방식: `superpowers:requesting-code-review` 패턴, general-purpose subagent dispatch
 - 전체 스위트 260/260 GREEN · TypeScript Error 0건 확인 상태에서 리뷰
 
@@ -50,3 +50,20 @@ I1 수정만 집중 재리뷰(별도 subagent)했다. 결과:
 선택적 잔여(미반영): 재리뷰어가 교차 독립 테스트에 대칭 단언 1줄을 더하면 약간 강해진다고 했으나, 현 단언으로 키 구별이 이미 증명되어 추가하지 않음.
 
 검증 재실행 결과: cso/ts/lint 모두 재통과(261/261 GREEN). review 게이트 통과 → user-verification 진입.
+
+---
+
+## 재리뷰 (리워크 추가분 — DEV 강화 시드 도구 + orbGap, 커밋 `8d30763`, base `3bb7f78`)
+
+`user-verification`에서 `리워크`로 복귀해 추가한 두 작업(강화 시드 도구·`orbGap`)을 별도 subagent로 리뷰했다. 범위는 추가분 11파일(+408/−23).
+
+- **머지 가능 판정: Yes.** Critical 0건, Important 0건. 리뷰어가 검증한 강점: `parseDebugEnhancementSeed`의 방어적 파싱(null·비객체·미지 옵션·비수치 레벨 전 계층 가드 → 잘못된 시드는 throw 없이 no-op), 순수 로직/컴포넌트 분리, `ringRadius` 기본 파라미터로 4-인자 기존 호출·`spell?.orbGap===undefined` 모두 기존 동작 유지(테스트로 고정), `DEV` 게이트로 릴리스 빌드 `resources.load` 미도달, `applyDebugSeed`가 레벨 수만큼 `raise`해 카드 픽과 동일(레벨 ≤ cap로 유계).
+- **Minor (5건, 처리):**
+  - M4. 전역(`global`) 시드는 레벨이 아니라 **가산 보너스**(0.1 = +10%)인데 §8 예시가 레벨 트랙 바로 아래 `0`으로 보여 오해 소지 → **수정됨**: QA §8에 "전역 값은 레벨이 아니라 보너스 배수" 한 줄 추가.
+  - M5. 키 오타(존재하지 않는 spellId)·`global.projectile_count`는 조용히 무시됨(파서는 spellId 검증 불가 — DataManager 비참조) → **수정됨**: QA §8에 캐비엇 한 줄 추가.
+  - M6. 전역 보너스 `0`은 raise의 `level<=0`과 달리 필터되지 않아 `addGlobal(opt, 0)` 호출됨(무해, 0 가산) → **미수정**: 동작 무영향이라 그대로 둠(리뷰어도 "leave as-is" 무방).
+  - M7. `applyDebugSeed`의 raise 루프는 cc 컴포넌트라 직접 단위 테스트 없음(ADR 002상 허용, `EnhancementLogic.raise` cap 테스트로 간접 커버) → **미수정**(설계상 수동 검증 영역).
+  - M8. `resources.load` 비동기라 0프레임 시전이 잠깐 미강화값 사용 가능 → **미수정**(밸런스 점검 도구라 무관).
+- **코드 수정 0건**(전부 문서 보완 또는 무영향). 따라서 `invalidate` 없이 진행 — 보안 재검증이 필요한 코드 변경이 아니다(QA 문서 한 줄 보완만).
+
+판정: 머지 가능. review 게이트 통과 → user-verification 재진입.
