@@ -1,7 +1,7 @@
 # 코드 리뷰 이슈: 적 로스터 S0 (enemy-roster)
 
 > - **브랜치:** feat/enemy-roster
-> - **리뷰 커밋:** `8cc47ec` (base `ec90f36`)
+> - **리뷰 커밋:** `a4c4a46` (1차 `8cc47ec`, base `ec90f36`)
 > - **리뷰 방식:** `superpowers:requesting-code-review` 패턴, general-purpose subagent dispatch
 > - **판정:** Ready to merge (Yes) — Critical 0건. 아래 항목은 즉시 수정.
 
@@ -21,3 +21,13 @@
 
 ### 설계·정책 지적 (수정 보류 — 기록만)
 - 없음. 리뷰어가 "픽스처 가중치(80/20)가 실제 `spawn-table.json`(70/30)과 다른 건 의도된 단위 테스트 디커플링"이라 확인 — 수정 대상 아님(나중에 '드리프트'로 오인해 고치지 말 것).
+
+## 재리뷰 (커밋 a4c4a46)
+
+1차 지적(I-1·M-1·M-2·M-3) 수정분을 재리뷰했다. **판정: Ready to merge (Yes).**
+
+- **I-1 검증:** 역방향 커버리지 단언이 tautology가 아님을 mutation으로 증명 — `jangsanbeom`을 spawn-table 전 웨이브에서 제거하면 `unspawnable=["jangsanbeom"]`로 실제 실패. `ROSTER`(하드코딩)와 `referencedSpawnIds()`(실데이터)가 독립 출처라 진짜 가드.
+- **M-3 검증:** 잔여 skeleton 차단 단언 동작 확인. `referencedSpawnIds()` 헬퍼로 정/역방향 중복 로직을 DRY 정리(동작 변화 없음).
+- **M-1·M-2 검증:** 깨진 주석·stale 라벨·조사 오타 전부 제거 확인(grep으로 `swift`·항등 매핑 잔존 없음).
+- **잔여 관찰(비차단):** `SpawnDirector.test.ts:46,48`·`EnemyRoster.test.ts:24`의 `tank`는 stale 라벨이 아니라 dokkaebi의 실제 `role:"tank"` 용어 — 정확하므로 **수정하지 않는다**.
+- 신규 이슈 없음. 전체 스위트 277/277 GREEN(EnemyRoster 7/7, SpawnDirector 15/15).
