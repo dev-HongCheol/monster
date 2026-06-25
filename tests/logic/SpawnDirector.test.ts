@@ -2,11 +2,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ISpawnTableEntry } from '../../game/assets/scripts/data/GameTypes';
 import { SpawnDirectorLogic } from '../../game/assets/scripts/logic/SpawnDirectorLogic';
 
-/** 계획 문서(2026-06-04-spawn-director-plan.md §3)의 스폰 테이블 픽스처 */
+/**
+ * 스폰 테이블 픽스처 — 가중치 구조는 spawn-director 플랜(2026-06-04 §3) 그대로 두고,
+ * id만 S0 로스터(feat/enemy-roster)로 갱신했다(cheonyeo→cheonyeo, dalgyal→dalgyal,
+ * dokkaebi→dokkaebi). SpawnDirectorLogic은 id 문자열을 키로만 쓰므로 경계 단언은 그대로 유효하다.
+ */
 const TABLE: ISpawnTableEntry[] = [
-  { fromWave: 1, weights: { skeleton: 80, skeleton_swift: 20 } },
-  { fromWave: 3, weights: { skeleton: 35, skeleton_swift: 50, skeleton_tank: 15 } },
-  { fromWave: 6, weights: { skeleton_swift: 50, skeleton_tank: 50 } },
+  { fromWave: 1, weights: { cheonyeo: 80, dalgyal: 20 } },
+  { fromWave: 3, weights: { cheonyeo: 35, dalgyal: 50, dokkaebi: 15 } },
+  { fromWave: 6, weights: { dalgyal: 50, dokkaebi: 50 } },
 ];
 
 function director(table: ISpawnTableEntry[] = TABLE): SpawnDirectorLogic {
@@ -23,71 +27,71 @@ function idsAcrossRolls(d: SpawnDirectorLogic, wave: number, step = 0.01): Set<s
 }
 
 describe('SpawnDirectorLogic — 웨이브 구간 게이팅', () => {
-  it('웨이브 1: roll 전 범위에서 skeleton_tank는 안 나온다', () => {
+  it('웨이브 1: roll 전 범위에서 dokkaebi는 안 나온다', () => {
     const seen = idsAcrossRolls(director(), 1);
-    expect(seen.has('skeleton_tank')).toBe(false);
-    expect(seen.has('skeleton')).toBe(true);
-    expect(seen.has('skeleton_swift')).toBe(true);
+    expect(seen.has('dokkaebi')).toBe(false);
+    expect(seen.has('cheonyeo')).toBe(true);
+    expect(seen.has('dalgyal')).toBe(true);
   });
 
-  it('웨이브 6: 일반 skeleton은 안 나온다 (swift/tank만)', () => {
+  it('웨이브 6: 일반 cheonyeo은 안 나온다 (swift/tank만)', () => {
     const seen = idsAcrossRolls(director(), 6);
-    expect(seen.has('skeleton')).toBe(false);
-    expect(seen.has('skeleton_swift')).toBe(true);
-    expect(seen.has('skeleton_tank')).toBe(true);
+    expect(seen.has('cheonyeo')).toBe(false);
+    expect(seen.has('dalgyal')).toBe(true);
+    expect(seen.has('dokkaebi')).toBe(true);
   });
 
   it('fromWave 사이 값은 직전 구간을 사용한다', () => {
     const d = director();
     // wave 2 → 웨이브 1 구간 (tank 없음)
-    expect(idsAcrossRolls(d, 2).has('skeleton_tank')).toBe(false);
+    expect(idsAcrossRolls(d, 2).has('dokkaebi')).toBe(false);
     // wave 4, 5 → 웨이브 3 구간 (tank 가능)
-    expect(idsAcrossRolls(d, 4).has('skeleton_tank')).toBe(true);
-    expect(idsAcrossRolls(d, 5).has('skeleton_tank')).toBe(true);
-    // wave 5에서도 skeleton 등장 (웨이브 3 구간이라 일반 있음)
-    expect(idsAcrossRolls(d, 5).has('skeleton')).toBe(true);
+    expect(idsAcrossRolls(d, 4).has('dokkaebi')).toBe(true);
+    expect(idsAcrossRolls(d, 5).has('dokkaebi')).toBe(true);
+    // wave 5에서도 cheonyeo 등장 (웨이브 3 구간이라 일반 있음)
+    expect(idsAcrossRolls(d, 5).has('cheonyeo')).toBe(true);
   });
 
   it('wave가 첫 구간보다 작으면 첫 구간으로 폴백한다', () => {
     const d = director();
     // wave 0 → fromWave 1 구간 사용
-    expect(d.selectEnemyId(0, 0)).toBe('skeleton');
-    expect(idsAcrossRolls(d, 0).has('skeleton_tank')).toBe(false);
+    expect(d.selectEnemyId(0, 0)).toBe('cheonyeo');
+    expect(idsAcrossRolls(d, 0).has('dokkaebi')).toBe(false);
   });
 });
 
 describe('SpawnDirectorLogic — 가중치 경계', () => {
-  it('웨이브 1 (skeleton 80 / swift 20): 경계 전후로 갈린다', () => {
+  it('웨이브 1 (cheonyeo 80 / swift 20): 경계 전후로 갈린다', () => {
     const d = director();
-    expect(d.selectEnemyId(1, 0)).toBe('skeleton');
-    expect(d.selectEnemyId(1, 0.5)).toBe('skeleton');
-    expect(d.selectEnemyId(1, 0.79)).toBe('skeleton'); // 누적 80 직전
-    expect(d.selectEnemyId(1, 0.85)).toBe('skeleton_swift'); // 80 이후
-    expect(d.selectEnemyId(1, 0.99)).toBe('skeleton_swift');
+    expect(d.selectEnemyId(1, 0)).toBe('cheonyeo');
+    expect(d.selectEnemyId(1, 0.5)).toBe('cheonyeo');
+    expect(d.selectEnemyId(1, 0.79)).toBe('cheonyeo'); // 누적 80 직전
+    expect(d.selectEnemyId(1, 0.85)).toBe('dalgyal'); // 80 이후
+    expect(d.selectEnemyId(1, 0.99)).toBe('dalgyal');
   });
 
   it('웨이브 3 (35 / 50 / 15): 3구간 경계', () => {
     const d = director();
-    expect(d.selectEnemyId(3, 0)).toBe('skeleton');
-    expect(d.selectEnemyId(3, 0.3)).toBe('skeleton'); // [0,35)
-    expect(d.selectEnemyId(3, 0.4)).toBe('skeleton_swift'); // [35,85)
-    expect(d.selectEnemyId(3, 0.8)).toBe('skeleton_swift');
-    expect(d.selectEnemyId(3, 0.9)).toBe('skeleton_tank'); // [85,100)
-    expect(d.selectEnemyId(3, 0.99)).toBe('skeleton_tank');
+    expect(d.selectEnemyId(3, 0)).toBe('cheonyeo');
+    expect(d.selectEnemyId(3, 0.3)).toBe('cheonyeo'); // [0,35)
+    expect(d.selectEnemyId(3, 0.4)).toBe('dalgyal'); // [35,85)
+    expect(d.selectEnemyId(3, 0.8)).toBe('dalgyal');
+    expect(d.selectEnemyId(3, 0.9)).toBe('dokkaebi'); // [85,100)
+    expect(d.selectEnemyId(3, 0.99)).toBe('dokkaebi');
   });
 
   it('웨이브 6 (swift 50 / tank 50): 절반 경계', () => {
     const d = director();
-    expect(d.selectEnemyId(6, 0)).toBe('skeleton_swift');
-    expect(d.selectEnemyId(6, 0.4)).toBe('skeleton_swift');
-    expect(d.selectEnemyId(6, 0.6)).toBe('skeleton_tank');
-    expect(d.selectEnemyId(6, 0.99)).toBe('skeleton_tank');
+    expect(d.selectEnemyId(6, 0)).toBe('dalgyal');
+    expect(d.selectEnemyId(6, 0.4)).toBe('dalgyal');
+    expect(d.selectEnemyId(6, 0.6)).toBe('dokkaebi');
+    expect(d.selectEnemyId(6, 0.99)).toBe('dokkaebi');
   });
 
   it('roll=0 → 첫 항목, roll이 1에 근접 → 마지막 항목', () => {
     const d = director();
-    expect(d.selectEnemyId(3, 0)).toBe('skeleton'); // 첫 키
-    expect(d.selectEnemyId(3, 0.9999)).toBe('skeleton_tank'); // 마지막 키
+    expect(d.selectEnemyId(3, 0)).toBe('cheonyeo'); // 첫 키
+    expect(d.selectEnemyId(3, 0.9999)).toBe('dokkaebi'); // 마지막 키
   });
 });
 
@@ -106,9 +110,9 @@ describe('SpawnDirectorLogic — 결정성 & 엣지', () => {
 
   it('roll 음수 → 첫 항목, roll>=1 → 마지막 항목 (방어적 클램프)', () => {
     const d = director();
-    expect(d.selectEnemyId(1, -0.5)).toBe('skeleton'); // 음수 → 0 취급
-    expect(d.selectEnemyId(3, 1)).toBe('skeleton_tank'); // >=1 → 마지막 키
-    expect(d.selectEnemyId(3, 5)).toBe('skeleton_tank');
+    expect(d.selectEnemyId(1, -0.5)).toBe('cheonyeo'); // 음수 → 0 취급
+    expect(d.selectEnemyId(3, 1)).toBe('dokkaebi'); // >=1 → 마지막 키
+    expect(d.selectEnemyId(3, 5)).toBe('dokkaebi');
   });
 });
 

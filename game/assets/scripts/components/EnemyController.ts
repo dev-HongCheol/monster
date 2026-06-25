@@ -34,7 +34,7 @@ export class EnemyController extends Component {
   /** 추적 대상 플레이어 노드 (인스펙터에서 연결) */
   @property(Node) playerNode: Node | null = null;
   /** enemies.json 의 id 값 (인스펙터에서 설정) */
-  @property enemyId: string = 'skeleton';
+  @property enemyId: string = 'cheonyeo';
   /** 사망 시 스폰할 XP 아이템 프리팹 (인스펙터에서 연결) */
   @property(Prefab) xpItemPrefab: Prefab | null = null;
   /** 피격 플래시(흰색 점멸) 지속시간 (sec) */
