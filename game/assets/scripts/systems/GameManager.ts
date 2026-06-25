@@ -1,6 +1,7 @@
 import { _decorator, Component, director } from 'cc';
 import type { EnemyController } from '../components/EnemyController';
 import { GameResult, GameState } from '../data/GameTypes';
+import type { ExplosionTarget } from '../logic/ExplosionLogic';
 import { enemyQueryRadius, SpatialGrid } from '../logic/SpatialGrid';
 import { DataManager } from './DataManager';
 import { DeckManager } from './DeckManager';
@@ -118,6 +119,32 @@ export class GameManager extends Component {
   queryEnemiesInRadius(x: number, y: number, reach: number): EnemyController[] {
     this._refreshEnemyGrid();
     return this._enemyGrid.queryRadius(x, y, enemyQueryRadius(reach, this._maxEnemyRadius));
+  }
+
+  /**
+   * (cx, cy) 반경 안의 적 후보를 명중 판정용으로 수집한다 — 정밀 판정용 `ExplosionTarget`(좌표·충돌
+   * 반경·spawnId) 배열과 그에 1:1 대응하는 `EnemyController` 배열을 함께 돌려준다. `queryEnemiesInRadius`
+   * (그리드 1차 선별)를 감싸 폭발·노바·궤도 세 호출부가 같은 수집 루프를 공유하게 한다(F16). 정밀 명중·
+   * dedup은 호출부가 `selectExplosionHits`로 한다.
+   * @param cx 중심 x
+   * @param cy 중심 y
+   * @param r 질의 반경
+   * @returns 후보 적의 ExplosionTarget 배열과 1:1 대응 컨트롤러 배열
+   */
+  collectTargetsInRadius(
+    cx: number,
+    cy: number,
+    r: number,
+  ): { targets: ExplosionTarget[]; ctrls: EnemyController[] } {
+    const targets: ExplosionTarget[] = [];
+    const ctrls: EnemyController[] = [];
+    for (const enemy of this.queryEnemiesInRadius(cx, cy, r)) {
+      if (!enemy?.isValid) continue;
+      const p = enemy.node.position;
+      targets.push({ x: p.x, y: p.y, collisionRadius: enemy.collisionRadius, id: enemy.spawnId });
+      ctrls.push(enemy);
+    }
+    return { targets, ctrls };
   }
 
   /** 프레임이 바뀌었으면 그리드를 현재 적 위치로 다시 채운다(프레임당 1회). 같은 루프에서 최대 적 반경도 갱신. */

@@ -48,5 +48,22 @@
     "pattern": "nova",
     "allowsProjectileCount": false,
     "explosionRadius": 120
+  },
+  {
+    "id": "inferno",
+    "category": "fire",
+    "tier": 2,
+    "damage": 6,
+    "projectileSpeed": 0,
+    "projectileRadius": 14,
+    "cooldown": 5.0,
+    "projectileCount": 2,
+    "pattern": "orbit",
+    "allowsProjectileCount": true,
+    "orbitRadius": 80,
+    "orbGap": -0.1,
+    "rotationSpeedDeg": 120,
+    "rehitCooldownSec": 0.5,
+    "lifetimeSec": 3.0
   }
 ]

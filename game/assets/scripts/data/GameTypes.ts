@@ -64,6 +64,11 @@ export enum SpellPattern {
   Directional = 'directional',
   /** 자기중심 즉발 버스트 — 시전 시 플레이어 위치 반경에 1회 피해(발사체 없음). 기획 §9.2 Self-AoE/Nova */
   Nova = 'nova',
+  /**
+   * 궤도 — 시전 시 플레이어 주위 링 위에 오브 N개가 360/N 균등 배치로 회전, 활성 수명 동안 접촉 타격
+   * (발사체 없음). 기획 §9.2 Orbit. 실제 발동은 SpellCaster._castOrbit(컴포넌트).
+   */
+  Orbit = 'orbit',
 }
 
 /**
@@ -105,8 +110,9 @@ export interface ISpellData {
   /** count>=2일 때 총 부채꼴 각도(deg). 생략 시 DEFAULT_SPREAD_ANGLE_DEG */
   spreadAngleDeg?: number;
   /**
-   * 발사체 수 강화 허용 여부 (기획 §8). 자기중심 광역(인페르노·프로스트 노바)만 `false` —
-   * 부채꼴로 퍼질 방향이 없어 발사체 수가 의미 없다. 생략 시 허용(기본 true).
+   * 발사체 수 강화 허용 여부 (기획 §8). 자기중심 즉발 광역(프로스트 노바)만 `false` —
+   * 부채꼴로 퍼질 방향이 없어 발사체 수가 의미 없다. (인페르노는 궤도형이라 오브 수 = 발사체 수 ✅.)
+   * 생략 시 허용(기본 true).
    */
   allowsProjectileCount?: boolean;
   /**
@@ -124,6 +130,28 @@ export interface ISpellData {
    * 지속시간(Duration) 강화 카드 적격을 가른다(§10.3 A3, `isDurationCapable`).
    */
   onHitStatus?: ISpellStatusEffect;
+  /**
+   * 궤도(Orbit) 패턴 — 오브가 도는 기본(최소) 링 반경 (units). 동적 링 확장의 바닥값이며(오브 수·크기로
+   * 겹침 회피 시 더 커짐), 이 필드 유무가 범위(Range) 강화 카드 적격을 가른다(§10.3, `isRangeCapable`).
+   * 범위 강화가 곱하는 대상은 오브 크기(`projectileRadius`)다.
+   */
+  orbitRadius?: number;
+  /**
+   * 궤도(Orbit) 패턴 — 인접 오브 간격 여유 비율 (생략 시 기본 `ORB_GAP`=0.15). 동적 링이 오브끼리
+   * 안 겹치게 둘 때 쓰는 여유다. **음수면 겹침을 허용**해, 오브가 많을수록(간격 항 지배) 링이 그만큼
+   * 안쪽으로 당겨진다(발사체 많을 때 조금씩 겹치며 가까이). 오브가 적을 땐 바닥값(`orbitRadius`)·
+   * 파묻힘 여유가 지배해 영향이 거의 없다. 소비처: `OrbitLogic.ringRadius`.
+   */
+  orbGap?: number;
+  /** 궤도(Orbit) 패턴 — 오브 회전 속도 (deg/sec). 고정값(강화 대상 아님). */
+  rotationSpeedDeg?: number;
+  /** 궤도(Orbit) 패턴 — 같은 (오브, 적) 짝의 재타격 락아웃 (sec). 매 프레임 도배 방지(§6.1). */
+  rehitCooldownSec?: number;
+  /**
+   * 궤도(Orbit) 패턴 — 오브 활성 수명 (sec). 시전 후 이 시간 동안 돌고 전부 사라진다. 이 필드 유무가
+   * 지속시간(Duration) 강화 카드 적격을 가른다(§10.3 A3, `isDurationCapable`). 지속 강화가 곱하는 대상.
+   */
+  lifetimeSec?: number;
 }
 
 /** 강화 카드가 올릴 대상 — 트랙·옵션·대상 키(개별=spellId, 분류=category) (기획 § 6.1·§ 8) */

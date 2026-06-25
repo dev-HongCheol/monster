@@ -48,5 +48,6 @@
   "spell.fireball.name": "Fireball",
   "spell.ice_missile.name": "Ice Missile",
   "spell.lightning_bolt.name": "Lightning Bolt",
-  "spell.frost_nova.name": "Frost Nova"
+  "spell.frost_nova.name": "Frost Nova",
+  "spell.inferno.name": "Inferno"
 }

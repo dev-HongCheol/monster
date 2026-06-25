@@ -1,15 +1,15 @@
 import { _decorator, CCString, Color, Component, Node, Prefab, Sprite, Vec3 } from 'cc';
 import { GameState, type ISpellData, SpellPattern } from '../data/GameTypes';
-import { type ExplosionTarget, selectExplosionHits } from '../logic/ExplosionLogic';
+import { selectExplosionHits } from '../logic/ExplosionLogic';
 import { FireSchedulerLogic } from '../logic/FireSchedulerLogic';
 import { LoadoutLogic } from '../logic/LoadoutLogic';
+import { OrbitLogic } from '../logic/OrbitLogic';
 import { buildFirePlan, type ShotSpec } from '../logic/SpellPatternLogic';
 import { spellCategoryColor } from '../logic/SpellVisual';
 import { ControlStrength } from '../logic/StatusEffectLogic';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
-import type { EnemyController } from './EnemyController';
 import { PoolManager } from './PoolManager';
 import { Projectile, type ProjectileExplosion, type ProjectileStatus } from './Projectile';
 
@@ -23,6 +23,8 @@ const EXPLOSION_VFX_BASE_RADIUS = 70;
 const NOVA_VFX_DURATION = 0.25;
 /** 노바 VFX 기준 반경 — 이 반경에서 스케일 1. 유효 반경에 비례해 VFX를 키운다(범위 강화 시 커짐). frost_nova 기본 반경과 동일. */
 const NOVA_VFX_BASE_RADIUS = 120;
+/** 오브 VFX 기준 반경 — 이 반경에서 스케일 1. 유효 오브 크기에 비례해 스케일(범위 강화 시 커짐). inferno 기본 오브 크기와 동일. */
+const ORB_VFX_BASE_RADIUS = 14;
 
 /** spells.json `onHitStatus.kind` 문자열 → CC 강도(`ControlStrength`) 매핑. */
 const STATUS_KIND_STRENGTH: Record<'stun' | 'slow' | 'freeze', ControlStrength> = {
@@ -57,6 +59,8 @@ export class SpellCaster extends Component {
   @property(Prefab) explosionVfxPrefab: Prefab | null = null;
   /** 노바 VFX 프리팹 (인스펙터에서 연결 — 자기중심 노바 발동 시 표시). 미연결이면 VFX 생략. */
   @property(Prefab) novaVfxPrefab: Prefab | null = null;
+  /** 오브 VFX 프리팹 (인스펙터에서 연결 — 궤도 오브 표시). 미연결이면 VFX 생략. */
+  @property(Prefab) orbVfxPrefab: Prefab | null = null;
 
   private readonly _loadout = new LoadoutLogic();
   private readonly _scheduler = new FireSchedulerLogic();
@@ -67,6 +71,12 @@ export class SpellCaster extends Component {
   private _vfxPool: PoolManager | null = null;
   /** 노바 VFX 재사용 풀 (onLoad에서 prefab/parent로 생성). prefab 미연결이면 null(VFX 생략). */
   private _novaVfxPool: PoolManager | null = null;
+  /** 오브 VFX 재사용 풀 (onLoad에서 prefab/parent로 생성). prefab 미연결이면 null(VFX 생략). */
+  private _orbVfxPool: PoolManager | null = null;
+  /** 궤도 회전·활성 수명·재타격 락아웃 순수 로직. */
+  private readonly _orbitLogic = new OrbitLogic();
+  /** spellId → 현재 띄운 오브 VFX 노드들. 오브 수에 맞춰 늘리고 줄이며, 수명이 끝나면 전부 반환한다. */
+  private readonly _orbNodes = new Map<string, Node[]>();
   /** 발사체 반환 콜백 — 매 발사마다 closure를 새로 만들지 않도록 1회 바인딩해 재사용. */
   private readonly _releaseBullet = (node: Node): void => {
     this._bulletPool?.release(node);
@@ -109,6 +119,10 @@ export class SpellCaster extends Component {
     // 노바 VFX 풀도 선택 — 미연결이면 노바 피해는 그대로 동작하고 VFX만 생략한다.
     if (this.novaVfxPrefab && this.bulletParent) {
       this._novaVfxPool = new PoolManager(this.novaVfxPrefab, this.bulletParent);
+    }
+    // 오브 VFX 풀도 선택 — 미연결이면 궤도 피해는 그대로 동작하고 VFX만 생략한다.
+    if (this.orbVfxPrefab && this.bulletParent) {
+      this._orbVfxPool = new PoolManager(this.orbVfxPrefab, this.bulletParent);
     }
   }
 
@@ -166,6 +180,13 @@ export class SpellCaster extends Component {
         continue;
       }
 
+      if (spell.pattern === SpellPattern.Orbit) {
+        // 궤도는 적 유무와 무관하게 쿨다운마다 (재)시전 — 회전·타격은 _advanceOrbits가 매 프레임 처리.
+        this._scheduler.consume(id, DeckManager.instance.effectiveCooldown(spell));
+        this._castOrbit(spell);
+        continue;
+      }
+
       // 발사체 마법은 조준이 필요하다 — 적이 없으면 이 마법만 발사 보류(쿨다운도 유지).
       if (!aim) continue;
 
@@ -187,6 +208,9 @@ export class SpellCaster extends Component {
         this._spawnShot(shot, damageMult, spell.category, explosion, status);
       }
     }
+
+    // 활성 궤도(인페르노 등)는 패턴 루프와 무관하게 매 프레임 회전·수명·타격을 진행한다.
+    this._advanceOrbits(dt);
   }
 
   /**
@@ -235,19 +259,151 @@ export class SpellCaster extends Component {
     const damage = spell.damage * DeckManager.instance.damageFactor(spell);
     const center = this.node.position;
 
-    // 폭발과 동일: 반경으로 그리드를 질의해 후보를 추리고(G1) 컨트롤러를 병렬 수집한다.
-    const targets: ExplosionTarget[] = [];
-    const ctrls: EnemyController[] = [];
-    for (const enemy of GameManager.instance.queryEnemiesInRadius(center.x, center.y, radius)) {
-      if (!enemy?.isValid) continue;
-      const p = enemy.node.position;
-      targets.push({ x: p.x, y: p.y, collisionRadius: enemy.collisionRadius, id: enemy.spawnId });
-      ctrls.push(enemy);
-    }
-    // 시전당 dedup 집합은 1회 버스트라 매번 새로 만든다(§10.2).
+    // 폭발과 동일: 반경으로 후보를 수집(F16 공유 헬퍼)하고, dedup 집합은 1회 버스트라 새로 만든다(§10.2).
+    const { targets, ctrls } = GameManager.instance.collectTargetsInRadius(
+      center.x,
+      center.y,
+      radius,
+    );
     const hits = selectExplosionHits(center.x, center.y, radius, targets, new Set<number>());
     for (const idx of hits) ctrls[idx].takeDamage(damage);
     this._spawnNovaVfx(center.x, center.y, radius);
+  }
+
+  /**
+   * 궤도형 마법을 (재)시전한다 (기획 §9.2 Orbit). 강화 반영값을 시전 시점에 스냅샷해 OrbitLogic에 단일
+   * 인스턴스로 띄운다. 데미지는 발사체 수 페널티(§7.6)까지 곱한다. 실제 회전·타격은 _advanceOrbits가 한다.
+   * 적 유무와 무관하게 발동한다(자기중심 — §10.1 self).
+   * @param spell 발동 중인 궤도 마법
+   */
+  private _castOrbit(spell: ISpellData): void {
+    const count = DeckManager.instance.effectiveProjectileCount(spell);
+    const orbSize = spell.projectileRadius * DeckManager.instance.rangeFactor(spell);
+    const damage =
+      spell.damage *
+      DeckManager.instance.damageFactor(spell) *
+      DeckManager.instance.projectilePenaltyFactor(spell);
+    const lifetime = (spell.lifetimeSec ?? 0) * DeckManager.instance.durationFactor(spell);
+    this._orbitLogic.spawn(spell.id, {
+      count,
+      orbSize,
+      damage,
+      lifetime,
+      rotationSpeedDeg: spell.rotationSpeedDeg ?? 0,
+    });
+  }
+
+  /**
+   * 매 프레임 활성 궤도를 전진시킨다 — 회전·수명을 진행하고(OrbitLogic.advance), 각 오브 위치에서 접촉
+   * 타격을 적용하며, 오브 VFX를 플레이어 주위로 배치한다. 만료된 궤도의 VFX는 전부 반환한다.
+   * @param dt 프레임 델타 (sec)
+   */
+  private _advanceOrbits(dt: number): void {
+    this._orbitLogic.tickRehit(dt);
+    const { active, expired } = this._orbitLogic.advance(dt);
+    // 에일리어싱 회피 — node.position 내부 벡터를 저장하지 않고 좌표만 매 프레임 읽는다.
+    const center = this.node.position;
+    const playerRadius = DataManager.instance.playerData.collisionRadius;
+    for (const orbit of active) {
+      const spell = DataManager.instance.getSpell(orbit.spellId);
+      const baseRing = spell?.orbitRadius ?? 0;
+      const rehitCooldown = spell?.rehitCooldownSec ?? 0;
+      // spell?.orbGap이 undefined면 ringRadius의 기본값(ORB_GAP)이 적용된다(데이터 미지정 = 기존 동작).
+      const ring = this._orbitLogic.ringRadius(
+        orbit.count,
+        orbit.orbSize,
+        playerRadius,
+        baseRing,
+        spell?.orbGap,
+      );
+      const positions = this._orbitLogic.orbPositions(
+        orbit.spellId,
+        orbit.count,
+        ring,
+        center.x,
+        center.y,
+      );
+      this._reconcileOrbVfx(orbit.spellId, orbit.count, orbit.orbSize);
+      const nodes = this._orbNodes.get(orbit.spellId);
+      for (let i = 0; i < positions.length; i++) {
+        const pos = positions[i];
+        this._applyOrbHit(
+          orbit.spellId,
+          i,
+          pos.x,
+          pos.y,
+          orbit.orbSize,
+          orbit.damage,
+          rehitCooldown,
+        );
+        nodes?.[i]?.setPosition(pos.x, pos.y, 0);
+      }
+    }
+    for (const spellId of expired) this._releaseAllOrbVfx(spellId);
+  }
+
+  /**
+   * 한 오브 위치 반경에 접촉한 적에게 타격을 준다 — (마법, 오브, 적) 짝이 재타격 락아웃에 걸려 있지 않을 때만.
+   * 후보 수집은 collectTargetsInRadius(F16 공유), 정밀 판정은 selectExplosionHits를 재사용한다(오브당 새 집합).
+   * @param spellId 마법 id (재타격 락아웃 키 — 궤도별 독립)
+   * @param orbIndex 오브 인덱스 (재타격 락아웃 키)
+   * @param x 오브 중심 x
+   * @param y 오브 중심 y
+   * @param orbSize 오브 충돌 반경
+   * @param damage 타격당 피해
+   * @param rehitCooldown 재타격 락아웃 (sec)
+   */
+  private _applyOrbHit(
+    spellId: string,
+    orbIndex: number,
+    x: number,
+    y: number,
+    orbSize: number,
+    damage: number,
+    rehitCooldown: number,
+  ): void {
+    const { targets, ctrls } = GameManager.instance.collectTargetsInRadius(x, y, orbSize);
+    const hits = selectExplosionHits(x, y, orbSize, targets, new Set<number>());
+    for (const idx of hits) {
+      const spawnId = targets[idx].id;
+      if (this._orbitLogic.canHit(spellId, orbIndex, spawnId)) {
+        ctrls[idx].takeDamage(damage);
+        this._orbitLogic.registerHit(spellId, orbIndex, spawnId, rehitCooldown);
+      }
+    }
+  }
+
+  /**
+   * 오브 VFX 노드 수를 count에 맞춘다 (멱등) — 모자라면 풀에서 더 꺼내고, 남으면 반환한다. 각 노드는 오브
+   * 크기에 맞춰 스케일한다. 재시전 때 기존 노드를 재사용해 누수를 막는다(§7 A-1). 프리팹 미연결이면 no-op.
+   * @param spellId 마법 id
+   * @param count 목표 오브 수
+   * @param orbSize 오브 크기 (스케일 기준)
+   */
+  private _reconcileOrbVfx(spellId: string, count: number, orbSize: number): void {
+    if (!this._orbVfxPool) return;
+    let nodes = this._orbNodes.get(spellId);
+    if (!nodes) {
+      nodes = [];
+      this._orbNodes.set(spellId, nodes);
+    }
+    while (nodes.length < count) nodes.push(this._orbVfxPool.acquire());
+    while (nodes.length > count) {
+      const extra = nodes.pop();
+      if (extra) this._orbVfxPool.release(extra);
+    }
+    const s = orbSize / ORB_VFX_BASE_RADIUS;
+    for (const node of nodes) node.setScale(s, s, 1);
+  }
+
+  /** 한 마법의 오브 VFX 노드를 전부 풀로 반환한다 (활성 수명 만료 시). */
+  private _releaseAllOrbVfx(spellId: string): void {
+    const nodes = this._orbNodes.get(spellId);
+    if (!nodes) return;
+    if (this._orbVfxPool) {
+      for (const node of nodes) this._orbVfxPool.release(node);
+    }
+    this._orbNodes.delete(spellId);
   }
 
   /** 활성 적 중 가장 가까운 적 노드를 반환한다. 없으면 null. */

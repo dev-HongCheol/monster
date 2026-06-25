@@ -1,5 +1,5 @@
 import { _decorator, Component, type Node, Vec3, view } from 'cc';
-import { type ExplosionTarget, selectExplosionHits } from '../logic/ExplosionLogic';
+import { selectExplosionHits } from '../logic/ExplosionLogic';
 import { type ControlStrength, shouldApplyControl } from '../logic/StatusEffectLogic';
 import { GameManager } from '../systems/GameManager';
 import type { EnemyController } from './EnemyController';
@@ -133,18 +133,12 @@ export class Projectile extends Component {
    */
   private _detonate(center: Readonly<Vec3>): void {
     if (!this._explosion) return;
-    const targets: ExplosionTarget[] = [];
-    const ctrls: EnemyController[] = [];
-    for (const enemy of GameManager.instance.queryEnemiesInRadius(
+    // 후보 수집은 F16 공유 헬퍼로(노바·궤도와 동일 블록). 정밀 판정·dedup은 selectExplosionHits.
+    const { targets, ctrls } = GameManager.instance.collectTargetsInRadius(
       center.x,
       center.y,
       this._explosion.radius,
-    )) {
-      if (!enemy?.isValid) continue;
-      const p = enemy.node.position;
-      targets.push({ x: p.x, y: p.y, collisionRadius: enemy.collisionRadius, id: enemy.spawnId });
-      ctrls.push(enemy);
-    }
+    );
     const hits = selectExplosionHits(
       center.x,
       center.y,

@@ -1,8 +1,16 @@
-import { _decorator, Component } from 'cc';
+import { _decorator, Component, JsonAsset, resources } from 'cc';
+import { DEV } from 'cc/env';
 import { type ICardData, type ISpellData, UpgradeOption } from '../data/GameTypes';
+import {
+  type IDebugEnhancementSeed,
+  parseDebugEnhancementSeed,
+} from '../logic/DebugEnhancementSeed';
 import { DeckLogic } from '../logic/DeckLogic';
 import { type EnhancementDebugSnapshot, EnhancementLogic } from '../logic/EnhancementLogic';
 import { DataManager } from './DataManager';
+
+/** DEV 강화 시드 파일 경로 (resources 기준, 확장자 제외). 없으면 시드 미적용. */
+const DEBUG_SEED_PATH = 'data/debug-enhancements';
 
 const { ccclass } = _decorator;
 
@@ -67,10 +75,35 @@ export class DeckManager extends Component {
     DeckManager.instance = this;
   }
 
+  // [DEV 전용] 강화 시드 파일이 있으면 카드 픽 없이 강화 레벨을 미리 적용한다(레벨별 밸런스 점검).
+  start() {
+    if (!DEV) return;
+    // 파일이 없으면 err만 받고 조용히 넘어간다(시드 미사용 = 정상). 릴리스는 DEV 게이트로 아예 로드 안 함.
+    resources.load(DEBUG_SEED_PATH, JsonAsset, (err, asset) => {
+      if (err || !asset) return;
+      this.applyDebugSeed(asset.json as IDebugEnhancementSeed);
+      console.log('[DeckManager] DEV 강화 시드 적용:', asset.json);
+    });
+  }
+
   onDestroy() {
     if (DeckManager.instance === this) {
       DeckManager.instance = null as unknown as DeckManager;
     }
+  }
+
+  /**
+   * [DEV 전용] 디버그 시드를 강화 트랙에 적용한다 — 카드 한 장씩 픽한 것과 동일하게 `raise`를 레벨만큼
+   * 반복하고 전역 보너스를 누적한다. 파싱·검증은 순수 로직(parseDebugEnhancementSeed)에 위임한다.
+   * @param raw 시드 파일 JSON (부분/누락 허용)
+   */
+  applyDebugSeed(raw: IDebugEnhancementSeed | null | undefined): void {
+    const ops = parseDebugEnhancementSeed(raw);
+    for (const op of ops.raises) {
+      // raise는 cap(4)에서 자동으로 멈추므로 레벨만큼 반복해도 안전하다.
+      for (let i = 0; i < op.level; i++) this._enhancement.raise(op.track, op.key, op.option);
+    }
+    for (const g of ops.globals) this._enhancement.addGlobal(g.option, g.bonus);
   }
 
   /**

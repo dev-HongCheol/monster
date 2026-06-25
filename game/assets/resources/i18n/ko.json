@@ -104,5 +104,6 @@
   "spell.fireball.name": { "message": "파이어볼", "desc": "마법 이름" },
   "spell.ice_missile.name": { "message": "아이스 미사일", "desc": "마법 이름" },
   "spell.lightning_bolt.name": { "message": "라이트닝 볼트", "desc": "마법 이름" },
-  "spell.frost_nova.name": { "message": "프로스트 노바", "desc": "마법 이름" }
+  "spell.frost_nova.name": { "message": "프로스트 노바", "desc": "마법 이름" },
+  "spell.inferno.name": { "message": "인페르노", "desc": "마법 이름" }
 }
