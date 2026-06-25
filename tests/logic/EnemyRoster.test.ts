@@ -37,14 +37,32 @@ describe('적 로스터 S0 — 베이스 4종 정합', () => {
   }
 });
 
+/** spawn-table.json의 모든 구간에서 참조되는 enemyId 집합. */
+function referencedSpawnIds(): Set<string> {
+  const referenced = new Set<string>();
+  for (const entry of SPAWN_TABLE) {
+    for (const id of Object.keys(entry.weights)) referenced.add(id);
+  }
+  return referenced;
+}
+
 describe('적 로스터 S0 — 스폰 테이블 무결성', () => {
-  it('spawn-table.json이 참조하는 모든 enemyId가 enemies.json에 존재한다', () => {
+  it('spawn-table.json이 참조하는 모든 enemyId가 enemies.json에 존재한다(정방향)', () => {
     const known = new Set(ENEMIES.map((e) => e.id));
-    const referenced = new Set<string>();
-    for (const entry of SPAWN_TABLE) {
-      for (const id of Object.keys(entry.weights)) referenced.add(id);
-    }
-    const missing = [...referenced].filter((id) => !known.has(id));
+    const missing = [...referencedSpawnIds()].filter((id) => !known.has(id));
     expect(missing, `enemies.json에 없는 스폰 id: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('4종 로스터가 모두 spawn-table에 편입돼 실제 스폰된다(역방향 — jangsanbeom 도달성)', () => {
+    const referenced = referencedSpawnIds();
+    const unspawnable = ROSTER.map((r) => r.id).filter((id) => !referenced.has(id));
+    expect(unspawnable, `어느 웨이브에서도 스폰되지 않는 적: ${unspawnable.join(', ')}`).toEqual(
+      [],
+    );
+  });
+
+  it('리네이밍 잔여물 차단 — enemies.json에 옛 skeleton 계열 id가 없다', () => {
+    const leftover = ENEMIES.map((e) => e.id).filter((id) => /skeleton/i.test(id));
+    expect(leftover, `리네이밍 누락된 옛 id: ${leftover.join(', ')}`).toEqual([]);
   });
 });

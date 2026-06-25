@@ -4,8 +4,8 @@ import { SpawnDirectorLogic } from '../../game/assets/scripts/logic/SpawnDirecto
 
 /**
  * 스폰 테이블 픽스처 — 가중치 구조는 spawn-director 플랜(2026-06-04 §3) 그대로 두고,
- * id만 S0 로스터(feat/enemy-roster)로 갱신했다(cheonyeo→cheonyeo, dalgyal→dalgyal,
- * dokkaebi→dokkaebi). SpawnDirectorLogic은 id 문자열을 키로만 쓰므로 경계 단언은 그대로 유효하다.
+ * id만 S0 로스터(feat/enemy-roster)로 갱신했다(skeleton→cheonyeo, skeleton_swift→dalgyal,
+ * skeleton_tank→dokkaebi). SpawnDirectorLogic은 id 문자열을 키로만 쓰므로 경계 단언은 그대로 유효하다.
  */
 const TABLE: ISpawnTableEntry[] = [
   { fromWave: 1, weights: { cheonyeo: 80, dalgyal: 20 } },
@@ -34,7 +34,7 @@ describe('SpawnDirectorLogic — 웨이브 구간 게이팅', () => {
     expect(seen.has('dalgyal')).toBe(true);
   });
 
-  it('웨이브 6: 일반 cheonyeo은 안 나온다 (swift/tank만)', () => {
+  it('웨이브 6: 일반 cheonyeo는 안 나온다 (dalgyal/dokkaebi만)', () => {
     const seen = idsAcrossRolls(director(), 6);
     expect(seen.has('cheonyeo')).toBe(false);
     expect(seen.has('dalgyal')).toBe(true);
@@ -61,7 +61,7 @@ describe('SpawnDirectorLogic — 웨이브 구간 게이팅', () => {
 });
 
 describe('SpawnDirectorLogic — 가중치 경계', () => {
-  it('웨이브 1 (cheonyeo 80 / swift 20): 경계 전후로 갈린다', () => {
+  it('웨이브 1 (cheonyeo 80 / dalgyal 20): 경계 전후로 갈린다', () => {
     const d = director();
     expect(d.selectEnemyId(1, 0)).toBe('cheonyeo');
     expect(d.selectEnemyId(1, 0.5)).toBe('cheonyeo');
@@ -80,7 +80,7 @@ describe('SpawnDirectorLogic — 가중치 경계', () => {
     expect(d.selectEnemyId(3, 0.99)).toBe('dokkaebi');
   });
 
-  it('웨이브 6 (swift 50 / tank 50): 절반 경계', () => {
+  it('웨이브 6 (dalgyal 50 / dokkaebi 50): 절반 경계', () => {
     const d = director();
     expect(d.selectEnemyId(6, 0)).toBe('dalgyal');
     expect(d.selectEnemyId(6, 0.4)).toBe('dalgyal');
