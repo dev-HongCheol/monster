@@ -8,7 +8,7 @@
 
 ## 자동 테스트로 검증 (구현 후 GREEN 시 [x]로 갱신)
 
-> **GREEN 통과 (2026-06-26):** 피처 테스트 `EnemyMovement.test.ts` **21/21** + 전체 스위트 **298/298**(24파일). 통과 커밋 SHA: (검증 커밋에서 기재).
+> **GREEN 통과 (2026-06-26):** 피처 테스트 `EnemyMovement.test.ts` **21/21** + 전체 스위트 **298/298**(24파일). 통과 커밋 SHA: `8b036a7`.
 
 `tests/logic/EnemyMovement.test.ts` — `MovementLogic` 순수 함수 + 신규 적 데이터 정합.
 
