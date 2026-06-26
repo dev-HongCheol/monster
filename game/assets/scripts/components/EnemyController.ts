@@ -2,6 +2,17 @@ import { _decorator, Color, Component, Node, Prefab, Sprite, Vec3 } from 'cc';
 import { GameState, type IEnemyData } from '../data/GameTypes';
 import { deathAlpha, deathScale, hitFlashBlend, isDeathDone } from '../logic/EnemyVisualLogic';
 import {
+  type LungeParams,
+  LungeState,
+  lungeMovement,
+  lungeReach,
+  tickLunge,
+  type Vec2,
+  vectorToAngle,
+  windupBlend,
+  zigzagDirection,
+} from '../logic/MovementLogic';
+import {
   appliedStrength,
   ControlStrength,
   type ControlTimers,
@@ -20,6 +31,12 @@ const { ccclass, property } = _decorator;
 
 /** 제어(CC) 중 baseTint를 적용 강도의 CC 색 쪽으로 섞는 비율 (placeholder, §14). */
 const CC_TINT_BLEND = 0.6;
+/** 피격 플래시가 섞는 흰색 (틴트 블렌드 대상). */
+const FLASH_COLOR = new Color(255, 255, 255, 255);
+/** 돌진 윈드업 텔레그래프 색 (placeholder, §6) — 곧 들이받음을 알리는 빨강. */
+const TELEGRAPH_COLOR = new Color(255, 64, 64, 255);
+/** 돌진 바닥 마커(LungeMarker)의 기준 폭(px) — 런타임 X 스케일 = lungeReach / (이 값 × 부모 스케일). */
+const MARKER_BASE_WIDTH = 100;
 
 /** 풀 재사용마다 증가하는 전역 카운터 — 적 개체 식별자(spawnId)의 출처. */
 let _spawnIdCounter = 0;
@@ -43,6 +60,8 @@ export class EnemyController extends Component {
   @property deathDuration: number = 0.25;
   /** 사망 팝의 최대 스케일 배율 (기준 크기 대비) */
   @property deathPopScale: number = 1.3;
+  /** 돌진 바닥 경로 마커 노드 (돌진 적만 사용, 인스펙터에서 연결 — 미연결 시 마커 없이 동작) */
+  @property(Node) lungeMarker: Node | null = null;
 
   collisionRadius: number = 25;
   /** 풀 재사용마다 증가하는 개체 식별자 — 폭발 등 시전 단위 dedup의 안정 id(§10.2). reset마다 새 값. */
@@ -81,6 +100,20 @@ export class EnemyController extends Component {
   private readonly _slowTint: Color = new Color(130, 200, 255, 255);
   /** 빙결 틴트 (placeholder, §14) — 짙은 얼음 톤. 후속 magic-S6에서 실사용. */
   private readonly _freezeTint: Color = new Color(120, 160, 230, 255);
+  /** 돌진(lunge) 상태기계의 현재 상태. reset마다 Chase로. */
+  private _lungeState: LungeState = LungeState.Chase;
+  /** 현재 돌진 상태의 잔여 타이머 (sec). */
+  private _lungeTimer: number = 0;
+  /** 윈드업 진입 시 잠근 돌진 방향(단위 벡터). 돌진은 이 방향으로만 간다. */
+  private readonly _lockDir: Vec2 = { x: 0, y: 0 };
+  /** 지그재그 위상 누적 시간 (sec). reset마다 0. */
+  private _zigzagElapsed: number = 0;
+  /** 이번 프레임 윈드업 텔레그래프 활성 여부 (틴트 우선순위 산출용). */
+  private _windupActive: boolean = false;
+  /** 이번 프레임 윈드업 점멸 강도 (0→1 램프). */
+  private _windupBlendVal: number = 0;
+  /** 텔레그래프 틴트가 현재 적용돼 있는지 — 윈드업이 끝날 때 baseTint/CC로 1회 복원하기 위한 래치. */
+  private _telegraphTinted: boolean = false;
 
   // Sprite 참조만 캐시한다(컴포넌트는 풀 재사용해도 유지되므로 1회면 충분).
   // 활성 등록은 onEnable, 데이터·시각·연출 상태 적용은 reset()이 담당한다(재사용마다 재적용 필요).
@@ -118,6 +151,16 @@ export class EnemyController extends Component {
     this._flashElapsed = 0;
     this._control = emptyControl();
     this._ccTinted = false;
+    // 이동 상태(돌진 FSM·지그재그 위상·텔레그래프)를 비워 풀 재사용 시 이월을 막는다.
+    this._lungeState = LungeState.Chase;
+    this._lungeTimer = 0;
+    this._lockDir.x = 0;
+    this._lockDir.y = 0;
+    this._zigzagElapsed = 0;
+    this._windupActive = false;
+    this._windupBlendVal = 0;
+    this._telegraphTinted = false;
+    if (this.lungeMarker) this.lungeMarker.active = false;
     this._data = DataManager.instance.getEnemy(enemyId);
     if (this._data) {
       this._hp = this._data.maxHp;
@@ -142,9 +185,9 @@ export class EnemyController extends Component {
       this._control = tickControl(this._control, dt);
     }
     const applied = appliedStrength(this._control);
-    this._followPlayer(dt, applied);
+    this._move(dt, applied);
     this._checkContactDamage(dt, applied);
-    this._updateControlTint(applied);
+    this._updateTint(applied);
   }
 
   /**
@@ -186,21 +229,26 @@ export class EnemyController extends Component {
     if (!this._flashing || !this._sprite) return;
     this._flashElapsed += dt;
     const blend = hitFlashBlend(this._flashElapsed, this.flashDuration);
-    this._applyFlashColor(blend);
+    this._applyTintBlend(FLASH_COLOR, blend);
     if (this._flashElapsed >= this.flashDuration) {
       this._flashing = false;
       this._sprite.color = this._baseTint; // 원래 tint로 정확히 복귀
     }
   }
 
-  /** baseTint를 blend 비율만큼 흰색으로 보간해 Sprite에 적용한다. blend=0이면 baseTint. */
-  private _applyFlashColor(blend: number): void {
+  /**
+   * baseTint를 target 색 쪽으로 blend 비율만큼 보간해 Sprite에 적용한다. blend=0이면 baseTint.
+   * 피격 플래시(흰색)·윈드업 텔레그래프(빨강)·CC 틴트가 공유하는 색 적용 경로.
+   * @param target 섞을 목표 색
+   * @param blend 0~1 보간 비율
+   */
+  private _applyTintBlend(target: Color, blend: number): void {
     if (!this._sprite) return;
     const b = this._baseTint;
     this._scratchColor.set(
-      Math.round(b.r + (255 - b.r) * blend),
-      Math.round(b.g + (255 - b.g) * blend),
-      Math.round(b.b + (255 - b.b) * blend),
+      Math.round(b.r + (target.r - b.r) * blend),
+      Math.round(b.g + (target.g - b.g) * blend),
+      Math.round(b.b + (target.b - b.b) * blend),
       b.a,
     );
     this._sprite.color = this._scratchColor;
@@ -216,6 +264,10 @@ export class EnemyController extends Component {
     this._dropXpItem();
     this._deathElapsed = 0;
     this._flashing = false;
+    // 윈드업 중 사망 시 바닥 마커가 시체에 남지 않도록 끄고, 텔레그래프 틴트 래치도 해제한다.
+    this._windupActive = false;
+    this._telegraphTinted = false;
+    if (this.lungeMarker) this.lungeMarker.active = false;
     if (this._sprite) this._sprite.color = this._baseTint; // 플래시 중 사망 시 기준색에서 페이드 시작
   }
 
@@ -258,6 +310,122 @@ export class EnemyController extends Component {
   }
 
   /**
+   * 이동 알고리즘(movement)에 따라 분기한다 — 지그재그·돌진은 신규 경로, 그 외(chase·미지 값)는
+   * 기존 직선 추격으로 폴백한다(설계 §3·§11 forward-compat).
+   * @param dt 프레임 경과 시간 (sec)
+   * @param applied 이번 프레임 적용 강도 (update에서 틱 이후 산출해 주입)
+   */
+  private _move(dt: number, applied: ControlStrength): void {
+    if (!this._data) return;
+    switch (this._data.movement) {
+      case 'zigzag':
+        this._moveZigzag(dt, applied);
+        return;
+      case 'lunge':
+        this._moveLunge(dt, applied);
+        return;
+      default:
+        this._followPlayer(dt, applied);
+    }
+  }
+
+  /**
+   * 지그재그 이동 — 플레이어로 다가오되 진행 방향에 좌우 사인파 오프셋을 더해 흔든다(어둑시니).
+   * @param dt 프레임 경과 시간 (sec)
+   * @param applied 이번 프레임 적용 강도
+   */
+  private _moveZigzag(dt: number, applied: ControlStrength): void {
+    if (!this.playerNode || !this._data) return;
+    this._zigzagElapsed += dt; // 위상 시계는 정지 중에도 흐른다(이동 자체는 아래 배율로 막힘)
+    const speedFactor = moveSpeedFactor(applied);
+    if (speedFactor === 0) return;
+    const myPos = this.node.position;
+    const targetPos = this.playerNode.position;
+    const mp = this._data.moveParams;
+    const dir = zigzagDirection(
+      { x: targetPos.x - myPos.x, y: targetPos.y - myPos.y },
+      this._zigzagElapsed,
+      mp?.zigzagAmplitude ?? 0,
+      mp?.zigzagPeriod ?? 0,
+    );
+    if (dir.x === 0 && dir.y === 0) return; // 겹침·period 가드(영벡터)
+    const step = this._data.speed * speedFactor * dt;
+    this.node.setPosition(myPos.x + dir.x * step, myPos.y + dir.y * step, myPos.z);
+  }
+
+  /**
+   * 돌진 이동 — 추격하다 사거리 안에서 윈드업 후 잠근 방향으로 들이받고 쿨다운(불가사리).
+   * 정지·빙결(canAct=false)이면 FSM 전체가 동결돼, 풀리면 남은 돌진을 마저 한다(§9.4 헛돌진 방지).
+   * @param dt 프레임 경과 시간 (sec)
+   * @param applied 이번 프레임 적용 강도
+   */
+  private _moveLunge(dt: number, applied: ControlStrength): void {
+    if (!this.playerNode || !this._data) return;
+    const myPos = this.node.position;
+    const targetPos = this.playerNode.position;
+    const toPlayer: Vec2 = { x: targetPos.x - myPos.x, y: targetPos.y - myPos.y };
+    const speedFactor = moveSpeedFactor(applied);
+    const canAct = speedFactor !== 0; // 정지·빙결이면 false → FSM 동결
+    const params = this._lungeParams();
+
+    const result = tickLunge(this._lungeState, this._lungeTimer, toPlayer, canAct, params, dt);
+    // lockDir은 Windup 진입 에지에서만 온다 — 받은 그 한 번만 저장하고 이후엔 유지한다.
+    if (result.lockDir) {
+      this._lockDir.x = result.lockDir.x;
+      this._lockDir.y = result.lockDir.y;
+    }
+    this._lungeState = result.state;
+    this._lungeTimer = result.timer;
+
+    const dir = lungeMovement(this._lungeState, this._lockDir, toPlayer);
+    if (dir.x !== 0 || dir.y !== 0) {
+      // 돌진 중에는 lungeSpeed, 그 외(추격·쿨다운)는 기본 속도. 슬로우(배율)는 둘 다에 적용.
+      const moveSpeed =
+        this._lungeState === LungeState.Lunge ? params.lungeSpeed : this._data.speed;
+      const step = moveSpeed * speedFactor * dt;
+      this.node.setPosition(myPos.x + dir.x * step, myPos.y + dir.y * step, myPos.z);
+    }
+    this._updateLungeTelegraph(params);
+  }
+
+  /** enemies.json moveParams에서 돌진 파라미터를 뽑는다(누락 필드는 안전 기본값). */
+  private _lungeParams(): LungeParams {
+    const mp = this._data?.moveParams;
+    return {
+      lungeRange: mp?.lungeRange ?? 0,
+      lungeWindup: mp?.lungeWindup ?? 0,
+      lungeSpeed: mp?.lungeSpeed ?? this._data?.speed ?? 0,
+      lungeDuration: mp?.lungeDuration ?? 0,
+      lungeCooldown: mp?.lungeCooldown ?? 0,
+    };
+  }
+
+  /**
+   * 돌진 텔레그래프를 갱신한다 — 윈드업 동안만 본체 점멸 강도(_windupBlendVal)를 산출하고 바닥
+   * 마커를 켜 잠근 방향으로 회전·도달 거리만큼 길이를 맞춘다. 그 외 상태에선 마커를 끈다.
+   * @param params 돌진 파라미터
+   */
+  private _updateLungeTelegraph(params: LungeParams): void {
+    const inWindup = this._lungeState === LungeState.Windup;
+    this._windupActive = inWindup;
+    if (inWindup) {
+      const elapsed = params.lungeWindup - this._lungeTimer;
+      this._windupBlendVal = windupBlend(elapsed, params.lungeWindup);
+    }
+    if (!this.lungeMarker) return;
+    if (inWindup) {
+      this.lungeMarker.active = true;
+      this.lungeMarker.angle = vectorToAngle(this._lockDir);
+      // 자식 마커의 월드 길이 = 기준 폭 × 자식 스케일 × 부모 스케일 → 부모(threatScale)를 상쇄한다.
+      const sx = lungeReach(params) / (MARKER_BASE_WIDTH * (this._baseScale || 1));
+      const cur = this.lungeMarker.scale;
+      this.lungeMarker.setScale(sx, cur.y, cur.z);
+    } else {
+      this.lungeMarker.active = false;
+    }
+  }
+
+  /**
    * 플레이어 방향으로 이동한다. 컨트롤(CC) 강도에 따라 감속(슬로우)하거나 멈춘다(정지·빙결, §9.4).
    * @param dt 프레임 경과 시간 (sec)
    * @param applied 이번 프레임 적용 강도 (update에서 틱 이후 산출해 주입)
@@ -294,28 +462,27 @@ export class EnemyController extends Component {
   }
 
   /**
-   * 컨트롤(CC) 틴트를 적용한다 — 제어 중이면 baseTint를 적용 강도의 CC 색 쪽으로 섞고, 제어가
-   * 풀리면 baseTint로 1회 복원한다. 강도가 바뀌면(빙결→정지→슬로우) 색도 매 프레임 다시 고른다
-   * (전이 시점에 래치하지 않는다). 피격 플래시 중에는 플래시가 색을 소유하므로 양보한다
-   * (틴트 우선순위: 사망 > 플래시 > CC > 기본).
+   * 매 프레임 틴트를 우선순위로 해소한다(사망 > 플래시 > 텔레그래프 > CC > 기본). 윈드업
+   * 텔레그래프가 있으면 CC보다 우선해 빨강을 섞고, 텔레그래프·CC가 끝나면 baseTint로 1회
+   * 복원한다(복원 래치). 강도가 바뀌면(빙결→정지→슬로우) 색도 매 프레임 다시 고른다.
+   * 피격 플래시 중에는 플래시가 색을 소유하므로 양보한다.
    * @param applied 이번 프레임 적용 강도 (update에서 틱 이후 산출해 주입)
    */
-  private _updateControlTint(applied: ControlStrength): void {
-    if (!this._sprite || this._flashing) return;
+  private _updateTint(applied: ControlStrength): void {
+    if (!this._sprite || this._flashing) return; // 플래시가 색을 소유
+    if (this._windupActive) {
+      this._applyTintBlend(TELEGRAPH_COLOR, this._windupBlendVal);
+      this._telegraphTinted = true;
+      return;
+    }
     if (applied !== ControlStrength.None) {
-      const b = this._baseTint;
-      const t = this._ccTintFor(applied);
-      this._scratchColor.set(
-        Math.round(b.r + (t.r - b.r) * CC_TINT_BLEND),
-        Math.round(b.g + (t.g - b.g) * CC_TINT_BLEND),
-        Math.round(b.b + (t.b - b.b) * CC_TINT_BLEND),
-        b.a,
-      );
-      this._sprite.color = this._scratchColor;
+      this._applyTintBlend(this._ccTintFor(applied), CC_TINT_BLEND);
       this._ccTinted = true;
-    } else if (this._ccTinted) {
+      this._telegraphTinted = false;
+    } else if (this._ccTinted || this._telegraphTinted) {
       this._sprite.color = this._baseTint;
       this._ccTinted = false;
+      this._telegraphTinted = false;
     }
   }
 

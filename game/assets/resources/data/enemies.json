@@ -50,5 +50,42 @@
     "role": "standard",
     "tint": "#ECE3CC",
     "threatScale": 1.1
+  },
+  {
+    "id": "eodukshini",
+    "name": "어둑시니",
+    "maxHp": 110,
+    "speed": 150,
+    "contactDamagePerSec": 20,
+    "collisionRadius": 25,
+    "xpDrop": 22,
+    "movement": "zigzag",
+    "role": "standard",
+    "tint": "#3E4E5E",
+    "threatScale": 1.0,
+    "moveParams": {
+      "zigzagAmplitude": 0.6,
+      "zigzagPeriod": 0.8
+    }
+  },
+  {
+    "id": "bulgasari",
+    "name": "불가사리",
+    "maxHp": 160,
+    "speed": 100,
+    "contactDamagePerSec": 16,
+    "collisionRadius": 32,
+    "xpDrop": 26,
+    "movement": "lunge",
+    "role": "standard",
+    "tint": "#7F8C8D",
+    "threatScale": 1.3,
+    "moveParams": {
+      "lungeRange": 200,
+      "lungeWindup": 0.5,
+      "lungeSpeed": 600,
+      "lungeDuration": 0.3,
+      "lungeCooldown": 1.5
+    }
   }
 ]
