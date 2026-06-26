@@ -35,8 +35,8 @@
     },
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 640,
-      "y": 360.00000000000006,
+      "x": 1280,
+      "y": 720.0000000000001,
       "z": 0
     },
     "_lrot": {
@@ -148,7 +148,7 @@
       "__id__": 7
     },
     "playerNode": null,
-    "enemyId": "skeleton",
+    "enemyId": "cheonyeo",
     "xpItemPrefab": {
       "__uuid__": "cd4dfe64-c868-4db0-a325-b717cd0fecb1",
       "__expectedType__": "cc.Prefab"

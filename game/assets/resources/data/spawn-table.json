@@ -1,14 +1,14 @@
 [
   {
     "fromWave": 1,
-    "weights": { "skeleton": 80, "skeleton_swift": 20 }
+    "weights": { "cheonyeo": 70, "dalgyal": 30 }
   },
   {
     "fromWave": 3,
-    "weights": { "skeleton": 35, "skeleton_swift": 50, "skeleton_tank": 15 }
+    "weights": { "cheonyeo": 35, "dalgyal": 35, "dokkaebi": 15, "jangsanbeom": 15 }
   },
   {
     "fromWave": 6,
-    "weights": { "skeleton_swift": 50, "skeleton_tank": 50 }
+    "weights": { "cheonyeo": 20, "dalgyal": 25, "dokkaebi": 30, "jangsanbeom": 25 }
   }
 ]
