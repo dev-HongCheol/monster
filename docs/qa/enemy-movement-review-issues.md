@@ -1,7 +1,7 @@
 # 적 이동 S1 — 코드 리뷰 이슈
 
 - **브랜치:** feat/enemy-movement
-- **리뷰 커밋:** `8b036a7`
+- **리뷰 커밋:** `23b16cf` (재리뷰; 최초 `8b036a7`)
 - **리뷰 방식:** 인라인(토큰 절약 — 사용자 요청). 순수 로직은 `EnemyMovement.test.ts` 21개로 덮였고, 단위 테스트가 없는 `EnemyController` 글루를 정밀 검토했다. 설계 단계(autoplan) 독립 리뷰의 16개 발견은 구현에 모두 반영됨(계획 §10 감사 추적 참조).
 
 ## 검토 범위·결과
@@ -27,3 +27,12 @@
 ## 종합
 
 구현이 리뷰된 계획(§4 아키텍처)과 일치하고, 순수 로직은 전수 테스트로 덮였다. 차단 이슈 없음 → `pass review`.
+
+## 재리뷰 (리워크 후 — 커밋 `29cc0f9`·`23b16cf`)
+
+리워크로 implementation 복귀 후 변경분은 **데이터·문서뿐이며 `.ts` 소스는 0줄 변경**(직전 통과본 `8b036a7`과 동일)이라, 신규 코드 검토 표면이 없어 증분만 인라인 검토했다.
+
+- **enemies.json — `zigzagAmplitude` 0.6→1.1:** 밸런스 수치. `zigzagDirection`이 결과를 `normalize`하므로 amplitude>1도 안전(전진 대비 수직 가중만 커져 지그재그가 날카로워짐). `zigzagPeriod`(0.8) 불변. 데이터 sanity 테스트 `>0` 통과.
+- **debug-enhancements.json — fire `range` 키 오타 복구 + 시드값 0:** 깨진 키 `lungeMarkerrange`→`range` 복구. `DebugEnhancementSeed.test.ts` 7개 GREEN으로 스키마 검증됨. 디버그 전용 데이터라 인게임 영향 없음.
+
+차단 이슈 없음 → `pass review`. (전체 스위트 298/298, 통과 커밋 `23b16cf`.)
