@@ -64,7 +64,7 @@
     "tint": "#3E4E5E",
     "threatScale": 1.0,
     "moveParams": {
-      "zigzagAmplitude": 0.6,
+      "zigzagAmplitude": 1.1,
       "zigzagPeriod": 0.8
     }
   },
