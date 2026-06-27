@@ -5,10 +5,23 @@
   },
   {
     "fromWave": 3,
-    "weights": { "cheonyeo": 35, "dalgyal": 35, "dokkaebi": 15, "jangsanbeom": 15 }
+    "weights": {
+      "cheonyeo": 30,
+      "dalgyal": 30,
+      "dokkaebi": 15,
+      "jangsanbeom": 15,
+      "eodukshini": 10
+    }
   },
   {
     "fromWave": 6,
-    "weights": { "cheonyeo": 20, "dalgyal": 25, "dokkaebi": 30, "jangsanbeom": 25 }
+    "weights": {
+      "cheonyeo": 15,
+      "dalgyal": 20,
+      "dokkaebi": 25,
+      "jangsanbeom": 20,
+      "eodukshini": 10,
+      "bulgasari": 10
+    }
   }
 ]

@@ -24,18 +24,18 @@
       "range": 0
     },
     "inferno": {
-      "damage": 4,
-      "cooldown": 4,
-      "projectile_count": 4,
-      "range": 4,
+      "damage": 0,
+      "cooldown": 0,
+      "projectile_count": 0,
+      "range": 0,
       "duration": 0
     }
   },
   "category": {
     "fire": {
-      "damage": 4,
-      "cooldown": 4,
-      "projectile_count": 4,
+      "damage": 0,
+      "cooldown": 0,
+      "projectile_count": 0,
       "range": 0,
       "duration": 0
     }

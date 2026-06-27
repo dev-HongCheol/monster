@@ -202,6 +202,28 @@ export interface ICardData {
   descParams?: I18nParams;
 }
 
+/**
+ * 이동 알고리즘별 파라미터 (적 시스템 §11 moveParams). 전 필드 선택적 — 지그재그 적은 lunge
+ * 필드가 없고 돌진 적은 zigzag 필드가 없다. 유격(S2)의 `preferredRange`도 같은 블록에 들어온다.
+ * 분모·정규화에 쓰이는 값(`zigzagPeriod` 등)은 0을 쓰지 않는다(0이면 런타임 NaN — MovementLogic 가드 참조).
+ */
+export interface IEnemyMoveParams {
+  /** 지그재그 좌우 흔들림 세기 (전진 대비 수직 가중) */
+  zigzagAmplitude?: number;
+  /** 지그재그 1주기 시간(sec) — 0/음수 금지 */
+  zigzagPeriod?: number;
+  /** 돌진 발동 거리(px) */
+  lungeRange?: number;
+  /** 돌진 전 윈드업(텔레그래프) 시간(sec) */
+  lungeWindup?: number;
+  /** 돌진 중 속도(px/sec, 등속) */
+  lungeSpeed?: number;
+  /** 돌진 지속 시간(sec) */
+  lungeDuration?: number;
+  /** 돌진 후 재돌진 금지 쿨다운(sec) */
+  lungeCooldown?: number;
+}
+
 /** 적 기본 수치 (enemies.json 항목) */
 export interface IEnemyData {
   id: string;
@@ -215,7 +237,7 @@ export interface IEnemyData {
   collisionRadius: number;
   /** 사망 시 드롭하는 XP 량 */
   xpDrop: number;
-  /** 이동 알고리즘 (적 시스템 §3). v1은 "chase" 고정 — 데이터 자리만(런타임 분기 없음) */
+  /** 이동 알고리즘 (적 시스템 §3). "chase"|"zigzag"|"lunge" — 미구현·미지 값은 chase 폴백 */
   movement: string;
   /** 역할·스탯 프로필 라벨 (적 시스템 §4). standard|swarmer|tank — 그룹화/도감용 */
   role: string;
@@ -223,6 +245,8 @@ export interface IEnemyData {
   tint: string;
   /** 시각 크기 배율 (적 시스템 §7). node scale에 적용 */
   threatScale: number;
+  /** 이동 enum별 파라미터 (적 시스템 §11). 접촉 추격 적은 생략 가능 */
+  moveParams?: IEnemyMoveParams;
 }
 
 /**
