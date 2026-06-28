@@ -5,7 +5,7 @@
 - **계획:** [2026-06-27-enemy-projectile-plan.md](../development/sessions/2026-06-27-enemy-projectile-plan.md)
 - **선행(머지 완료):** player-iframe(전역 i-frame + 틱당 max 피해 게이트, PR #43) — 발사체·접촉 피해가 이 게이트에 제출된다.
 
-> 이 문서는 qa-setup 단계(구현 전)에 작성됐다. **§3 프리팹/씬·§4 에디터 연결은 구현 결과에 따라 확정**되므로, 구현 완료 후(7단계 진입 전) 실제 컴포넌트의 `@property`·노드 구조에 맞춰 갱신한다(현재는 계획 기준 잠정안).
+> §3 프리팹/씬·§4 에디터 연결은 qa-setup(구현 전)에 계획 기준 잠정안으로 썼다가 **구현 완료 후 실제 컴포넌트에 맞춰 확정**했다(2026-06-29). 핵심: 발사체 풀이 **별도 부모 노드 없이 Canvas를 부모로** 쓰므로 `enemyBulletParent`는 없고, 사용자 배선은 `EnemySpawner.enemyBulletPrefab` **하나뿐**이다.
 
 ---
 
@@ -60,41 +60,37 @@
 
 ---
 
-## 3. 씬/프리팹 변경 사항 (잠정 — 구현 후 확정)
+## 3. 씬/프리팹 변경 사항 (확정 — 구현 반영 2026-06-29)
 
 플레이어 발사체(`SpellCaster.bulletPrefab` + `PoolManager`) 구조를 미러한다.
 
 ### 3.1 신규 프리팹 — 적 발사체(여우불)
 
-| 항목 | 값(잠정) |
-|------|----------|
-| 이름 | `EnemyBullet`(가칭) |
+| 항목 | 값 |
+|------|----|
+| 이름 | `EnemyBullet` (자유 — 프리팹 이름은 동작과 무관) |
 | 위치 | `game/assets/prefabs/` 아래 (플레이어 `Bullet` 프리팹과 동일 폴더) |
-| 루트 노드 | `EnemyBullet` (UITransform 포함) |
-| 컴포넌트 | `EnemyProjectile` |
-| 스프라이트 | Sprite — 여우불 placeholder(주황 `#FF8C2A` 계열 tint). 플레이어 탄과 색으로 구분 |
-| 크기 | `attack.projectile.radius`에 맞춰 충돌 반경과 시각 크기 정합(플레이어 탄 크기 참고) |
+| 루트 노드 | UITransform 포함 |
+| 컴포넌트 | **`EnemyProjectile`** (필수) |
+| 스프라이트 | Sprite — 여우불 placeholder(주황 `#FF8C2A` 계열). **색은 프리팹 Sprite에 직접 지정**(코드는 색을 안 건드림). 플레이어 탄과 구분 |
+| 크기 | 충돌 반경은 런타임에 `attack.projectile.radius`(=12)로 주입되니, Sprite 시각 크기를 그 반경에 대략 맞춘다 |
 
-### 3.2 씬 노드 — 발사체 부모(스폰 컨테이너)
+### 3.2 발사체 부모 노드 — 불필요 (확정)
 
-| 항목 | 값(잠정) |
-|------|----------|
-| 노드 | 적 발사체를 담을 부모 Node(예: `EnemyBulletParent`) — 게임 월드 Canvas 아래, 적과 같은 가시성 레이어(DEFAULT) |
-| 이유 | 플레이어 `bulletParent`와 동형. UI 카메라가 아니라 게임 카메라에 렌더되도록 게임 월드 계층에 둔다 |
+별도 부모 노드를 만들 필요가 없다. `EnemySpawner`가 적 풀과 동일하게 **Canvas(`playerNode.parent`)를 발사체 부모로** 풀을 생성한다(`new PoolManager(enemyBulletPrefab, this._canvas)`). 게임 월드 Canvas라 게임 카메라에 렌더된다. → §4에 `enemyBulletParent` 배선은 없다.
 
 ---
 
-## 4. 에디터 연결 체크리스트 (잠정 — 구현 후 확정)
+## 4. 에디터 연결 체크리스트 (확정)
 
-> 풀 소유자(EnemySpawner/GameManager 중 구현에서 확정)와 EnemyController의 `@property`는 구현 후 실제 이름으로 갱신한다.
+> 풀 소유자는 **`EnemySpawner`**로 확정. 사용자 배선은 아래 한 줄뿐이고, 나머지는 런타임 주입이라 연결할 게 없다.
 
 | 컴포넌트 | `@property` | 연결 대상 | 상태 |
 |----------|-------------|-----------|:----:|
-| 풀 소유자 | `enemyBulletPrefab`(가칭) | §3.1 `EnemyBullet` 프리팹 | ❌ |
-| 풀 소유자 | `enemyBulletParent`(가칭) | §3.2 발사체 부모 노드 | ❌ |
-| EnemyProjectile(프리팹 내) | (충돌 반경 등 데이터 주입 — `init`으로 런타임 주입이면 에디터 연결 불필요) | — | ❌ |
+| **EnemySpawner** | `enemyBulletPrefab` | §3.1 적 발사체 프리팹 | ❌ |
+| EnemyProjectile(프리팹 내) | — (방향·속도·반경·피해·대상 플레이어는 `init`으로 런타임 주입) | 연결 불필요 | — |
 
-> 텔레그래프(윈드업 점멸)는 S1 `_applyTintBlend`/`windupBlend`를 잇는 **코드 처리**라 별도 에디터 노드가 필요 없을 수 있다(돌진 `lungeMarker`처럼 바닥 마커를 쓸지는 구현에서 결정 → 쓰면 이 표에 추가).
+> 텔레그래프(윈드업 점멸)는 `_applyTintBlend`/`windupBlend` **코드 처리**(본체 색 점멸)라 별도 에디터 노드가 **필요 없다**(확정). 돌진 `lungeMarker` 같은 바닥 마커는 구미호엔 쓰지 않는다.
 
 ---
 
