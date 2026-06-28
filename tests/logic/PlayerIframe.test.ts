@@ -38,6 +38,14 @@ describe('tickDamage — 틱 경계에서만 누적 max를 적용', () => {
     expect(r.timer).toBeCloseTo(0.05); // 초과분(0.55 − 0.5)을 다음 창으로 이월
   });
 
+  it('dt가 틱 시간보다 커도 한 번만 적용한다(랙 스파이크 — 한 프레임에 여러 틱분 누적 금지)', () => {
+    // dt=1.2s, T=0.5s. 한 프레임에 2틱(1.0s)분이 들어와도 단일 호출은 누적 max를 1회만 적용한다.
+    const r = tickDamage(0, 40, 1.2, 0.5);
+    expect(r.applied).toBe(40); // 두 배가 아니라 한 번만
+    expect(r.pendingMax).toBe(0);
+    expect(r.timer).toBeCloseTo(0.7); // 초과분(1.2 − 0.5)을 그대로 이월(DPS 보존, 비클램프)
+  });
+
   it('한 틱에 여러 피해가 들어와도 가장 센 것만 적용한다', () => {
     let pending = 0;
     for (const hit of [10, 40, 25]) pending = accumulateDamage(pending, hit);

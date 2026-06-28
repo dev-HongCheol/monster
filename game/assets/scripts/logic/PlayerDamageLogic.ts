@@ -44,6 +44,9 @@ export function tickDamage(
   // T가 0 이하면 무적 창이 없다 — 매 호출 즉시 누적값을 적용한다(분모 0/음수 가드).
   if (tickSec <= 0) return { applied: pendingMax, timer: 0, pendingMax: 0 };
   const t = timer + dt;
+  // 한 호출은 누적 max를 1회만 적용한다 — dt가 T의 몇 배여도 한 프레임에 여러 틱분이 쌓이지 않는다.
+  // 초과분(t − T)은 클램프하지 않고 그대로 이월한다(DPS = 실경과 시간 보존). dt > 2T인 심한 스파이크
+  // 뒤엔 이월값이 T를 넘어 다음 프레임이 곧장 또 명중할 수 있으나, 이는 평균 피해율을 맞추는 의도된 동작이다.
   if (t >= tickSec) return { applied: pendingMax, timer: t - tickSec, pendingMax: 0 };
   return { applied: 0, timer: t, pendingMax };
 }
