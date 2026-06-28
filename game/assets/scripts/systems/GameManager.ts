@@ -2,6 +2,7 @@ import { _decorator, Component, director } from 'cc';
 import type { EnemyController } from '../components/EnemyController';
 import { GameResult, GameState } from '../data/GameTypes';
 import type { ExplosionTarget } from '../logic/ExplosionLogic';
+import { accumulateDamage, contactDamagePerTick, tickDamage } from '../logic/PlayerDamageLogic';
 import { enemyQueryRadius, SpatialGrid } from '../logic/SpatialGrid';
 import { DataManager } from './DataManager';
 import { DeckManager } from './DeckManager';
@@ -12,6 +13,9 @@ const { ccclass, property } = _decorator;
 
 /** 공간 그리드 셀 한 변 (월드 단위). 질의 반경을 한두 칸에 담을 크기 — 추후 프로파일링으로 조정. */
 const GRID_CELL_SIZE = 128;
+
+/** 플레이어 피격 틱 = 무적 창 길이 T(sec). placeholder — 짧을수록 어려움, 밸런싱 노브(§i-frame). */
+const PLAYER_HIT_TICK_SEC = 0.5;
 
 /** 게임 전체 상태와 플레이어 HP를 관리하는 싱글톤 */
 @ccclass('GameManager')
@@ -35,6 +39,10 @@ export class GameManager extends Component {
   private _gridFrame: number = -1;
   /** 직전 재구축 시점의 최대 적 충돌 반경 — 질의 마진을 매직 넘버 없이 잡는다. */
   private _maxEnemyRadius: number = 0;
+  /** 피격 틱 타이머(sec) — PLAYER_HIT_TICK_SEC마다 누적 피해를 1회 적용한다(무적 창). */
+  private _hitTickTimer: number = 0;
+  /** 현재 피격 틱의 누적 최대 피해 — 그 틱에 들어온 피해원 중 가장 센 한 방만 적용(§i-frame). */
+  private _pendingDamageMax: number = 0;
 
   get state() {
     return this._state;
@@ -68,6 +76,9 @@ export class GameManager extends Component {
     this._frameToken++;
     if (!this._started) return;
     if (this._state !== GameState.Playing) return;
+    // 피격 틱: 이번 틱의 누적 max 피해를 1회 적용한다(무적 창 = 틱 길이).
+    this._tickPlayerDamage(dt);
+    if (this._state !== GameState.Playing) return; // 피해로 GameOver 전이 시 이후 로직 중단
     this._gameTimer -= dt;
     if (this._gameTimer <= 0) {
       this._gameTimer = 0;
@@ -163,9 +174,40 @@ export class GameManager extends Component {
     }
   }
 
-  /** 플레이어에게 피해를 주고 HP가 0 이하면 GameOver 상태로 전환 후 result 씬으로 이동한다. */
+  /**
+   * 버스트 피해(발사체·돌진·휘두르기)를 이번 피격 틱에 제출한다. 즉시 차감하지 않고, 틱마다
+   * 누적된 가장 센 피해 1회만 적용한다(전역 i-frame + 틱당 max). 실제 차감은 `_tickPlayerDamage`.
+   * @param amount 제출할 버스트 피해
+   */
   damagePlayer(amount: number): void {
     if (this._state !== GameState.Playing) return;
+    this._pendingDamageMax = accumulateDamage(this._pendingDamageMax, amount);
+  }
+
+  /**
+   * 접촉(초당 DoT) 피해를 이번 피격 틱에 제출한다. 초당값을 틱 길이로 환산해(`contactDamagePerTick`)
+   * 다른 피해원과 같은 틱 max 경쟁에 넣는다. 닿아 있는 동안 매 프레임 제출해도 틱당 max라 멱등이고,
+   * 단일 접촉의 평균 피해율(DPS)은 보존된다.
+   * @param contactDamagePerSec 적의 초당 접촉 피해
+   */
+  damagePlayerContact(contactDamagePerSec: number): void {
+    if (this._state !== GameState.Playing) return;
+    this._pendingDamageMax = accumulateDamage(
+      this._pendingDamageMax,
+      contactDamagePerTick(contactDamagePerSec, PLAYER_HIT_TICK_SEC),
+    );
+  }
+
+  /** 피격 틱 타이머를 진행시키고, 틱 경계를 넘으면 그 틱의 누적 max 피해를 1회 적용한다. */
+  private _tickPlayerDamage(dt: number): void {
+    const r = tickDamage(this._hitTickTimer, this._pendingDamageMax, dt, PLAYER_HIT_TICK_SEC);
+    this._hitTickTimer = r.timer;
+    this._pendingDamageMax = r.pendingMax;
+    if (r.applied > 0) this._applyDamage(r.applied);
+  }
+
+  /** HP에서 피해를 깎고 0 이하면 GameOver 상태로 전환 후 result 씬으로 이동한다. */
+  private _applyDamage(amount: number): void {
     this._playerHp = Math.max(0, this._playerHp - amount);
     if (this._playerHp <= 0) {
       GameResult.waveReached = WaveManager.instance.waveNumber;

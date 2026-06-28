@@ -186,7 +186,7 @@ export class EnemyController extends Component {
     }
     const applied = appliedStrength(this._control);
     this._move(dt, applied);
-    this._checkContactDamage(dt, applied);
+    this._checkContactDamage(applied);
     this._updateTint(applied);
   }
 
@@ -446,18 +446,18 @@ export class EnemyController extends Component {
   }
 
   /**
-   * 플레이어와 접촉 거리 내에 있으면 초당 데미지를 준다. 빙결 상태면 접촉 피해를 차단한다(§9.4).
-   * @param dt 프레임 경과 시간 (sec)
+   * 플레이어와 접촉 거리 내에 있으면 접촉 피해를 피격 게이트에 제출한다(전역 i-frame + 틱당 max).
+   * 초당값을 넘기면 게이트가 틱 길이로 환산하므로 dt가 필요 없다. 빙결 상태면 접촉 피해를 차단한다(§9.4).
    * @param applied 이번 프레임 적용 강도 (update에서 틱 이후 산출해 주입)
    */
-  private _checkContactDamage(dt: number, applied: ControlStrength): void {
+  private _checkContactDamage(applied: ControlStrength): void {
     if (!this.playerNode || !this._data) return;
     // 빙결만 접촉 피해를 막는다(완전 무력화). 정지·슬로우는 닿아 있으면 그대로 아프다.
     if (!dealsContactDamage(applied)) return;
     const dist = Vec3.distance(this.node.position, this.playerNode.position);
     const touchRadius = this.collisionRadius + this._playerCollisionRadius;
     if (dist < touchRadius) {
-      GameManager.instance.damagePlayer(this._data.contactDamagePerSec * dt);
+      GameManager.instance.damagePlayerContact(this._data.contactDamagePerSec);
     }
   }
 
