@@ -91,12 +91,13 @@ planning → qa-setup → implementation → verification → user-verification 
 | `pnpm wf skip-test "<사유>"` | AI | 테스트 스킵 (순수 로직 없음, 사유 필수) |
 | `pnpm wf ready-impl` | AI | `qa-setup` → `implementation` (문서·테스트 파일 확인 + 스킵 아니면 피처 테스트 **RED** 검증) |
 | `pnpm wf start-verification` | AI | `implementation` → `verification` (전체 스위트 **GREEN** 검증 후 전환) |
-| `pnpm wf pass <cso\|ts\|lint\|review>` | AI | 개별 검증 통과 (4개 모두 통과 시 자동 `user-verification`) |
+| `pnpm wf pass <cso\|ts\|lint\|review>` | AI | 개별 검증 통과 (4개 모두 통과 + **QA 확정 게이트** 통과 시 자동 `user-verification`) |
 | `pnpm wf invalidate` | AI | `verification` 중 코드 변경 → 전체 검증 초기화 |
 | `pnpm wf rework` | 사용자 트리거(`리워크`)→AI | `user-verification` → `implementation` (버그 발견 복귀) |
 | `pnpm wf approve-pr` | 사용자 트리거(`PR 승인`)→AI | `user-verification` → `pr-ready` (**에셋 `.meta` 누락 게이트**: 누락 시 차단) |
 | `pnpm wf pr-done` | AI | `pr-ready` → `done` |
 | `pnpm wf check-meta` | AI/사용자 | 에셋 `.meta` 누락 검사 (전이 없음, 누락 시 종료코드 1) |
+| `pnpm wf check-qa` | AI/사용자 | QA 문서 미확정(잠정) 표시 검사 (전이 없음, 남아 있으면 종료코드 1) |
 | `pnpm wf status` | — | 현재 상태 + 편집 가능 여부 출력 |
 
 > **사람 게이트 (사용자 트리거 → AI 실행):** 아래 세 전이는 사람의 판단이 필요한 지점이다. 사용자가 자연어로 지시하면 **AI가 해당 커맨드를 대신 실행**한다.
@@ -144,7 +145,7 @@ planning → qa-setup → implementation → verification → user-verification 
 
 #### 6단계: AI 검증 (AI 주도)
 7. 구현 종료 → `pnpm wf start-verification` 실행 → `phase: "verification"`. **GREEN 게이트:** CLI가 전체 스위트(`vitest run`)를 돌려 전부 통과해야만 전이한다. 실패가 있으면 차단되고 `implementation`에 머문다(별도 `pnpm test` 수동 실행 불필요).
-   - **GREEN 직후 필수:** `docs/qa/[feature]-test.md`의 "자동 테스트로 검증" 체크리스트 항목을 `[ ]` → `[x]`로 갱신하고, 통과 근거(피처 테스트 N/N + 전체 스위트 M/M, 통과 커밋 SHA)를 섹션 머리에 기재한다. (테스트 코드와 QA 문서가 어긋나지 않도록 — 자주 누락되는 단계)
+   - **GREEN 직후 필수:** ① `docs/qa/[feature]-test.md`의 "자동 테스트로 검증" 체크리스트 항목을 `[ ]` → `[x]`로 갱신하고, 통과 근거(피처 테스트 N/N + 전체 스위트 M/M, 통과 커밋 SHA)를 섹션 머리에 기재한다. ② **프리팹/씬·에디터 연결 섹션을 실제 구현된 컴포넌트(`@property` 이름·노드·부모)에 맞춰 확정**하고 qa-setup의 잠정 태그 `(잠정 …)`/`(가칭 …)`을 `(확정)`으로 바꾼다(코드와 어긋나면 코드 기준 — 코드가 정본, QA 문서가 그 거울). **wf 게이트:** 잠정 태그가 남아 있으면 `pass`의 `user-verification` 자동 전이가 차단된다(`pnpm wf check-qa`로 사전 확인). (테스트 코드·프리팹 레시피와 QA 문서가 어긋나지 않도록 — 자주 누락되는 단계)
 8. `/cso` 호출 — 보안 체크 (OWASP + STRIDE)
    - 완료 후: `pnpm wf pass cso`
    - 이슈 발견 시: `docs/qa/[feature]-security-issues.md`에 기록 → 즉시 수정 → 해당 항목에 "수정됨" 표시 → **`pnpm wf invalidate`** (전체 검증 초기화) → 8번 재실행 (이후 9→10→11→12까지 순차 재실행)
@@ -237,6 +238,7 @@ squash merge 전에 반드시 최종 커밋 메시지(subject + body)를 보여�
   - **수치·레이블 등 단순 값 변경** → 항목 내 값을 직접 수정한다.
 - **신규 문서 생성:** 새 피처 브랜치마다 별도 문서 생성 (`[feature]-test.md`).
 - **에디터 노드 생성 규칙:** Position, Size는 씬 좌표계 기준으로 명시. 의존 노드 계층 순서가 있으면 반드시 명시.
+- **프리팹/에디터 잠정 → 확정 (필수, wf 게이트):** qa-setup(구현 전)엔 프리팹/씬·에디터 섹션을 계획 기준으로 쓰되, 미확정 제목/값에 `(잠정 …)`(placeholder 이름은 `(가칭 …)`) 태그를 단다. **구현 완료 후(GREEN 직후) 실제 구현된 컴포넌트(`@property`·노드·부모)에 맞춰 확정**하고 그 태그를 `(확정)`으로 바꾼다 — 코드가 정본이고 QA 문서가 그 거울이다. `pnpm wf check-qa`와 `pass`의 자동 전이 게이트가 feature QA 문서에 잠정 태그가 남아 있으면 `user-verification` 진입을 차단한다(stale 레시피가 7단계 사용자 테스트로 새는 것 방지).
 - **체크리스트 항목 작성 기준:** 사용자가 에디터를 열지 않아도 항목만 보고 무엇을 해야 하는지 알 수 있을 만큼 구체적으로 작성.
 - **브랜치 표기 규칙:** QA 문서 상단의 브랜치 표기는 본문 작성 당시 브랜치를 보존한다. 후속 피처가 같은 문서를 이어 쓸 때는 덮어쓰지 말고 `원본 브랜치 / 추가 브랜치 (변경 범위)` 형식으로 병기한다. 예: `feat/walking-skeleton / feat/xp-system (xpDrop 추가)`.
 
