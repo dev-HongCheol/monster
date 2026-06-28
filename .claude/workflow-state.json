@@ -1,6 +1,6 @@
 {
   "feature": "player-iframe",
-  "phase": "user-verification",
+  "phase": "pr-ready",
   "test_skipped": false,
   "test_skip_reason": null,
   "verification": {
