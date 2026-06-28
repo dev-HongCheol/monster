@@ -1,7 +1,9 @@
 import { _decorator, Color, Component, Node, Prefab, Sprite, Vec3 } from 'cc';
-import { GameState, type IEnemyData } from '../data/GameTypes';
+import { GameState, type IEnemyAttackData, type IEnemyData } from '../data/GameTypes';
+import { type AttackParams, AttackState, tickAttack } from '../logic/EnemyAttackLogic';
 import { deathAlpha, deathScale, hitFlashBlend, isDeathDone } from '../logic/EnemyVisualLogic';
 import {
+  kiteDirection,
   type LungeParams,
   LungeState,
   lungeMovement,
@@ -37,6 +39,21 @@ const FLASH_COLOR = new Color(255, 255, 255, 255);
 const TELEGRAPH_COLOR = new Color(255, 64, 64, 255);
 /** 돌진 바닥 마커(LungeMarker)의 기준 폭(px) — 런타임 X 스케일 = lungeReach / (이 값 × 부모 스케일). */
 const MARKER_BASE_WIDTH = 100;
+/** 유격(kite) 데드존 절반 폭(px, placeholder §14) — 선호 사거리 ±이 폭 안에선 정지(떨림 억제). */
+const KITE_DEADZONE_BAND = 40;
+
+/**
+ * 적 발사체 발사 위임 콜백 — 풀 소유자(EnemySpawner)가 제공하고, 컨트롤러가 Fire 에지에서 호출한다.
+ * 컨트롤러는 풀을 직접 소유하지 않고 발사만 위임한다(영속 단일 소유자 — 풀 소유권 §D5).
+ */
+export type FireProjectileFn = (
+  origin: Readonly<Vec3>,
+  dirX: number,
+  dirY: number,
+  speed: number,
+  damage: number,
+  radius: number,
+) => void;
 
 /** 풀 재사용마다 증가하는 전역 카운터 — 적 개체 식별자(spawnId)의 출처. */
 let _spawnIdCounter = 0;
@@ -114,6 +131,14 @@ export class EnemyController extends Component {
   private _windupBlendVal: number = 0;
   /** 텔레그래프 틴트가 현재 적용돼 있는지 — 윈드업이 끝날 때 baseTint/CC로 1회 복원하기 위한 래치. */
   private _telegraphTinted: boolean = false;
+  /** 공격(발사체) FSM 상태. reset마다 Aim으로. */
+  private _attackState: AttackState = AttackState.Aim;
+  /** 현재 공격 상태의 잔여 타이머 (sec). */
+  private _attackTimer: number = 0;
+  /** 텔레그래프 진입 시 잠근 발사 방향(단위 벡터). 발사는 이 방향으로만 나간다. */
+  private readonly _attackLockDir: Vec2 = { x: 0, y: 0 };
+  /** 발사체 발사 위임 콜백 (reset에서 주입). null이면 발사 안 함(풀 미연결). */
+  private _fireProjectileFn: FireProjectileFn | null = null;
 
   // Sprite 참조만 캐시한다(컴포넌트는 풀 재사용해도 유지되므로 1회면 충분).
   // 활성 등록은 onEnable, 데이터·시각·연출 상태 적용은 reset()이 담당한다(재사용마다 재적용 필요).
@@ -138,8 +163,14 @@ export class EnemyController extends Component {
    * @param enemyId enemies.json id (종류별 스탯·색·크기 결정)
    * @param playerNode 추적 대상 플레이어 노드
    * @param onDespawn 사망 연출 종료 시 호출할 풀 반환 콜백 (자신의 node 전달)
+   * @param fireProjectile 발사체 발사 위임 콜백 (풀 소유자가 제공 — 공격 보유 적만 사용)
    */
-  reset(enemyId: string, playerNode: Node, onDespawn: (node: Node) => void): void {
+  reset(
+    enemyId: string,
+    playerNode: Node,
+    onDespawn: (node: Node) => void,
+    fireProjectile: FireProjectileFn,
+  ): void {
     this.enemyId = enemyId;
     this.spawnId = nextSpawnId();
     this.playerNode = playerNode;
@@ -160,6 +191,11 @@ export class EnemyController extends Component {
     this._windupActive = false;
     this._windupBlendVal = 0;
     this._telegraphTinted = false;
+    this._attackState = AttackState.Aim;
+    this._attackTimer = 0;
+    this._attackLockDir.x = 0;
+    this._attackLockDir.y = 0;
+    this._fireProjectileFn = fireProjectile;
     if (this.lungeMarker) this.lungeMarker.active = false;
     this._data = DataManager.instance.getEnemy(enemyId);
     if (this._data) {
@@ -186,6 +222,7 @@ export class EnemyController extends Component {
     }
     const applied = appliedStrength(this._control);
     this._move(dt, applied);
+    this._tickEnemyAttack(dt, applied);
     this._checkContactDamage(applied);
     this._updateTint(applied);
   }
@@ -324,6 +361,9 @@ export class EnemyController extends Component {
       case 'lunge':
         this._moveLunge(dt, applied);
         return;
+      case 'kite':
+        this._moveKite(dt, applied);
+        return;
       default:
         this._followPlayer(dt, applied);
     }
@@ -349,6 +389,29 @@ export class EnemyController extends Component {
       mp?.zigzagPeriod ?? 0,
     );
     if (dir.x === 0 && dir.y === 0) return; // 겹침·period 가드(영벡터)
+    const step = this._data.speed * speedFactor * dt;
+    this.node.setPosition(myPos.x + dir.x * step, myPos.y + dir.y * step, myPos.z);
+  }
+
+  /**
+   * 유격(kite) 이동 — 선호 사거리를 유지한다(구미호). 멀면 접근, 가까우면 후퇴, 데드존이면 정지.
+   * 정지·빙결(speedFactor=0)이면 이동을 건너뛴다(슬로우는 감속).
+   * @param dt 프레임 경과 시간 (sec)
+   * @param applied 이번 프레임 적용 강도
+   */
+  private _moveKite(dt: number, applied: ControlStrength): void {
+    if (!this.playerNode || !this._data) return;
+    const speedFactor = moveSpeedFactor(applied);
+    if (speedFactor === 0) return;
+    const myPos = this.node.position;
+    const targetPos = this.playerNode.position;
+    const mp = this._data.moveParams;
+    const dir = kiteDirection(
+      { x: targetPos.x - myPos.x, y: targetPos.y - myPos.y },
+      mp?.preferredRange ?? 0,
+      KITE_DEADZONE_BAND,
+    );
+    if (dir.x === 0 && dir.y === 0) return; // 데드존·겹침(영벡터)
     const step = this._data.speed * speedFactor * dt;
     this.node.setPosition(myPos.x + dir.x * step, myPos.y + dir.y * step, myPos.z);
   }
@@ -423,6 +486,69 @@ export class EnemyController extends Component {
     } else {
       this.lungeMarker.active = false;
     }
+  }
+
+  /**
+   * 능동 공격(발사체) FSM을 한 틱 돌린다 — `attack` 블록이 있는 적만(없으면 즉시 반환). 정지·빙결이면
+   * 동결한다(슬로우는 정상 공격). 텔레그래프 동안 본체를 점멸시키고, Fire 에지에서 발사를 위임한다.
+   * @param dt 프레임 경과 시간 (sec)
+   * @param applied 이번 프레임 적용 강도
+   */
+  private _tickEnemyAttack(dt: number, applied: ControlStrength): void {
+    const atk = this._data?.attack;
+    // S2a는 단발 발사체만 배선한다(미지/기타 타입은 무공격 폴백 — forward-compat).
+    if (!atk || atk.type !== 'projectile_single' || !this.playerNode) return;
+    const myPos = this.node.position;
+    const targetPos = this.playerNode.position;
+    const toPlayer: Vec2 = { x: targetPos.x - myPos.x, y: targetPos.y - myPos.y };
+    const canAct = moveSpeedFactor(applied) !== 0; // 정지·빙결이면 false → FSM 동결
+    const params: AttackParams = {
+      range: atk.range ?? 0,
+      telegraphTime: atk.telegraphTime,
+      cooldown: atk.cooldown,
+    };
+    const result = tickAttack(this._attackState, this._attackTimer, toPlayer, canAct, params, dt);
+    // lockDir은 Telegraph 진입 에지에서만 온다 — 받은 그 한 번만 저장하고 이후엔 유지한다.
+    if (result.lockDir) {
+      this._attackLockDir.x = result.lockDir.x;
+      this._attackLockDir.y = result.lockDir.y;
+    }
+    this._attackState = result.state;
+    this._attackTimer = result.timer;
+    this._updateAttackTelegraph(params);
+    if (result.fired) this._fireProjectile(atk);
+  }
+
+  /**
+   * 발사 텔레그래프를 갱신한다 — 텔레그래프 상태 동안만 본체 점멸 강도(_windupBlendVal)를 산출한다.
+   * 돌진과 같은 `_windupActive`→`_updateTint` 경로를 공유한다(한 적이 돌진·발사를 겸하지 않음).
+   * @param params 공격 파라미터
+   */
+  private _updateAttackTelegraph(params: AttackParams): void {
+    const inTelegraph = this._attackState === AttackState.Telegraph;
+    this._windupActive = inTelegraph;
+    if (inTelegraph) {
+      const elapsed = params.telegraphTime - this._attackTimer;
+      this._windupBlendVal = windupBlend(elapsed, params.telegraphTime);
+    }
+  }
+
+  /**
+   * 잠근 방향으로 발사체 한 발을 발사한다(풀 소유자에 위임). 발사체 데이터가 없거나 풀이 미연결이면
+   * 발사하지 않는다.
+   * @param atk 이 적의 공격 데이터(발사체 속도·반경·피해)
+   */
+  private _fireProjectile(atk: IEnemyAttackData): void {
+    const proj = atk.projectile;
+    if (!proj || !this._fireProjectileFn) return;
+    this._fireProjectileFn(
+      this.node.position,
+      this._attackLockDir.x,
+      this._attackLockDir.y,
+      proj.speed,
+      atk.damage,
+      proj.radius,
+    );
   }
 
   /**
