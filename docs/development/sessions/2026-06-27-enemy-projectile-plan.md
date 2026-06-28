@@ -37,20 +37,18 @@ S2a는 **거리를 두고 발사체로 쏘는 적**을 처음 들인다. 구미�
 - **(D2) 발사 기하 공유는 S2b로 미룬다.** `SpellPatternLogic.directionalPlan`의 부채꼴 분포 수학은 `ISpellData`에 강하게 결합돼 그대로는 적이 못 쓴다(재사용 가능한 순수 핵은 `rotate` 하나뿐). S2a 단발은 기하가 필요 없으므로, 발사 진입점을 `ShotSpec` 목록 반환(지금은 길이 1)으로 모양만 잡아둔다. 부채꼴이 실제로 착지하는 S2b에서 순수 `fanDirections(aimX, aimY, count, spreadDeg)`를 추출해 마법·적이 공유한다. 미리 추출하면 마법 발사 회귀 위험만 앞당길 뿐 이득이 없다.
 - **(D3) `attack.range` 발사 사거리 게이트를 스키마에 추가한다.** 설계 §11의 `attack.projectile`에는 `range`가 없다(`melee`에는 있어 비대칭). 구미호가 화면 끝에서 무한정 쏘지 않게 하려면 발사 사거리가 필요하므로, 선택 필드 `attack.range?`를 지금 스키마에 넣어 한 번에 결정한다(S2b·S3에서 또 건드리지 않도록).
 - **(D4) F17(돌진 겹침 가드)은 보류한다.** S2a가 새로 만드는 건 유격(kite) 경로라 F17이 있는 `_moveLunge` Chase/Cooldown 경로와 코드상 겹치지 않는다. kite는 어차피 데드존·영벡터 가드를 새로 넣고, `_followPlayer`에는 이미 겹침 가드가 있다. 큰 신규 시스템 PR에 무관한 코스메틱 픽스를 섞으면 리뷰 표면만 넓어진다. 백로그 F17로 유지한다.
-- **(D5) 다중 피해 처리(전역 i-frame + 틱당 max)는 선행 슬라이스 `player-iframe`로 분리한다.** 플레이어 피해 게이트는 적 발사체와 의존이 없고 기존 모든 적의 접촉 피해까지 건드리는 플레이어 쪽 토대라, **별도 슬라이스로 먼저** 만든다(S2a를 작게 유지). S2a는 그 게이트가 main에 머지돼 있다고 가정하고, 발사체·접촉은 기존 `GameManager.damagePlayer(amount)` 제출 경로를 그대로 쓴다(특별 배선 없음). 게이트 설계(순수 `PlayerDamageLogic` + 게이트 컴포넌트)·접촉 모델 변경(초당 DoT→틱당 max)·`T` 밸런싱은 그 슬라이스 계획(`sessions/2026-06-27-player-iframe-plan.md`) 소관이다.
+- **(D5) 다중 피해 처리(전역 i-frame + 틱당 max)는 별도 슬라이스 `player-iframe`로 분리했다(PR #43 머지 완료).** 플레이어 피해 게이트는 적 발사체와 의존이 없고 기존 모든 적의 접촉 피해까지 건드리는 플레이어 쪽 토대라 따로 떼어냈다(S2a를 작게 유지). S2a는 그 게이트가 머지된 main 위에서 진행하며, 발사체·접촉은 기존 `GameManager.damagePlayer(amount)` 제출 경로를 그대로 쓴다(특별 배선 없음). 게이트 설계(순수 `PlayerDamageLogic` + 게이트 컴포넌트)·접촉 모델 변경(초당 DoT→틱당 max)·`T` 밸런싱은 그 슬라이스 계획(`sessions/2026-06-27-player-iframe-plan.md`) 소관이다.
 
 **구현 항목:**
 
 1. **`data/GameTypes.ts`** — `IEnemyData`에 선택적 `attack?: IEnemyAttackData` 블록을, `IEnemyMoveParams`에 선택적 `preferredRange?`를 추가한다(아래 §3). 현재 둘 다 없어 데이터를 채워도 컴파일이 막히므로, 이 인터페이스 확장이 S2a의 1차 작업이다. (S1 테스트가 `moveParams`를 로컬 타입으로 우회했던 자국이 있다면 정식 인터페이스로 청산한다.)
 2. **`logic/EnemyAttackLogic.ts`(신규)** — 순수 모듈. 공격 상태기계(Aim→Telegraph→Fire→Cooldown) 한 틱 전이, 발동당 정확히 1타 보장, 조준 잠금(텔레그래프 진입 에지에서만 반환), CC 동결. `cc` import 없음. S1 `tickLunge`와 동형 구조.
 3. **`logic/MovementLogic.ts`** — `kiteDirection(toPlayer, preferredRange, band)`를 추가한다. 너무 멀면 접근, 너무 가까우면 후퇴, 데드존(히스테리시스 밴드) 안이면 영벡터(정지)를 돌려 떨림을 막는다. NaN·영벡터 가드는 기존 `normalize` 재사용.
-4. **`components/EnemyProjectile.ts`(신규)** — 적 발사체 컴포넌트. 이동·화면 밖 판정·풀 반환은 `Projectile`을 미러하되, 충돌부는 **플레이어 한 명만** 판정해 명중 시 `attack.damage`를 기존 `GameManager.damagePlayer(amount)`로 제출하고 자신을 풀로 반환한다(틱당 max·i-frame은 선행 `player-iframe` 게이트가 처리). 적 목록은 절대 질의하지 않는다(친선사격 0 불변식).
+4. **`components/EnemyProjectile.ts`(신규)** — 적 발사체 컴포넌트. 이동·화면 밖 판정·풀 반환은 `Projectile`을 미러하되, 충돌부는 **플레이어 한 명만** 판정해 명중 시 `attack.damage`를 기존 `GameManager.damagePlayer(amount)`로 제출하고 자신을 풀로 반환한다(틱당 max·i-frame은 이미 머지된 `player-iframe` 게이트가 처리). 적 목록은 절대 질의하지 않는다(친선사격 0 불변식).
 5. **적 발사체 풀 — 영속 단일 소유자.** `EnemyController`가 개체별로 풀을 들면 적이 죽어 풀로 반환될 때 풀이 사라져 발사체가 새거나 유실된다. `SpellCaster`가 `bulletPool`을, `EnemySpawner`가 `_enemyPool`을 영속으로 들 듯, 적 발사체 풀도 한 곳(신규 매니저 또는 `EnemySpawner`/`GameManager`에 얹기)이 소유하고 `EnemyController`는 발사 시 `acquire`만 위임한다.
 6. **`components/EnemyController.ts`** — `update`에서 `_move` 분기에 `kite`를 추가하고(미지 값은 chase 폴백 유지), `attack` 블록이 있으면 `EnemyAttackLogic`로 공격 FSM을 틱한다. 텔레그래프(윈드업 점멸)는 S1의 `_applyTintBlend`·`windupBlend`를 잇는다. Fire 에지에서 잠근 방향으로 발사체를 스폰한다. **신규 공격 FSM 상태·텔레그래프 래치를 `reset()`과 `_startDeath()`에 반드시 등록**한다(풀 재사용 시 이전 적의 쿨다운 잔류·시체에 텔레그래프 잔존 방지).
 7. **`resources/data/enemies.json`** — `kumiho` 1종 추가(스탯·tint·`moveParams.preferredRange`·`attack` 블록은 placeholder). 기존 6종 유지.
 8. **`resources/data/spawn-table.json`** — `kumiho`를 중반 웨이브 구간에 편입(정확한 가중치는 밸런싱).
-
-> **선행 의존:** 플레이어 피해 게이트(전역 i-frame + 틱당 max)는 별도 슬라이스 `player-iframe`에서 먼저 구현·머지한다(위 D5). S2a는 그 게이트가 있는 main 위에서 진행하며, 위 4번의 `damagePlayer` 제출이 그 게이트를 그대로 지난다.
 
 ## 3. 데이터 스키마 변경 (`attack` 블록 + `preferredRange`)
 
@@ -100,7 +98,7 @@ S1 `tickLunge`와 같은 형태로, 가변 상태(공격 상태·타이머·잠�
 
 ### 4.3 컴포넌트 — `EnemyProjectile`과 풀
 
-`EnemyProjectile`은 매 프레임 이동 → 플레이어 충돌 판정 → 화면 밖 판정 순으로 돈다. 충돌부는 플레이어 노드 하나와의 거리만 보고, 닿으면 `attack.damage`를 기존 `GameManager.damagePlayer(amount)`로 제출하고 자신을 풀로 반환한다. 적 목록을 질의하는 코드는 두지 않는다(친선사격 0 불변식). "한 틱 1회·가장 센 것"으로 묶는 건 선행 `player-iframe` 게이트가 하므로, 발사체는 닿으면 제출만 하면 된다(발사체별 dedup 장치 불필요).
+`EnemyProjectile`은 매 프레임 이동 → 플레이어 충돌 판정 → 화면 밖 판정 순으로 돈다. 충돌부는 플레이어 노드 하나와의 거리만 보고, 닿으면 `attack.damage`를 기존 `GameManager.damagePlayer(amount)`로 제출하고 자신을 풀로 반환한다. 적 목록을 질의하는 코드는 두지 않는다(친선사격 0 불변식). "한 틱 1회·가장 센 것"으로 묶는 건 `player-iframe` 게이트가 하므로, 발사체는 닿으면 제출만 하면 된다(발사체별 dedup 장치 불필요).
 
 풀은 영속 단일 소유자가 들고, `EnemyController`는 Fire 에지에서 그 풀의 `acquire`를 호출해 발사체를 꺼낸 뒤 위치·방향·속도·반경·피해·반환 콜백을 `init`으로 주입한다. 이 흐름은 `SpellCaster._spawnShot`을 그대로 미러한다.
 
@@ -133,19 +131,19 @@ S1 `tickLunge`와 같은 형태로, 가변 상태(공격 상태·타이머·잠�
 - `kumiho`: `movement='kite'`, `preferredRange>0`, `attack.type='projectile_single'`, `attack.damage>0`, `attack.cooldown>0`, `projectile.speed>0`·`radius>0`
 - `kumiho`가 spawn-table에 편입돼 실제 스폰됨
 
-수동 검증(에디터·인게임)은 QA 문서(`docs/qa/enemy-projectile-test.md`)에 별도로 적는다 — 발사체 풀 연결, 텔레그래프 점멸, 유격 거리 유지, 발사체 명중 시 플레이어 피해, 친선사격이 안 일어나는지, 정지 중 발사 동결, 윈드업 중 사망 시 텔레그래프 정리. (i-frame·틱당 max 동작 검증은 선행 `player-iframe` 슬라이스 QA 소관.)
+수동 검증(에디터·인게임)은 QA 문서(`docs/qa/enemy-projectile-test.md`)에 별도로 적는다 — 발사체 풀 연결, 텔레그래프 점멸, 유격 거리 유지, 발사체 명중 시 플레이어 피해, 친선사격이 안 일어나는지, 정지 중 발사 동결, 윈드업 중 사망 시 텔레그래프 정리. (i-frame·틱당 max 동작 검증은 `player-iframe` 슬라이스 QA 소관.)
 
 ## 6. Open Item 해소 (설계 §14)
 
 - **충돌부 구조** → 신규 경량 `EnemyProjectile` 분리(D1).
 - **발사 기하 재사용** → S2b로 연기, S2a는 진입점만 기하-레디(D2).
 - **발사 사거리** → `attack.range?` 스키마 추가(D3).
-- **다중 피해 처리** → 전역 i-frame + 틱당 max로 결정했고, 적 발사체와 독립이라 **선행 슬라이스 `player-iframe`로 분리**(D5). S2a는 그 게이트에 제출만.
+- **다중 피해 처리** → 전역 i-frame + 틱당 max로 결정했고, 적 발사체와 독립이라 **별도 슬라이스 `player-iframe`로 분리**(D5, PR #43 머지 완료). S2a는 그 게이트에 제출만.
 
 ## 7. 이 슬라이스가 닫는/미루는 백로그 항목
 
 - **F17(돌진 겹침 가드)** — 이번에 함께 처리하는 안을 검토했으나, kite 경로와 코드상 겹치지 않아 결합 이득이 없어 **보류**로 결정(D4). 백로그에 유지.
-- **밸런싱(신규, 구현 중 backlog.md ⚖️로 이관):** 원거리 적 스폰 희소도·발사 텔레그래프 시간·`attack` 수치(즉사 방지). 전부 placeholder로 두고 밸런싱 단계에서 확정. (피격 틱 `T`·접촉 환산값 밸런싱은 선행 `player-iframe` 슬라이스 소관.)
+- **밸런싱(신규, 구현 중 backlog.md ⚖️로 이관):** 원거리 적 스폰 희소도·발사 텔레그래프 시간·`attack` 수치(즉사 방지). 전부 placeholder로 두고 밸런싱 단계에서 확정. (피격 틱 `T`·접촉 환산값 밸런싱은 `player-iframe` 슬라이스 소관.)
 - 새로 생기는 후속 후보(발사 기하 추출 S2b, 사거리 게이트 밸런싱 등)는 구현·검증 중 백로그에 반영한다.
 
 ## 8. autoplan 결정 감사 추적
@@ -160,6 +158,6 @@ S1 `tickLunge`와 같은 형태로, 가변 상태(공격 상태·타이머·잠�
 | D6 | 공격 FSM 상태를 reset()·_startDeath()에 등록 | mechanical | 풀 재사용 시 쿨다운 잔류·시체 텔레그래프 잔존 방지. | 독립 서브에이전트 |
 | D7 | 조준 잠금 = 텔레그래프 진입 에지 | mechanical | Fire 순간 재조준하면 텔레그래프가 거짓말. lunge `lockDir` 미러. | 독립 서브에이전트 |
 | D8 | 유격 strafe(선회) 컷 | mechanical(P5) | 단발 검증에 불필요한 복잡도. 필요 시 별도 슬라이스. | 독립 서브에이전트 |
-| D9 | 다중 피해 = 전역 i-frame + 틱당 max. 단, **선행 슬라이스 `player-iframe`로 분리**(S2a에서 제외) | 사용자 결정 | 게이트는 적 발사체와 독립이고 기존 접촉까지 건드리는 플레이어 토대라 먼저 별도 슬라이스로. S2a는 작게 유지하고 게이트에 제출만. 볼리당 dedup(중간안) 폐기. | 사용자(2026-06-27) |
+| D9 | 다중 피해 = 전역 i-frame + 틱당 max. 단, **별도 슬라이스 `player-iframe`로 분리**(S2a에서 제외, PR #43 머지 완료) | 사용자 결정 | 게이트는 적 발사체와 독립이고 기존 접촉까지 건드리는 플레이어 토대라 먼저 별도 슬라이스로. S2a는 작게 유지하고 게이트에 제출만. 볼리당 dedup(중간안) 폐기. | 사용자(2026-06-27) |
 
 **리뷰 결과:** 치명적 차단 이슈 0건. Codex 미설치로 듀얼 보이스는 Claude 단독(내 코드 근거 분석 + 독립 서브에이전트)으로 진행. Design/DX 단계는 스킵(게임 내부 렌더·로직, UI 크롬·개발자 대상 API 아님).
