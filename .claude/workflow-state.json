@@ -1,6 +1,6 @@
 {
-  "feature": "player-iframe",
-  "phase": "pr-ready",
+  "feature": "enemy-projectile",
+  "phase": "user-verification",
   "test_skipped": false,
   "test_skip_reason": null,
   "verification": {
