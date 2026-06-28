@@ -87,5 +87,33 @@
       "lungeDuration": 0.3,
       "lungeCooldown": 1.5
     }
+  },
+  {
+    "id": "kumiho",
+    "name": "구미호",
+    "maxHp": 130,
+    "speed": 170,
+    "contactDamagePerSec": 14,
+    "collisionRadius": 26,
+    "xpDrop": 30,
+    "movement": "kite",
+    "role": "standard",
+    "tint": "#FF8C2A",
+    "threatScale": 1.05,
+    "moveParams": {
+      "preferredRange": 320
+    },
+    "attack": {
+      "type": "projectile_single",
+      "damage": 18,
+      "cooldown": 1.6,
+      "telegraphTime": 0.45,
+      "range": 420,
+      "projectile": {
+        "count": 1,
+        "speed": 380,
+        "radius": 12
+      }
+    }
   }
 ]

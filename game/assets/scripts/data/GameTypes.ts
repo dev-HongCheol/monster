@@ -222,6 +222,39 @@ export interface IEnemyMoveParams {
   lungeDuration?: number;
   /** 돌진 후 재돌진 금지 쿨다운(sec) */
   lungeCooldown?: number;
+  /** 유격(kite) 선호 사거리(px). 0이면 추격 폴백(항상 접근). */
+  preferredRange?: number;
+}
+
+/** 적 능동 공격 블록 (적 시스템 §5·§11). 접촉만 하는 적은 생략(능동 공격 안 함). */
+export interface IEnemyAttackData {
+  /** 공격 타입 (적 시스템 §5). S2a는 'projectile_single'만 배선 — 미지 값은 무공격 폴백. */
+  type:
+    | 'contact'
+    | 'lunge'
+    | 'projectile_single'
+    | 'projectile_fan'
+    | 'projectile_spread'
+    | 'melee_sweep';
+  /** 발동당 1회 버스트 피해 (접촉 DoT와 별개 — §5 분리 데미지 모델) */
+  damage: number;
+  /** 공격 주기(sec) — 발동 간격. 0이면 하한으로 클램프. */
+  cooldown: number;
+  /** 텔레그래프(윈드업 점멸) 길이(sec, §6). 0이면 즉발. */
+  telegraphTime: number;
+  /** 발사 사거리(px) — 이 거리 안에 플레이어가 있을 때만 발사. 생략/0이면 무제한. */
+  range?: number;
+  /** 발사체 공격일 때만 */
+  projectile?: {
+    /** 발사 수(S2a는 1, 부채꼴·확산은 S2b) */
+    count: number;
+    /** 부채꼴 총 각도(deg, S2b) */
+    spreadAngleDeg?: number;
+    /** 발사체 속도(px/sec) */
+    speed: number;
+    /** 발사체 충돌 반경(px) */
+    radius: number;
+  };
 }
 
 /** 적 기본 수치 (enemies.json 항목) */
@@ -247,6 +280,8 @@ export interface IEnemyData {
   threatScale: number;
   /** 이동 enum별 파라미터 (적 시스템 §11). 접촉 추격 적은 생략 가능 */
   moveParams?: IEnemyMoveParams;
+  /** 능동 공격 블록 (적 시스템 §5). 접촉만 하는 적은 생략 — 능동 공격 안 함. */
+  attack?: IEnemyAttackData;
 }
 
 /**
