@@ -145,6 +145,27 @@ export function lungeMovement(state: LungeState, lockedDir: Vec2, toPlayer: Vec2
 }
 
 /**
+ * 유격(kite) 이동 방향(단위 벡터)을 계산한다 (적 시스템 §3). 적→플레이어 거리로 분기해 선호
+ * 사거리를 유지한다 — `preferredRange + band`보다 멀면 접근, `preferredRange − band`보다
+ * 가까우면 후퇴, 그 사이 데드존이면 영벡터(정지)를 돌려 경계에서 접근↔후퇴가 매 프레임 뒤집히는
+ * 떨림을 막는다(히스테리시스).
+ * @param toPlayer 적→플레이어 벡터
+ * @param preferredRange 유지하려는 선호 사거리(px). 0 이하면 추격 폴백(항상 접근).
+ * @param band 데드존 절반 폭(px). 클수록 무반응 구간이 넓어져 떨림이 줄지만 반응이 둔해진다.
+ */
+export function kiteDirection(toPlayer: Vec2, preferredRange: number, band: number): Vec2 {
+  const dist = Math.hypot(toPlayer.x, toPlayer.y);
+  // 겹침(거리 0)이면 방향이 없다 — 영벡터(NaN 방지).
+  if (dist === 0) return { x: 0, y: 0 };
+  const toward = normalize(toPlayer);
+  // preferredRange<=0이면 선호 사거리 개념이 없다 — 항상 접근(추격 폴백).
+  if (preferredRange <= 0) return toward;
+  if (dist > preferredRange + band) return toward; // 너무 멀다 → 접근
+  if (dist < preferredRange - band) return { x: -toward.x, y: -toward.y }; // 너무 가깝다 → 후퇴
+  return { x: 0, y: 0 }; // 데드존 → 정지(떨림 0)
+}
+
+/**
  * 윈드업 텔레그래프 강도(0→1)를 계산한다 — 윈드업이 진행될수록 1에 가까워지는 램프.
  * @param elapsedSec 윈드업 경과 시간(sec)
  * @param windupSec 윈드업 총 시간(sec). 0 이하면 즉시 1(완전 텔레그래프).

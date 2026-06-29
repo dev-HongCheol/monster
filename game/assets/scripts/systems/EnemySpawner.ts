@@ -1,5 +1,6 @@
 import { _decorator, Component, Node, Prefab, Vec3 } from 'cc';
-import { EnemyController } from '../components/EnemyController';
+import { EnemyController, type FireProjectileFn } from '../components/EnemyController';
+import { EnemyProjectile } from '../components/EnemyProjectile';
 import { PoolManager } from '../components/PoolManager';
 import { GameState } from '../data/GameTypes';
 import { SpawnDirectorLogic } from '../logic/SpawnDirectorLogic';
@@ -14,6 +15,8 @@ const { ccclass, property } = _decorator;
 export class EnemySpawner extends Component {
   /** 적 프리팹 (인스펙터에서 연결) */
   @property(Prefab) enemyPrefab: Prefab | null = null;
+  /** 적 발사체 프리팹 (인스펙터에서 연결 — 미연결 시 발사체 적은 발사하지 않음) */
+  @property(Prefab) enemyBulletPrefab: Prefab | null = null;
   /** 플레이어 노드 (인스펙터에서 연결) */
   @property(Node) playerNode: Node | null = null;
   /** 웨이브당 기본 스폰 간격 (sec) */
@@ -38,6 +41,41 @@ export class EnemySpawner extends Component {
   private readonly _releaseEnemy = (node: Node): void => {
     this._enemyPool?.release(node);
   };
+  /** 적 발사체 노드 재사용 풀 (영속 단일 소유자 — onLoad에서 생성). */
+  private _enemyBulletPool: PoolManager | null = null;
+  /** 적 발사체 반환 콜백 — 1회 바인딩해 재사용. */
+  private readonly _releaseEnemyBullet = (node: Node): void => {
+    this._enemyBulletPool?.release(node);
+  };
+  /**
+   * 발사체 발사 위임 — 적(EnemyController)이 Fire 에지에서 호출한다. 풀에서 발사체를 꺼내
+   * 위치·방향·속도·피해·반경·플레이어 대상·반환 콜백을 주입한다. 풀 미연결이면 무시한다.
+   */
+  private readonly _fireEnemyProjectile: FireProjectileFn = (
+    origin,
+    dirX,
+    dirY,
+    speed,
+    damage,
+    radius,
+  ): void => {
+    if (!this._enemyBulletPool || !this.playerNode) return;
+    const bullet = this._enemyBulletPool.acquire();
+    bullet.setPosition(origin.x, origin.y, 0);
+    const proj = bullet.getComponent(EnemyProjectile);
+    if (!proj) {
+      this._enemyBulletPool.release(bullet);
+      return;
+    }
+    proj.init(
+      new Vec3(dirX, dirY, 0),
+      speed,
+      damage,
+      radius,
+      this.playerNode,
+      this._releaseEnemyBullet,
+    );
+  };
 
   // 필수 프로퍼티를 검증하고(실패 시 비활성화) 스폰 부모로 쓸 Canvas 참조와 적 풀을 준비한다
   onLoad() {
@@ -53,6 +91,12 @@ export class EnemySpawner extends Component {
       return;
     }
     this._enemyPool = new PoolManager(this.enemyPrefab, this._canvas);
+    // 적 발사체 풀(선택) — 미연결이면 발사체 적이 발사만 못 할 뿐, 다른 적 스폰엔 영향 없다.
+    if (this.enemyBulletPrefab) {
+      this._enemyBulletPool = new PoolManager(this.enemyBulletPrefab, this._canvas);
+    } else {
+      console.warn('[EnemySpawner] enemyBulletPrefab not assigned — ranged enemies will not fire');
+    }
   }
 
   // 스폰 타이머가 차면 웨이브 스케일링(최대 적 수↑·간격↓) 한도 내에서 적 1마리를 스폰한다
@@ -110,6 +154,6 @@ export class EnemySpawner extends Component {
       this._enemyPool.release(enemy);
       return;
     }
-    enemyCtrl.reset(enemyId, this.playerNode, this._releaseEnemy);
+    enemyCtrl.reset(enemyId, this.playerNode, this._releaseEnemy, this._fireEnemyProjectile);
   }
 }
