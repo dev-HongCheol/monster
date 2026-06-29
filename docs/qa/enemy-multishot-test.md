@@ -10,7 +10,7 @@
 
 ## 자동 테스트로 검증
 
-> **통과 근거 (2026-06-30, phase=verification):** 피처 `EnemyMultishot.test.ts` 26/26 + 전체 스위트 344/344(27개 파일). SHA는 6단계 검증 커밋.
+> **통과 근거 (2026-06-30, phase=verification):** 피처 `EnemyMultishot.test.ts` 14/14(부채꼴 5 + 확산 6 + 데이터 2 + F20 1) + 회귀 `SpellPatternEngine` 12/12 + 전체 스위트 344/344(27개 파일). SHA는 6단계 검증 커밋.
 
 - [x] `fanDirections`(부채꼴/호) 순수 테스트 — `tests/logic/EnemyMultishot.test.ts`
 - [x] `radialDirections`(확산/링) 순수 테스트 — 같은 파일
