@@ -1,4 +1,5 @@
 import { type ISpellData, SpellPattern } from '../data/GameTypes';
+import { fanDirections } from './FireGeometry';
 
 /** count>=2일 때 적용하는 기본 총 부채꼴 각도(deg). 마법별 spreadAngleDeg로 덮어쓸 수 있다. */
 export const DEFAULT_SPREAD_ANGLE_DEG = 10;
@@ -28,13 +29,6 @@ export interface FireContext {
   aimY: number;
   /** 유효 발사체 수(기본 + 강화 보너스). caster가 해석해 전달. <=0이면 1로 클램프 */
   count: number;
-}
-
-/** (x, y)를 CCW로 rad 만큼 회전한 벡터. 입력이 단위벡터면 출력도 단위벡터. */
-function rotate(x: number, y: number, rad: number): readonly [number, number] {
-  const c = Math.cos(rad);
-  const s = Math.sin(rad);
-  return [x * c - y * s, x * s + y * c];
 }
 
 /**
@@ -69,24 +63,14 @@ export function buildFirePlan(spell: ISpellData, ctx: FireContext): ShotSpec[] {
 
 /** 방향성 부채꼴 발사 계획. */
 function directionalPlan(spell: ISpellData, ctx: FireContext): ShotSpec[] {
-  // count가 NaN/Infinity면 floor도 비유한값 → Math.max(1, NaN)=NaN으로 루프가 0번 돌아
-  // 무발사가 된다(R1). 비유한값은 1발로 클램프.
-  const floored = Math.floor(ctx.count);
-  const n = Number.isFinite(floored) ? Math.max(1, floored) : 1;
   const totalDeg = spell.spreadAngleDeg ?? DEFAULT_SPREAD_ANGLE_DEG;
-  const shots: ShotSpec[] = [];
-
-  for (let i = 0; i < n; i++) {
-    // n=1이면 offset 0(직선). n>=2이면 -총각/2 ~ +총각/2 균등 분포.
-    const offsetDeg = n === 1 ? 0 : -totalDeg / 2 + (i * totalDeg) / (n - 1);
-    const [dirX, dirY] = rotate(ctx.aimX, ctx.aimY, offsetDeg * (Math.PI / 180));
-    shots.push({
-      dirX,
-      dirY,
-      speed: spell.projectileSpeed,
-      damage: spell.damage,
-      radius: spell.projectileRadius,
-    });
-  }
-  return shots;
+  // 부채꼴 각도 분포·count 클램프(NaN/음수→1)는 FireGeometry.fanDirections로 추출해 마법·적이
+  // 공유한다. directionalPlan은 방향마다 마법 속도·데미지·반경을 입혀 ShotSpec으로 조립만 한다.
+  return fanDirections(ctx.aimX, ctx.aimY, ctx.count, totalDeg).map(([dirX, dirY]) => ({
+    dirX,
+    dirY,
+    speed: spell.projectileSpeed,
+    damage: spell.damage,
+    radius: spell.projectileRadius,
+  }));
 }
