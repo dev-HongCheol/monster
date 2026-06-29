@@ -86,6 +86,7 @@
 | **노드 (Node)** | Cocos의 기본 단위. 트리 구조로 부모-자식. |
 | **싱글톤 (Singleton)** | 게임 전체에서 하나만 존재하는 객체. GameManager 등. |
 | **이벤트 (Event)** | 어떤 일이 일어났음을 알리는 신호. "적이 죽었다" 이벤트 → HP UI 갱신. |
+| **유한 상태 기계 (FSM / Finite State Machine)** | 객체가 가질 수 있는 상태를 유한개로 정의하고 정해진 조건에서만 상태→상태로 전이하게 만든 모델. "지금 무슨 상태인가"와 "다음에 어디로 갈 수 있는가"를 명시해 복잡한 조건 분기를 정돈한다. 우리는 적 행동에 두 개를 쓴다 — **공격 FSM**(`EnemyAttackLogic.tickAttack`, `AttackState`: 조준 Aim → 텔레그래프 Telegraph → 발사 Fire → 쿨다운 Cooldown)과 **돌진 FSM**(`MovementLogic.tickLunge`, `LungeState`: 추격 Chase → 윈드업 Windup → 돌진 Lunge → 쿨다운 Cooldown). 둘 다 가변 상태(현재 상태·타이머·잠근 방향)는 `EnemyController`가 보관하고, 로직 모듈은 그 상태와 dt를 받아 다음 상태를 돌려주는 **순수 함수**만 둬서 cc 비의존으로 결정적 테스트가 가능하다. 정지·빙결이면 `canAct=false`로 FSM 전체를 동결해 헛발사·헛돌진을 막는다(§9.4). |
 | **콜드 스타트 / 핫 리로드** | 콜드 = 처음 실행. 핫 리로드 = 실행 중 코드만 갱신. |
 | **빌드 (Build)** | 소스를 실행 가능한 형태로 변환. "웹 빌드", "iOS 빌드". |
 | **롤 (Roll)** | 난수 1회 추첨, 또는 그렇게 뽑힌 값. 주사위 굴리기(dice roll)에서 유래한 통용어. 보통 `[0,1)` 범위의 무작위 값 하나를 뜻하며 가중 추첨·확률 판정(크리티컬 롤, 루팅 롤)에 쓰인다. 우리 `SpawnDirectorLogic.selectEnemyId(wave, roll)`은 테스트 결정성을 위해 이 값을 **주입**받는다 — 실제 호출부는 `Math.random()`을 넘기고, 테스트는 고정값(roll=0, roll=0.99)을 넣어 결과를 예측 가능하게 한다. |
