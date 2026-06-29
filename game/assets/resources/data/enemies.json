@@ -115,5 +115,63 @@
         "radius": 12
       }
     }
+  },
+  {
+    "id": "imugi",
+    "name": "이무기",
+    "maxHp": 300,
+    "speed": 110,
+    "contactDamagePerSec": 16,
+    "collisionRadius": 38,
+    "xpDrop": 48,
+    "movement": "kite",
+    "role": "tank",
+    "tint": "#2BB5A6",
+    "threatScale": 1.4,
+    "moveParams": {
+      "preferredRange": 340
+    },
+    "attack": {
+      "type": "projectile_fan",
+      "damage": 14,
+      "cooldown": 2.0,
+      "telegraphTime": 0.6,
+      "range": 460,
+      "projectile": {
+        "count": 3,
+        "spreadAngleDeg": 34,
+        "speed": 320,
+        "radius": 12
+      }
+    }
+  },
+  {
+    "id": "mulgwisin",
+    "name": "물귀신",
+    "maxHp": 150,
+    "speed": 70,
+    "contactDamagePerSec": 14,
+    "collisionRadius": 27,
+    "xpDrop": 40,
+    "movement": "kite",
+    "role": "standard",
+    "tint": "#1F3A8A",
+    "threatScale": 1.05,
+    "moveParams": {
+      "preferredRange": 260
+    },
+    "attack": {
+      "type": "projectile_spread",
+      "damage": 10,
+      "cooldown": 2.4,
+      "telegraphTime": 0.7,
+      "range": 520,
+      "projectile": {
+        "count": 8,
+        "spreadAngleDeg": 360,
+        "speed": 240,
+        "radius": 11
+      }
+    }
   }
 ]
