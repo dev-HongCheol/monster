@@ -1,4 +1,5 @@
 import { _decorator, Component, type Node, Vec3, view } from 'cc';
+import { GameState } from '../data/GameTypes';
 import { selectExplosionHits } from '../logic/ExplosionLogic';
 import { type ControlStrength, shouldApplyControl } from '../logic/StatusEffectLogic';
 import { GameManager } from '../systems/GameManager';
@@ -82,6 +83,9 @@ export class Projectile extends Component {
 
   // 매 프레임 이동 → 적 명중 판정 → 화면 밖 이탈 판정 순으로 처리한다
   update(dt: number) {
+    // 레벨업 일시정지(state !== Playing) 중엔 멈춘다 — 발사체는 발사 후 독립 이동해,
+    // 가드가 없으면 메뉴 중에도 이동·명중·폭발이 계속된다(I1).
+    if (GameManager.instance.state !== GameState.Playing) return;
     this._move(dt);
     this._checkEnemyHit();
     this._checkOutOfBounds();
