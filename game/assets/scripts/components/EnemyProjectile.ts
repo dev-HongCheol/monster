@@ -1,4 +1,5 @@
 import { _decorator, Component, type Node, Vec3, view } from 'cc';
+import { GameState } from '../data/GameTypes';
 import { DataManager } from '../systems/DataManager';
 import { GameManager } from '../systems/GameManager';
 
@@ -66,6 +67,9 @@ export class EnemyProjectile extends Component {
 
   // 매 프레임 이동 → 플레이어 명중 판정 → 화면 밖 이탈 판정 순으로 처리한다
   update(dt: number) {
+    // 레벨업 일시정지(state !== Playing) 중엔 멈춘다 — 가드가 없으면 메뉴 중에도
+    // 플레이어로 날아가 damagePlayer가 발생한다(I1, 공정성).
+    if (GameManager.instance.state !== GameState.Playing) return;
     this._move(dt);
     this._checkPlayerHit();
     this._checkOutOfBounds();
