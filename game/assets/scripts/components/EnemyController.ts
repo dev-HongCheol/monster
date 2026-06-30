@@ -2,6 +2,7 @@ import { _decorator, Color, Component, Node, Prefab, Sprite, Vec3 } from 'cc';
 import { GameState, type IEnemyAttackData, type IEnemyData } from '../data/GameTypes';
 import { type AttackParams, AttackState, tickAttack } from '../logic/EnemyAttackLogic';
 import { deathAlpha, deathScale, hitFlashBlend, isDeathDone } from '../logic/EnemyVisualLogic';
+import { fanDirections, radialDirections } from '../logic/FireGeometry';
 import {
   kiteDirection,
   type LungeParams,
@@ -496,8 +497,12 @@ export class EnemyController extends Component {
    */
   private _tickEnemyAttack(dt: number, applied: ControlStrength): void {
     const atk = this._data?.attack;
-    // S2a는 단발 발사체만 배선한다(미지/기타 타입은 무공격 폴백 — forward-compat).
-    if (!atk || atk.type !== 'projectile_single' || !this.playerNode) return;
+    // 발사체 공격(단발·부채꼴·확산)만 공격 FSM을 돈다. 접촉·돌진·근접·미지 타입은 무공격 폴백(forward-compat).
+    const isProjectile =
+      atk?.type === 'projectile_single' ||
+      atk?.type === 'projectile_fan' ||
+      atk?.type === 'projectile_spread';
+    if (!atk || !isProjectile || !this.playerNode) return;
     const myPos = this.node.position;
     const targetPos = this.playerNode.position;
     const toPlayer: Vec2 = { x: targetPos.x - myPos.x, y: targetPos.y - myPos.y };
@@ -534,21 +539,27 @@ export class EnemyController extends Component {
   }
 
   /**
-   * 잠근 방향으로 발사체 한 발을 발사한다(풀 소유자에 위임). 발사체 데이터가 없거나 풀이 미연결이면
-   * 발사하지 않는다.
-   * @param atk 이 적의 공격 데이터(발사체 속도·반경·피해)
+   * 잠근 방향을 중심으로 발사체를 발사한다(풀 소유자에 위임). 공격 타입에 따라 발사 기하가 다르다 —
+   * 단발은 1발, 부채꼴(projectile_fan)은 전방 호로 N발, 확산(projectile_spread)은 사방 링으로 N발.
+   * 방향 계산은 순수 FireGeometry가 맡고 여기선 방향마다 위임 콜백을 호출한다. 발사체 데이터가 없으면
+   * 발사하지 않는다. (`_fireProjectileFn`은 reset()에서 항상 주입되며, 풀 미연결 자체는 EnemySpawner의
+   * _fireEnemyProjectile가 따로 막는다 — 여기 null 체크는 방어용이다.)
+   * @param atk 이 적의 공격 데이터(발사체 속도·반경·피해·발사 수·부채꼴 각도)
    */
   private _fireProjectile(atk: IEnemyAttackData): void {
     const proj = atk.projectile;
-    if (!proj || !this._fireProjectileFn) return;
-    this._fireProjectileFn(
-      this.node.position,
-      this._attackLockDir.x,
-      this._attackLockDir.y,
-      proj.speed,
-      atk.damage,
-      proj.radius,
-    );
+    const fire = this._fireProjectileFn;
+    if (!proj || !fire) return;
+    const lock = this._attackLockDir;
+    // 확산은 사방 링(기본 360°), 부채꼴·단발은 전방 호. 단발은 count=1이라 호가 1발을 돌려준다.
+    const dirs =
+      atk.type === 'projectile_spread'
+        ? radialDirections(lock.x, lock.y, proj.count, proj.spreadAngleDeg ?? 360)
+        : fanDirections(lock.x, lock.y, proj.count, proj.spreadAngleDeg ?? 0);
+    const origin = this.node.position;
+    for (const [dirX, dirY] of dirs) {
+      fire(origin, dirX, dirY, proj.speed, atk.damage, proj.radius);
+    }
   }
 
   /**

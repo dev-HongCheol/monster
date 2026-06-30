@@ -1,6 +1,6 @@
 {
-  "feature": "enemy-projectile",
-  "phase": "user-verification",
+  "feature": "enemy-multishot",
+  "phase": "pr-ready",
   "test_skipped": false,
   "test_skip_reason": null,
   "verification": {
