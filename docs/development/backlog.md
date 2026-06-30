@@ -134,6 +134,16 @@
 
 ---
 
+## I. 일시정지(LevelUp) 상태 정합성
+
+> 레벨업 카드 선택은 `GameManager.enterLevelUp()`이 `GameState.LevelUp`으로 전환해 게임을 멈춘다(`GameManager.ts:220`). 멈춤은 각 시스템이 `update()`에서 `state !== Playing`을 직접 확인하는 방식이라(전역 director pause가 아님), 가드를 안 단 컴포넌트는 일시정지 중에도 계속 동작한다. enemy-multishot 7단계 인게임 테스트에서 발견.
+
+| # | 태그 | 항목 | 맥락 · Why | 출처 | 우선 |
+|---|------|------|-----------|------|------|
+| I1 | 🐛 | **날아가던 발사체가 LevelUp 일시정지를 무시 — `Projectile`·`EnemyProjectile`의 `update()` 상태 가드 누락** | 카드 선택 중 `SpellCaster`(`:154`)·`EnemyController`(`:218`)·`EnemySpawner`·`WaveManager`는 상태 가드로 멈추는데, **이미 발사된 발사체 두 종류는 `update()`에 가드가 없어 계속 이동·명중**한다. (a) `EnemyProjectile.update()`(`:68`) — 적 발사체가 일시정지 중에도 플레이어로 날아가 `damagePlayer`가 발생(메뉴 중 피격 — 공정성 문제). (b) `Projectile.update()`(`:84`) — 플레이어 발사체가 일시정지 중에도 이동·명중하고 `_detonate`로 폭발 데미지까지 낸다. **폭발은 별도 컴포넌트가 없고 이 경로(+노바·궤도)뿐이라, 노바·궤도는 `SpellCaster` 가드로 이미 멈추고 직격 폭발만 이 가드 추가로 함께 닫힌다 — 폭발 전용 항목 불필요.** 적 돌진(`_moveLunge`)·접촉 데미지·적 발사 트리거는 `EnemyController.update`의 `:218` 가드 *뒤*에서 호출되므로 **이미 정상적으로 멈춘다(버그 아님)**. S2a 단발(구미호)은 발사체가 빨리 사라져 미발현에 가까웠고, S2b 물귀신 확산 8발(느림·다수)에서 가시화됐다(인과 아닌 노출 계기 — 두 파일 모두 이번 슬라이스 diff 밖, `EnemyProjectile`은 S2a `498044e`·`Projectile`은 그 이전 도입). **수정:** 두 `update()` 맨 앞에 `if (GameManager.instance.state !== GameState.Playing) return;` 추가 + `GameState` import(`'../data/GameTypes'`). 작은 독립 fix 브랜치로 처리 가능. **곁가지:** `EnemyController._updateDeath`/`_updateFlash`는 가드 앞이라 일시정지 중에도 진행되지만 순수 연출(사망 팝·피격 점멸 — 데미지·XP 무영향)이라 별건. | 이 대화(2026-07-01), enemy-multishot 7단계 인게임 테스트. `Projectile.ts:84`, `EnemyProjectile.ts:68`, `GameManager.ts:220` | 높음 |
+
+---
+
 ## 승격됨 / 완료 (히스토리)
 
 - ~~`projectileCount` 미사용 필드 (spells.json에 있으나 미사용)~~ → **완료**: 발사체 수 강화 슬라이스(`feat/projectile-count`)에서 다발·부채꼴 발사에 사용. 출처: `sessions/2026-06-01-magic-followups.md` §2 4번째 항목.
