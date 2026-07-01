@@ -1,6 +1,12 @@
 import { _decorator, Color, Component, Node, Prefab, Sprite, Vec3 } from 'cc';
 import { GameState, type IEnemyAttackData, type IEnemyData } from '../data/GameTypes';
-import { type AttackParams, AttackState, tickAttack } from '../logic/EnemyAttackLogic';
+import {
+  type AttackParams,
+  AttackState,
+  coneHitsTarget,
+  meleeConeMarkerScale,
+  tickAttack,
+} from '../logic/EnemyAttackLogic';
 import { deathAlpha, deathScale, hitFlashBlend, isDeathDone } from '../logic/EnemyVisualLogic';
 import { fanDirections, radialDirections } from '../logic/FireGeometry';
 import {
@@ -80,6 +86,8 @@ export class EnemyController extends Component {
   @property deathPopScale: number = 1.3;
   /** 돌진 바닥 경로 마커 노드 (돌진 적만 사용, 인스펙터에서 연결 — 미연결 시 마커 없이 동작) */
   @property(Node) lungeMarker: Node | null = null;
+  /** 근접 휘두르기 부채꼴 범위 마커 노드 (휘두르기 적만 사용, 인스펙터에서 연결 — 미연결 시 마커 없이 동작) */
+  @property(Node) meleeConeMarker: Node | null = null;
 
   collisionRadius: number = 25;
   /** 풀 재사용마다 증가하는 개체 식별자 — 폭발 등 시전 단위 dedup의 안정 id(§10.2). reset마다 새 값. */
@@ -198,6 +206,7 @@ export class EnemyController extends Component {
     this._attackLockDir.y = 0;
     this._fireProjectileFn = fireProjectile;
     if (this.lungeMarker) this.lungeMarker.active = false;
+    if (this.meleeConeMarker) this.meleeConeMarker.active = false;
     this._data = DataManager.instance.getEnemy(enemyId);
     if (this._data) {
       this._hp = this._data.maxHp;
@@ -302,10 +311,11 @@ export class EnemyController extends Component {
     this._dropXpItem();
     this._deathElapsed = 0;
     this._flashing = false;
-    // 윈드업 중 사망 시 바닥 마커가 시체에 남지 않도록 끄고, 텔레그래프 틴트 래치도 해제한다.
+    // 윈드업 중 사망 시 바닥·부채꼴 마커가 시체에 남지 않도록 끄고, 텔레그래프 틴트 래치도 해제한다.
     this._windupActive = false;
     this._telegraphTinted = false;
     if (this.lungeMarker) this.lungeMarker.active = false;
+    if (this.meleeConeMarker) this.meleeConeMarker.active = false;
     if (this._sprite) this._sprite.color = this._baseTint; // 플래시 중 사망 시 기준색에서 페이드 시작
   }
 
@@ -355,6 +365,8 @@ export class EnemyController extends Component {
    */
   private _move(dt: number, applied: ControlStrength): void {
     if (!this._data) return;
+    // 근접 휘두르기 적은 윈드업·가격 중엔 멈춰 서서 친다(추격 정지). Aim·Cooldown 중엔 정상 추격.
+    if (this._isMeleeStriking()) return;
     switch (this._data.movement) {
       case 'zigzag':
         this._moveZigzag(dt, applied);
@@ -497,18 +509,21 @@ export class EnemyController extends Component {
    */
   private _tickEnemyAttack(dt: number, applied: ControlStrength): void {
     const atk = this._data?.attack;
-    // 발사체 공격(단발·부채꼴·확산)만 공격 FSM을 돈다. 접촉·돌진·근접·미지 타입은 무공격 폴백(forward-compat).
-    const isProjectile =
+    // 능동 공격(발사체 단발·부채꼴·확산 + 근접 휘두르기)이 같은 공격 FSM을 돈다. 접촉·돌진·미지 타입은
+    // 무공격 폴백(forward-compat). 사거리는 발사체면 atk.range, 휘두르기면 atk.melee.range를 쓴다.
+    const isMelee = atk?.type === 'melee_sweep';
+    const isActiveAttack =
       atk?.type === 'projectile_single' ||
       atk?.type === 'projectile_fan' ||
-      atk?.type === 'projectile_spread';
-    if (!atk || !isProjectile || !this.playerNode) return;
+      atk?.type === 'projectile_spread' ||
+      isMelee;
+    if (!atk || !isActiveAttack || !this.playerNode) return;
     const myPos = this.node.position;
     const targetPos = this.playerNode.position;
     const toPlayer: Vec2 = { x: targetPos.x - myPos.x, y: targetPos.y - myPos.y };
     const canAct = moveSpeedFactor(applied) !== 0; // 정지·빙결이면 false → FSM 동결
     const params: AttackParams = {
-      range: atk.range ?? 0,
+      range: isMelee ? (atk.melee?.range ?? 0) : (atk.range ?? 0),
       telegraphTime: atk.telegraphTime,
       cooldown: atk.cooldown,
     };
@@ -521,7 +536,62 @@ export class EnemyController extends Component {
     this._attackState = result.state;
     this._attackTimer = result.timer;
     this._updateAttackTelegraph(params);
-    if (result.fired) this._fireProjectile(atk);
+    if (isMelee) this._updateMeleeMarker(atk);
+    // Fire 에지에서 발사체는 발사, 휘두르기는 부채꼴 즉시 판정.
+    if (result.fired) {
+      if (isMelee) this._strikeMelee(atk);
+      else this._fireProjectile(atk);
+    }
+  }
+
+  /**
+   * 근접 휘두르기 적이 윈드업·가격 중(Telegraph·Fire)이면 true — 이 동안 추격을 멈춰 제자리에서 친다.
+   * Aim(접근)·Cooldown(재접근) 중엔 false라 정상 추격한다.
+   */
+  private _isMeleeStriking(): boolean {
+    return (
+      this._data?.attack?.type === 'melee_sweep' &&
+      (this._attackState === AttackState.Telegraph || this._attackState === AttackState.Fire)
+    );
+  }
+
+  /**
+   * 부채꼴 범위 마커를 갱신한다 — Telegraph 동안만 켜서 잠근 조준 방향으로 회전하고, 사거리·각도에
+   * 맞춰 스케일한다(부모 threatScale 상쇄). 그 외 상태에선 끈다. 미연결(null)이면 마커 없이 동작한다.
+   * @param atk 이 적의 공격 데이터(melee 부채꼴 각·사거리)
+   */
+  private _updateMeleeMarker(atk: IEnemyAttackData): void {
+    if (!this.meleeConeMarker) return;
+    const melee = atk.melee;
+    if (this._attackState === AttackState.Telegraph && melee) {
+      this.meleeConeMarker.active = true;
+      this.meleeConeMarker.angle = vectorToAngle(this._attackLockDir);
+      const { scaleX, scaleY } = meleeConeMarkerScale(
+        melee.range,
+        melee.coneAngleDeg,
+        this._baseScale || 1,
+      );
+      const cur = this.meleeConeMarker.scale;
+      this.meleeConeMarker.setScale(scaleX, scaleY, cur.z);
+    } else {
+      this.meleeConeMarker.active = false;
+    }
+  }
+
+  /**
+   * 휘두르기 가격(Fire 에지) — 잠근 방향 기준으로 지금 플레이어까지 벡터를 다시 구해(윈드업 중 회피
+   * 반영) 부채꼴 안이면 버스트 피해를 피격 게이트(damagePlayer)에 제출한다. 빗나가면 무피해.
+   * @param atk 이 적의 공격 데이터(피해·melee 부채꼴 각·사거리)
+   */
+  private _strikeMelee(atk: IEnemyAttackData): void {
+    const melee = atk.melee;
+    if (!this.playerNode || !melee) return;
+    const myPos = this.node.position;
+    const targetPos = this.playerNode.position;
+    const toTarget: Vec2 = { x: targetPos.x - myPos.x, y: targetPos.y - myPos.y };
+    if (coneHitsTarget(this._attackLockDir, toTarget, melee.coneAngleDeg, melee.range)) {
+      GameManager.instance.damagePlayer(atk.damage);
+    }
   }
 
   /**
