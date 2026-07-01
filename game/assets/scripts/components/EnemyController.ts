@@ -367,8 +367,10 @@ export class EnemyController extends Component {
    */
   private _move(dt: number, applied: ControlStrength): void {
     if (!this._data) return;
-    // 근접 휘두르기 적은 윈드업·가격 중엔 멈춰 서서 친다(추격 정지). Aim·Cooldown 중엔 정상 추격.
+    // 근접 휘두르기 적은 윈드업·가격 중엔 멈춰 서서 친다(추격 정지). Aim·Cooldown 중엔 정상 추격하되,
+    // 이미 사거리 안이면 멈춰 대기한다(플레이어에 파고들어 겹치는 것 방지 — 아래 _holdAtMeleeRange).
     if (this._isMeleeStriking()) return;
+    if (this._holdAtMeleeRange()) return;
     switch (this._data.movement) {
       case 'zigzag':
         this._moveZigzag(dt, applied);
@@ -558,6 +560,17 @@ export class EnemyController extends Component {
   }
 
   /**
+   * 근접 휘두르기 적이 이미 휘두르기 사거리 안에 있으면 true — 추격을 멈춰 사거리에서 대기한다.
+   * 순수 chase는 플레이어까지 1px로 파고들어 겹치는데, 겹치면 쿨다운마다 회피 불가 연타가 된다.
+   * 사거리에서 서서 쳐야 "예고 보고 피하기"가 성립한다. 사거리 밖이면 false라 정상 접근한다.
+   */
+  private _holdAtMeleeRange(): boolean {
+    const melee = this._data?.attack?.type === 'melee_sweep' ? this._data.attack.melee : undefined;
+    if (!melee || !this.playerNode) return false;
+    return Vec3.distance(this.node.position, this.playerNode.position) <= melee.range;
+  }
+
+  /**
    * 부채꼴 범위 마커를 갱신한다 — Telegraph 동안만 켜서 잠근 조준 방향으로 회전한다. 비활성으로
    * 시작한 마커는 첫 활성화 전엔 Graphics 렌더 impl이 없어 그리기가 no-op이므로(onLoad는 노드
    * 최초 활성화 시 실행 — Cocos 매뉴얼), reset이 아니라 **활성화 에지(Aim→Telegraph)에서 1회**
@@ -594,7 +607,9 @@ export class EnemyController extends Component {
     );
     g.fillColor = MELEE_MARKER_COLOR;
     g.moveTo(0, 0); // 꼭짓점 = 적 중심
-    g.arc(0, 0, radius, startRad, endRad, false);
+    // counterclockwise=true여야 소각(콘) 쪽 호를 그린다. false면 여집합(360−콘, 안전지대)이
+    // 칠해져 위험/안전 구역이 반전된다(각은 +X에서 clockwise 측정 — Cocos 매뉴얼).
+    g.arc(0, 0, radius, startRad, endRad, true);
     g.lineTo(0, 0); // 호 끝 → 중심 연결로 섹터(파이 조각) 완성
     g.close();
     g.fill();

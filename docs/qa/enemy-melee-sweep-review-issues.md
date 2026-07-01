@@ -9,6 +9,22 @@
 
 ---
 
+## 7단계 인게임 버그 (리워크 2차 — 사용자 발견)
+
+리워크(Graphics 섹터) 후 7단계 재테스트에서 두 가지 발견 → 즉시 수정.
+
+### RW2-1 — 부채꼴 fill 반전(여집합이 칠해짐) → **수정됨**
+- **위치:** `EnemyController._drawMeleeCone` — `g.arc(0,0,radius,startRad,endRad,false)`.
+- **내용:** `counterclockwise=false`가 소각(콘)이 아니라 **여집합(360−콘)** 호를 그려, 실제 위험 콘은 투명하고 안전지대가 빨갛게 칠해졌다(위험/안전 반전). 리뷰 RW-M1이 경고한 방향 의존이 실제 발현. 각은 +X에서 clockwise 측정(Cocos 매뉴얼).
+- **수정:** `arc(..., true)`로 스윕 방향 반전 → 콘 쪽 소각을 칠한다. 색 상수는 유지(반투명 빨강 위험 하이라이트).
+
+### RW2-2 — 근접 적이 쿨다운에 플레이어로 파고들어 겹침 → **수정됨**
+- **위치:** `EnemyController._move` — 근접 적은 `movement: chase`라 Aim·Cooldown 중 `_followPlayer`가 1px까지 추격.
+- **내용:** `_isMeleeStriking`(Telegraph·Fire)만 멈추고 쿨다운엔 계속 접근 → 사거리에서 플레이어 위로 겹침. 겹치면 `coneHitsTarget`이 `dist≈0`을 히트로 판정해 **매 쿨다운마다 회피 불가 버스트 연타** + 접촉 DoT(공정성 붕괴).
+- **수정:** `_holdAtMeleeRange()` 추가 — 근접 적이 사거리 안이면 `_move`가 조기 반환(멈춰 대기). 사거리 밖이면 정상 접근. FSM Aim→Telegraph 트리거(dist ≤ melee.range)와 같은 임계라 사거리에서 서서 윈드업한다. 홀드 거리는 `melee.range`(경계). QA 수동 체크리스트에 "겹침 없음" 항목 추가.
+
+---
+
 ## 재리뷰 (리워크 — Graphics 섹터, head 4e0e5de)
 
 리워크(스프라이트 스케일 → Graphics 섹터) 후 재리뷰. 판정 "With fixes" — Critical 0, Important 1(I1, 수정됨), Minor 2(무조치).
