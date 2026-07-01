@@ -8,11 +8,6 @@ import type { Vec2 } from './MovementLogic';
 /** 공격 쿨다운 하한(sec) — cooldown 0/음수 데이터가 매 프레임 발사로 폭주하는 것을 막는다. */
 export const MIN_ATTACK_COOLDOWN_SEC = 0.1;
 
-/** 근접 휘두르기 부채꼴 마커(placeholder 섹터, +X로 뻗음)의 기준 길이(px). scaleX = range / (이 값 × 부모 스케일). */
-export const MELEE_MARKER_BASE_LENGTH = 100;
-/** 부채꼴 마커의 기준 폭(px). scaleY = 2·range·tan(반각) / (이 값 × 부모 스케일). */
-export const MELEE_MARKER_BASE_WIDTH = 100;
-
 const DEG_TO_RAD = Math.PI / 180;
 
 /** 공격 상태기계의 상태 (적 시스템 §5 — 조준→텔레그래프→발사→쿨다운). */
@@ -136,23 +131,32 @@ export function coneHitsTarget(
   return cos >= Math.cos((coneAngleDeg / 2) * DEG_TO_RAD) - 1e-9;
 }
 
+/** 부채꼴 마커(Graphics 섹터)를 그릴 로컬 호(arc) 파라미터. */
+export interface MeleeConeArc {
+  /** 로컬 반지름(px) = range를 부모 스케일로 나눈 값(부모 threatScale 상쇄). */
+  radius: number;
+  /** 호 시작 각(rad) — 로컬 +X 기준 -coneAngleDeg/2. */
+  startRad: number;
+  /** 호 끝 각(rad) — +coneAngleDeg/2. */
+  endRad: number;
+}
+
 /**
- * 부채꼴 마커(+X로 뻗는 placeholder 섹터, 꼭짓점=적)의 로컬 스케일을 계산한다. scaleX로 사거리
- * 길이를, scaleY로 부채꼴 폭을 준다. 부모(threatScale) 스케일을 상쇄해 마커가 실제 사거리·각과 일치한다.
+ * 부채꼴 마커를 Graphics 섹터로 그릴 때 필요한 로컬 호 파라미터를 계산한다. 반지름은 부모
+ * (threatScale) 스케일을 상쇄해 실제 사거리와 일치시키고, 호는 로컬 +X를 중심으로 ±coneAngleDeg/2다.
+ * coneHitsTarget과 같은 각을 그리므로 마커와 명중 판정이 어떤 각도에서도 정합한다(스케일 방식의
+ * 클램프 비대칭 문제 없음).
  * @param range 휘두르기 사거리(px)
  * @param coneAngleDeg 부채꼴 전체 각도(deg)
  * @param parentScale 마커 부모(적 노드) 스케일. 0 이하면 1로 폴백(분모 0 가드).
- * @returns 마커 노드에 적용할 { scaleX, scaleY }
+ * @returns 마커 Graphics에 그릴 { radius, startRad, endRad }
  */
-export function meleeConeMarkerScale(
+export function meleeConeMarkerArc(
   range: number,
   coneAngleDeg: number,
   parentScale: number,
-): { scaleX: number; scaleY: number } {
+): MeleeConeArc {
   const p = parentScale > 0 ? parentScale : 1;
-  // 반각을 [0, 89°]로 클램프 — coneAngleDeg≥180이면 tan(90°)=Infinity라 폭이 발산하는 것을 막는다.
-  const halfDeg = Math.min(Math.max(coneAngleDeg / 2, 0), 89);
-  const scaleX = range / (MELEE_MARKER_BASE_LENGTH * p);
-  const scaleY = (2 * range * Math.tan(halfDeg * DEG_TO_RAD)) / (MELEE_MARKER_BASE_WIDTH * p);
-  return { scaleX, scaleY };
+  const half = (coneAngleDeg / 2) * DEG_TO_RAD;
+  return { radius: range / p, startRad: -half, endRad: half };
 }

@@ -3,12 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { IEnemyData } from '../../game/assets/scripts/data/GameTypes';
-// 아직 존재하지 않는 export(구현 단계에서 EnemyAttackLogic에 추가) — 이 import 실패로 파일 전체가 RED.
+// meleeConeMarkerArc는 리워크(Graphics 섹터)에서 신규 추가 — 미존재 시 import 실패로 파일 전체 RED.
 import {
   coneHitsTarget,
-  MELEE_MARKER_BASE_LENGTH,
-  MELEE_MARKER_BASE_WIDTH,
-  meleeConeMarkerScale,
+  meleeConeMarkerArc,
 } from '../../game/assets/scripts/logic/EnemyAttackLogic';
 import type { Vec2 } from '../../game/assets/scripts/logic/MovementLogic';
 
@@ -81,55 +79,43 @@ describe('coneHitsTarget — 부채꼴 명중 판정', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────
-// meleeConeMarkerScale — placeholder 섹터 마커(+X로 뻗음, 꼭짓점=적)의 로컬 스케일.
-// scaleX로 사거리 길이, scaleY로 부채꼴 폭. 부모(threatScale) 스케일을 상쇄해 실제 사거리·각과 일치.
+// meleeConeMarkerArc — Graphics 섹터 마커의 로컬 호(arc) 파라미터. 반지름은 부모(threatScale)
+// 스케일을 상쇄하고, 호는 로컬 +X 중심 ±coneAngleDeg/2. coneHitsTarget과 같은 각을 그려 마커=판정 정합.
 // ─────────────────────────────────────────────────────────────────────────
-describe('meleeConeMarkerScale — 부채꼴 마커 치수', () => {
-  it('scaleX = range / (기준 길이 × 부모 스케일)', () => {
-    const s = meleeConeMarkerScale(90, 120, 1);
-    expect(s.scaleX).toBeCloseTo(90 / (MELEE_MARKER_BASE_LENGTH * 1), 5);
+describe('meleeConeMarkerArc — 부채꼴 마커 호 파라미터', () => {
+  it('radius = range / 부모 스케일 (부모 threatScale 상쇄)', () => {
+    expect(meleeConeMarkerArc(90, 120, 1).radius).toBeCloseTo(90, 5);
+    expect(meleeConeMarkerArc(90, 120, 1.5).radius).toBeCloseTo(60, 5);
   });
 
-  it('scaleY = 2·range·tan(절반각) / (기준 폭 × 부모 스케일)', () => {
-    const s = meleeConeMarkerScale(90, 120, 1);
-    const expected = (2 * 90 * Math.tan(60 * DEG)) / (MELEE_MARKER_BASE_WIDTH * 1);
-    expect(s.scaleY).toBeCloseTo(expected, 5);
+  it('start/end 각은 ±coneAngleDeg/2 (rad), 좌우 대칭', () => {
+    const a = meleeConeMarkerArc(90, 120, 1);
+    expect(a.startRad).toBeCloseTo(-60 * DEG, 5);
+    expect(a.endRad).toBeCloseTo(60 * DEG, 5);
+    expect(a.startRad).toBeCloseTo(-a.endRad, 5);
   });
 
-  it('사거리가 길수록 scaleX가 크다', () => {
-    expect(meleeConeMarkerScale(200, 120, 1).scaleX).toBeGreaterThan(
-      meleeConeMarkerScale(100, 120, 1).scaleX,
+  it('넓은 각일수록 호 스팬이 크다', () => {
+    const wide = meleeConeMarkerArc(90, 150, 1);
+    const narrow = meleeConeMarkerArc(90, 90, 1);
+    expect(wide.endRad - wide.startRad).toBeGreaterThan(narrow.endRad - narrow.startRad);
+  });
+
+  it('사거리가 길수록 radius가 크다', () => {
+    expect(meleeConeMarkerArc(120, 120, 1).radius).toBeGreaterThan(
+      meleeConeMarkerArc(80, 120, 1).radius,
     );
-  });
-
-  it('부채꼴 각이 넓을수록 scaleY가 크다', () => {
-    expect(meleeConeMarkerScale(100, 150, 1).scaleY).toBeGreaterThan(
-      meleeConeMarkerScale(100, 90, 1).scaleY,
-    );
-  });
-
-  it('부모 스케일 상쇄 — parentScale 2배면 로컬 스케일 절반', () => {
-    const s1 = meleeConeMarkerScale(100, 120, 1);
-    const s2 = meleeConeMarkerScale(100, 120, 2);
-    expect(s2.scaleX).toBeCloseTo(s1.scaleX / 2, 5);
-    expect(s2.scaleY).toBeCloseTo(s1.scaleY / 2, 5);
-  });
-
-  it('coneAngle 0 → scaleY 유한(0, NaN·Infinity 아님)', () => {
-    const s = meleeConeMarkerScale(100, 0, 1);
-    expect(Number.isFinite(s.scaleY)).toBe(true);
-    expect(s.scaleY).toBeCloseTo(0, 5);
-  });
-
-  it('극단 각(>=180) → scaleY 유한(tan Infinity 가드)', () => {
-    const s = meleeConeMarkerScale(100, 180, 1);
-    expect(Number.isFinite(s.scaleY)).toBe(true);
   });
 
   it('parentScale 0/음수 → 1로 폴백(분모 0 가드)', () => {
-    const s = meleeConeMarkerScale(100, 120, 0);
-    expect(Number.isFinite(s.scaleX)).toBe(true);
-    expect(Number.isFinite(s.scaleY)).toBe(true);
+    const a = meleeConeMarkerArc(90, 120, 0);
+    expect(Number.isFinite(a.radius)).toBe(true);
+    expect(a.radius).toBeCloseTo(90, 5);
+  });
+
+  it('호 스팬 = coneAngleDeg (rad) — 명중 판정과 동일 각(마커=판정 정합, 클램프 비대칭 없음)', () => {
+    const a = meleeConeMarkerArc(90, 150, 1);
+    expect(a.endRad - a.startRad).toBeCloseTo(150 * DEG, 5);
   });
 });
 

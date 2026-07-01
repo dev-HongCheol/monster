@@ -1,10 +1,10 @@
-import { _decorator, Color, Component, Node, Prefab, Sprite, Vec3 } from 'cc';
+import { _decorator, Color, Component, Graphics, Node, Prefab, Sprite, Vec3 } from 'cc';
 import { GameState, type IEnemyAttackData, type IEnemyData } from '../data/GameTypes';
 import {
   type AttackParams,
   AttackState,
   coneHitsTarget,
-  meleeConeMarkerScale,
+  meleeConeMarkerArc,
   tickAttack,
 } from '../logic/EnemyAttackLogic';
 import { deathAlpha, deathScale, hitFlashBlend, isDeathDone } from '../logic/EnemyVisualLogic';
@@ -46,6 +46,8 @@ const FLASH_COLOR = new Color(255, 255, 255, 255);
 const TELEGRAPH_COLOR = new Color(255, 64, 64, 255);
 /** 돌진 바닥 마커(LungeMarker)의 기준 폭(px) — 런타임 X 스케일 = lungeReach / (이 값 × 부모 스케일). */
 const MARKER_BASE_WIDTH = 100;
+/** 근접 휘두르기 부채꼴 마커 색 (placeholder, §6·§14) — 반투명 빨강 범위 오버레이. 최종 이펙트는 아트 단계. */
+const MELEE_MARKER_COLOR = new Color(255, 64, 64, 110);
 /** 유격(kite) 데드존 절반 폭(px, placeholder §14) — 선호 사거리 ±이 폭 안에선 정지(떨림 억제). */
 const KITE_DEADZONE_BAND = 40;
 
@@ -213,6 +215,8 @@ export class EnemyController extends Component {
       this.collisionRadius = this._data.collisionRadius;
       this._applyVisualBaseline(this._data);
     }
+    // 부채꼴 마커는 적별 각·사거리로 1회 그린다(스폰 시점). 이후엔 토글·회전만.
+    this._drawMeleeCone();
     this._playerCollisionRadius = DataManager.instance.playerData.collisionRadius;
   }
 
@@ -556,26 +560,40 @@ export class EnemyController extends Component {
   }
 
   /**
-   * 부채꼴 범위 마커를 갱신한다 — Telegraph 동안만 켜서 잠근 조준 방향으로 회전하고, 사거리·각도에
-   * 맞춰 스케일한다(부모 threatScale 상쇄). 그 외 상태에선 끈다. 미연결(null)이면 마커 없이 동작한다.
-   * @param atk 이 적의 공격 데이터(melee 부채꼴 각·사거리)
+   * 부채꼴 범위 마커를 갱신한다 — Telegraph 동안만 켜서 잠근 조준 방향으로 회전한다. 섹터 모양은
+   * reset의 `_drawMeleeCone`에서 이미 그려 뒀으므로 여기선 토글·회전만 한다(매 프레임 재그리기 없음).
+   * 미연결(null)이면 마커 없이 동작한다.
+   * @param atk 이 적의 공격 데이터(melee 유무 확인)
    */
   private _updateMeleeMarker(atk: IEnemyAttackData): void {
     if (!this.meleeConeMarker) return;
-    const melee = atk.melee;
-    if (this._attackState === AttackState.Telegraph && melee) {
-      this.meleeConeMarker.active = true;
-      this.meleeConeMarker.angle = vectorToAngle(this._attackLockDir);
-      const { scaleX, scaleY } = meleeConeMarkerScale(
-        melee.range,
-        melee.coneAngleDeg,
-        this._baseScale || 1,
-      );
-      const cur = this.meleeConeMarker.scale;
-      this.meleeConeMarker.setScale(scaleX, scaleY, cur.z);
-    } else {
-      this.meleeConeMarker.active = false;
-    }
+    const active = this._attackState === AttackState.Telegraph && !!atk.melee;
+    this.meleeConeMarker.active = active;
+    if (active) this.meleeConeMarker.angle = vectorToAngle(this._attackLockDir);
+  }
+
+  /**
+   * 부채꼴 마커 섹터를 Graphics로 1회 그린다(reset 시점). 로컬 +X를 중심으로 ±coneAngleDeg/2 호를
+   * 그려 실제 명중 부채꼴(coneHitsTarget)과 각을 맞춘다. 반지름은 부모(threatScale) 스케일을 상쇄한다.
+   * 휘두르기 적이 아니거나 Graphics 미부착이면 지우기만 한다(풀 재사용 시 이전 섹터 잔류 방지).
+   */
+  private _drawMeleeCone(): void {
+    const g = this.meleeConeMarker?.getComponent(Graphics);
+    if (!g) return;
+    g.clear();
+    const melee = this._data?.attack?.melee;
+    if (!melee) return; // 휘두르기 적이 아니면 섹터 없음
+    const { radius, startRad, endRad } = meleeConeMarkerArc(
+      melee.range,
+      melee.coneAngleDeg,
+      this._baseScale || 1,
+    );
+    g.fillColor = MELEE_MARKER_COLOR;
+    g.moveTo(0, 0); // 꼭짓점 = 적 중심
+    g.arc(0, 0, radius, startRad, endRad, false);
+    g.lineTo(0, 0); // 호 끝 → 중심 연결로 섹터(파이 조각) 완성
+    g.close();
+    g.fill();
   }
 
   /**
