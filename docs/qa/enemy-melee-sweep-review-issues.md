@@ -9,7 +9,27 @@
 
 ---
 
-## Minor (Nice to Have)
+## 재리뷰 (리워크 — Graphics 섹터, head 4e0e5de)
+
+리워크(스프라이트 스케일 → Graphics 섹터) 후 재리뷰. 판정 "With fixes" — Critical 0, Important 1(I1, 수정됨), Minor 2(무조치).
+
+### RW-I1 — 비활성 마커에 reset에서 그리면 첫 스폰 생애에 섹터 유실 → **수정됨**
+
+- **위치:** `EnemyController.ts` — 기존엔 `reset()`에서 `_drawMeleeCone()` 호출.
+- **내용:** 마커 노드가 `active=false`로 시작해 **한 번도 활성화된 적 없으면** Graphics의 렌더 impl이 아직 없다(onLoad는 노드 최초 활성화 시 실행 — Cocos 매뉴얼로 확인). 그 상태에서 `moveTo/arc/fill`은 조용히 no-op → **첫 스폰 생애엔 빈 마커**(풀 재사용 2번째 생애부턴 impl이 남아 정상). 리워크가 없애려던 "인게임 마커 안 뜸" 실패 모드의 재발 소지.
+- **수정:** 그리기를 `reset` → **활성화 에지(Aim→Telegraph, `_updateMeleeMarker`에서 `!wasActive`일 때)로 이동**. `active=true`가 onLoad를 동기 실행해 impl이 준비된 직후 1회만 그린다(이후 프레임은 회전만 — 매 프레임 재그리기 없음). 초기 active 상태와 무관하게 동작해 프리팹 설정 의존도 제거. QA 수동 체크리스트에 "첫 스폰(풀 미재사용) 마커" 항목 추가.
+
+### RW-M1 — arc 스윕 방향이 Cocos 캔버스 규약 의존 → 무조치(7단계 육안 확인)
+
+- `arc(0,0,r,-half,+half,false)`는 규약상 +X 중심 좁은 파이 조각(정확). 문서 미명시 내부 규약이라 만일 뒤집히면 여집합 섹터가 된다. 코드는 맞다고 판단. QA에 이미 "넓은 각(두억시니 150°)이 좁은 파이로 뜨는지" 확인 항목이 있어 무조치.
+
+### RW-M2 — 계획 문서 §3.2가 옛 API(`meleeConeMarkerScale`) 참조 → 무조치
+
+- 계획서는 시점 기록이라 보존. 리워크 전환은 이 문서·백로그 F25 완료로 이미 기록됨.
+
+---
+
+## 1차 리뷰 (스프라이트 방식, head a7b6ee2)
 
 ### M1 — `coneHitsTarget` 각도 무제한 vs 마커 반각 클램프(89°) 비대칭 → 백로그 이월
 

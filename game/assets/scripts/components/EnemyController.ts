@@ -215,8 +215,6 @@ export class EnemyController extends Component {
       this.collisionRadius = this._data.collisionRadius;
       this._applyVisualBaseline(this._data);
     }
-    // 부채꼴 마커는 적별 각·사거리로 1회 그린다(스폰 시점). 이후엔 토글·회전만.
-    this._drawMeleeCone();
     this._playerCollisionRadius = DataManager.instance.playerData.collisionRadius;
   }
 
@@ -560,22 +558,28 @@ export class EnemyController extends Component {
   }
 
   /**
-   * 부채꼴 범위 마커를 갱신한다 — Telegraph 동안만 켜서 잠근 조준 방향으로 회전한다. 섹터 모양은
-   * reset의 `_drawMeleeCone`에서 이미 그려 뒀으므로 여기선 토글·회전만 한다(매 프레임 재그리기 없음).
-   * 미연결(null)이면 마커 없이 동작한다.
+   * 부채꼴 범위 마커를 갱신한다 — Telegraph 동안만 켜서 잠근 조준 방향으로 회전한다. 비활성으로
+   * 시작한 마커는 첫 활성화 전엔 Graphics 렌더 impl이 없어 그리기가 no-op이므로(onLoad는 노드
+   * 최초 활성화 시 실행 — Cocos 매뉴얼), reset이 아니라 **활성화 에지(Aim→Telegraph)에서 1회**
+   * 그린다. active=true가 onLoad를 동기 실행해 impl이 준비된 직후다. 이후 프레임엔 회전만(매 프레임
+   * 재그리기 없음). 미연결(null)이면 마커 없이 동작한다.
    * @param atk 이 적의 공격 데이터(melee 유무 확인)
    */
   private _updateMeleeMarker(atk: IEnemyAttackData): void {
     if (!this.meleeConeMarker) return;
     const active = this._attackState === AttackState.Telegraph && !!atk.melee;
+    const wasActive = this.meleeConeMarker.active;
     this.meleeConeMarker.active = active;
-    if (active) this.meleeConeMarker.angle = vectorToAngle(this._attackLockDir);
+    if (!active) return;
+    if (!wasActive) this._drawMeleeCone(); // 활성화 직후(impl 준비됨) 1회만 그린다
+    this.meleeConeMarker.angle = vectorToAngle(this._attackLockDir);
   }
 
   /**
-   * 부채꼴 마커 섹터를 Graphics로 1회 그린다(reset 시점). 로컬 +X를 중심으로 ±coneAngleDeg/2 호를
-   * 그려 실제 명중 부채꼴(coneHitsTarget)과 각을 맞춘다. 반지름은 부모(threatScale) 스케일을 상쇄한다.
-   * 휘두르기 적이 아니거나 Graphics 미부착이면 지우기만 한다(풀 재사용 시 이전 섹터 잔류 방지).
+   * 부채꼴 마커 섹터를 Graphics로 그린다(활성화 에지에서 1회 호출). 로컬 +X를 중심으로
+   * ±coneAngleDeg/2 호를 그려 실제 명중 부채꼴(coneHitsTarget)과 각을 맞춘다. 반지름은
+   * 부모(threatScale) 스케일을 상쇄한다. 매 호출 clear로 시작해 풀 재사용 시 이전 섹터가 남지 않는다.
+   * 휘두르기 적이 아니거나 Graphics 미부착이면 지우기만 한다.
    */
   private _drawMeleeCone(): void {
     const g = this.meleeConeMarker?.getComponent(Graphics);
