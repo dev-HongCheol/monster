@@ -11,7 +11,7 @@
 
 ## 7단계 인게임 버그 (리워크 2차 — 사용자 발견)
 
-리워크(Graphics 섹터) 후 7단계 재테스트에서 두 가지 발견 → 즉시 수정.
+리워크(Graphics 섹터) 후 7단계 재테스트에서 두 가지 발견 → 즉시 수정. **재리뷰 판정 Yes**(Critical 0·Important 0·Minor 2 무조치). 리뷰어 데이터 검증: 세 근접 적 모두 `melee.range > touchRadius`(두억시니 90>65·야차 75>53·그슨대 60>51)라 사거리 홀드 시 접촉 사거리 밖 — 접촉 DoT도 없음. Minor(무조치): ① 경계 떨림은 히스테리시스 없어도 "사거리 추적"으로 매끄러움. ② 그슨대 접촉 여유 9px(range 60 vs touch 51)로 가장 얇음 — 속도·사거리 하향 재튜닝 시 데이터 관찰.
 
 ### RW2-1 — 부채꼴 fill 반전(여집합이 칠해짐) → **수정됨**
 - **위치:** `EnemyController._drawMeleeCone` — `g.arc(0,0,radius,startRad,endRad,false)`.
