@@ -9,6 +9,15 @@
 
 ---
 
+## 완료 (PR #48)
+
+- **머지:** PR #48로 완료(2026-07-02). 계획 대비 스코프·데이터·로직 흐름은 그대로 이행됐고, 아래 한 가지가 구현 중 리워크됐다.
+- **마커 렌더링 리워크:** 계획 §3.2·§6의 **스프라이트 스케일**(`meleeConeMarkerScale`, +X 섹터 스프라이트를 scaleX/scaleY로 늘림) 방식을 7단계 인게임 테스트에서 폐기하고 **Graphics 섹터(호)** 방식(`meleeConeMarkerArc`, `arc(-coneAngleDeg/2, +coneAngleDeg/2)`로 실제 파이 조각을 직접 그림)으로 전환했다. 스프라이트 방식은 방향·anchor·가로세로를 매번 맞춰야 해 반복 어긋났고 넓은 각(두억시니 150°)에선 평평한 삼각형이 실제 부채꼴과 크게 달랐다. Graphics 전환으로 마커와 `coneHitsTarget`이 어떤 각도에서도 같은 각을 써 정합하며, 백로그 **F25**(마커 반각 클램프 비대칭)가 소멸했다.
+- **검증:** 피처 테스트 `EnemyMeleeSweep.test.ts` 20/20 + 전체 스위트 364/364 GREEN, TS 진단 0, biome clean. 7단계 수동 인게임 테스트(`docs/qa/enemy-melee-sweep-test.md`) 전 항목 통과.
+- **에디터 세팅:** `Enemy.prefab`에 `MeleeConeMarker`(빈 Node + `cc.Graphics`, 비활성) 추가 + `@property meleeConeMarker` 연결(코드가 그리므로 스프라이트·SpriteFrame 불필요).
+
+---
+
 ## 1. 배경과 목적
 
 적 로스터의 마지막 공격 타입인 **근접 휘두르기**를 추가한다. 적 공격 taxonomy(접촉·돌진·발사체 3종 완료)에서 근접 휘두르기만 비어 있고, 이걸 채우면 12종 로스터의 공격 분류가 완성된다.
