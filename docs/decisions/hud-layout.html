@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+   <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Horde Game HUD Layout</title>
+      <!-- Tailwind CSS CDN -->
+      <script src="https://cdn.tailwindcss.com"></script>
+      <script>
+         // 디자인 해상도 1280x720 유지 설정
+         tailwind.config = {
+             theme: {
+                 extend: {
+                     aspectRatio: {
+                         '1280/720': '1280 / 720',
+                     }
+                 }
+             }
+         }
+      </script>
+   </head>
+   <body class="bg-gray-950 flex items-center justify-center min-h-screen">
+      <!-- 1280x720 디자인 해상도 컨테이너 -->
+      <div class="relative w-full max-w-[1280px] aspect-[1280/720] bg-gray-900 overflow-hidden border border-gray-700 shadow-2xl">
+         <!-- 왼쪽 상단: 미니맵 영역 -->
+         <div class="absolute top-6 left-6 w-40 h-40 bg-black/80 border-2 border-gray-600 rounded-md flex items-center justify-center">
+            <span class="text-gray-500 font-bold">MINIMAP</span>
+         </div>
+         <!-- 상단 영역: 보스 체력 -->
+         <div class="absolute top-6 left-1/4 right-1/4">
+            <div class="bg-black border border-gray-600 p-1 rounded-sm">
+               <div class="h-6 bg-red-700 relative">
+                  <span class="absolute inset-0 flex items-center justify-center text-white text-sm font-bold tracking-wider">10,058,650</span>
+               </div>
+            </div>
+         </div>
+         <!-- 오른쪽 상단: 메뉴 아이콘 영역 -->
+         <div class="absolute top-6 right-6 w-9 h-9 bg-black/80 border-2 border-gray-600 rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-800 transition-colors">
+            <span class="text-white font-bold text-xl">≡</span>
+         </div>
+         <!-- 하단 영역 그룹 -->
+         <div class="absolute bottom-0 left-6 right-6 flex flex-col gap-2">
+            <!-- 상층: 스킬 및 HP -->
+            <div class="flex justify-between items-end">
+               <!-- 왼쪽 하단: HP 영역 -->
+               <div class="w-72">
+                  <div class="bg-black border border-gray-600 p-1 rounded-sm">
+                     <div class="h-5 bg-red-700 relative">
+                        <span class="absolute inset-0 flex items-center justify-center text-white font-bold">205</span>
+                     </div>
+                  </div>
+               </div>
+               <!-- 오른쪽 하단: 스킬 쿨타임 영역 (3열 x 2줄 = 6칸, placeholder) -->
+               <div class="grid grid-cols-3 gap-2">
+                  <div class="w-10 h-10 bg-gray-800 border-2 border-gray-600 flex items-center justify-center text-gray-300 font-bold rounded-md">S1</div>
+                  <div class="w-10 h-10 bg-gray-800 border-2 border-gray-600 flex items-center justify-center text-gray-300 font-bold rounded-md">S2</div>
+                  <div class="w-10 h-10 bg-gray-800 border-2 border-gray-600 flex items-center justify-center text-gray-300 font-bold rounded-md">S3</div>
+                  <div class="w-10 h-10 bg-gray-800 border-2 border-gray-600 flex items-center justify-center text-gray-300 font-bold rounded-md">S4</div>
+                  <div class="w-10 h-10 bg-gray-800 border-2 border-gray-600 flex items-center justify-center text-gray-300 font-bold rounded-md">S5</div>
+                  <div class="w-10 h-10 bg-gray-800 border-2 border-gray-600 flex items-center justify-center text-gray-300 font-bold rounded-md">S6</div>
+               </div>
+            </div>
+            <!-- 최하단: 레벨 + 5칸으로 분할된 경험치 바 -->
+            <div class="flex items-center gap-4">
+               <div class="text-yellow-400 font-bold drop-shadow-md">Lv.40</div>
+               <div class="flex-1 h-4 bg-gray-800 border border-gray-700 rounded-sm overflow-hidden flex gap-[2px]">
+                  <div class="flex-1 bg-yellow-500"></div>
+                  <div class="flex-1 bg-yellow-500"></div>
+                  <div class="flex-1 bg-gray-700"></div>
+                  <div class="flex-1 bg-gray-700"></div>
+                  <div class="flex-1 bg-gray-700"></div>
+               </div>
+            </div>
+         </div>
+      </div>
+   </body>
+</html>
