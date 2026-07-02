@@ -255,6 +255,13 @@ export interface IEnemyAttackData {
     /** 발사체 충돌 반경(px) */
     radius: number;
   };
+  /** 근접 휘두르기 공격일 때만 (melee_sweep) */
+  melee?: {
+    /** 휘두르기 부채꼴 각도(deg) — 적별 차별화(두억시니 150·야차 120·그슨대 90) */
+    coneAngleDeg: number;
+    /** 휘두르기 사거리(px) — 이 안에 플레이어가 있어야 텔레그래프 시작·명중 판정 */
+    range: number;
+  };
 }
 
 /** 적 기본 수치 (enemies.json 항목) */

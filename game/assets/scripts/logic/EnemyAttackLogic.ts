@@ -8,6 +8,8 @@ import type { Vec2 } from './MovementLogic';
 /** 공격 쿨다운 하한(sec) — cooldown 0/음수 데이터가 매 프레임 발사로 폭주하는 것을 막는다. */
 export const MIN_ATTACK_COOLDOWN_SEC = 0.1;
 
+const DEG_TO_RAD = Math.PI / 180;
+
 /** 공격 상태기계의 상태 (적 시스템 §5 — 조준→텔레그래프→발사→쿨다운). */
 export enum AttackState {
   /** 평소 조준. 사거리 안 + 발동 가능이면 텔레그래프로. */
@@ -101,4 +103,60 @@ export function tickAttack(
       return { state: AttackState.Cooldown, timer: t };
     }
   }
+}
+
+/**
+ * 잠근 방향(facing) 기준 부채꼴(각·사거리) 안에 대상이 있는지 판정한다(melee_sweep 즉시 명중).
+ * 거리 ≤ range 이고 facing~toTarget 끼인각 ≤ coneAngleDeg/2 면 히트. 경계각·경계거리는 포함(≤).
+ * @param facing 휘두르는 방향(윈드업에서 잠근 조준 방향). 영벡터면 방향 미정으로 미스(NaN 가드).
+ * @param toTarget 적→대상 벡터
+ * @param coneAngleDeg 부채꼴 전체 각도(deg)
+ * @param range 휘두르기 사거리(px)
+ * @returns 부채꼴 안이면 true
+ */
+export function coneHitsTarget(
+  facing: Vec2,
+  toTarget: Vec2,
+  coneAngleDeg: number,
+  range: number,
+): boolean {
+  const dist = Math.hypot(toTarget.x, toTarget.y);
+  if (dist > range) return false; // 사거리 밖
+  if (dist === 0) return true; // 정확히 겹침 → 코앞(각 정의 안 되나 히트)
+  const fLen = Math.hypot(facing.x, facing.y);
+  if (fLen === 0) return false; // facing 영벡터(잠금 비정상) → NaN 가드
+  // 끼인각 cos = (facing·toTarget)/(|facing||toTarget|). 각 ≤ 반각 ⟺ cos ≥ cos(반각)(cos 단조감소).
+  const cos = (facing.x * toTarget.x + facing.y * toTarget.y) / (fLen * dist);
+  // 경계각 포함: 부동소수 오차만큼 여유(EPS)를 둬 정확히 반각일 때도 히트로 결정적 판정.
+  return cos >= Math.cos((coneAngleDeg / 2) * DEG_TO_RAD) - 1e-9;
+}
+
+/** 부채꼴 마커(Graphics 섹터)를 그릴 로컬 호(arc) 파라미터. */
+export interface MeleeConeArc {
+  /** 로컬 반지름(px) = range를 부모 스케일로 나눈 값(부모 threatScale 상쇄). */
+  radius: number;
+  /** 호 시작 각(rad) — 로컬 +X 기준 -coneAngleDeg/2. */
+  startRad: number;
+  /** 호 끝 각(rad) — +coneAngleDeg/2. */
+  endRad: number;
+}
+
+/**
+ * 부채꼴 마커를 Graphics 섹터로 그릴 때 필요한 로컬 호 파라미터를 계산한다. 반지름은 부모
+ * (threatScale) 스케일을 상쇄해 실제 사거리와 일치시키고, 호는 로컬 +X를 중심으로 ±coneAngleDeg/2다.
+ * coneHitsTarget과 같은 각을 그리므로 마커와 명중 판정이 어떤 각도에서도 정합한다(스케일 방식의
+ * 클램프 비대칭 문제 없음).
+ * @param range 휘두르기 사거리(px)
+ * @param coneAngleDeg 부채꼴 전체 각도(deg)
+ * @param parentScale 마커 부모(적 노드) 스케일. 0 이하면 1로 폴백(분모 0 가드).
+ * @returns 마커 Graphics에 그릴 { radius, startRad, endRad }
+ */
+export function meleeConeMarkerArc(
+  range: number,
+  coneAngleDeg: number,
+  parentScale: number,
+): MeleeConeArc {
+  const p = parentScale > 0 ? parentScale : 1;
+  const half = (coneAngleDeg / 2) * DEG_TO_RAD;
+  return { radius: range / p, startRad: -half, endRad: half };
 }

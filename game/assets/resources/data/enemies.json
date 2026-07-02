@@ -173,5 +173,74 @@
         "radius": 11
       }
     }
+  },
+  {
+    "id": "dueokshini",
+    "name": "두억시니",
+    "maxHp": 220,
+    "speed": 70,
+    "contactDamagePerSec": 8,
+    "collisionRadius": 40,
+    "xpDrop": 35,
+    "movement": "chase",
+    "role": "tank",
+    "tint": "#6B2E5F",
+    "threatScale": 1.35,
+    "attack": {
+      "type": "melee_sweep",
+      "damage": 48,
+      "cooldown": 1.6,
+      "telegraphTime": 0.7,
+      "melee": {
+        "coneAngleDeg": 150,
+        "range": 90
+      }
+    }
+  },
+  {
+    "id": "yacha",
+    "name": "야차",
+    "maxHp": 130,
+    "speed": 110,
+    "contactDamagePerSec": 10,
+    "collisionRadius": 28,
+    "xpDrop": 28,
+    "movement": "chase",
+    "role": "standard",
+    "tint": "#C0392B",
+    "threatScale": 1.0,
+    "attack": {
+      "type": "melee_sweep",
+      "damage": 38,
+      "cooldown": 1.1,
+      "telegraphTime": 0.5,
+      "melee": {
+        "coneAngleDeg": 120,
+        "range": 75
+      }
+    }
+  },
+  {
+    "id": "geuseundae",
+    "name": "그슨대",
+    "maxHp": 110,
+    "speed": 130,
+    "contactDamagePerSec": 8,
+    "collisionRadius": 26,
+    "xpDrop": 26,
+    "movement": "chase",
+    "role": "standard",
+    "tint": "#34352F",
+    "threatScale": 1.0,
+    "attack": {
+      "type": "melee_sweep",
+      "damage": 30,
+      "cooldown": 0.8,
+      "telegraphTime": 0.35,
+      "melee": {
+        "coneAngleDeg": 90,
+        "range": 60
+      }
+    }
   }
 ]

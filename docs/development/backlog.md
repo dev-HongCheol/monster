@@ -149,6 +149,7 @@
 
 ## 승격됨 / 완료 (히스토리)
 
+- ~~F25: 근접 휘두르기 마커 반각 클램프(89°) vs `coneHitsTarget` 무제한 각 비대칭~~ → **해결**: enemy-melee-sweep 슬라이스 내 리워크에서 마커를 스프라이트 스케일 → **Graphics 섹터(호)** 방식으로 전환하며 소멸. 이제 마커가 `arc(-coneAngleDeg/2, +coneAngleDeg/2)`로 실제 각을 그려(클램프 없음) 어떤 각도에서도 `coneHitsTarget`과 정합한다. 피처 테스트가 "호 스팬 = coneAngleDeg"를 단언한다. 출처: `../qa/enemy-melee-sweep-review-issues.md` M1, `sessions/2026-07-01-enemy-melee-sweep-plan.md`.
 - ~~I1: 날아가던 발사체가 LevelUp 일시정지를 무시~~ → **완료**: `projectile-pause-guard` 슬라이스(PR #47)에서 `Projectile.update()`·`EnemyProjectile.update()` 맨 앞에 `if (GameManager.instance.state !== GameState.Playing) return;` 가드를 추가해, 카드 선택 일시정지 중 발사체 이동·명중·`damagePlayer`·직격 폭발을 멈췄다. 코드베이스 기존 가드(`SpellCaster:154`·`EnemyController:218`)와 동일 패턴. 후속으로 같은 테마의 I2(`XPItemController` 흡수)·I3(정지 발사체 렌더 레이어)와 F24(null 가드 컨벤션)를 열어 둠. 출처: `sessions/2026-07-01-projectile-pause-guard-plan.md`, `../qa/projectile-pause-guard-review-issues.md`.
 - ~~`projectileCount` 미사용 필드 (spells.json에 있으나 미사용)~~ → **완료**: 발사체 수 강화 슬라이스(`feat/projectile-count`)에서 다발·부채꼴 발사에 사용. 출처: `sessions/2026-06-01-magic-followups.md` §2 4번째 항목.
 - ~~`HIDE_CATEGORY_UPGRADE_CARDS = false` 복원 (passive-effects가 QA용으로 켜둔 DEV 플래그)~~ → **완료**: `feat/projectile-count` 구현 진입 첫 작업으로 복원(현재 `DeckManager.ts`에서 플래그 제거됨). 출처: `../qa/passive-effects-review-issues.md` #1, `sessions/2026-06-10-projectile-count-plan.md` §113.
