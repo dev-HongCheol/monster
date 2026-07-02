@@ -13,7 +13,7 @@
 
   "hud.hp": "HP: {cur} / {max}",
   "hud.wave": "Wave {wave}",
-  "hud.timer": "{min}:{sec}",
+  "hud.timer": "{time}",
   "hud.level": "Lv.{level}",
   "hud.xp": "XP: {cur} / {req}",
 
