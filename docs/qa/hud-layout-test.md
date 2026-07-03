@@ -74,9 +74,9 @@
 
 > **부모 계층 (중요):** 새 HUD 노드는 UICanvas 바로 아래가 아니라 **`HUD` 노드 아래**에 둔다 — 실제 씬 계층은 `UICanvas > HUD > {HpLabel·WaveLabel·TimerLabel·LevelLabel·XpLabel}`이고 `HudController`는 **HUD 노드**에 붙어 있다. 새 `HpBar`·`XpBar`·placeholder는 기존 라벨과 **형제**(HUD의 자식)로 만든다. (`main.scene`은 게임/UI 두 Canvas로 분리 — card-layer-fix.)
 >
-> **선행 필수 — HUD 노드를 화면 전체로 스트레치:** 현재 `HUD` 노드는 `UITransform` 100×100(중앙, Widget 없음)이다. 이대로면 자식 Widget이 이 작은 박스에 앵커돼 화면 모서리에 안 붙는다. **HUD 노드에 `cc.Widget`을 추가**하고 Top/Bottom/Left/Right를 모두 체크·값 0으로 둬 UICanvas(=화면) 전체를 채운다. HUD 앵커는 (0.5,0.5) 유지라 기존 라벨 위치는 그대로다. 이후 자식 바의 Widget Target 기본값(부모=스트레치된 HUD)이 곧 화면 모서리가 된다.
+> **Widget 인스펙터 UI (Cocos 3.8):** 개별 체크박스가 아니라 **`Horizontal Alignment`·`Vertical Alignment` 두 줄**로 나뉜다. 각 줄은 `NONE` 다음에 아이콘 4개 — 가로는 `Left · Center · Right · Left&Right(양쪽)`, 세로는 `Top · Center · Bottom · Top&Bottom(양쪽)`. **줄마다 하나씩** 고르고(두 줄이라 총 2선택), 고른 변마다 **거리(px)** 입력칸이 나타난다(이 거리가 아래 표의 "여백/오프셋"). **맨 오른쪽 "양쪽" 아이콘 = 그 방향 스트레치**(공식: left+right 둘 다 정렬하면 가로로, top+bottom이면 세로로 노드가 늘어남). `Target`은 부모(기본), `Align Mode`는 **`ON_WINDOW_RESIZE`** 권장. 스트레치되는 축은 크기가 Widget으로 결정되고, 아닌 축만 `UITransform`에서 정한다.
 >
-> **Widget 앵커 설정법 (Cocos 3.8 공식):** 노드에 `cc.Widget` 추가 → 정렬할 변(Left/Right/Top/Bottom/HorizontalCenter/VerticalCenter) **체크** → 각 변의 **거리(px)** 입력(이 거리 값이 아래 표의 "여백/오프셋"이다). **Left+Right 동시 체크 = 가로 풀폭 스트레치**, 상하도 동일. `Align Mode`는 **`ON_WINDOW_RESIZE`** 권장(리사이즈마다 재정렬). 노드 크기(폭·높이)는 스트레치되지 않는 축만 `UITransform`에서 정한다.
+> **선행 필수 — HUD 노드를 화면 전체로 스트레치:** 현재 `HUD` 노드는 `UITransform` 100×100(중앙, Widget 없음)이다. 이대로면 자식 Widget이 이 작은 박스에 앵커돼 화면 모서리에 안 붙는다. **HUD 노드에 `cc.Widget`을 추가**하고 **Horizontal Alignment = `Left&Right`(맨 오른쪽)·Vertical Alignment = `Top&Bottom`(맨 오른쪽)**을 골라 Left/Right/Top/Bottom 값을 전부 **0**으로 둬 UICanvas(=화면) 전체를 채운다. HUD 앵커는 (0.5,0.5) 유지라 기존 라벨 위치는 그대로다. 이후 자식 바의 Widget Target 기본값(부모=스트레치된 HUD)이 곧 화면 모서리가 된다.
 >
 > **(확정)** — 아래는 구현된 `HudController`(`@property hpBar`/`xpBar`, `ProgressBar` 타입)에 맞춘 확정본이다. 노드 이름은 사용자 선택(코드가 이름에 의존하지 않음 — `@property` 슬롯 연결만 필요), 크기·오프셋은 목업 기준 권장값이다.
 
