@@ -63,9 +63,9 @@
 
 | 항목 | 확정값 (계획 §4) | 상태 |
 |---|---|---|
-| Design Resolution (Width × Height) | **1280 × 720** (16:9, 웹 표준·목업 해상도와 일치) | ❌ |
-| Fit Width | **끄기(off)** | ❌ |
-| Fit Height | **켜기(on)** — 세로 맞춤, 좌우로 월드가 더 보임 | ❌ |
+| Design Resolution (Width × Height) | **1280 × 720** (16:9, 웹 표준·목업 해상도와 일치) | ✅ |
+| Fit Width | **끄기(off)** | ✅ |
+| Fit Height | **켜기(on)** — 세로 맞춤, 좌우로 월드가 더 보임 | ✅ |
 
 > **주의(계획 §7 리스크):** Project Data의 디자인 해상도 값은 **새로 만드는 Canvas에 적용**된다. 이미 존재하는 세 씬(main·menu 등)의 Canvas가 기존 해상도(엔진 기본값)를 들고 있으면, 씬을 다시 열어 Canvas가 새 값에 맞게 재동기화되는지 확인한다. 씬 좌표가 새 디자인 해상도 기준으로 재계산되면(백로그 F9 카메라 churn과 유사) 무관한 diff가 생길 수 있으니 커밋 전 확인한다.
 
@@ -134,11 +134,11 @@
 
 | 컴포넌트 | `@property` | 타입 | 연결 대상 | 상태 |
 |---|---|---|---|---|
-| `HudController` | `hpBar` | `ProgressBar` | `HpBar` ProgressBar 노드 (`barSprite`에 Fill 스프라이트 지정) | ❌ |
-| `HudController` | `xpBar` | `ProgressBar` | `XpBar` ProgressBar 노드 (`barSprite`에 Fill 스프라이트 지정) | ❌ |
-| `HudController` | `hpLabel` (기존) | `Label` | **HpBar 자식으로 재배치** — 중앙 오버레이(앵커 0.5,0.5 · Pos 0,0 · H/V Align CENTER). `{cur}` 숫자만 표시 | ❌ |
-| `HudController` | `waveLabel`/`timerLabel`/`levelLabel` (기존) | `Label` | 좌상(Wave T24·Timer T56)·좌하(Level B16). **세 라벨 앵커 X=0** — 폭 변화 시 좌측 정렬 유지(아래 주의) | ⬜ |
-| `HudController` | `gameOverPanel`/`restartButton`/`menuButton`/`cardSelectPanel` (기존) | `Node`/`Button` | 무변경 | ⬜ 유지 확인 |
+| `HudController` | `hpBar` | `ProgressBar` | `HpBar` ProgressBar 노드 (`barSprite`에 Fill 스프라이트 지정) | ✅ |
+| `HudController` | `xpBar` | `ProgressBar` | `XpBar` ProgressBar 노드 (`barSprite`에 Fill 스프라이트 지정) | ✅ |
+| `HudController` | `hpLabel` (기존) | `Label` | **HpBar 자식으로 재배치** — 중앙 오버레이(앵커 0.5,0.5 · Pos 0,0 · H/V Align CENTER). `{cur}` 숫자만 표시 | ✅ |
+| `HudController` | `waveLabel`/`timerLabel`/`levelLabel` (기존) | `Label` | 좌상(Wave T24·Timer T56)·좌하(Level B16). **세 라벨 앵커 X=0** — 폭 변화 시 좌측 정렬 유지(아래 주의) | ✅ |
+| `HudController` | `gameOverPanel`/`restartButton`/`menuButton`/`cardSelectPanel` (기존) | `Node`/`Button` | 무변경 | ✅ 유지 확인 |
 
 > **주의 — 좌측 라벨 앵커 X=0 (필수):** Wave·Timer·Level 세 라벨은 좌상/좌하에서 **왼쪽 정렬**돼야 하는데, 앵커가 기본 (0.5)이면 런타임에 문자열 폭이 바뀔 때(예: `30s`→`14:53`, `Lv.1`→`Lv.40`) 중심이 고정돼 좌측 끝이 제각각 밀려 정렬이 어긋난다(Widget Align Mode `ON_WINDOW_RESIZE`는 문자 변경 시 재정렬 안 함 — Cocos 3.8 공식). **앵커 X를 0으로** 두면 노드 위치가 곧 왼쪽 끝이라 폭이 변해도 좌측이 고정된다. HpLabel은 반대로 바 **중앙 오버레이**라 앵커 (0.5)+Center 정렬이 맞다(중앙 고정이라 폭 변화 무관). XpBar도 앵커를 건드리면 fill 자식 기준점이 어긋나니 (0.5) 유지.
 
@@ -148,11 +148,11 @@
 
 ## 6. 수동 테스트 체크리스트 (인게임 — 7단계 사용자)
 
-- [ ] HP가 닳으면 **HP 바(좌하단)가 값에 비례해 줄어든다**. **바 위 중앙에 현재 HP 숫자만** 겹쳐 표시된다(접두사 `HP:`·최대치 없음 — 예: `205`). 값이 1000 이상이면 **천단위 콤마**(`formatNumber`; 예: `1,205`. 1000 미만이면 콤마 없음). 라벨은 흰색+아웃라인 권장(빨간 바 위 가독).
-- [ ] XP를 얻으면 **XP 바(하단 풀폭, 금색 `#FFEB3B`)가 채워지고**, 레벨업 시 0으로 리셋되며 `Lv.` 숫자가 오른다. **fill이 바 왼쪽 끝부터 폭 전체 기준으로 차오른다**(중앙에 조각으로 뜨지 않음 — `totalLength`를 코드가 폭에 맞춤). **화면에 XP 수치 텍스트(`XP: n / n`)는 표시되지 않는다** — 진행은 바로만 표현(기획).
-- [ ] HP가 0이 되면 **result(결과) 씬으로 전환**되고 RETRY/MENU 버튼이 뜬다(기존 동작 회귀 없음 — main의 gameOverPanel이 아니라 별도 result 씬). ⚠️ 사망이 즉시 씬 전환이라 HP 바가 0으로 비는 장면은 거의 안 보인다(0.5초 틱 데미지 + 즉시 result 로드) — **의도된 현 동작이며 연출 개선은 backlog로 이월**(F26 사망/게임오버 연출).
-- [ ] 레벨업 시 카드 선택 패널이 뜬다(기존 동작 회귀 없음).
-- [ ] 웨이브 번호(`Wave N`)와 타이머(`mm:ss` 카운트다운)가 **좌상단**에 표시되고 매초 줄어든다.
-- [ ] **창 크기를 바꾸거나 전체화면**으로 전환해도 HUD 각 요소가 지정된 모서리(좌상·좌하·우상·우하·상단중앙·하단풀폭)에 유지된다(Widget 앵커).
-- [ ] Fit Height가 적용돼 세로가 화면에 맞고, 창 가로비가 넓어지면 좌우로 월드가 더 보인다(HUD는 모서리 유지).
+- [x] HP가 닳으면 **HP 바(좌하단)가 값에 비례해 줄어든다**. **바 위 중앙에 현재 HP 숫자만** 겹쳐 표시된다(접두사 `HP:`·최대치 없음 — 예: `205`). 값이 1000 이상이면 **천단위 콤마**(`formatNumber`; 예: `1,205`. 1000 미만이면 콤마 없음). 라벨은 흰색+아웃라인 권장(빨간 바 위 가독).
+- [x] XP를 얻으면 **XP 바(하단 풀폭, 금색 `#FFEB3B`)가 채워지고**, 레벨업 시 0으로 리셋되며 `Lv.` 숫자가 오른다. **fill이 바 왼쪽 끝부터 폭 전체 기준으로 차오른다**(중앙에 조각으로 뜨지 않음 — `totalLength`를 코드가 폭에 맞춤). **화면에 XP 수치 텍스트(`XP: n / n`)는 표시되지 않는다** — 진행은 바로만 표현(기획).
+- [x] HP가 0이 되면 **result(결과) 씬으로 전환**되고 RETRY/MENU 버튼이 뜬다(기존 동작 회귀 없음 — main의 gameOverPanel이 아니라 별도 result 씬). ⚠️ 사망이 즉시 씬 전환이라 HP 바가 0으로 비는 장면은 거의 안 보인다(0.5초 틱 데미지 + 즉시 result 로드) — **의도된 현 동작이며 연출 개선은 backlog로 이월**(F26 사망/게임오버 연출).
+- [x] 레벨업 시 카드 선택 패널이 뜬다(기존 동작 회귀 없음).
+- [x] 웨이브 번호(`Wave N`)와 타이머(`mm:ss` 카운트다운)가 **좌상단**에 표시되고 매초 줄어든다.
+- [x] **창 크기를 바꾸거나 전체화면**으로 전환해도 HUD 각 요소가 지정된 모서리(좌상·좌하·우상·우하·상단중앙·하단풀폭)에 유지된다(Widget 앵커).
+- [x] Fit Height가 적용돼 세로가 화면에 맞고, 창 가로비가 넓어지면 좌우로 월드가 더 보인다(HUD는 모서리 유지).
 - ~~placeholder가 자리에 보인다 / 클릭 반응 없음~~ → **이번 슬라이스 제외**: placeholder UI(미니맵·보스HP바·메뉴·스킬그리드)는 다음 UI 슬라이스로 이월(§4.2, backlog J4).
