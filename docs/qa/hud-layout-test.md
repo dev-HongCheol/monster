@@ -72,7 +72,11 @@
 
 ## 4. 씬/프리팹 변경 사항 — HUD 레이아웃 (7단계 사용자 — Cocos 에디터)
 
-> 모든 HUD 노드는 **UI Canvas** 아래에 둔다(`main.scene`은 게임/UI 두 Canvas로 분리 — card-layer-fix). 좌표가 아니라 **`cc.Widget` 앵커**로 배치해 창 크기 변화에 대응한다.
+> **부모 계층 (중요):** 새 HUD 노드는 UICanvas 바로 아래가 아니라 **`HUD` 노드 아래**에 둔다 — 실제 씬 계층은 `UICanvas > HUD > {HpLabel·WaveLabel·TimerLabel·LevelLabel·XpLabel}`이고 `HudController`는 **HUD 노드**에 붙어 있다. 새 `HpBar`·`XpBar`·placeholder는 기존 라벨과 **형제**(HUD의 자식)로 만든다. (`main.scene`은 게임/UI 두 Canvas로 분리 — card-layer-fix.)
+>
+> **선행 필수 — HUD 노드를 화면 전체로 스트레치:** 현재 `HUD` 노드는 `UITransform` 100×100(중앙, Widget 없음)이다. 이대로면 자식 Widget이 이 작은 박스에 앵커돼 화면 모서리에 안 붙는다. **HUD 노드에 `cc.Widget`을 추가**하고 Top/Bottom/Left/Right를 모두 체크·값 0으로 둬 UICanvas(=화면) 전체를 채운다. HUD 앵커는 (0.5,0.5) 유지라 기존 라벨 위치는 그대로다. 이후 자식 바의 Widget Target 기본값(부모=스트레치된 HUD)이 곧 화면 모서리가 된다.
+>
+> **Widget 앵커 설정법 (Cocos 3.8 공식):** 노드에 `cc.Widget` 추가 → 정렬할 변(Left/Right/Top/Bottom/HorizontalCenter/VerticalCenter) **체크** → 각 변의 **거리(px)** 입력(이 거리 값이 아래 표의 "여백/오프셋"이다). **Left+Right 동시 체크 = 가로 풀폭 스트레치**, 상하도 동일. `Align Mode`는 **`ON_WINDOW_RESIZE`** 권장(리사이즈마다 재정렬). 노드 크기(폭·높이)는 스트레치되지 않는 축만 `UITransform`에서 정한다.
 >
 > **(확정)** — 아래는 구현된 `HudController`(`@property hpBar`/`xpBar`, `ProgressBar` 타입)에 맞춘 확정본이다. 노드 이름은 사용자 선택(코드가 이름에 의존하지 않음 — `@property` 슬롯 연결만 필요), 크기·오프셋은 목업 기준 권장값이다.
 
@@ -80,23 +84,27 @@
 
 > **바 색은 코드가 테마에서 적용한다.** `HudController.onLoad`가 `hpBar.barSprite.color = COLORS.HP_FILL`(빨강)·`xpBar.barSprite.color = COLORS.XP_FILL`(금색 `#FFEB3B`)을 세팅하므로, **에디터의 Bar Sprite는 흰색(틴트 반영되도록)** 으로 두면 된다. 채움 비율은 매 프레임 `progress = barRatio(cur, max)`로 갱신된다.
 
-| 노드 (부모) | 타입/컴포넌트 | Widget 앵커 | 크기·오프셋 (권장) | 비고 |
+> 부모는 전부 **HUD 노드**(위 스트레치 선행 조건 적용). Widget 필드는 체크할 변 + 거리(px).
+
+| 노드 (부모) | 타입/컴포넌트 | Widget 앵커 (체크 + 거리 px) | 크기 (UITransform) | 비고 |
 |---|---|---|---|---|
-| `HpBar` (UI Canvas) | `cc.ProgressBar` (Mode=HORIZONTAL, Bar Sprite=흰 텍스처, 배경 노드에 `COLORS.BAR_BG` 톤) | 좌·하 앵커 | 폭 ≈ 200, 높이 ≈ 18, 좌하 여백 ≈ 24 | `@property hpBar`에 연결. `barSprite`(Fill) 지정 필수 — 코드가 이 스프라이트를 틴트. 바 위 숫자 라벨(`hpLabel`) 병기 유지. |
-| `XpBar` (UI Canvas) | `cc.ProgressBar` (Mode=HORIZONTAL, Bar Sprite=같은 흰 텍스처) | 좌·우·하 앵커(풀폭) | 높이 ≈ 12, 좌우 여백 ≈ 16, 하단 여백 ≈ 8 | `@property xpBar`에 연결. `barSprite`(Fill) 지정 필수. 왼쪽에 `levelLabel`(`Lv.40`) 병기 유지. 분할(5칸) 룩은 범위 밖 — 단일 바. |
-| `WaveLabel` (UI Canvas) | `cc.Label` (기존, 좌상 재배치) | 좌·상 앵커 | 미니맵 placeholder 아래 | 기존 `waveLabel`. `hud.wave`. |
-| `TimerLabel` (UI Canvas) | `cc.Label` (기존, 좌상 재배치) | 좌·상 앵커 | 웨이브 라벨 아래 | 기존 `timerLabel`. `formatTimer`로 `mm:ss` 카운트다운. |
+| `HpBar` (HUD) | `cc.ProgressBar` (Mode=HORIZONTAL, Bar Sprite=흰 텍스처, 배경 노드에 `COLORS.BAR_BG` 톤) | ☑Left=24 · ☑Bottom=24 (Right/Top 끔) | 폭 ≈ 200 · 높이 ≈ 18 | `@property hpBar`에 연결. `barSprite`(Fill) 지정 필수 — 코드가 이 스프라이트를 틴트. 바 위 숫자 라벨(`hpLabel`) 병기 유지. |
+| `XpBar` (HUD) | `cc.ProgressBar` (Mode=HORIZONTAL, Bar Sprite=같은 흰 텍스처) | ☑Left=16 · ☑Right=16 · ☑Bottom=8 (Left+Right = 가로 풀폭 스트레치) | 높이 ≈ 12 (폭은 스트레치가 결정) | `@property xpBar`에 연결. `barSprite`(Fill) 지정 필수. 왼쪽에 `levelLabel`(`Lv.40`) 병기 유지. 분할(5칸) 룩은 범위 밖 — 단일 바. |
+| `WaveLabel` (HUD) | `cc.Label` (기존, 좌상 재배치) | ☑Left=24 · ☑Top=24 | 라벨 자동 | 기존 `waveLabel`. `hud.wave`. 미니맵 placeholder 아래. |
+| `TimerLabel` (HUD) | `cc.Label` (기존, 좌상 재배치) | ☑Left=24 · ☑Top≈56 (웨이브 라벨 아래) | 라벨 자동 | 기존 `timerLabel`. `formatTimer`로 `mm:ss` 카운트다운. |
 
 ### 4.2 placeholder 4종 (확정 — 자리만, 코드 배선 없음)
 
 > 아래 노드는 `HudController`에 `@property`가 **없다**(코드 참조 없음). 순수 씬 노드로 앵커 지점만 잡는다. 이름은 권장값이며 자유롭게 정해도 된다.
 
-| 노드 (부모) | 표현 | Widget 앵커 | 비고 |
+> 부모는 전부 **HUD 노드**. Widget 앵커는 체크할 변 + 거리(px).
+
+| 노드 (부모) | 표현 | Widget 앵커 (체크 + 거리 px) | 비고 |
 |---|---|---|---|
-| `MinimapPlaceholder` (UI Canvas) | 정적 빈 사각형(테두리 + "MINIMAP" 라벨) | 좌·상 앵커 | 기능 없음. v2/이월. |
-| `BossHpBarPlaceholder` (UI Canvas) | 상단 중앙 바 모양, `active = false` 기본 | 상단 중앙 앵커 | v1 무보스 → 인게임에선 안 보임. v2 앵커 지점만. |
-| `MenuButtonPlaceholder` (UI Canvas) | ≡ 버튼 모양(콜백 배선 없음) | 우·상 앵커 | 일시정지는 별도 슬라이스. 기존 게임오버 `menuButton`과 별개. |
-| `SkillGrid` (UI Canvas) | 3×2 빈 슬롯 사각형 6칸 | 우·하 앵커 | 보유 마법 표시 자리. 데이터 바인딩·쿨다운 라디얼은 후속. |
+| `MinimapPlaceholder` (HUD) | 정적 빈 사각형(테두리 + "MINIMAP" 라벨) | ☑Left=24 · ☑Top=24 | 기능 없음. v2/이월. |
+| `BossHpBarPlaceholder` (HUD) | 상단 중앙 바 모양, `active = false` 기본 | ☑Top=24 · ☑HorizontalCenter=0 (중앙) | v1 무보스 → 인게임에선 안 보임. v2 앵커 지점만. |
+| `MenuButtonPlaceholder` (HUD) | ≡ 버튼 모양(콜백 배선 없음) | ☑Right=24 · ☑Top=24 | 일시정지는 별도 슬라이스. 기존 게임오버 `menuButton`과 별개. |
+| `SkillGrid` (HUD) | 3×2 빈 슬롯 사각형 6칸 | ☑Right=24 · ☑Bottom=48 | 보유 마법 표시 자리. 데이터 바인딩·쿨다운 라디얼은 후속. |
 
 ### 4.3 바 스프라이트 에셋 (확정)
 
@@ -117,7 +125,7 @@
 | `HudController` | `hpLabel`/`waveLabel`/`timerLabel`/`levelLabel` (기존) | `Label` | 재배치된 라벨 노드들 | ⬜ 유지 확인 |
 | `HudController` | `gameOverPanel`/`restartButton`/`menuButton`/`cardSelectPanel` (기존) | `Node`/`Button` | 무변경 | ⬜ 유지 확인 |
 
-> **`XpLabel` 노드 삭제 (필수, 사용자 에디터 작업):** 기획상 XP는 바만 표시하고 수치 텍스트는 없다. `xpLabel` `@property`와 `hud.xp` i18n 키를 코드에서 제거했으므로, 씬의 **`XpLabel` 노드(UI Canvas 하위)를 삭제**한다. 안 지우면 코드가 갱신하지 않아 노드 기본 문자열 `"XpLabel"`이 화면에 그대로 노출된다.
+> **`XpLabel` 노드 삭제 (필수, 사용자 에디터 작업):** 기획상 XP는 바만 표시하고 수치 텍스트는 없다. `xpLabel` `@property`와 `hud.xp` i18n 키를 코드에서 제거했으므로, 씬의 **`XpLabel` 노드(`UICanvas > HUD` 하위, `HpLabel` 등과 형제)를 삭제**한다. 안 지우면 코드가 갱신하지 않아 노드 기본 문자열 `"XpLabel"`이 화면에 그대로 노출된다. 삭제 후 씬을 재저장하면 `HudController`에 남은 직렬화 `xpLabel` 참조도 씻긴다(Cocos는 클래스에 없는 프로퍼티를 로드 시 조용히 버려 런타임 오류는 없음).
 
 ---
 
