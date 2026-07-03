@@ -12,9 +12,9 @@
 
 | 변경 파일 | 변경 내용 | 회귀 확인 범위 |
 |---|---|---|
-| `logic/HudFormatLogic.ts` (신규) | `formatTimer`·`barRatio` 순수 함수 | 단위 테스트로 커버(§2). cc 비의존. |
+| `logic/HudFormatLogic.ts` (신규) | `formatTimer`·`barRatio`·`formatNumber` 순수 함수 | 단위 테스트로 커버(§2). cc 비의존. `formatNumber`는 HP 숫자 라벨의 천단위 콤마 포맷(리워크 추가). |
 | `ui/Theme.ts` (신규) | UI 공통 상수 `COLORS`·`SIZES`·`FONT` placeholder | `cc.Color` 상수라 순수 테스트 대상 아님. 이후 `/design-consultation`이 값만 교체. `COLORS.HP_FILL`/`XP_FILL`만 이번에 `HudController`가 참조. (파일명은 코드 컨벤션대로 PascalCase `Theme.ts`.) |
-| `ui/HudController.ts` | HP/XP 바 `@property` 추가 + `barRatio`로 갱신, 타이머를 `formatTimer`로 교체, 웨이브·타이머 좌상 재배치 | **기존 HUD 회귀** — HP/웨이브/레벨/XP 숫자 라벨이 지금과 동일하게 갱신돼야 함. 게임오버·레벨업 패널 전환(`_handleStateChange`)·재시작/메뉴 버튼 콜백 무영향. |
+| `ui/HudController.ts` | HP/XP 바 `@property` 추가 + `barRatio`로 갱신, 타이머를 `formatTimer`로 교체, 웨이브·타이머 좌상 재배치, HP 숫자 라벨을 `formatNumber`로 천단위 콤마 포맷(리워크) | **기존 HUD 회귀** — 웨이브/레벨/XP 숫자 라벨은 지금과 동일하게 갱신돼야 함. HP 라벨만 천단위 콤마가 붙는다(값 < 1000이면 콤마 없음 = 무변화). 게임오버·레벨업 패널 전환(`_handleStateChange`)·재시작/메뉴 버튼 콜백 무영향. |
 | `resources/i18n/ko.json`·`en.json` | `hud.timer` 템플릿을 `{min}:{sec}` → `{time}` 단일 파라미터로 변경(`formatTimer`가 완성된 `mm:ss` 문자열을 산출) | **i18n 키 정합 가드**(`I18nKeyGuard.test.ts`) — `hud.timer` 키 자체는 유지되므로 키 정합은 그대로. 파라미터만 `min`/`sec` → `time`으로 바뀐다. 가드가 여전히 GREEN인지 확인. |
 | **main.scene (UI Canvas)** | HP/XP ProgressBar 노드·레이아웃 앵커(Widget)·placeholder 4종 추가. 7단계 사용자 작업. | 아래 §3~§5. |
 | **Project Settings → Project Data** | 디자인 해상도 1280×720 + Fit Height. 7단계 사용자 작업. | 세 씬 좌표 재계산 파급 확인(§3.1 주의). |
@@ -27,6 +27,7 @@
 
 > **RED 확인(2026-07-02):** 모듈(`HudFormatLogic`) 미존재로 피처 테스트 RED — `pnpm wf ready-impl` RED 게이트 통과.
 > **GREEN 통과 근거(2026-07-02):** 피처 테스트 13/13 + 전체 스위트 377/377 통과(`pnpm wf start-verification` GREEN 게이트). 통과 커밋 SHA는 `feat/hud-layout` 구현 커밋.
+> **재검증 근거(2026-07-03, XP 금색·HP 콤마 리워크):** `formatNumber` 추가로 피처 테스트 20/20 + 전체 스위트 384/384 통과(`start-verification` GREEN). 통과 커밋 SHA는 아래 리워크 커밋.
 
 - [x] `formatTimer` — `0 → "00:00"`
 - [x] `formatTimer` — `65 → "01:05"` (분/초 분리)
@@ -41,6 +42,13 @@
 - [x] `barRatio` — `max = 0 → 0` (0 나눗셈 가드)
 - [x] `barRatio` — `max` 음수 → 0
 - [x] `barRatio` — `cur` 음수 클램프(`-5, 100 → 0`)
+- [x] `formatNumber` — 3자리 이하 콤마 없음(`205 → "205"`)
+- [x] `formatNumber` — 콤마 경계 직전(`999 → "999"`)
+- [x] `formatNumber` — 첫 콤마(`1000 → "1,000"`)
+- [x] `formatNumber` — 보스 체력 규모(`10058650 → "10,058,650"`)
+- [x] `formatNumber` — `0 → "0"`
+- [x] `formatNumber` — 소수 내림(`1234.7 → "1,234"`)
+- [x] `formatNumber` — 음수 부호 보존(`-1234 → "-1,234"`)
 
 > **코드로 검증 불가(수동 항목):** HP/XP 바가 값에 맞게 시각적으로 차는지, 창 리사이즈 시 HUD 앵커 유지, placeholder 배치·룩 — §6.
 
@@ -70,7 +78,7 @@
 
 ### 4.1 실제 배선 노드 (확정)
 
-> **바 색은 코드가 테마에서 적용한다.** `HudController.onLoad`가 `hpBar.barSprite.color = COLORS.HP_FILL`(빨강)·`xpBar.barSprite.color = COLORS.XP_FILL`(파랑)을 세팅하므로, **에디터의 Bar Sprite는 흰색(틴트 반영되도록)** 으로 두면 된다. 채움 비율은 매 프레임 `progress = barRatio(cur, max)`로 갱신된다.
+> **바 색은 코드가 테마에서 적용한다.** `HudController.onLoad`가 `hpBar.barSprite.color = COLORS.HP_FILL`(빨강)·`xpBar.barSprite.color = COLORS.XP_FILL`(금색 `#FFEB3B`)을 세팅하므로, **에디터의 Bar Sprite는 흰색(틴트 반영되도록)** 으로 두면 된다. 채움 비율은 매 프레임 `progress = barRatio(cur, max)`로 갱신된다.
 
 | 노드 (부모) | 타입/컴포넌트 | Widget 앵커 | 크기·오프셋 (권장) | 비고 |
 |---|---|---|---|---|
@@ -113,8 +121,8 @@
 
 ## 6. 수동 테스트 체크리스트 (인게임 — 7단계 사용자)
 
-- [ ] HP가 닳으면 **HP 바(좌하단)가 값에 비례해 줄어든다**. 바 위 숫자(HP)도 함께 갱신된다.
-- [ ] XP를 얻으면 **XP 바(하단 풀폭)가 채워지고**, 레벨업 시 0으로 리셋되며 `Lv.` 숫자가 오른다.
+- [ ] HP가 닳으면 **HP 바(좌하단)가 값에 비례해 줄어든다**. 바 위 숫자(HP)도 함께 갱신된다. HP 라벨은 **중앙 흰색**이며, 값이 1000 이상이면 **천단위 콤마**로 표시된다(`formatNumber`; 예: `1,205`. 1000 미만이면 콤마 없음).
+- [ ] XP를 얻으면 **XP 바(하단 풀폭, 금색 `#FFEB3B`)가 채워지고**, 레벨업 시 0으로 리셋되며 `Lv.` 숫자가 오른다.
 - [ ] HP가 0이 되면 게임오버 패널이 뜬다(기존 동작 회귀 없음).
 - [ ] 레벨업 시 카드 선택 패널이 뜬다(기존 동작 회귀 없음).
 - [ ] 웨이브 번호(`Wave N`)와 타이머(`mm:ss` 카운트다운)가 **좌상단**에 표시되고 매초 줄어든다.

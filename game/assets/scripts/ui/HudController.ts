@@ -1,6 +1,6 @@
 import { _decorator, Button, Component, Label, Node, ProgressBar } from 'cc';
 import { GameState } from '../data/GameTypes';
-import { barRatio, formatTimer } from '../logic/HudFormatLogic';
+import { barRatio, formatNumber, formatTimer } from '../logic/HudFormatLogic';
 import { ExperienceManager } from '../systems/ExperienceManager';
 import { GameManager } from '../systems/GameManager';
 import { I18n } from '../systems/I18n';
@@ -60,7 +60,10 @@ export class HudController extends Component {
   private _updateHp(): void {
     if (!this.hpLabel) return;
     const gm = GameManager.instance;
-    this.hpLabel.string = this._t('hud.hp', { cur: Math.ceil(gm.playerHp), max: gm.maxPlayerHp });
+    this.hpLabel.string = this._t('hud.hp', {
+      cur: formatNumber(Math.ceil(gm.playerHp)),
+      max: formatNumber(gm.maxPlayerHp),
+    });
     if (this.hpBar) this.hpBar.progress = barRatio(gm.playerHp, gm.maxPlayerHp);
   }
 

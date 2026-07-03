@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { barRatio, formatTimer } from '../../game/assets/scripts/logic/HudFormatLogic';
+import {
+  barRatio,
+  formatNumber,
+  formatTimer,
+} from '../../game/assets/scripts/logic/HudFormatLogic';
 
 describe('formatTimer — mm:ss 포맷', () => {
   it('0초는 "00:00"이다', () => {
@@ -28,6 +32,36 @@ describe('formatTimer — mm:ss 포맷', () => {
 
   it('분이 100 이상이면 자리수를 유지한다 (6000 → "100:00")', () => {
     expect(formatTimer(6000)).toBe('100:00');
+  });
+});
+
+describe('formatNumber — 천단위 콤마 포맷', () => {
+  it('3자리 이하는 콤마가 없다 (205 → "205")', () => {
+    expect(formatNumber(205)).toBe('205');
+  });
+
+  it('999는 그대로다 (콤마 경계 직전)', () => {
+    expect(formatNumber(999)).toBe('999');
+  });
+
+  it('1000은 "1,000"이다 (첫 콤마)', () => {
+    expect(formatNumber(1000)).toBe('1,000');
+  });
+
+  it('보스 체력 규모도 3자리마다 끊는다 (10058650 → "10,058,650")', () => {
+    expect(formatNumber(10058650)).toBe('10,058,650');
+  });
+
+  it('0은 "0"이다', () => {
+    expect(formatNumber(0)).toBe('0');
+  });
+
+  it('소수는 내림 처리된다 (1234.7 → "1,234")', () => {
+    expect(formatNumber(1234.7)).toBe('1,234');
+  });
+
+  it('음수는 부호를 보존한다 (-1234 → "-1,234")', () => {
+    expect(formatNumber(-1234)).toBe('-1,234');
   });
 });
 

@@ -17,6 +17,19 @@ export function formatTimer(remainingSec: number): string {
 }
 
 /**
+ * 정수를 천단위 콤마로 그룹핑한 문자열로 반환한다. 소수는 내림하고 음수 부호는 보존한다.
+ * mm:ss와 마찬가지로 콤마 구분의 언어 중립 숫자 포맷이라 현지화 문자열이 아니다(로케일 무관).
+ * HP·보스 HP처럼 자릿수가 커질 수 있는 수치 라벨에 쓴다.
+ * @param value 표시할 수치. 소수·음수 허용.
+ * @returns 천단위 콤마 문자열 (예: 10058650 → "10,058,650", 205 → "205")
+ */
+export function formatNumber(value: number): string {
+  const abs = Math.floor(Math.abs(value));
+  const grouped = String(abs).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return value < 0 && abs !== 0 ? `-${grouped}` : grouped;
+}
+
+/**
  * 바 채움 비율을 0~1로 반환한다. HP·XP 바가 공유한다.
  * @param cur 현재값
  * @param max 최대값 (0 이하면 0 나눗셈 가드로 0 반환)

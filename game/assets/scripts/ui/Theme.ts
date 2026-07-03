@@ -8,8 +8,8 @@ import { Color } from 'cc';
 export const COLORS = {
   /** HP 바 채움 (빨강) */
   HP_FILL: new Color(214, 69, 65, 255),
-  /** XP 바 채움 (파랑) */
-  XP_FILL: new Color(66, 135, 245, 255),
+  /** XP 바 채움 (금색) */
+  XP_FILL: new Color(255, 235, 59, 255),
   /** 바 배경 (어두움) */
   BAR_BG: new Color(30, 30, 36, 200),
   /** 패널 배경 */
