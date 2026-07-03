@@ -20,22 +20,17 @@
   "gameover.menu": { "message": "MENU", "desc": "게임오버 패널 메뉴로 버튼" },
 
   "hud.hp": {
-    "message": "HP: {cur} / {max}",
-    "desc": "HUD 체력 라벨 (현재/최대)",
-    "params": ["cur", "max"]
+    "message": "{cur}",
+    "desc": "HUD 체력 라벨 (현재 HP 숫자만 — 바 위 중앙 오버레이)",
+    "params": ["cur"]
   },
   "hud.wave": { "message": "Wave {wave}", "desc": "HUD 현재 웨이브 번호", "params": ["wave"] },
   "hud.timer": {
-    "message": "{min}:{sec}",
-    "desc": "HUD 전체 게임 잔여 시간 (분:초)",
-    "params": ["min", "sec"]
+    "message": "{time}",
+    "desc": "HUD 전체 게임 잔여 시간. time은 formatTimer가 산출한 mm:ss 문자열(언어 중립)",
+    "params": ["time"]
   },
   "hud.level": { "message": "Lv.{level}", "desc": "HUD 플레이어 레벨", "params": ["level"] },
-  "hud.xp": {
-    "message": "XP: {cur} / {req}",
-    "desc": "HUD 경험치 진행도 (현재/요구)",
-    "params": ["cur", "req"]
-  },
 
   "card.add_magic": {
     "message": "신규 마법 추가 ({category} · {tier}등급)",

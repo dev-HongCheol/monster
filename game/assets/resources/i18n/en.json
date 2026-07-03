@@ -11,11 +11,10 @@
   "gameover.restart": "RESTART",
   "gameover.menu": "MENU",
 
-  "hud.hp": "HP: {cur} / {max}",
+  "hud.hp": "{cur}",
   "hud.wave": "Wave {wave}",
-  "hud.timer": "{min}:{sec}",
+  "hud.timer": "{time}",
   "hud.level": "Lv.{level}",
-  "hud.xp": "XP: {cur} / {req}",
 
   "card.add_magic": "New spell ({category} · Tier {tier})",
   "card.damage_boost.name": "Power Up",
