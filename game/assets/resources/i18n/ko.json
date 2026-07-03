@@ -31,11 +31,6 @@
     "params": ["time"]
   },
   "hud.level": { "message": "Lv.{level}", "desc": "HUD 플레이어 레벨", "params": ["level"] },
-  "hud.xp": {
-    "message": "XP: {cur} / {req}",
-    "desc": "HUD 경험치 진행도 (현재/요구)",
-    "params": ["cur", "req"]
-  },
 
   "card.add_magic": {
     "message": "신규 마법 추가 ({category} · {tier}등급)",

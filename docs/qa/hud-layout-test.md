@@ -14,8 +14,8 @@
 |---|---|---|
 | `logic/HudFormatLogic.ts` (신규) | `formatTimer`·`barRatio`·`formatNumber` 순수 함수 | 단위 테스트로 커버(§2). cc 비의존. `formatNumber`는 HP 숫자 라벨의 천단위 콤마 포맷(리워크 추가). |
 | `ui/Theme.ts` (신규) | UI 공통 상수 `COLORS`·`SIZES`·`FONT` placeholder | `cc.Color` 상수라 순수 테스트 대상 아님. 이후 `/design-consultation`이 값만 교체. `COLORS.HP_FILL`/`XP_FILL`만 이번에 `HudController`가 참조. (파일명은 코드 컨벤션대로 PascalCase `Theme.ts`.) |
-| `ui/HudController.ts` | HP/XP 바 `@property` 추가 + `barRatio`로 갱신, 타이머를 `formatTimer`로 교체, 웨이브·타이머 좌상 재배치, HP 숫자 라벨을 `formatNumber`로 천단위 콤마 포맷(리워크) | **기존 HUD 회귀** — 웨이브/레벨/XP 숫자 라벨은 지금과 동일하게 갱신돼야 함. HP 라벨만 천단위 콤마가 붙는다(값 < 1000이면 콤마 없음 = 무변화). 게임오버·레벨업 패널 전환(`_handleStateChange`)·재시작/메뉴 버튼 콜백 무영향. |
-| `resources/i18n/ko.json`·`en.json` | `hud.timer` 템플릿을 `{min}:{sec}` → `{time}` 단일 파라미터로 변경(`formatTimer`가 완성된 `mm:ss` 문자열을 산출) | **i18n 키 정합 가드**(`I18nKeyGuard.test.ts`) — `hud.timer` 키 자체는 유지되므로 키 정합은 그대로. 파라미터만 `min`/`sec` → `time`으로 바뀐다. 가드가 여전히 GREEN인지 확인. |
+| `ui/HudController.ts` | HP/XP 바 `@property` 추가 + `barRatio`로 갱신, 타이머를 `formatTimer`로 교체, 웨이브·타이머 좌상 재배치, HP 숫자 라벨을 `formatNumber`로 천단위 콤마 포맷(리워크). **`xpLabel` `@property`·`_updateXpInfo`의 XP 수치 라벨 갱신 제거(리워크2)** — 기획상 XP는 바만 표시. | **기존 HUD 회귀** — 웨이브/레벨 숫자 라벨은 지금과 동일하게 갱신돼야 함. HP 라벨만 천단위 콤마가 붙는다(값 < 1000이면 콤마 없음 = 무변화). **XP 수치 라벨은 더 이상 갱신되지 않음(제거).** 게임오버·레벨업 패널 전환(`_handleStateChange`)·재시작/메뉴 버튼 콜백 무영향. |
+| `resources/i18n/ko.json`·`en.json` | `hud.timer` 템플릿을 `{min}:{sec}` → `{time}` 단일 파라미터로 변경(`formatTimer`가 완성된 `mm:ss` 문자열을 산출). **`hud.xp` 키 제거(리워크2)** — XP 수치 라벨 폐지에 맞춰 사용처와 함께 삭제. | **i18n 키 정합 가드**(`I18nKeyGuard.test.ts`) — `hud.timer` 키 자체는 유지(파라미터만 `min`/`sec` → `time`). `hud.xp`는 사용처(`HudController`)와 카탈로그(ko/en)에서 **동시 제거**해 정합 유지. 가드가 여전히 GREEN인지 확인. |
 | **main.scene (UI Canvas)** | HP/XP ProgressBar 노드·레이아웃 앵커(Widget)·placeholder 4종 추가. 7단계 사용자 작업. | 아래 §3~§5. |
 | **Project Settings → Project Data** | 디자인 해상도 1280×720 + Fit Height. 7단계 사용자 작업. | 세 씬 좌표 재계산 파급 확인(§3.1 주의). |
 
@@ -114,15 +114,17 @@
 |---|---|---|---|---|
 | `HudController` | `hpBar` | `ProgressBar` | `HpBar` ProgressBar 노드 (`barSprite`에 Fill 스프라이트 지정) | ❌ |
 | `HudController` | `xpBar` | `ProgressBar` | `XpBar` ProgressBar 노드 (`barSprite`에 Fill 스프라이트 지정) | ❌ |
-| `HudController` | `hpLabel`/`waveLabel`/`timerLabel`/`levelLabel`/`xpLabel` (기존) | `Label` | 재배치된 라벨 노드들 | ⬜ 유지 확인 |
+| `HudController` | `hpLabel`/`waveLabel`/`timerLabel`/`levelLabel` (기존) | `Label` | 재배치된 라벨 노드들 | ⬜ 유지 확인 |
 | `HudController` | `gameOverPanel`/`restartButton`/`menuButton`/`cardSelectPanel` (기존) | `Node`/`Button` | 무변경 | ⬜ 유지 확인 |
+
+> **`XpLabel` 노드 삭제 (필수, 사용자 에디터 작업):** 기획상 XP는 바만 표시하고 수치 텍스트는 없다. `xpLabel` `@property`와 `hud.xp` i18n 키를 코드에서 제거했으므로, 씬의 **`XpLabel` 노드(UI Canvas 하위)를 삭제**한다. 안 지우면 코드가 갱신하지 않아 노드 기본 문자열 `"XpLabel"`이 화면에 그대로 노출된다.
 
 ---
 
 ## 6. 수동 테스트 체크리스트 (인게임 — 7단계 사용자)
 
 - [ ] HP가 닳으면 **HP 바(좌하단)가 값에 비례해 줄어든다**. 바 위 숫자(HP)도 함께 갱신된다. HP 라벨은 **중앙 흰색**이며, 값이 1000 이상이면 **천단위 콤마**로 표시된다(`formatNumber`; 예: `1,205`. 1000 미만이면 콤마 없음).
-- [ ] XP를 얻으면 **XP 바(하단 풀폭, 금색 `#FFEB3B`)가 채워지고**, 레벨업 시 0으로 리셋되며 `Lv.` 숫자가 오른다.
+- [ ] XP를 얻으면 **XP 바(하단 풀폭, 금색 `#FFEB3B`)가 채워지고**, 레벨업 시 0으로 리셋되며 `Lv.` 숫자가 오른다. **화면에 XP 수치 텍스트(`XP: n / n`)는 표시되지 않는다** — 진행은 바로만 표현(기획).
 - [ ] HP가 0이 되면 게임오버 패널이 뜬다(기존 동작 회귀 없음).
 - [ ] 레벨업 시 카드 선택 패널이 뜬다(기존 동작 회귀 없음).
 - [ ] 웨이브 번호(`Wave N`)와 타이머(`mm:ss` 카운트다운)가 **좌상단**에 표시되고 매초 줄어든다.

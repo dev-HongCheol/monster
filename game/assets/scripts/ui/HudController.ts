@@ -16,7 +16,6 @@ export class HudController extends Component {
   @property(Label) waveLabel: Label | null = null;
   @property(Label) timerLabel: Label | null = null;
   @property(Label) levelLabel: Label | null = null;
-  @property(Label) xpLabel: Label | null = null;
   @property(ProgressBar) hpBar: ProgressBar | null = null;
   @property(ProgressBar) xpBar: ProgressBar | null = null;
   @property(Node) gameOverPanel: Node | null = null;
@@ -80,16 +79,12 @@ export class HudController extends Component {
     }
   }
 
-  /** 레벨·XP 진행도 레이블과 XP 바를 갱신한다. */
+  /** 레벨 레이블과 XP 바(진행도)를 갱신한다. XP 진행은 수치 라벨 없이 바로만 표시한다. */
   private _updateXpInfo(): void {
     if (!ExperienceManager.instance) return;
     const em = ExperienceManager.instance;
     if (this.levelLabel) {
       this.levelLabel.string = this._t('hud.level', { level: em.level });
-    }
-    if (this.xpLabel) {
-      const req = em.requiredXp === Infinity ? '∞' : String(em.requiredXp);
-      this.xpLabel.string = this._t('hud.xp', { cur: em.currentXp, req });
     }
     // requiredXp가 Infinity(상한 도달)면 barRatio가 0을 반환해 바가 비워진다.
     if (this.xpBar) this.xpBar.progress = barRatio(em.currentXp, em.requiredXp);
