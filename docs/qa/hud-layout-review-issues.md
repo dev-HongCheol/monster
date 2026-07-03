@@ -57,3 +57,22 @@
 
 ### R3 — 비유한/≥1e21 입력 미포맷 → 무조치(도달 불가, YAGNI)
 - **내용:** `formatNumber(Infinity) → "Infinity"`, `NaN → "NaN"`, `1e21 → "1e+21"`. HP는 유한·1e21 미만이라 도달 불가. 기존 M2(백로그의 formatTimer 비유한 가드)와 같은 결 — 별도 조치 안 함.
+
+---
+
+## 재리뷰 (rework2 `e988538` — XP 수치 라벨 제거)
+
+`superpowers:requesting-code-review` 서브에이전트 재리뷰. **판정: Ready to merge: Yes.** i18n 실제-카탈로그 게이트 13/13, `hud.xp`/`xpLabel` 잔여 참조 0건(레포 전역 grep), `levelLabel`·`xpBar`·`Label` import 무손상, 씬의 dangling `xpLabel` 직렬화 참조는 Cocos가 로드 시 조용히 버려 런타임 무해(사용자 7단계에서 `XpLabel` 노드 삭제 + 재저장으로 참조 정리). R2 무효화·F26 삭제·문서 정합 확인.
+
+---
+
+## 재리뷰 (rework3 `f57b157` — XP 바 totalLength 폭 동기화)
+
+**서브에이전트 세션 한도로 판정 미반환 → gstack 폴백대로 자체 검토(self-verified, independent sub-task unavailable).** 변경이 cc-글루 한 블록이라 자체 검토로 충분.
+
+**판정: 이슈 0건, merge 가능.**
+- **정확성:** `_updateXpInfo`가 매 프레임 `xpBar.node.getComponent(UITransform)?.contentSize.width`를 읽어 `totalLength`로 세팅 후 `progress` 갱신. ProgressBar가 fill 폭 = `totalLength × progress`를 좌단부터 그리므로 Widget 스트레치 폭을 추종. 리사이즈 시 한 프레임 지연은 다음 프레임 자기보정(HUD 매 프레임 갱신).
+- **널 안전:** 옵셔널 체인으로 `number | undefined`, `if (width)`가 undefined·0을 함께 걸러 `totalLength=0` 방지. ProgressBar 노드는 항상 UITransform 보유라 실무상 undefined 미발생.
+- **스코프:** HP 바는 고정폭(200) 비스트레치라 미적용이 정합(불일치 아님).
+- **성능:** 매 프레임 `totalLength` 세팅은 단일 HUD 요소라 무시 가능(progress도 매 프레임 세팅).
+- **에디터 연동(사용자):** Bar(fill) 자식 앵커 `(0,0.5)` + 좌단 위치(폭 W → 로컬 x = −W/2, 1248폭이면 −624). §4.1 레시피 참조.
