@@ -1,7 +1,7 @@
 # HUD 레이아웃 — 코드 리뷰 이슈
 
 - **브랜치:** feat/hud-layout
-- **리뷰 커밋:** `ce2903c`(base) → `3c1f9d8`(head). **재리뷰(rework):** `ce2903c`(base) → `88b1d09`(head)
+- **리뷰 커밋:** `ce2903c`(base) → `b630a3f`(head, rework4 HP 숫자만). 이전 head: `3c1f9d8`(초기) · `88b1d09`(rework) · `e988538`(rework2) · `f57b157`(rework3)
 - **리뷰 방식:** `superpowers:requesting-code-review` 패턴 — 별도 subagent(general-purpose) dispatch
 - **판정:** **Ready to merge: Yes** — Critical 0, Important 0, Minor 4 (전부 비차단)
 
@@ -76,3 +76,15 @@
 - **스코프:** HP 바는 고정폭(200) 비스트레치라 미적용이 정합(불일치 아님).
 - **성능:** 매 프레임 `totalLength` 세팅은 단일 HUD 요소라 무시 가능(progress도 매 프레임 세팅).
 - **에디터 연동(사용자):** Bar(fill) 자식 앵커 `(0,0.5)` + 좌단 위치(폭 W → 로컬 x = −W/2, 1248폭이면 −624). §4.1 레시피 참조.
+
+---
+
+## 재리뷰 (rework4 `ad6c162` — HP 라벨 현재 HP 숫자만)
+
+`superpowers:requesting-code-review` 서브에이전트 재리뷰. **판정: Ready to merge: Yes** — Critical 0, Important 0, Minor 2(전부 무조치).
+
+리뷰어 검증 요약: `_updateHp`에서 `max` 인자만 제거 — `formatNumber(ceil(playerHp))`가 천단위 콤마 유지, `gm.maxPlayerHp`는 `barRatio`(바 progress)에 계속 사용, dead import 없음. i18n 3면(ko `message:"{cur}"`+`params:["cur"]`, en `"{cur}"`, 코드 호출) 정합, 잔여 `{max}` 토큰 0건. 실카탈로그 게이트는 en⊆ko라 GREEN(전체 386/386, `I18nKeyGuard` 13/13). 문서는 게임오버 실동작(result 씬)·placeholder 이월을 정직하게 반영, 델타 5파일에 무관 변경 없음.
+
+### 무조치 Minor
+- **R4-a — `conventions.md:274` 예시가 여전히 `HP: {cur} / {max}`:** 이번 브랜치 미변경 파일의 일반 교육 예시(라이브 HUD 주장 아님) — 스코프 밖, 무해. 여기서 고치면 스코프 크립. 후속 문서 패스에서 `Wave {wave}` 등으로 교체 가능(선택).
+- **R4-b — 테스트 픽스처가 옛 `hud.hp` 값 보유:** `I18nFoundation.test.ts`·`I18nKeyGuard.test.ts`의 로컬 픽스처가 다중 파라미터 치환·paramMismatch 로직 검증용으로 `HP: {cur} / {max}`를 그대로 씀. 실카탈로그 미참조라 GREEN, 엔진/가드 메커니즘 테스트로는 의도된 값. 무조치.
