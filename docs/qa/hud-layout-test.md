@@ -80,6 +80,25 @@
 >
 > **(확정)** — 아래는 구현된 `HudController`(`@property hpBar`/`xpBar`, `ProgressBar` 타입)에 맞춘 확정본이다. 노드 이름은 사용자 선택(코드가 이름에 의존하지 않음 — `@property` 슬롯 연결만 필요), 크기·오프셋은 목업 기준 권장값이다.
 
+### 4.0 전체 좌표 요약 (겹침 점검용, 1280×720)
+
+목업(`hud-layout.html`) 기준 앵커(모서리로부터 px). 같은 모서리에 여러 요소가 몰리는 좌상·좌하만 **세로로 안 겹치는지** 확인한다.
+
+| 영역 | 요소 | 앵커 | 세로 구간(대략) |
+|---|---|---|---|
+| 좌상 | 미니맵(ph) | L24 · T24, 160×160 | y 24 ~ 184 |
+| 좌상 | WaveLabel | L24 · **T192** | y 192 ~ 212 |
+| 좌상 | TimerLabel | L24 · **T216** | y 216 ~ 246 |
+| 상단중앙 | 보스HP바(ph) | T24 · HCenter | — |
+| 우상 | 메뉴(ph) | R24 · T24, 36×36 | — |
+| 좌하 | HpBar | L24 · **B44**, 200×18 | 아래서 44 ~ 62 |
+| 좌하 | LevelLabel | L24 · **B16** | 아래서 16 ~ 36 |
+| 하단풀폭 | XpBar | L0·R0·B0, 1280×12 | 아래서 0 ~ 12 |
+| 우하 | 스킬그리드(ph) | R24 · B44, ≈136×88 | 아래서 44 ~ 132 |
+
+> **좌상 세로 스택:** 미니맵(24–184) → Wave(192–212) → Timer(216–246). 서로 8px 이상 떨어져 안 겹침. (이전 값 Wave/Timer Top=24/56은 미니맵과 겹쳐 **오류였음** — 수정됨.)
+> **좌하 세로 스택:** XP바(0–12) → Level(16–36) → HpBar(44–62). 겹침 없음. HpBar를 예전 Bottom=24로 두면 Level(16–36)과 겹치므로 **44로 올림**.
+
 ### 4.1 실제 배선 노드 (확정)
 
 > **바 색은 코드가 테마에서 적용한다.** `HudController.onLoad`가 `hpBar.barSprite.color = COLORS.HP_FILL`(빨강)·`xpBar.barSprite.color = COLORS.XP_FILL`(금색 `#FFEB3B`)을 세팅하므로, **에디터의 Bar Sprite는 흰색(틴트 반영되도록)** 으로 두면 된다. 채움 비율은 매 프레임 `progress = barRatio(cur, max)`로 갱신된다.
@@ -88,27 +107,26 @@
 
 | 노드 (부모) | 타입/컴포넌트 | Widget 앵커 (체크 + 거리 px) | 크기 (UITransform) | 비고 |
 |---|---|---|---|---|
-| `HpBar` (HUD) | `cc.ProgressBar` (Mode=HORIZONTAL, Bar Sprite=흰 텍스처, 배경 노드에 `COLORS.BAR_BG` 톤) | ☑Left=24 · ☑Bottom=24 (Right/Top 끔) | 폭 ≈ 200 · 높이 ≈ 18 | `@property hpBar`에 연결. `barSprite`(Fill) 지정 필수 — 코드가 이 스프라이트를 틴트. 바 위 숫자 라벨(`hpLabel`) 병기 유지. |
-| `XpBar` (HUD) | `cc.ProgressBar` (Mode=HORIZONTAL, Bar Sprite=같은 흰 텍스처) | ☑Left=0 · ☑Right=0 · ☑Bottom=0 (Left+Right = 가로 풀폭, **여백 0 = 화면 양 끝까지**) | 높이 ≈ 12 (폭은 스트레치가 결정, 디자인 1280) | `@property xpBar`에 연결. `barSprite`(Fill) 지정 필수. 왼쪽에 `levelLabel`(`Lv.40`) 병기 유지. 분할(5칸) 룩은 범위 밖 — 단일 바. **엣지-투-엣지 확정(2026-07-03 사용자): 아래 영역을 좌우 여백 없이 꽉 채운다.** |
-| `WaveLabel` (HUD) | `cc.Label` (기존, 좌상 재배치) | ☑Left=24 · ☑Top=24 | 라벨 자동 | 기존 `waveLabel`. `hud.wave`. 미니맵 placeholder 아래. |
-| `TimerLabel` (HUD) | `cc.Label` (기존, 좌상 재배치) | ☑Left=24 · ☑Top≈56 (웨이브 라벨 아래) | 라벨 자동 | 기존 `timerLabel`. `formatTimer`로 `mm:ss` 카운트다운. |
+| `HpBar` (HUD) | `cc.ProgressBar` (Mode=HORIZONTAL, Bar Sprite=흰 텍스처, 배경 노드에 `COLORS.BAR_BG` 톤) | ☑Left=24 · ☑Bottom=44 (레벨 라벨·XP 바 위) | 폭 ≈ 200 · 높이 ≈ 18 | `@property hpBar`에 연결. `barSprite`(Fill) 지정 필수 — 코드가 이 스프라이트를 틴트. 바 위 숫자 라벨(`hpLabel`) 병기 유지. |
+| `XpBar` (HUD) | `cc.ProgressBar` (Mode=HORIZONTAL, Bar Sprite=같은 흰 텍스처) | ☑Left=0 · ☑Right=0 · ☑Bottom=0 (Left+Right = 가로 풀폭, **여백 0 = 화면 양 끝까지**) | 높이 ≈ 12 (폭은 스트레치가 결정, 디자인 1280) | `@property xpBar`에 연결. `barSprite`(Fill) 지정 필수. 분할(5칸) 룩은 범위 밖 — 단일 바. **엣지-투-엣지 확정(2026-07-03 사용자): 아래 영역을 좌우 여백 없이 꽉 채운다.** |
+| `LevelLabel` (HUD) | `cc.Label` (기존) | ☑Left=24 · ☑Bottom=16 (XP 바 바로 위) | 라벨 자동 | 기존 `levelLabel`. `hud.level`(`Lv.40`). XP 바를 풀폭으로 바꿔 "왼쪽 병기"가 불가하므로 바 왼쪽 **위**에 얹는다(겹쳐 표기 원하면 Bottom=0). |
+| `WaveLabel` (HUD) | `cc.Label` (기존, 좌상 재배치) | ☑Left=24 · ☑Top=192 (미니맵 아래) | 라벨 자동 | 기존 `waveLabel`. `hud.wave`. 미니맵(Top 24 · 높이 160 → 하단 y≈184) **아래**. ⚠️ Top=24로 두면 미니맵과 겹침. |
+| `TimerLabel` (HUD) | `cc.Label` (기존, 좌상 재배치) | ☑Left=24 · ☑Top≈216 (웨이브 아래) | 라벨 자동 | 기존 `timerLabel`. `formatTimer`로 `mm:ss` 카운트다운. |
 
 > **ProgressBar Bar(fill) 자식 설정 (필수 — 안 맞으면 fill이 중앙에 일부만 보임):** `cc.ProgressBar`는 fill 스프라이트(=`barSprite`)의 폭을 `totalLength × progress`로 그리고, fill의 **왼쪽 끝**부터 채운다(Mode HORIZONTAL). 따라서 Bar 자식은 **앵커 `(0, 0.5)`**(왼쪽 기준) + **위치를 부모 바의 왼쪽 끝**에 둔다(폭 W인 바는 로컬 x = −W/2). `totalLength`는 **코드가 매 프레임 바의 실제 폭으로 맞추므로**(`_updateXpInfo`) 에디터에서 손댈 필요 없다 — XP 바가 하단 풀폭이라 Widget 스트레치 폭을 따라가야 하기 때문이다(고정 px면 창 비율 변화 시 fill이 어긋남). HP 바는 고정폭(200)이라 무관하지만 같은 fill 규칙을 따른다.
 >
 > **XP 바 = 하단 엣지-투-엣지 풀폭(확정):** XpBar는 화면 맨 아래를 좌우 여백 없이 꽉 채운다 — Widget `Left=0·Right=0·Bottom=0` → 폭 = 디자인 해상도 **1280**. Bar(fill) 자식은 앵커 `(0,0.5)` + Position `X = −640`(= 1280 폭의 왼쪽 끝, −1280/2). `totalLength`는 코드가 1280으로 자동 세팅. (Bar 높이는 XpBar와 맞춰 12 권장.)
 
-### 4.2 placeholder 4종 (확정 — 자리만, 코드 배선 없음)
+### 4.2 placeholder 4종 (자리만, 코드 배선 없음 — 이름·정밀좌표는 사용자 재량)
 
-> 아래 노드는 `HudController`에 `@property`가 **없다**(코드 참조 없음). 순수 씬 노드로 앵커 지점만 잡는다. 이름은 권장값이며 자유롭게 정해도 된다.
+> **노드 이름은 예시일 뿐 실제 사용 명칭이 아니다 — 자유롭게 정한다.** 이들은 `HudController`에 `@property`가 **없어**(코드 참조 없음) 이름·좌표를 코드가 전혀 모른다. 여기서 확정된 건 **역할과 대략적 앵커 지점(어느 모서리에 두는가)**뿐이고, 정확한 px·크기는 에디터에서 눈으로 맞춘다. 부모는 전부 **HUD 노드**. 아래 표는 "이 역할을 이 모서리에" 수준의 참고값이다.
 
-> 부모는 전부 **HUD 노드**. Widget 앵커는 체크할 변 + 거리(px).
-
-| 노드 (부모) | 표현 | Widget 앵커 (체크 + 거리 px) | 비고 |
+| 역할 (예시 이름) | 표현 | Widget 앵커 (모서리 참고값) | 비고 |
 |---|---|---|---|
-| `MinimapPlaceholder` (HUD) | 정적 빈 사각형(테두리 + "MINIMAP" 라벨) | ☑Left=24 · ☑Top=24 | 기능 없음. v2/이월. |
-| `BossHpBarPlaceholder` (HUD) | 상단 중앙 바 모양, `active = false` 기본 | ☑Top=24 · ☑HorizontalCenter=0 (중앙) | v1 무보스 → 인게임에선 안 보임. v2 앵커 지점만. |
-| `MenuButtonPlaceholder` (HUD) | ≡ 버튼 모양(콜백 배선 없음) | ☑Right=24 · ☑Top=24 | 일시정지는 별도 슬라이스. 기존 게임오버 `menuButton`과 별개. |
-| `SkillGrid` (HUD) | 3×2 빈 슬롯 사각형 6칸 | ☑Right=24 · ☑Bottom=48 | 보유 마법 표시 자리. 데이터 바인딩·쿨다운 라디얼은 후속. |
+| 미니맵 (`Minimap…`) | 정적 빈 사각형(테두리 + "MINIMAP" 라벨) | 좌·상 (Left≈24 · Top≈24), 크기 ≈160×160 | 기능 없음. v2/이월. **아래 WaveLabel(Top 192)과 겹치지 않게** 하단 y≈184에서 끝남. |
+| 보스 HP 바 (`BossHpBar…`) | 상단 중앙 바 모양, `active = false` 기본 | 상단 중앙 (Top≈24 · HorizontalCenter=0), 폭 ≈640 | v1 무보스 → 인게임에선 안 보임. v2 앵커 지점만. |
+| 메뉴 버튼 (`MenuButton…`) | ≡ 버튼 모양(콜백 배선 없음) | 우·상 (Right≈24 · Top≈24), 36×36 | 일시정지는 별도 슬라이스. 기존 게임오버 `menuButton`과 별개. |
+| 스킬 그리드 (`SkillGrid…`) | 3×2 빈 슬롯 사각형 6칸 | 우·하 (Right≈24 · Bottom≈44), ≈136×88 | 보유 마법 표시 자리. HpBar(좌하)와 같은 하단 밴드, 좌우 반대편. 데이터 바인딩·쿨다운 라디얼은 후속. |
 
 ### 4.3 바 스프라이트 에셋 (확정)
 
