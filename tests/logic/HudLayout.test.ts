@@ -63,6 +63,14 @@ describe('formatNumber — 천단위 콤마 포맷', () => {
   it('음수는 부호를 보존한다 (-1234 → "-1,234")', () => {
     expect(formatNumber(-1234)).toBe('-1,234');
   });
+
+  it('0으로 내림되는 음수 소수는 "-0"이 아니라 "0"이다 (부호 가드)', () => {
+    expect(formatNumber(-0.5)).toBe('0');
+  });
+
+  it('음수 0은 "0"이다 (-0 → "0")', () => {
+    expect(formatNumber(-0)).toBe('0');
+  });
 });
 
 describe('barRatio — 0~1 채움 비율', () => {
