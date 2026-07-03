@@ -1,4 +1,4 @@
-import { _decorator, Button, Component, Label, Node, ProgressBar } from 'cc';
+import { _decorator, Button, Component, Label, Node, ProgressBar, UITransform } from 'cc';
 import { GameState } from '../data/GameTypes';
 import { barRatio, formatNumber, formatTimer } from '../logic/HudFormatLogic';
 import { ExperienceManager } from '../systems/ExperienceManager';
@@ -86,8 +86,15 @@ export class HudController extends Component {
     if (this.levelLabel) {
       this.levelLabel.string = this._t('hud.level', { level: em.level });
     }
-    // requiredXp가 Infinity(상한 도달)면 barRatio가 0을 반환해 바가 비워진다.
-    if (this.xpBar) this.xpBar.progress = barRatio(em.currentXp, em.requiredXp);
+    // XP 바는 하단 풀폭이라 Widget으로 폭이 늘어난다. ProgressBar.totalLength는
+    // 고정 px 값이라 스트레치를 안 따라가므로, 매 프레임 실제 UITransform 폭으로
+    // 맞춘 뒤 진행도를 세팅한다. (requiredXp가 Infinity면 barRatio가 0을 반환해
+    // 바가 비워진다.)
+    if (this.xpBar) {
+      const width = this.xpBar.node.getComponent(UITransform)?.contentSize.width;
+      if (width) this.xpBar.totalLength = width;
+      this.xpBar.progress = barRatio(em.currentXp, em.requiredXp);
+    }
   }
 
   /** 게임 상태 변경을 감지해 UI 패널을 전환한다. */
