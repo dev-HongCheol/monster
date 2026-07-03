@@ -89,13 +89,13 @@
 | 노드 (부모) | 타입/컴포넌트 | Widget 앵커 (체크 + 거리 px) | 크기 (UITransform) | 비고 |
 |---|---|---|---|---|
 | `HpBar` (HUD) | `cc.ProgressBar` (Mode=HORIZONTAL, Bar Sprite=흰 텍스처, 배경 노드에 `COLORS.BAR_BG` 톤) | ☑Left=24 · ☑Bottom=24 (Right/Top 끔) | 폭 ≈ 200 · 높이 ≈ 18 | `@property hpBar`에 연결. `barSprite`(Fill) 지정 필수 — 코드가 이 스프라이트를 틴트. 바 위 숫자 라벨(`hpLabel`) 병기 유지. |
-| `XpBar` (HUD) | `cc.ProgressBar` (Mode=HORIZONTAL, Bar Sprite=같은 흰 텍스처) | ☑Left=16 · ☑Right=16 · ☑Bottom=8 (Left+Right = 가로 풀폭 스트레치) | 높이 ≈ 12 (폭은 스트레치가 결정) | `@property xpBar`에 연결. `barSprite`(Fill) 지정 필수. 왼쪽에 `levelLabel`(`Lv.40`) 병기 유지. 분할(5칸) 룩은 범위 밖 — 단일 바. |
+| `XpBar` (HUD) | `cc.ProgressBar` (Mode=HORIZONTAL, Bar Sprite=같은 흰 텍스처) | ☑Left=0 · ☑Right=0 · ☑Bottom=0 (Left+Right = 가로 풀폭, **여백 0 = 화면 양 끝까지**) | 높이 ≈ 12 (폭은 스트레치가 결정, 디자인 1280) | `@property xpBar`에 연결. `barSprite`(Fill) 지정 필수. 왼쪽에 `levelLabel`(`Lv.40`) 병기 유지. 분할(5칸) 룩은 범위 밖 — 단일 바. **엣지-투-엣지 확정(2026-07-03 사용자): 아래 영역을 좌우 여백 없이 꽉 채운다.** |
 | `WaveLabel` (HUD) | `cc.Label` (기존, 좌상 재배치) | ☑Left=24 · ☑Top=24 | 라벨 자동 | 기존 `waveLabel`. `hud.wave`. 미니맵 placeholder 아래. |
 | `TimerLabel` (HUD) | `cc.Label` (기존, 좌상 재배치) | ☑Left=24 · ☑Top≈56 (웨이브 라벨 아래) | 라벨 자동 | 기존 `timerLabel`. `formatTimer`로 `mm:ss` 카운트다운. |
 
 > **ProgressBar Bar(fill) 자식 설정 (필수 — 안 맞으면 fill이 중앙에 일부만 보임):** `cc.ProgressBar`는 fill 스프라이트(=`barSprite`)의 폭을 `totalLength × progress`로 그리고, fill의 **왼쪽 끝**부터 채운다(Mode HORIZONTAL). 따라서 Bar 자식은 **앵커 `(0, 0.5)`**(왼쪽 기준) + **위치를 부모 바의 왼쪽 끝**에 둔다(폭 W인 바는 로컬 x = −W/2). `totalLength`는 **코드가 매 프레임 바의 실제 폭으로 맞추므로**(`_updateXpInfo`) 에디터에서 손댈 필요 없다 — XP 바가 하단 풀폭이라 Widget 스트레치 폭을 따라가야 하기 때문이다(고정 px면 창 비율 변화 시 fill이 어긋남). HP 바는 고정폭(200)이라 무관하지만 같은 fill 규칙을 따른다.
 >
-> **XP 바 = 하단 풀폭(디자인 넓이):** XpBar는 화면 맨 아래에서 디자인 해상도 폭(1280−좌우여백)으로 깐다. 현재 Left+Right 스트레치가 디자인 해상도(1280)에서 폭 1248을 만든다. Bar 자식 왼쪽 끝은 그 폭 기준 로컬 x = −624.
+> **XP 바 = 하단 엣지-투-엣지 풀폭(확정):** XpBar는 화면 맨 아래를 좌우 여백 없이 꽉 채운다 — Widget `Left=0·Right=0·Bottom=0` → 폭 = 디자인 해상도 **1280**. Bar(fill) 자식은 앵커 `(0,0.5)` + Position `X = −640`(= 1280 폭의 왼쪽 끝, −1280/2). `totalLength`는 코드가 1280으로 자동 세팅. (Bar 높이는 XpBar와 맞춰 12 권장.)
 
 ### 4.2 placeholder 4종 (확정 — 자리만, 코드 배선 없음)
 
