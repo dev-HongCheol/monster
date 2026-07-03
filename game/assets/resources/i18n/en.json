@@ -11,7 +11,7 @@
   "gameover.restart": "RESTART",
   "gameover.menu": "MENU",
 
-  "hud.hp": "HP: {cur} / {max}",
+  "hud.hp": "{cur}",
   "hud.wave": "Wave {wave}",
   "hud.timer": "{time}",
   "hud.level": "Lv.{level}",

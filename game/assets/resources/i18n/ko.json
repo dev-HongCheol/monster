@@ -20,9 +20,9 @@
   "gameover.menu": { "message": "MENU", "desc": "게임오버 패널 메뉴로 버튼" },
 
   "hud.hp": {
-    "message": "HP: {cur} / {max}",
-    "desc": "HUD 체력 라벨 (현재/최대)",
-    "params": ["cur", "max"]
+    "message": "{cur}",
+    "desc": "HUD 체력 라벨 (현재 HP 숫자만 — 바 위 중앙 오버레이)",
+    "params": ["cur"]
   },
   "hud.wave": { "message": "Wave {wave}", "desc": "HUD 현재 웨이브 번호", "params": ["wave"] },
   "hud.timer": {

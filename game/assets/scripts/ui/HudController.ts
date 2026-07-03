@@ -61,7 +61,6 @@ export class HudController extends Component {
     const gm = GameManager.instance;
     this.hpLabel.string = this._t('hud.hp', {
       cur: formatNumber(Math.ceil(gm.playerHp)),
-      max: formatNumber(gm.maxPlayerHp),
     });
     if (this.hpBar) this.hpBar.progress = barRatio(gm.playerHp, gm.maxPlayerHp);
   }
