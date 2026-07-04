@@ -1,8 +1,8 @@
 {
-  "feature": "hud-layout",
+  "feature": "death-flow",
   "phase": "user-verification",
-  "test_skipped": false,
-  "test_skip_reason": null,
+  "test_skipped": true,
+  "test_skip_reason": "죽음 연출 seam은 Cocos tween·Node·scheduleOnce·director.loadScene 의존 — 결정적 순수 로직 없음",
   "verification": {
     "cso_done": true,
     "ts_check_clean": true,
