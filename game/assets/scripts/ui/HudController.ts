@@ -29,7 +29,7 @@ export class HudController extends Component {
 
   // 필수 프로퍼티 검증 → 카드 패널 숨김 초기화 → 바 색을 테마에서 적용
   onLoad() {
-    if (!this.hpLabel) {
+    if (!this.hpLabel || !this.hpBar) {
       console.error('[HudController] required properties not assigned');
       this.enabled = false;
       return;
