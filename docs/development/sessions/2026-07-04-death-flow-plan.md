@@ -6,6 +6,7 @@
 - **닫는 백로그 항목:** [F26] 사망→게임오버 연출 (바가 0으로 비는 비트 없이 result 씬 직행 + `gameOverPanel` 죽은 코드 + `HudController` executionOrder 부재)
 - **office-hours 결정:** Approach A(죽음 비트 + 정리) — 결정 로그 `f1659861`
 - **설계 개정(2026-07-04):** 죽음 비트를 지속 타이머 필드 → 엔진 `scheduleOnce` 위임으로 변경. `GameManager`에 지속 상태(mutable field)를 추가하지 않고, 순수 로직 모듈(`DeathFlowLogic`)도 없앤다(테스트 거리만 위해 뺐던 코드 제거).
+- **설계 개정(2026-07-05):** 죽음 비트를 "빈 정지 0.8초"에서 **연출 seam**으로 재설계. `scheduleOnce`만으로는 화면이 아무 움직임 없이 얼어붙어 렉/행처럼 보였다(사용자 인게임 피드백). flow(언제 씬을 넘길지)와 presentation(그 틈에 무엇이 보일지)을 분리해, `GameManager`는 `DeathSequence.play(onComplete)` 하나만 알고 연출은 별도 컴포넌트(`ui/DeathSequence`)가 소유한다. 지금은 가장 간단한 연출(오버레이 페이드) 하나만 꽂고, 플래시·셰이크·슬로모 등 나머지는 백로그로 미룬다 — 연출을 바꿔도 `GameManager`는 불변이다.
 
 ---
 
@@ -27,29 +28,32 @@
 
 ## 3. 설계
 
-### 3.1 죽음 비트 (엔진 스케줄러에 위임)
+### 3.1 죽음 비트 (연출 seam — flow와 presentation 분리)
 
-`GameManager`는 "죽었다"는 상태만 바꾸고, 0.8초 뒤 결과 씬 로드는 엔진 스케줄러(`Component.scheduleOnce`)에 던진다. 지속 타이머 필드나 `update` 카운트다운을 두지 않는다 — 게임 상태·HP를 관리하는 클래스에 연출 타이밍용 가변 상태를 얹지 않기 위해서다.
+죽음 비트를 두 관심사로 가른다. **flow**(언제 result 씬으로 넘길지)는 `GameManager`가, **presentation**(그 틈에 무엇이 보일지)은 별도 `DeathSequence` 컴포넌트가 소유한다. `GameManager`는 연출이 무엇인지·얼마나 긴지 모르고 `play(onComplete)` 하나만 안다. 그래서 나중에 연출을 페이드에서 플래시·셰이크·슬로모·사망 애니로 바꿔도 `DeathSequence`만 손대면 되고 `GameManager`는 불변이다.
 
-- 상수 `DEATH_BEAT_SEC = 0.8`(placeholder, 튜닝 노브)만 추가한다. 새 필드는 없다.
-- `_applyDamage`에서 HP가 0 이하가 되면 `GameResult.waveReached`를 기록하고 `state = GameOver`로 바꾼 뒤, **즉시 `goToResult()`를 부르던 줄을 `scheduleOnce`로 지연시킨다.**
+`_applyDamage`에서 HP가 0 이하가 되면 `GameResult.waveReached`를 기록하고 `state = GameOver`로 바꾼 뒤 `_startDeathSequence()`를 부른다. 이 메서드는 연출이 배선돼 있으면 그쪽에 위임하고, 없으면 `scheduleOnce` 폴백(빈 정지)을 쓴다. 상수 `DEATH_BEAT_SEC = 0.8`은 이제 **폴백 전용**이고, 실제 비트 길이는 `DeathSequence.fadeSec`가 소유한다.
 
 ```ts
-private _applyDamage(amount: number): void {
-  this._playerHp = Math.max(0, this._playerHp - amount);
-  if (this._playerHp <= 0) {
-    GameResult.waveReached = WaveManager.instance.waveNumber;
-    this._state = GameState.GameOver;
-    this.scheduleOnce(() => this.goToResult(), DEATH_BEAT_SEC);
-  }
+// GameManager — flow만.
+private _startDeathSequence(): void {
+  const done = () => this.goToResult();
+  if (this.deathSequence) this.deathSequence.play(done);  // 연출이 타이밍 소유
+  else this.scheduleOnce(done, DEATH_BEAT_SEC);           // 미배선 폴백
+}
+```
+```ts
+// DeathSequence(ui/) — presentation. 지금 연출 = 오버레이 페이드 하나.
+play(onComplete: () => void): void {
+  // overlay(풀스크린 검은 Sprite)의 UIOpacity를 fadeSec에 걸쳐 0→255로 tween → onComplete
 }
 ```
 
-`state = GameOver`가 되는 순간 모든 게임 시스템(적·발사체·스포너·웨이브·`GameManager.update`의 피해 틱)이 각자의 `Playing` 가드로 멈춘다. `HudController.update`만 상태 가드가 없어 계속 돌며 빈 HP 바(`barRatio(0, maxHp) = 0`)를 여러 프레임 그린다. 즉 전장이 멈춘 채 빈 바만 남는 "죽음의 정지" 순간이 0.8초간 유지되고, 그 뒤 스케줄러가 `goToResult()`를 불러 결과 씬을 로드한다.
+`state = GameOver`가 되는 순간 모든 게임 시스템(적·발사체·스포너·웨이브·`GameManager.update`의 피해 틱)이 각자의 `Playing` 가드로 멈춘다. `HudController.update`만 상태 가드가 없어 계속 돌며 빈 HP 바(`barRatio(0, maxHp) = 0`)를 그린다. 그 정지 위에 오버레이가 서서히 어두워지는 페이드가 겹쳐, 전장이 멈춘 채 화면이 어두워지는 순간이 `fadeSec`(기본 0.8초)간 흐른 뒤 `onComplete`가 `goToResult()`를 불러 result 씬을 로드한다.
 
-이 방식이 **지속 상태를 0개 추가**하는 게 핵심이다. 손수 만든 타이머-필드 방식이었다면 후속으로 승리 비트·페이드 등이 생길 때마다 `GameManager`에 `_victoryBeatTimer` 같은 필드가 누적됐겠지만, fire-and-forget 스케줄러 호출은 후속 전이도 같은 한 줄로 끝나 필드가 쌓이지 않는다. 씬 플로우(`goToResult`·`restart`·`goToMenu`)는 원래 `GameManager` 소관이므로, 그 전이에 딜레이를 다는 것도 같은 책임 범위 안이다(연출 로직을 UI에서 끌어오는 게 아니다).
+**렉 느낌의 원인과 해소:** 이전 설계는 GameOver로 전환된 순간 화면이 완전히 얼어붙기만 했다 — 완전 정지 프레임은 렉/행과 시각적으로 구분되지 않아 "죽음의 무게"가 아니라 "버벅임"으로 읽혔다. 정지 위에 지속적으로 변하는 모션(페이드)을 겹치면 같은 0.8초가 "정지"가 아니라 "전환"으로 읽힌다. 이것이 이번 개정의 핵심이고, 페이드는 그 최소 구현이다(더 강한 연출은 §6 백로그).
 
-**전제:** freeze를 `director.pause()`가 아니라 시스템별 상태 가드로 구현하는 현 구조라 `scheduleOnce`는 정상 시간으로 흐른다. `_applyDamage`는 `state === Playing`에서만 도달하는 경로(피해 제출·틱이 모두 Playing 가드 뒤)라 GameOver 진입 후 재진입이 없어 중복 스케줄 걱정도 없다. (구현 시 `scheduleOnce` 시그니처는 Context7로 Cocos 3.8 공식 문서 확인 후 확정.)
+**전제:** freeze를 `director.pause()`가 아니라 시스템별 상태 가드로 구현하는 현 구조라 `scheduleOnce`·tween은 정상 시간으로 흐른다. `_applyDamage`는 `state === Playing`에서만 도달하는 경로(피해 제출·틱이 모두 Playing 가드 뒤)라 GameOver 진입 후 재진입이 없고, `DeathSequence.play`도 `_playing` 가드로 중복 재생을 막는다. tween/UIOpacity API는 Context7로 Cocos 3.8 공식 문서 확인 완료(`tween(uiOpacity).to(sec, { opacity }).call(cb).start()`).
 
 ### 3.2 HudController executionOrder
 
@@ -72,23 +76,30 @@ private _applyDamage(amount: number): void {
 
 | 파일 | 변경 |
 |------|------|
-| `systems/GameManager.ts` | `DEATH_BEAT_SEC` 상수 추가, `_applyDamage`에서 즉시 `goToResult` → `scheduleOnce(() => goToResult, DEATH_BEAT_SEC)`로 지연. 새 필드·`update` 분기 없음 |
+| `ui/DeathSequence.ts` (신규) | 죽음 연출 컴포넌트. `play(onComplete)`가 `overlay`(풀스크린 검은 Sprite)의 UIOpacity를 `fadeSec`에 걸쳐 0→255로 tween한 뒤 콜백. 오버레이 미배선 시 `scheduleOnce` 폴백, `_playing` 중복 재생 가드 |
+| `systems/GameManager.ts` | `@property deathSequence` 추가, `DEATH_BEAT_SEC`는 폴백 전용으로 의미 변경. `_applyDamage`가 즉시 `goToResult` 대신 `_startDeathSequence()` 호출 — 연출 배선 시 위임, 아니면 `scheduleOnce` 폴백. 새 상태 필드·`update` 분기 없음 |
 | `ui/HudController.ts` | `@executionOrder(100)`, `gameOverPanel`/`restartButton`/`menuButton` 및 관련 배선·`_onRestart`·`_onMenu` 제거, `onLoad` 가드·`_handleStateChange` 정리 |
-| (씬, 사용자) `main.scene` | `GameOverPanel` 노드 트리 제거 (7단계) |
+| (씬, 사용자) `main.scene` | `GameOverPanel` 노드 트리 제거 + **`DeathOverlay` 노드 신설**(풀스크린 검은 Sprite) + `DeathSequence` 컴포넌트 배치·배선 (7단계) |
 
 ## 5. 테스트 전략
 
-이번 변경은 전부 Cocos 프레임워크에 의존한다 — `scheduleOnce`(엔진 스케줄러)·`director.loadScene`(씬 로드)·`@executionOrder`(렌더 순서)·씬 노드 제거로, 결정적으로 테스트할 순수 로직 파일이 없다. 따라서 `pnpm wf skip-test "죽음 비트는 엔진 scheduleOnce + 씬 로드로 구현돼 순수 로직 없음"`으로 피처 테스트를 스킵한다. 기존 전체 스위트는 GREEN 유지 여부만 확인한다.
+이번 변경은 전부 Cocos 프레임워크에 의존한다 — `DeathSequence`의 `tween`/`UIOpacity`(오버레이 페이드)·`scheduleOnce`(폴백)·`director.loadScene`(씬 로드)·`@executionOrder`(렌더 순서)·씬 노드 조작으로, 결정적으로 테스트할 순수 로직 파일이 없다. seam 분기(`deathSequence ? play : scheduleOnce`)도 trivial한 배선이라 순수 모듈로 뺄 거리가 아니다. 따라서 `pnpm wf skip-test`으로 피처 테스트를 스킵하고, 기존 전체 스위트는 GREEN 유지 여부만 확인한다.
 
-죽음 비트의 실제 프리즈·씬 로드 타이밍, `executionOrder` 반영, 씬 노드 제거는 7단계 수동 인게임 테스트로 검증한다(QA 문서 체크리스트).
+죽음 비트의 실제 페이드·씬 로드 타이밍, `executionOrder` 반영, 씬 노드 조작은 7단계 수동 인게임 테스트로 검증한다(QA 문서 체크리스트).
 
-## 6. 스코프 밖 (OUT)
+## 6. 스코프 (IN / OUT)
 
-- **승리(Victory) 비트:** `gameTimer`가 0이 되는 승리 경로는 "바가 비는" 문제가 없어 지금처럼 즉시 `goToResult()`를 유지한다. 대칭 연출이 필요하면 후속으로 같은 `scheduleOnce` 패턴을 재사용할 수 있다(백로그 후보).
-- **페이드/암전 트랜지션:** 비트를 빈 바만으로 둔다. 검은 오버레이 페이드아웃(씬 로드 플래시까지 덮는)은 별도 오버레이 노드가 필요해 UI 완성도 슬라이스(J4)로 미룬다.
+**이번에 IN:** 연출 seam(`DeathSequence`) + 가장 간단한 연출 하나 — 오버레이 페이드. 정지 위에 화면이 어두워지는 모션을 겹쳐 렉 느낌을 없애는 최소 구현이다.
+
+**OUT (백로그로 — 전부 `DeathSequence` 안에서 layering하며 `GameManager`는 불변):**
+
+- **더 강한 죽음 연출:** 순간 붉은 플래시(t=0 펀치)·카메라 셰이크·슬로모션(전역 타임스케일 — 시스템 관여 필요)·채도 감소(그레이스케일)·플레이어 사망 애니메이션. 페이드로 렉 느낌은 이미 해소되므로 이들은 "필(feel) 강화"로 뒤로 미룬다.
+- **씬 로드 플래시 가리기:** 오버레이는 `director.loadScene` 시 현재 씬과 함께 파괴돼 로드 순간의 플래시까지는 덮지 못한다. 오버레이를 씬 로드 너머까지 유지(persist)하거나 result 씬을 검은 화면에서 페이드인하는 것은 별도 작업으로 미룬다.
+- **승리(Victory) 비트:** `gameTimer`가 0이 되는 승리 경로는 "바가 비는" 문제가 없어 지금처럼 즉시 `goToResult()`를 유지한다. 대칭 연출이 필요하면 같은 seam(`DeathSequence`/후속 `VictorySequence`)을 재사용한다(백로그 후보).
 - **인게임 게임오버 패널 승격(Approach C):** result 씬을 대체하는 인게임 오버레이는 씬 재구조화·승패 UI 분기 위험으로 이번 스코프에서 제외(office-hours에서 기각).
 
 ## 7. Impact Map (회귀 기준)
 
-- `GameManager._applyDamage`: 사망 시 즉시 씬 로드 → `scheduleOnce`로 0.8초 뒤 로드. **회귀 확인:** 죽으면 약 0.8초 후 result 씬에 도달하는가, 그 사이 전장이 멈춘 채 HP 바가 0으로 비는가. 승리(`gameTimer` 0) 경로는 즉시 로드 유지 확인.
+- `GameManager._applyDamage` → `_startDeathSequence`: 사망 시 즉시 씬 로드 → 연출(`DeathSequence.play`)에 위임 후 콜백에서 로드(미배선이면 `scheduleOnce` 폴백). **회귀 확인:** 죽으면 약 0.8초에 걸쳐 화면이 어두워진 뒤 result 씬에 도달하는가, 그 사이 전장이 멈춘 채 HP 바가 0으로 비는가. 승리(`gameTimer` 0) 경로는 즉시 로드 유지 확인.
+- `DeathSequence`(신규): 오버레이 페이드 + 콜백. **회귀 확인:** 오버레이가 0→불투명으로 부드럽게 어두워지는가, 페이드 종료와 동시에 씬이 넘어가는가, 오버레이 미배선 시에도(폴백) 크래시 없이 전환되는가.
 - `HudController`: executionOrder + 죽은 코드 제거. **회귀 확인:** HP/XP/웨이브/레벨 레이블·바 정상, 레벨업 카드 패널 전환 정상, 게임오버 패널 제거 후 이상 없음.
