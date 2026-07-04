@@ -24,7 +24,7 @@
 
 - **파일:** `ui/HudController.ts:32` (onLoad 가드)
 - **지적:** 가드가 `if (!this.hpLabel)`로 줄었는데, 이 슬라이스의 핵심 시각 요소는 **HP 바**다. `hpBar` 미배선 시 `_updateHp`의 `if (this.hpBar)`가 조용히 no-op이 되어 죽음 비트가 안 보이는데도 "required properties not assigned" 에러가 안 뜬다. 회귀는 아니나(기존에도 3개만 검증) diff가 바로 이 줄을 건드리고 `hpBar`가 기능의 load-bearing 요소가 됐으므로 가드에 추가 권장.
-- **조치:** `if (!this.hpLabel || !this.hpBar)`로 수정. (커밋: death-flow 리뷰 반영)
+- **조치:** `if (!this.hpLabel || !this.hpBar)`로 수정 (커밋 `311ba0e`). 재리뷰(같은 리뷰어) 확정: "M1 closed correctly, no new inconsistency, Ready to merge: Yes" — 나머지 `hpBar` 널가드(`:40`·`:64`)는 무해한 방어 코드로 모순 없음.
 
 ---
 
