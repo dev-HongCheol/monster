@@ -17,6 +17,9 @@ const GRID_CELL_SIZE = 128;
 /** 플레이어 피격 틱 = 무적 창 길이 T(sec). placeholder — 짧을수록 어려움, 밸런싱 노브(§i-frame). */
 const PLAYER_HIT_TICK_SEC = 0.5;
 
+/** 사망 후 result 씬으로 넘기기 전 죽음 비트(전장 정지 + 빈 HP 바) 길이(sec). placeholder — 연출 튜닝 노브. */
+const DEATH_BEAT_SEC = 0.8;
+
 /** 게임 전체 상태와 플레이어 HP를 관리하는 싱글톤 */
 @ccclass('GameManager')
 export class GameManager extends Component {
@@ -206,13 +209,19 @@ export class GameManager extends Component {
     if (r.applied > 0) this._applyDamage(r.applied);
   }
 
-  /** HP에서 피해를 깎고 0 이하면 GameOver 상태로 전환 후 result 씬으로 이동한다. */
+  /**
+   * HP에서 피해를 깎고 0 이하면 GameOver 상태로 전환한다. 곧바로 씬을 로드하지 않고
+   * DEATH_BEAT_SEC만큼의 죽음 비트를 둔다 — GameOver로 전환되면 모든 게임 시스템이 각자의
+   * Playing 가드로 멈추고 HudController가 빈 HP 바를 계속 그려, 전장이 멈춘 채 빈 바만 남는
+   * 순간이 잠깐 유지된 뒤 scheduleOnce가 result 씬을 로드한다(연출 타이밍을 엔진 스케줄러에
+   * 위임 — 지속 타이머 필드를 두지 않는다).
+   */
   private _applyDamage(amount: number): void {
     this._playerHp = Math.max(0, this._playerHp - amount);
     if (this._playerHp <= 0) {
       GameResult.waveReached = WaveManager.instance.waveNumber;
       this._state = GameState.GameOver;
-      this.goToResult();
+      this.scheduleOnce(() => this.goToResult(), DEATH_BEAT_SEC);
     }
   }
 

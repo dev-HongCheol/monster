@@ -1,4 +1,4 @@
-import { _decorator, Button, Component, Label, Node, ProgressBar, UITransform } from 'cc';
+import { _decorator, Component, Label, Node, ProgressBar, UITransform } from 'cc';
 import { GameState } from '../data/GameTypes';
 import { barRatio, formatNumber, formatTimer } from '../logic/HudFormatLogic';
 import { ExperienceManager } from '../systems/ExperienceManager';
@@ -7,10 +7,15 @@ import { I18n } from '../systems/I18n';
 import { WaveManager } from '../systems/WaveManager';
 import { COLORS } from './Theme';
 
-const { ccclass, property } = _decorator;
+const { ccclass, executionOrder, property } = _decorator;
 
-/** HP·XP 바, 웨이브 타이머, 게임오버/웨이브클리어 패널을 관리하는 UI 컴포넌트 */
+/**
+ * HP·XP 바, 웨이브 타이머, 레벨업 카드 선택 패널을 관리하는 UI 컴포넌트.
+ * HUD가 게임 로직 뒤에 돌아 매 프레임 최신 상태(HP 포함)를 읽도록 executionOrder를 뒤로 미룬다
+ * (GameManager는 기본 0 — 작을수록 먼저 실행). 게임오버는 별도 result 씬으로 처리한다.
+ */
 @ccclass('HudController')
+@executionOrder(100)
 export class HudController extends Component {
   @property(Label) hpLabel: Label | null = null;
   @property(Label) waveLabel: Label | null = null;
@@ -18,24 +23,18 @@ export class HudController extends Component {
   @property(Label) levelLabel: Label | null = null;
   @property(ProgressBar) hpBar: ProgressBar | null = null;
   @property(ProgressBar) xpBar: ProgressBar | null = null;
-  @property(Node) gameOverPanel: Node | null = null;
-  @property(Button) restartButton: Button | null = null;
-  @property(Button) menuButton: Button | null = null;
   @property(Node) cardSelectPanel: Node | null = null;
 
   private _prevState: GameState = GameState.Playing;
 
-  // 필수 프로퍼티 검증 → 패널 숨김 초기화 → 버튼 콜백 배선 → 바 색을 테마에서 적용
+  // 필수 프로퍼티 검증 → 카드 패널 숨김 초기화 → 바 색을 테마에서 적용
   onLoad() {
-    if (!this.hpLabel || !this.gameOverPanel || !this.restartButton) {
+    if (!this.hpLabel) {
       console.error('[HudController] required properties not assigned');
       this.enabled = false;
       return;
     }
-    this.gameOverPanel.active = false;
     if (this.cardSelectPanel) this.cardSelectPanel.active = false;
-    this.restartButton.node.on(Button.EventType.CLICK, this._onRestart, this);
-    this.menuButton?.node.on(Button.EventType.CLICK, this._onMenu, this);
 
     // 바 채움 색을 테마 단일 출처에서 적용 — 에디터의 흰 스프라이트를 코드가 틴트한다.
     if (this.hpBar?.barSprite) this.hpBar.barSprite.color = COLORS.HP_FILL;
@@ -96,29 +95,16 @@ export class HudController extends Component {
     }
   }
 
-  /** 게임 상태 변경을 감지해 UI 패널을 전환한다. */
+  /** 게임 상태 변경을 감지해 레벨업 카드 선택 패널을 전환한다. (게임오버는 별도 result 씬으로 처리) */
   private _handleStateChange(): void {
     const state = GameManager.instance.state;
     if (state === this._prevState) return;
     this._prevState = state;
 
-    if (state === GameState.GameOver) {
-      if (this.gameOverPanel) this.gameOverPanel.active = true;
-    } else if (state === GameState.LevelUp) {
+    if (state === GameState.LevelUp) {
       if (this.cardSelectPanel) this.cardSelectPanel.active = true;
     } else if (state === GameState.Playing) {
-      if (this.gameOverPanel) this.gameOverPanel.active = false;
       if (this.cardSelectPanel) this.cardSelectPanel.active = false;
     }
-  }
-
-  /** 재시작 버튼 콜백. */
-  private _onRestart(): void {
-    GameManager.instance.restart();
-  }
-
-  /** 메뉴 버튼 콜백. */
-  private _onMenu(): void {
-    GameManager.instance.goToMenu();
   }
 }
