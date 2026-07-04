@@ -1,9 +1,10 @@
-import { _decorator, Component, director } from 'cc';
+import { _decorator, Component, director, warn } from 'cc';
 import type { EnemyController } from '../components/EnemyController';
 import { GameResult, GameState } from '../data/GameTypes';
 import type { ExplosionTarget } from '../logic/ExplosionLogic';
 import { accumulateDamage, contactDamagePerTick, tickDamage } from '../logic/PlayerDamageLogic';
 import { enemyQueryRadius, SpatialGrid } from '../logic/SpatialGrid';
+import { DeathSequence } from '../ui/DeathSequence';
 import { DataManager } from './DataManager';
 import { DeckManager } from './DeckManager';
 import { ExperienceManager } from './ExperienceManager';
@@ -17,6 +18,9 @@ const GRID_CELL_SIZE = 128;
 /** 플레이어 피격 틱 = 무적 창 길이 T(sec). placeholder — 짧을수록 어려움, 밸런싱 노브(§i-frame). */
 const PLAYER_HIT_TICK_SEC = 0.5;
 
+/** DeathSequence 미배선 시 폴백으로 쓰는 죽음 비트 길이(sec). 실제 연출·타이밍은 DeathSequence가 소유한다. */
+const DEATH_BEAT_SEC = 0.8;
+
 /** 게임 전체 상태와 플레이어 HP를 관리하는 싱글톤 */
 @ccclass('GameManager')
 export class GameManager extends Component {
@@ -24,6 +28,9 @@ export class GameManager extends Component {
 
   /** 전체 게임 제한 시간 (sec). 0이 되면 승리 */
   @property gameDuration: number = 900;
+
+  /** 사망 시 죽음 비트 연출(오버레이 페이드). 미배선이면 DEATH_BEAT_SEC 폴백. 연출 교체는 이 컴포넌트만 손댄다. */
+  @property(DeathSequence) deathSequence: DeathSequence | null = null;
 
   private _state: GameState = GameState.Playing;
   private _playerHp: number = 0;
@@ -206,13 +213,34 @@ export class GameManager extends Component {
     if (r.applied > 0) this._applyDamage(r.applied);
   }
 
-  /** HP에서 피해를 깎고 0 이하면 GameOver 상태로 전환 후 result 씬으로 이동한다. */
+  /**
+   * HP에서 피해를 깎고 0 이하면 GameOver 상태로 전환한 뒤 죽음 비트를 재생한다. 곧바로 씬을
+   * 로드하지 않고 _startDeathSequence에 넘긴다 — GameOver로 전환되면 모든 게임 시스템이 각자의
+   * Playing 가드로 멈추고 HudController가 빈 HP 바를 계속 그려, 전장이 멈춘 채 빈 바만 남는
+   * 순간에 연출(페이드)이 겹쳐 흐른 뒤 result 씬이 로드된다.
+   */
   private _applyDamage(amount: number): void {
     this._playerHp = Math.max(0, this._playerHp - amount);
     if (this._playerHp <= 0) {
       GameResult.waveReached = WaveManager.instance.waveNumber;
       this._state = GameState.GameOver;
-      this.goToResult();
+      this._startDeathSequence();
+    }
+  }
+
+  /**
+   * 죽음 비트를 재생한 뒤 result 씬으로 넘긴다. 연출(DeathSequence)이 배선돼 있으면 표현·타이밍을
+   * 그쪽에 위임하고(GameManager는 flow만 안다 — 연출을 바꿔도 이 클래스는 불변), 없으면
+   * DEATH_BEAT_SEC만큼 지연 후 전환하는 폴백을 쓴다.
+   */
+  private _startDeathSequence(): void {
+    const done = () => this.goToResult();
+    if (this.deathSequence) {
+      this.deathSequence.play(done);
+    } else {
+      // 미배선이면 연출 없이 정적 프리즈로 폴백된다 — 세팅 실수가 조용히 묻히지 않도록 경고한다.
+      warn('[GameManager] deathSequence 미배선 — 죽음 비트가 정적 프리즈로 폴백됩니다.');
+      this.scheduleOnce(done, DEATH_BEAT_SEC);
     }
   }
 
