@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, tween, UIOpacity } from 'cc';
+import { _decorator, Component, Node, tween, UIOpacity, warn } from 'cc';
 
 const { ccclass, property } = _decorator;
 
@@ -23,6 +23,10 @@ export class DeathSequence extends Component {
       this._overlayOpacity =
         this.overlay.getComponent(UIOpacity) ?? this.overlay.addComponent(UIOpacity);
       if (this._overlayOpacity) this._overlayOpacity.opacity = 0;
+    } else {
+      // 미배선이면 죽음 비트가 정적 프리즈로 폴백된다(연출 안 보임 = 이 슬라이스가 없애려던 렉 느낌).
+      // 7단계 에디터 세팅 실수가 조용히 묻히지 않도록 로드 시점에 경고한다.
+      warn('[DeathSequence] overlay 미배선 — 죽음 비트가 정적 프리즈로 폴백됩니다(연출 안 보임).');
     }
   }
 

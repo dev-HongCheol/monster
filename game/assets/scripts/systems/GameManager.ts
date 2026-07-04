@@ -1,4 +1,4 @@
-import { _decorator, Component, director } from 'cc';
+import { _decorator, Component, director, warn } from 'cc';
 import type { EnemyController } from '../components/EnemyController';
 import { GameResult, GameState } from '../data/GameTypes';
 import type { ExplosionTarget } from '../logic/ExplosionLogic';
@@ -235,8 +235,13 @@ export class GameManager extends Component {
    */
   private _startDeathSequence(): void {
     const done = () => this.goToResult();
-    if (this.deathSequence) this.deathSequence.play(done);
-    else this.scheduleOnce(done, DEATH_BEAT_SEC);
+    if (this.deathSequence) {
+      this.deathSequence.play(done);
+    } else {
+      // 미배선이면 연출 없이 정적 프리즈로 폴백된다 — 세팅 실수가 조용히 묻히지 않도록 경고한다.
+      warn('[GameManager] deathSequence 미배선 — 죽음 비트가 정적 프리즈로 폴백됩니다.');
+      this.scheduleOnce(done, DEATH_BEAT_SEC);
+    }
   }
 
   /** 레벨업으로 카드 선택을 위해 게임을 일시정지(LevelUp) 상태로 전환한다. */
