@@ -74,7 +74,7 @@ SpellCaster.instance.loadout.spells   (보유 마법 id[] — 이미 public gett
 
 [변경] ui/HudController.ts
   - @property(Prefab) spellSlotPrefab            (슬롯 1칸 프리팹)
-  - @property(Node)   spellSlotContainer         (슬롯들이 붙는 부모, 가로 레이아웃)
+  - @property(Node)   spellSlotContainer         (슬롯들이 붙는 부모, 3×2 그리드 레이아웃)
   - onLoad: MAX_SLOTS개 슬롯 인스턴스화 + 초기 빌드
   - _handleStateChange: LevelUp→Playing 전환 시 _rebuildSpellRow() (카드 픽에서만 변함 → 프레임 폴링 불필요)
   - _rebuildSpellRow(): buildSpellIconRow(...) 결과를 슬롯 노드에 매핑
@@ -88,7 +88,7 @@ SpellCaster.instance.loadout.spells   (보유 마법 id[] — 이미 public gett
 ### 4.5 노드 구조 (씬 — 7단계 에디터)
 
 - 슬롯 프리팹 1종: 분류색 Sprite(placeholder 박스) + 티어 Label + 빈칸용 테두리. HUD가 `MAX_SLOTS`개 복제.
-- 슬롯 컨테이너: 가로 배치(Layout), hud-layout 목업(`docs/decisions/hud-layout.html`)의 스킬 그리드 자리.
+- 슬롯 컨테이너: **3×2 그리드 배치**(cc.Layout GRID, 3열 고정), hud-layout 목업(`docs/decisions/hud-layout.html`)의 스킬 그리드 자리(우하단). *(정정 2026-07-05: 초안의 "가로 한 줄"은 오기획 — 목업이 3열×2줄 그리드이므로 그리드로 확정.)*
 
 ## 5. 리뷰 요약 (autoplan 집중 리뷰 — Codex 미설치, 단일 리뷰어 + 사용자 조정)
 
@@ -116,7 +116,7 @@ SpellCaster.instance.loadout.spells   (보유 마법 id[] — 이미 public gett
 - wf 파일명 규칙: 피처 PascalCase = `SpellIconRow` ([[project_wf_test_filename]]).
 
 ## 7. QA·에디터 (7단계용 — 상세는 qa 문서)
-- 신규 슬롯 프리팹(분류색 Sprite + 티어 Label + 빈칸 테두리) 제작 + 슬롯 컨테이너(가로 Layout) 배치 + `HudController.spellSlotPrefab`·`spellSlotContainer` 연결.
+- 신규 슬롯 프리팹(분류색 Sprite + 티어 Label + 빈칸 테두리) 제작 + 슬롯 컨테이너(3×2 그리드 Layout, 우하단) 배치 + `HudController.spellSlotPrefab`·`spellSlotContainer` 연결.
 - 인게임: 시작 시 6칸 중 1칸에 파이어볼 F1 + 5칸 빈 프레임 → 마법 추가 픽 → 티어순으로 칸 채워지고 분류색·티어 라벨 구분 확인 → `MAX_SLOTS` 값 변경 시 칸 수 변화 확인(선택).
 
 ## 8. 열어 두는 후속 (백로그 반영)
