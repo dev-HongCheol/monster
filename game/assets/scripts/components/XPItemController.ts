@@ -1,4 +1,6 @@
 import { _decorator, Component, Node, Vec3 } from 'cc';
+import { GameState } from '../data/GameTypes';
+import { GameManager } from '../systems/GameManager';
 
 const { ccclass, property } = _decorator;
 
@@ -49,6 +51,9 @@ export class XPItemController extends Component {
   }
 
   update(_dt: number) {
+    // 일시정지(Paused)·레벨업(LevelUp) 등 비-Playing 상태에서는 XP를 흡수하지 않는다(I2).
+    // Projectile·EnemyProjectile의 일시정지 가드와 동일 패턴.
+    if (GameManager.instance.state !== GameState.Playing) return;
     if (this._absorbed || !this.playerNode) return;
     const radius = this._getPickupRadius ? this._getPickupRadius() : this.pickupRadius;
     const dist = Vec3.distance(this.node.position, this.playerNode.position);
