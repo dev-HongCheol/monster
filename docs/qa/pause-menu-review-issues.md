@@ -51,3 +51,10 @@
 - **배경:** 7단계에서 라벨이 번역 키 원문(`pause.title`)으로 표시. 파일·임포트·UUID 매핑은 모두 정상이었고, 원인은 라벨 배선(LocalizedLabel 미부착 가능성)/카탈로그 로드 타이밍이었다. main 씬 나머지(HUD·카드·결과)는 전부 코드 구동 i18n을 쓰는데 pause만 LocalizedLabel(menu 씬 방식)이라 일관성도 떨어졌다.
 - **결정(사용자):** 코드 구동으로 전환. `PauseController`에 `titleLabel` `@property` 추가 + 버튼 자식 Label을 `getComponentInChildren(Label)`로 찾아, 패널 열림 때 `_applyI18n()`이 `_t('pause.*')`로 채운다. `LocalizedLabel` 의존 제거 → 무조건 해석되고 main 씬과 일관. `_t('pause.*')` 리터럴이라 i18n 키 가드가 사용 키로 detect(이전에 넣었던 `sceneKeyPrefixes: 'pause.'` 화이트리스트 회수).
 - QA 문서 §2·§3·§4를 코드 구동 기준으로 갱신. 잘림은 라벨 크기(버튼 대비) 문제였음(사용자 정정 — overflow 아님) → 레시피를 Content Size 기준으로 수정.
+
+### 재리뷰 (rework delta `0f31cb5..e5a2344`)
+독립 subagent 재리뷰: Critical 0 · Important 0 · Minor 2(비차단). 평결 **머지 가능(Yes)**.
+- onDestroy 수정이 크래시를 완전히 닫음 확인 — 자손 노드가 컨트롤러보다 오래 못 살아 버튼 리스너 누수 없음, 전역 `input.off`는 `onLoad`와 정확히 대칭.
+- 코드 구동 i18n 건전(HudController 패턴), null 가드 정상. `getComponentInChildren(Label)`도 `HudController._applySlot`와 동일 관용.
+- `sceneKeyPrefixes` 회수 안전 검증 — 4개 `_t('pause.*')` 리터럴 전부 스캐너 detect(카탈로그·코드 정확히 4키 일치), 가드 13/13.
+- Minor 2건(비차단): ① 일시정지 중 언어 전환은 다음 열림에 반영(의도된 trade-off, 인게임 언어 토글 미도달) ② 미배선 `titleLabel`/자식 Label 없으면 조용히 미현지화(null 가드로 크래시는 없음 — 에디터 배선 = QA 체크리스트 소관). 수정 불필요.
