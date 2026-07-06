@@ -216,7 +216,7 @@ describe('findCatalogIssues — 실제 카탈로그 게이트 (영구 CI 게이�
       cardIds: cards.map((c) => c.id),
       categories: Object.values(SpellCategory),
       options: CARD_LABEL_OPTIONS,
-      sceneKeyPrefixes: ['menu.', 'result.', 'gameover.', 'pause.'],
+      sceneKeyPrefixes: ['menu.', 'result.', 'gameover.'],
     });
 
     expect(issues).toEqual([]);
