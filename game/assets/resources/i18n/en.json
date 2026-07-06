@@ -11,6 +11,11 @@
   "gameover.restart": "RESTART",
   "gameover.menu": "MENU",
 
+  "pause.title": "Paused",
+  "pause.resume": "Resume",
+  "pause.restart": "Restart",
+  "pause.menu": "Main Menu",
+
   "hud.hp": "{cur}",
   "hud.wave": "Wave {wave}",
   "hud.timer": "{time}",

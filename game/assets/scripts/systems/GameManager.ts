@@ -265,6 +265,18 @@ export class GameManager extends Component {
     // 잦은 레벨업마다 타이머를 60초로 되돌려 웨이브가 진행되지 않는 버그를 유발했다.)
   }
 
+  /** ESC로 게임을 수동 일시정지(Paused) 상태로 전환한다. Playing일 때만 동작한다(카드 선택·게임오버 중 무시). */
+  enterPause(): void {
+    if (this._state !== GameState.Playing) return;
+    this._state = GameState.Paused;
+  }
+
+  /** 수동 일시정지를 풀고 게임을 재개한다. Paused일 때만 동작한다. 카드 적용이 없어 상태만 되돌린다. */
+  resumePause(): void {
+    if (this._state !== GameState.Paused) return;
+    this._state = GameState.Playing;
+  }
+
   /** result 씬으로 이동한다. */
   goToResult(): void {
     director.loadScene('result');
