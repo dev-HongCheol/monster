@@ -36,3 +36,18 @@
 
 ### O3. (Trivia) pre-`_started` 로드 비트 중 ESC
 - 데이터 로드 전 ESC로 `Paused`가 되어 로딩 프레임 위에 패널이 뜰 수 있으나, 루프가 `_started`·`Playing` 둘 다로 게이팅돼 무해하고 로드 속도상 사실상 도달 불가. **변경 없음.**
+
+---
+
+## 7단계 발견 + 리워크 (2026-07-06)
+
+### B1. 재시작·메뉴 버튼 클릭 시 크래시 (실버그 — 수정됨)
+- **위치:** `game/assets/scripts/ui/PauseController.ts` `onDestroy` (구 `:42`)
+- **증상:** `Uncaught TypeError: Cannot read properties of null (reading 'off') at PauseController.onDestroy`. Resume은 정상, **재시작·메뉴만** 크래시.
+- **원인:** 재시작/메뉴는 `director.loadScene()`로 씬을 파괴 → `onDestroy` 실행. `this.resumeButton?.node.off(...)`의 `?.`는 `resumeButton`(컴포넌트) null만 가드하는데, teardown 중엔 버튼 노드가 먼저 파괴돼 `resumeButton.node`가 `null` → `null.off(...)` 크래시. Resume은 `resumePause()`(씬 로드 없음)라 `onDestroy` 미실행 → 무증상. **코드 리뷰의 "cleanup 대칭·누수 없음" 판단이 teardown 시 `.node=null` 케이스를 놓쳤다.**
+- **수정됨:** 버튼 CLICK 리스너는 노드가 씬과 함께 파괴될 때 자동 정리되므로 수동 off가 불필요(오히려 크래시 원인). `onDestroy`에서 버튼 `.off` 3줄을 제거하고 **전역 `input.off`만** 남겼다(`CardSelectPanel`도 버튼 리스너를 onDestroy에서 정리하지 않음 — 같은 이유).
+
+### C1. i18n 방식 전환 — LocalizedLabel → 코드 구동 (사용자 결정)
+- **배경:** 7단계에서 라벨이 번역 키 원문(`pause.title`)으로 표시. 파일·임포트·UUID 매핑은 모두 정상이었고, 원인은 라벨 배선(LocalizedLabel 미부착 가능성)/카탈로그 로드 타이밍이었다. main 씬 나머지(HUD·카드·결과)는 전부 코드 구동 i18n을 쓰는데 pause만 LocalizedLabel(menu 씬 방식)이라 일관성도 떨어졌다.
+- **결정(사용자):** 코드 구동으로 전환. `PauseController`에 `titleLabel` `@property` 추가 + 버튼 자식 Label을 `getComponentInChildren(Label)`로 찾아, 패널 열림 때 `_applyI18n()`이 `_t('pause.*')`로 채운다. `LocalizedLabel` 의존 제거 → 무조건 해석되고 main 씬과 일관. `_t('pause.*')` 리터럴이라 i18n 키 가드가 사용 키로 detect(이전에 넣었던 `sceneKeyPrefixes: 'pause.'` 화이트리스트 회수).
+- QA 문서 §2·§3·§4를 코드 구동 기준으로 갱신. 잘림은 라벨 크기(버튼 대비) 문제였음(사용자 정정 — overflow 아님) → 레시피를 Content Size 기준으로 수정.

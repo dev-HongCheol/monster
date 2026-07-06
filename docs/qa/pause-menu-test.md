@@ -16,7 +16,7 @@
 | `logic/PauseMenuLogic.ts` (신규, 순수) | `pauseToggleAction(state)` — ESC 토글 결정 | 자동 테스트로 검증(§5) |
 | `data/GameTypes.ts` | `GameState` enum에 `Paused` 추가 | 기존 상태 분기(LevelUp/GameOver/Victory) 회귀 없음 확인 |
 | `systems/GameManager.ts` | `enterPause()`/`resumePause()` 신설 | 기존 `enterLevelUp`/`resumeFromLevelUp`·게임오버 흐름 회귀 없음 |
-| `ui/PauseController.ts` (신규, Cocos) | ESC 입력·오버레이 토글·버튼 핸들러 | 수동 QA(§6) |
+| `ui/PauseController.ts` (신규, Cocos) | ESC 입력·오버레이 토글·버튼 핸들러·라벨 코드 구동 i18n | 수동 QA(§6) |
 | `components/XPItemController.ts` | `update` 맨 앞 `state !== Playing` 가드 (I2) | XP 흡수가 Playing에서만 일어나는지, 정상 플레이 흡수 회귀 없음 |
 | `main.scene` | PauseRoot/PausePanel 노드 + PauseController 배선. I3는 라이브 검증(§2.3 — 재현 시에만 카메라/레이어 조정) | HUD·카드 패널·마법 아이콘 행 회귀 없음 |
 | `resources/i18n/ko.json`·`en.json` | `pause.*` 키 추가 | 기존 키 회귀 없음 |
@@ -34,10 +34,10 @@ UICanvas
  ↳ PauseRoot                  (빈 Node — 항상 active, PauseController 컴포넌트)
     ↳ PausePanel              (빈 Node — 모달 콘텐츠 루트, 초기 active=false, 코드가 토글)
        ↳ Backdrop             (Sprite — 반투명 검정 전체화면, 클릭 차단)
-       ↳ Title                (Label + LocalizedLabel key=pause.title)
-       ↳ ResumeButton         (Button; 자식 Label + LocalizedLabel key=pause.resume)
-       ↳ RestartButton        (Button; 자식 Label + LocalizedLabel key=pause.restart)
-       ↳ MenuButton           (Button; 자식 Label + LocalizedLabel key=pause.menu)
+       ↳ Title                (Label — PauseController.titleLabel에 연결. 텍스트는 코드가 채움)
+       ↳ ResumeButton         (Button + 기본 자식 Label — 텍스트는 코드가 채움)
+       ↳ RestartButton        (Button + 기본 자식 Label — 텍스트는 코드가 채움)
+       ↳ MenuButton           (Button + 기본 자식 Label — 텍스트는 코드가 채움)
 ```
 
 > **PauseRoot vs PausePanel을 나누는 이유:** ESC 리스너를 등록하는 `PauseController`는 **항상 active인 노드**에 있어야 한다(비활성 노드는 `onLoad`가 안 돌아 ESC를 못 받는다). 그래서 컨트롤러는 항상 켜진 `PauseRoot`에 두고, 실제로 껐다 켜는 모달 콘텐츠는 자식 `PausePanel`(초기 꺼짐)에 담는다. 부모가 켜져 있으면 자식만 토글해도 컨트롤러는 계속 산다.
@@ -50,13 +50,13 @@ UICanvas
    - Sprite: Type = SIMPLE, SpriteFrame = 내장 단색(예: `internal/default_ui/default_sprite_splash`)이나 흰색 사각.
    - `Widget` 컴포넌트 추가 → **Top·Bottom·Left·Right 모두 체크, 각 거리 0** → 노드가 부모(1280×720) 전체로 늘어난다. (Widget: 좌우 또는 상하 양쪽 정렬 시 그 방향으로 크기가 stretch됨 — Cocos 3.8 공식 문서 확인.)
    - Color = 검정, 알파 ≈ 178 (약 70% 딤). Backdrop이 화면을 덮어 아래 게임으로 가는 클릭을 막는다(Sprite는 UITransform 영역에서 터치를 소비).
-4. **Title** — `PausePanel` 아래 `Create → 2D Object → Label` → 이름 `Title`. Position (0, 150). Font Size 48, Horizontal Align CENTER, Color 흰색, **Overflow = SHRINK**(라벨 폭 안에서 자동 축소 — 언어·길이 무관 안 잘림). `LocalizedLabel` 컴포넌트 추가 → `key = pause.title`.
-5. **ResumeButton** — `PausePanel` 아래 `Create → UI → Button` → 이름 `ResumeButton`. Position (0, 50). Content Size 240×64. 자식 `Label`에 `LocalizedLabel` 추가 → `key = pause.resume`, **자식 Label Overflow = SHRINK**(버튼 폭 240 안에서 안 잘리게). 긴 언어(예: "Main Menu")도 SHRINK로 흡수된다.
-6. **RestartButton** — `ResumeButton` 복제 → 이름 `RestartButton`. Position (0, -30). 자식 Label `LocalizedLabel key = pause.restart`.
-7. **MenuButton** — `ResumeButton` 복제 → 이름 `MenuButton`. Position (0, -110). 자식 Label `LocalizedLabel key = pause.menu`.
-8. **PauseController** — `PauseRoot`에 `PauseController` 컴포넌트 추가 → 아래 §3 `@property`를 연결.
+4. **Title** — `PausePanel` 아래 `Create → 2D Object → Label` → 이름 `Title`. Position (0, 150). Font Size 48, Horizontal Align CENTER, Color 흰색. **Content Size를 텍스트가 들어갈 만큼 넉넉히**(예: 320×70 — 라벨 노드가 글자보다 작으면 잘린다. 잘림 = 라벨 크기 문제). **LocalizedLabel 불필요** — 텍스트는 `PauseController`가 코드로 채운다(§8에서 `titleLabel`에 연결).
+5. **ResumeButton** — `PausePanel` 아래 `Create → UI → Button` → 이름 `ResumeButton`. Position (0, 50). Content Size 240×64. **버튼의 기본 자식 `Label`의 Content Size를 버튼 폭(240)에 맞춰** 잘리지 않게 한다. 자식 Label 텍스트는 `PauseController`가 `pause.resume`으로 채우므로 **LocalizedLabel·수동 텍스트 불필요**(임시로 뭘 적어둬도 런타임에 덮어씀).
+6. **RestartButton** — `ResumeButton` 복제 → 이름 `RestartButton`. Position (0, -30). (텍스트는 코드가 `pause.restart`로 채움.)
+7. **MenuButton** — `ResumeButton` 복제 → 이름 `MenuButton`. Position (0, -110). (텍스트는 코드가 `pause.menu`로 채움.)
+8. **PauseController** — `PauseRoot`에 `PauseController` 컴포넌트 추가 → 아래 §3 `@property`(pausePanel·titleLabel·resume/restart/menuButton)를 연결.
 
-> 버튼 클릭은 **에디터 ClickEvents가 아니라 코드에서** `node.on(Button.EventType.CLICK, …)`로 배선한다(프로젝트 컨벤션 = `CardSelectPanel`). 따라서 버튼은 `@property(Button)`로 컨트롤러에 넘기기만 하면 되고, 에디터 Click Events 목록은 비워 둔다.
+> **버튼 클릭·라벨 텍스트 모두 코드가 처리한다.** 클릭은 `node.on(Button.EventType.CLICK, …)`(프로젝트 컨벤션 = `CardSelectPanel`)로, 라벨 텍스트는 패널이 열릴 때 `PauseController._applyI18n()`이 `t()`로 채운다(main 씬 나머지와 동일한 코드 구동 i18n — `LocalizedLabel` 안 씀). 에디터 Click Events 목록은 비워 두고, 버튼 자식 Label에 별도 컴포넌트도 안 붙인다.
 
 ### 2.3 I3 — 발사체 레이어 (7단계 라이브 검증)
 
@@ -78,19 +78,20 @@ UICanvas
 | `@property` | 타입 | 연결 노드 | 상태 |
 |-------------|------|-----------|------|
 | `pausePanel` | Node | `PausePanel` | ❌ |
+| `titleLabel` | Label | `Title` | ❌ |
 | `resumeButton` | Button | `ResumeButton` | ❌ |
 | `restartButton` | Button | `RestartButton` | ❌ |
 | `menuButton` | Button | `MenuButton` | ❌ |
 
-동작 계약(코드가 하는 일): `onLoad`에서 ESC 키 리스너(`input.on(KEY_DOWN)`)와 세 버튼의 CLICK 핸들러를 등록하고 `pausePanel.active=false`로 초기화한다. 매 프레임 상태가 `Paused`면 `pausePanel.active=true`, 아니면 `false`로 동기화한다. ESC → `pauseToggleAction(state)` 결과로 `enterPause()`/`resumePause()`. 버튼 → `resumePause()` / `GameManager.restart()` / `GameManager.goToMenu()`.
+동작 계약(코드가 하는 일): `onLoad`에서 ESC 키 리스너(`input.on(KEY_DOWN)`)와 세 버튼의 CLICK 핸들러를 등록하고 `pausePanel.active=false`로 초기화한다. `onDestroy`는 **전역 `input` 리스너만** 해제한다(버튼 CLICK 리스너는 노드가 씬과 함께 파괴될 때 자동 정리 — 수동 off는 파괴된 노드 참조로 크래시하므로 안 한다). 상태가 `Paused`로 바뀌면 `pausePanel.active=true`로 켜고 **그때 `titleLabel`과 세 버튼의 자식 Label을 `pause.*` 키로 채운다**(코드 구동 i18n). ESC → `pauseToggleAction(state)`로 `enterPause()`/`resumePause()`. 버튼 → `resumePause()` / `GameManager.restart()`(`main` 재로드) / `GameManager.goToMenu()`(`menu` 로드).
 
 ---
 
 ## 4. i18n 카탈로그 키 (신규)
 
-`resources/i18n/ko.json`·`en.json`에 추가했다(확정 — 코드에 반영됨).
+`resources/i18n/ko.json`·`en.json`에 추가했다(확정 — 코드에 반영됨). 라벨 텍스트는 `PauseController._applyI18n`이 패널 열림 때 `t()`로 채운다(`LocalizedLabel` 미사용 — main 씬 나머지와 동일 코드 구동 방식).
 
-> **인게임에서 라벨이 `pause.title`처럼 원문으로 뜨면:** 실행 중인 Preview가 카탈로그 갱신 전에 시작된 것이다(`I18n`은 게임 시작 시 1회 로드, `t()`는 미스 시 키 원문 폴백). **Preview를 재시작**하면 갱신된 카탈로그가 로드된다. 그래도 원문이면 Assets 패널에서 `resources/i18n` 우클릭 → Reimport 후 재실행.
+> **인게임에서 라벨이 `pause.title`처럼 원문으로 뜨면:** 코드 구동이라 라벨 배선 문제는 아니고, 실행 중인 Preview가 카탈로그 갱신 전에 시작돼 옛 카탈로그를 들고 있는 것이다(`I18n`은 게임 시작 시 1회 로드, `t()`는 미스 시 키 원문 폴백). **Preview를 재시작**하면 갱신된 카탈로그가 로드된다. 그래도 원문이면 Assets 패널에서 `resources/i18n` 우클릭 → Reimport 후 재실행.
 
 | 키 | ko | en |
 |----|----|----|
