@@ -4,6 +4,7 @@
 - **브랜치:** feat/pause-menu
 - **성격:** 기능 개발 계획. `/office-hours`로 스코프 3건을 확정하고 `/autoplan` 집중 리뷰(Codex 미설치 → 단일 리뷰어)를 반영해 확정.
 - **정본 연결:** `docs/design/ui-completeness-plan.md` §4 P0-3, `docs/development/backlog.md` 테마 J4 · I3, [[project_v1_completeness_pivot]]
+- **상태(2026-07-06):** 구현·검증 완료(PR #53). 7단계에서 2건 리워크 — ① 재시작·메뉴 버튼 `onDestroy` 크래시(전역 `input.off`만 남김) ② i18n을 `LocalizedLabel`→코드 구동으로 전환(사용자 결정, main 씬과 일관). I2·I3 함께 닫음(I3는 라이브 검증서 미재현). 후속: `PauseController.titleLabel` 미연결(언어 전환 시 타이틀 고정) — P1-6 언어 토글과 함께. 상세: `../qa/pause-menu-review-issues.md`.
 
 ---
 
