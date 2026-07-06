@@ -22,6 +22,7 @@
 - **ESC 토글** — ESC 키로 `Playing ↔ Paused`를 오간다. 상태 전이는 `enterPause()`/`resumePause()`를 `GameManager`에 신설하되, 기존 `enterLevelUp()`/`resumeFromLevelUp()` 쌍과 같은 패턴(가드 → 상태 세팅)으로 만든다.
 - **모달 오버레이 3버튼** — 흐린 배경(딤) + "일시정지" 타이틀 + **Resume · 재시작 · 메뉴** 버튼. 재시작은 `GameManager.restart()`, 메뉴는 `GameManager.goToMenu()`를 **그대로 재사용**한다(둘 다 이미 존재하며 게임오버에서 쓰인다). Resume은 `resumePause()`.
 - **I3 레이어 수정** — 정지한 게임 월드 노드(발사체·적)가 UI 오버레이(카드 패널·일시정지 패널) 아래로 렌더되게 한다. 뿌리 원인은 아래 §4.5에서 다루며, 구현은 씬을 열어 조사부터 한다.
+- **일시정지 중 XP 흡수 차단 (I2)** — 일시정지 중에는 XP가 흡수되면 안 된다(사용자 확정 2026-07-06). `XPItemController.update` 맨 앞에 `state !== Playing` 가드를 더해 흡수를 막는다. 같은 가드가 LevelUp 중 흡수도 함께 닫는다(§4.6).
 
 ### OUT (후속/이월)
 - **설정 화면** — 볼륨(마스터·BGM·SFX)·언어 토글. **오디오 시스템(J6)이 아직 없어 볼륨이 제어할 대상이 없다.** 설정은 P1-6 별도 슬라이스로, 사운드 구현 뒤에 연다. 이번 일시정지 메뉴에는 설정 버튼을 넣지 않는다(사용자 확정: "설정 제외, 3버튼만").
@@ -31,7 +32,7 @@
 ## 3. 이 슬라이스가 닫는 백로그 항목
 - **J4 P0-3** (ui-completeness-plan) — 일시정지 메뉴. 이 슬라이스가 `Paused` 상태 + Resume·재시작·메뉴 부분을 닫는다(설정 진입은 P1-6로 남김).
 - **I3** (백로그 I) — 정지한 발사체가 전체 화면 오버레이 위로 렌더돼 가리는 레이어 버그. 일시정지 오버레이가 같은 모달이라 함께 닫는다.
-- **I2**(선택, 로버스트니스) — `XPItemController.update`가 일시정지 중 픽업 반경 내 XP를 흡수하는 미가드. 지금은 LevelUp에서만 발현하나 수동 일시정지가 생기면 아무 때나 닿을 수 있다. 2줄 가드(`state !== Playing` early-return)로 블라스트 반경 안에서 함께 닫는 것을 권장(§4.6). 사용자가 계획 승인 시 뺄 수 있다.
+- **I2** (백로그 I) — `XPItemController.update`가 일시정지 중 픽업 반경 내 XP를 흡수하는 미가드. **일시정지 중 흡수 금지가 사용자 확정 요구사항이므로 이 슬라이스에서 닫는다**(§4.6). 같은 가드가 LevelUp 중 흡수도 함께 닫는다.
 
 ## 4. 설계
 
@@ -87,6 +88,9 @@ pauseToggleAction(state):
 [변경] i18n 카탈로그 (ko.json / en.json)
   - pause.title / pause.resume / pause.restart / pause.menu 키 추가
 
+[변경] components/XPItemController.ts
+  - update 맨 앞에 state !== Playing 가드 + GameManager/GameState import (I2, §4.6)
+
 [I3 수정] 씬 카메라/레이어/부모 설정 (§4.5)
 
 [재사용] GameManager.restart()·goToMenu(), 기존 state 가드 프리즈, ui/Theme(COLORS·FONT·SIZES), i18n t()
@@ -100,9 +104,9 @@ pauseToggleAction(state):
 
 **접근:** 코드로 형태를 확정하지 않고, **구현 첫 작업으로 씬을 열어 카메라·Layer·부모를 조사**한다(H1 card-layer-fix가 깐 두-Canvas 구조 위에서). 조사 결과에 따라 수정 지점이 씬 설정이면 QA 문서에 에디터 절차로, 코드면 해당 시스템에 반영한다. 이 항목이 예상보다 커지면(별도 카메라 재설계 수준) 사용자와 재상의해 분리한다.
 
-### 4.6 I2 — 일시정지 중 XP 흡수 미가드 (선택)
+### 4.6 I2 — 일시정지 중 XP 흡수 차단 (확정)
 
-`XPItemController.update`에 `state !== Playing` 가드가 없어, 일시정지 중 픽업 반경 안에 이미 들어온 XP가 흡수될 수 있다. 이동은 없고 플레이어도 정지하므로 무해하지만(LevelUp에서도 같은 동작), 수동 일시정지가 생기면 발현 빈도가 는다. `Projectile`·`EnemyProjectile`이 projectile-pause-guard에서 받은 것과 동일한 2줄 가드로 블라스트 반경 안에서 닫기를 권장한다. 계획 승인 시 제외 가능.
+일시정지 중에는 XP가 흡수되면 안 된다(사용자 확정 2026-07-06). 지금 `XPItemController.update`(`:51`)는 `_absorbed`·`playerNode`만 보고 거리로 흡수를 판정하며 상태 가드가 없어, 일시정지 중 픽업 반경 안에 든 XP가 그대로 빨려 들어간다. `Projectile`·`EnemyProjectile`이 projectile-pause-guard(I1)에서 받은 것과 동일한 패턴으로, `update` 맨 앞에 `if (GameManager.instance.state !== GameState.Playing) return;`를 더하고 `GameManager`·`GameState`를 import한다(약 3줄). 이 가드는 `Paused`뿐 아니라 `LevelUp` 중 흡수도 함께 막는다(둘 다 non-Playing). 순수 시맨이 없어(Cocos 상태·노드 위치 의존) 검증은 수동 QA로 한다.
 
 ## 5. 리뷰 요약 (/autoplan 집중 리뷰 — Codex 미설치, 단일 리뷰어)
 
@@ -137,6 +141,7 @@ pauseToggleAction(state):
 - UICanvas 아래 PausePanel(딤 배경 + "일시정지" 타이틀 + Resume·재시작·메뉴 버튼) 제작 + `PauseController` 배선(패널·버튼 `@property`).
 - **I3 조사·수정:** 씬에서 발사체/적 부모 노드의 Canvas·카메라·Layer를 확인해 게임 월드가 UI 아래로 그려지게 맞춘다.
 - 인게임: 플레이 중 ESC → 전장 정지 + 메뉴 표시, ESC 다시/Resume → 재개. 적·발사체·타이머·XP가 모두 얼었는지 확인. 재시작·메뉴 버튼 동작. **카드 선택 중 ESC 무시**. 일시정지 오버레이가 얼어붙은 발사체에 안 가려짐(I3).
+- **I2 확인:** XP 오브를 픽업 반경 안에 둔 채 ESC로 일시정지 → 흡수되지 않음(레벨·XP 바 불변). 재개하면 다시 흡수됨. LevelUp(카드 선택) 중에도 흡수 없음.
 
 ## 8. 열어 두는 후속 (백로그 반영)
 - 설정 화면(P1-6) — 볼륨·언어. 오디오(J6) 선행. 일시정지 메뉴에 설정 진입 버튼을 그때 추가.
