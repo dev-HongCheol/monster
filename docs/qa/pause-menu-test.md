@@ -50,8 +50,8 @@ UICanvas
    - Sprite: Type = SIMPLE, SpriteFrame = 내장 단색(예: `internal/default_ui/default_sprite_splash`)이나 흰색 사각.
    - `Widget` 컴포넌트 추가 → **Top·Bottom·Left·Right 모두 체크, 각 거리 0** → 노드가 부모(1280×720) 전체로 늘어난다. (Widget: 좌우 또는 상하 양쪽 정렬 시 그 방향으로 크기가 stretch됨 — Cocos 3.8 공식 문서 확인.)
    - Color = 검정, 알파 ≈ 178 (약 70% 딤). Backdrop이 화면을 덮어 아래 게임으로 가는 클릭을 막는다(Sprite는 UITransform 영역에서 터치를 소비).
-4. **Title** — `PausePanel` 아래 `Create → 2D Object → Label` → 이름 `Title`. Position (0, 150). Font Size 48, Horizontal Align CENTER, Color 흰색. `LocalizedLabel` 컴포넌트 추가 → `key = pause.title`.
-5. **ResumeButton** — `PausePanel` 아래 `Create → UI → Button` → 이름 `ResumeButton`. Position (0, 50). Content Size 240×64. 자식 `Label`에 `LocalizedLabel` 추가 → `key = pause.resume`.
+4. **Title** — `PausePanel` 아래 `Create → 2D Object → Label` → 이름 `Title`. Position (0, 150). Font Size 48, Horizontal Align CENTER, Color 흰색, **Overflow = SHRINK**(라벨 폭 안에서 자동 축소 — 언어·길이 무관 안 잘림). `LocalizedLabel` 컴포넌트 추가 → `key = pause.title`.
+5. **ResumeButton** — `PausePanel` 아래 `Create → UI → Button` → 이름 `ResumeButton`. Position (0, 50). Content Size 240×64. 자식 `Label`에 `LocalizedLabel` 추가 → `key = pause.resume`, **자식 Label Overflow = SHRINK**(버튼 폭 240 안에서 안 잘리게). 긴 언어(예: "Main Menu")도 SHRINK로 흡수된다.
 6. **RestartButton** — `ResumeButton` 복제 → 이름 `RestartButton`. Position (0, -30). 자식 Label `LocalizedLabel key = pause.restart`.
 7. **MenuButton** — `ResumeButton` 복제 → 이름 `MenuButton`. Position (0, -110). 자식 Label `LocalizedLabel key = pause.menu`.
 8. **PauseController** — `PauseRoot`에 `PauseController` 컴포넌트 추가 → 아래 §3 `@property`를 연결.
@@ -89,6 +89,8 @@ UICanvas
 ## 4. i18n 카탈로그 키 (신규)
 
 `resources/i18n/ko.json`·`en.json`에 추가했다(확정 — 코드에 반영됨).
+
+> **인게임에서 라벨이 `pause.title`처럼 원문으로 뜨면:** 실행 중인 Preview가 카탈로그 갱신 전에 시작된 것이다(`I18n`은 게임 시작 시 1회 로드, `t()`는 미스 시 키 원문 폴백). **Preview를 재시작**하면 갱신된 카탈로그가 로드된다. 그래도 원문이면 Assets 패널에서 `resources/i18n` 우클릭 → Reimport 후 재실행.
 
 | 키 | ko | en |
 |----|----|----|
