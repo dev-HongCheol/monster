@@ -7,6 +7,8 @@ export enum GameState {
   LevelUp,
   GameOver,
   Victory,
+  /** ESC로 연 수동 일시정지 상태 (LevelUp과 별개 — 카드 선택 아님) */
+  Paused,
 }
 
 /** 플레이어 기본 수치 (player.json) */
