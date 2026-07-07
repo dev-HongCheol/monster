@@ -55,6 +55,27 @@ v1 완성도 전환(로드맵 v0.3) UI 트랙의 P0 중 하나가 "결과 화면
 
 **왜 `goToResult()`에서 스냅샷하나:** 사망·승리 두 경로가 모두 이 메서드를 지난다(한 곳). `loadScene` 직전이라 매니저가 전부 살아 있고, 이 시점 이후 값이 바뀌지 않는다(게임은 GameOver/Victory로 얼어 있음). DRY 스냅샷 지점.
 
+### 4.1b 결과 화면 레이아웃 (스크롤 영역)
+
+통계는 나중에 늘 수 있으므로(메타 통계·최고 기록 등) 가운데 통계 영역을 **`ScrollView`**로 둔다. 헤더(승/패·웨이브)와 RETRY/MENU 버튼은 고정, 통계만 스크롤한다.
+
+```
+result 씬 (1280×720)
+  결과 헤더(승/패 + 웨이브)              ← 고정 (기존 waveLabel)
+  ScrollView (세로 스크롤)              ← 신규
+   ↳ view (Mask — 보이는 영역 정의·클립)
+      ↳ content (Layout VERTICAL + RESIZE_CONTAINER — 자식 높이만큼 자동 확장)
+         ↳ 생존시간 / 레벨 / 킬 총계 라벨
+         ↳ 킬 종류별 라벨 (Overflow RESIZE_HEIGHT — 여러 줄 자동)
+         ↳ 보유 마법 라벨 (RESIZE_HEIGHT)
+         ↳ 패시브 라벨
+  RETRY · MENU 버튼                     ← 고정 (기존)
+```
+
+- **스크롤:** `content`의 Layout이 자식 높이 합만큼 자동으로 커지고, `view`보다 커지면 스크롤된다. 통계 항목을 추가해도 라벨을 content에 넣으면 자동으로 스크롤 대상이 된다(확장성).
+- **클립(안 맞을 때 숨김):** `view`의 `Mask`가 뷰 밖 내용을 잘라낸다 — 넘친 부분은 화면에서 숨고 스크롤로 접근한다. 가변 길이 항목(킬 종류별·마법 리스트)은 Label `Overflow=RESIZE_HEIGHT`로 여러 줄 확장 → content가 더 자라 스크롤에 반영. (Cocos 3.8 공식 ScrollView = view(Mask)+content(Layout) 구조 확인.)
+- **라벨 구성:** 통계 행은 `ResultController`가 `@property`로 잡은 Label들에 `buildResultStats` 결과를 코드로 채운다. content는 고정 라벨 세트(가변 리스트는 한 라벨에 조인)로 두어 P0 저비용, 완전 데이터 구동(행 프리팹 인스턴스화)은 통계가 더 복잡해지면 후속.
+
 ### 4.2 아키텍처 (신규/변경)
 
 ```
@@ -93,7 +114,8 @@ v1 완성도 전환(로드맵 v0.3) UI 트랙의 P0 중 하나가 "결과 화면
   - result.stat.* 키(라벨: 생존시간·레벨·킬·보유마법·패시브 + 단위/포맷). 적 이름은 미대상(§2 OUT)
 
 [변경] result.scene (7단계 에디터)
-  - 통계 라벨 노드 추가 + ResultController @property 연결
+  - ScrollView(view+Mask+content Layout VERTICAL/RESIZE_CONTAINER) + 통계 라벨들 +
+    ResultController @property 연결 (§4.1b)
 
 [재사용] HudFormatLogic.formatTimer, SpellIconRowLogic.categoryInitial/티어정렬,
          DataManager.getSpell/getEnemy, DeckManager.maxHpBonus/moveSpeedBonus/pickupRangeBonus,
