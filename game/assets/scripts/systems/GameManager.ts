@@ -1,5 +1,6 @@
 import { _decorator, Component, director, warn } from 'cc';
 import type { EnemyController } from '../components/EnemyController';
+import { SpellCaster } from '../components/SpellCaster';
 import { GameResult, GameState } from '../data/GameTypes';
 import type { ExplosionTarget } from '../logic/ExplosionLogic';
 import { accumulateDamage, contactDamagePerTick, tickDamage } from '../logic/PlayerDamageLogic';
@@ -50,6 +51,8 @@ export class GameManager extends Component {
   private _hitTickTimer: number = 0;
   /** 현재 피격 틱의 누적 최대 피해 — 그 틱에 들어온 피해원 중 가장 센 한 방만 적용(§i-frame). */
   private _pendingDamageMax: number = 0;
+  /** 적 종류별 킬 수 (enemyId → count). EnemyController._startDeath()에서 registerKill로 누적, 결과 화면 스냅샷용. */
+  private _killsByType: Record<string, number> = {};
 
   get state() {
     return this._state;
@@ -71,6 +74,7 @@ export class GameManager extends Component {
     GameManager.instance = this;
     GameResult.waveReached = 0;
     GameResult.gameVictory = false;
+    this._killsByType = {};
   }
 
   start() {
@@ -116,6 +120,15 @@ export class GameManager extends Component {
   /** 활성 적 목록에 등록한다. */
   registerEnemy(enemy: EnemyController): void {
     this._enemies.push(enemy);
+  }
+
+  /**
+   * 적 종류별 킬을 1 누적한다 — 실제 처치(takeDamage→HP0→_startDeath)에서만 호출한다
+   * (despawn/onDestroy 아님 → 오버카운트 없음). 결과 화면 킬 통계의 원천.
+   * @param enemyId enemies.json id
+   */
+  registerKill(enemyId: string): void {
+    this._killsByType[enemyId] = (this._killsByType[enemyId] ?? 0) + 1;
   }
 
   /** 활성 적 목록에서 제거한다. */
@@ -277,9 +290,30 @@ export class GameManager extends Component {
     this._state = GameState.Playing;
   }
 
-  /** result 씬으로 이동한다. */
+  /** result 씬으로 이동한다. 씬 파괴로 매니저가 사라지기 전에 런 통계를 GameResult로 스냅샷한다. */
   goToResult(): void {
+    this._snapshotResult();
     director.loadScene('result');
+  }
+
+  /**
+   * 사망/승리 시점의 런 통계를 GameResult 전역으로 스냅샷한다 — 사망·승리 두 경로가 모두 goToResult를
+   * 지나므로 여기 한 곳에서 복사한다(DRY). 이 시점 매니저는 모두 살아 있고 이후 값이 얼어 있다(GameOver/Victory).
+   * 매니저 null 가드로 방어한다.
+   */
+  private _snapshotResult(): void {
+    GameResult.survivalSec = this.gameDuration - this._gameTimer;
+    GameResult.level = ExperienceManager.instance?.level ?? 1;
+    GameResult.killsByType = { ...this._killsByType };
+    const ownedIds = SpellCaster.instance?.loadout.spells ?? [];
+    GameResult.spells = DeckManager.instance?.resultSpellSnapshots(ownedIds) ?? [];
+    const deck = DeckManager.instance;
+    GameResult.passiveHpLevel = deck?.maxHpLevel ?? 0;
+    GameResult.passiveHpBonus = deck?.maxHpBonus ?? 0;
+    GameResult.passiveMoveLevel = deck?.moveSpeedLevel ?? 0;
+    GameResult.passiveMoveBonus = deck?.moveSpeedBonus ?? 0;
+    GameResult.passivePickupLevel = deck?.pickupLevel ?? 0;
+    GameResult.passivePickupBonus = deck?.pickupRangeBonus ?? 0;
   }
 
   /** main 씬을 재로드해 게임을 재시작한다. */

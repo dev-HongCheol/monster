@@ -1,12 +1,17 @@
 import { _decorator, Component, JsonAsset, resources } from 'cc';
 import { DEV } from 'cc/env';
-import { type ICardData, type ISpellData, UpgradeOption } from '../data/GameTypes';
+import { type ICardData, type ISpellData, UpgradeOption, UpgradeTrack } from '../data/GameTypes';
 import {
   type IDebugEnhancementSeed,
   parseDebugEnhancementSeed,
 } from '../logic/DebugEnhancementSeed';
 import { DeckLogic } from '../logic/DeckLogic';
-import { type EnhancementDebugSnapshot, EnhancementLogic } from '../logic/EnhancementLogic';
+import {
+  type EnhancementDebugSnapshot,
+  EnhancementLogic,
+  GLOBAL_UPGRADE_CAP,
+} from '../logic/EnhancementLogic';
+import type { ResultSpellSnapshot } from '../logic/ResultStatsLogic';
 import { DataManager } from './DataManager';
 
 /** DEV 강화 시드 파일 경로 (resources 기준, 확장자 제외). 없으면 시드 미적용. */
@@ -34,6 +39,51 @@ export class DeckManager extends Component {
   /** 픽업범위 보너스 누적값 (가산·상한 없음). 소비처: ExperienceManager 픽업 반경 getter */
   get pickupRangeBonus() {
     return this._logic.pickupRangeBonus;
+  }
+
+  /** 최대HP 강화 레벨(획득 횟수) — 결과 화면 패시브 표시용. */
+  get maxHpLevel() {
+    return this._logic.maxHpLevel;
+  }
+
+  /** 이동속도 강화 레벨(획득 횟수) — 결과 화면 패시브 표시용. */
+  get moveSpeedLevel() {
+    return this._logic.moveSpeedLevel;
+  }
+
+  /** 픽업범위 강화 레벨(획득 횟수) — 결과 화면 패시브 표시용. */
+  get pickupLevel() {
+    return this._logic.pickupLevel;
+  }
+
+  /**
+   * 결과 화면용 마법 강화 스냅샷을 만든다 — 보유 마법별 데미지·쿨다운의 전역/분류/개별 레벨 + 최종 배율.
+   * 데이터가 없는 id(getSpell=null)는 정합 가드로 생략한다. (씬 전환 전 GameManager가 호출.)
+   * @param ownedIds 보유 마법 id (로드아웃 순서)
+   */
+  resultSpellSnapshots(ownedIds: string[]): ResultSpellSnapshot[] {
+    const e = this._enhancement;
+    const snaps: ResultSpellSnapshot[] = [];
+    for (const id of ownedIds) {
+      const spell = DataManager.instance.getSpell(id);
+      if (spell === null) continue;
+      snaps.push({
+        id,
+        dmg: {
+          g: e.getGlobalLevel(UpgradeOption.Damage),
+          c: e.getLevel(UpgradeTrack.Category, spell.category, UpgradeOption.Damage),
+          i: e.getLevel(UpgradeTrack.Individual, id, UpgradeOption.Damage),
+          factor: e.damageFactor(spell),
+        },
+        cd: {
+          g: e.getGlobalLevel(UpgradeOption.Cooldown),
+          c: e.getLevel(UpgradeTrack.Category, spell.category, UpgradeOption.Cooldown),
+          i: e.getLevel(UpgradeTrack.Individual, id, UpgradeOption.Cooldown),
+          factor: e.cooldownFactor(spell),
+        },
+      });
+    }
+    return snaps;
   }
 
   /** 마법의 데미지 배율 (개별×분류×전역 강화 — 기본 데미지에 곱한다). */
@@ -124,7 +174,25 @@ export class DeckManager extends Component {
       .map((id) => DataManager.instance.getSpell(id))
       .filter((s): s is ISpellData => s !== null);
     const upgradeCards = this._enhancement.buildUpgradeCards(ownedSpells);
-    return this._logic.drawCards([...pool, ...upgradeCards], n);
+    // 전역 강화가 상한(GLOBAL_UPGRADE_CAP·B2)에 도달한 옵션의 베이스 카드는 풀에서 뺀다
+    // (상한 도달 후 아무 효과 없는 카드가 뜨지 않도록 — 개별/분류 maxed 제외와 대칭).
+    const available = [...pool, ...upgradeCards].filter((card) => !this._isMaxedGlobalCard(card));
+    return this._logic.drawCards(available, n);
+  }
+
+  /** 전역 강화(데미지/쿨다운) 카드가 해당 옵션 상한에 도달했는지 — drawCards 풀 제외용. */
+  private _isMaxedGlobalCard(card: ICardData): boolean {
+    const e = card.effect;
+    if (
+      e.damageMult !== undefined &&
+      this._enhancement.getGlobalLevel(UpgradeOption.Damage) >= GLOBAL_UPGRADE_CAP
+    ) {
+      return true;
+    }
+    return (
+      e.cooldownMult !== undefined &&
+      this._enhancement.getGlobalLevel(UpgradeOption.Cooldown) >= GLOBAL_UPGRADE_CAP
+    );
   }
 
   /**

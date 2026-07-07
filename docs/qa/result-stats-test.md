@@ -6,31 +6,31 @@
 - **목업:** `../decisions/result-stats.html` (색·스크롤·행 포맷)
 - **성격:** 결과 화면(`ResultController`)에 생존·레벨·킬(종류별)·보유 마법(강화 레벨 브레이크다운)·패시브를 얹는다. 순수 조립은 `buildResultStats`(피처 테스트가 덮음), Cocos 의존부(스냅샷 실제 채움·registerKill·RichText 렌더·씬 전환)는 수동 QA.
 
-> **잠정 태그 안내:** 아래 프리팹/씬·에디터 섹션의 `@property` 이름·노드·색값은 구현 전 계획 기준이라 `(잠정 …)`으로 단다. 구현 완료(GREEN) 직후 실제 컴포넌트에 맞춰 `(확정)`으로 바꾼다(코드가 정본, 이 문서가 그 거울). `pnpm wf check-qa` 게이트가 잠정 태그 잔존 시 `user-verification` 진입을 막는다.
+> **확정 안내:** 아래 프리팹/씬·에디터 섹션은 구현 완료(GREEN) 후 실제 컴포넌트(`ResultController`의 `@property` 이름·노드, RichText 색값)에 맞춰 확정했다 — 코드가 정본, 이 문서가 그 거울이다.
 
 ---
 
 ## 1. 자동 테스트로 검증 (`tests/logic/ResultStats.test.ts`)
 
-> **GREEN 시 갱신:** 아래 `[ ]`를 `[x]`로 바꾸고, 통과 근거(피처 N/N + 전체 스위트 M/M + 통과 커밋 SHA)를 이 머리에 기재한다. (현재 qa-setup — RED 상태: `ResultStatsLogic` 미존재로 import 실패.)
+> **GREEN 확인(2026-07-07):** 피처 테스트 16/16 + 전체 스위트 427/427 통과. 순수 로직 커밋 `638c38d`. 아래 항목 전부 자동 테스트로 덮음.
 
 순수 함수 `buildResultStats(input, getSpell, getEnemy)` 조립을 덮는다.
 
-- [ ] 생존 시간 포맷 — 600초 → `"10:00"`, 65초 → `"01:05"` (`formatTimer` 재사용)
-- [ ] 도달 레벨 그대로 전달
-- [ ] 킬 총계 = 표시된 종류별 킬의 합
-- [ ] 킬 종류별을 count 내림차순 정렬 + 적 이름은 데이터(`getEnemy(id).name`)에서 (한국어 고정, §2 OUT)
-- [ ] `getEnemy=null`인 킬은 리스트·총계에서 생략 (정합 가드)
-- [ ] 마법 티어 라벨(`categoryInitial+티어`, 예 `F1`) + 이름 i18n 키(`spell.<id>.name`) 출력
-- [ ] 보유 마법 티어 오름차순 정렬 (F1 → I3)
-- [ ] `getSpell=null`인 마법은 생략 (정합 가드)
-- [ ] 강화 브레이크다운: 옵션 순서 = 데미지 → 쿨다운
-- [ ] 브레이크다운: `총합 = 전역 + 분류 + 개별`, 각 티어 레벨 그대로
-- [ ] 데미지 최종 효과 % = `+(factor−1)` 반올림 (배율 2.0 → +100)
-- [ ] 쿨다운 최종 효과 % = 단축 `−(1−1/factor)` 반올림 (배율 1.25 → −20)
-- [ ] 미강화 마법 = 세 티어 0 + 효과 % 0
-- [ ] 패시브 레벨·보너스 그대로 전달
-- [ ] 빈 입력(킬 0·마법 0) → 빈 리스트·총계 0·생존 `"00:00"`
+- [x] 생존 시간 포맷 — 600초 → `"10:00"`, 65초 → `"01:05"` (`formatTimer` 재사용)
+- [x] 도달 레벨 그대로 전달
+- [x] 킬 총계 = 표시된 종류별 킬의 합
+- [x] 킬 종류별을 count 내림차순 정렬 + 적 이름은 데이터(`getEnemy(id).name`)에서 (한국어 고정, §2 OUT)
+- [x] `getEnemy=null`인 킬은 리스트·총계에서 생략 (정합 가드)
+- [x] 마법 티어 라벨(`categoryInitial+티어`, 예 `F1`) + 이름 i18n 키(`spell.<id>.name`) 출력
+- [x] 보유 마법 티어 오름차순 정렬 (F1 → I3)
+- [x] `getSpell=null`인 마법은 생략 (정합 가드)
+- [x] 강화 브레이크다운: 옵션 순서 = 데미지 → 쿨다운
+- [x] 브레이크다운: `총합 = 전역 + 분류 + 개별`, 각 티어 레벨 그대로
+- [x] 데미지 최종 효과 % = `+(factor−1)` 반올림 (배율 2.0 → +100)
+- [x] 쿨다운 최종 효과 % = 단축 `−(1−1/factor)` 반올림 (배율 1.25 → −20)
+- [x] 미강화 마법 = 세 티어 0 + 효과 % 0
+- [x] 패시브 레벨·보너스 그대로 전달
+- [x] 빈 입력(킬 0·마법 0) → 빈 리스트·총계 0·생존 `"00:00"`
 
 > **전역 상한(B2)·패시브 레벨 집계**는 각각 `EnhancementLogic`·`DeckLogic` 테스트(구현 시 확장)가 덮는다: 전역 레벨이 `GLOBAL_UPGRADE_CAP`에서 고정·maxed 전역 카드 제외 / `applyCard` N회 → 패시브 level N.
 
@@ -68,8 +68,9 @@
 | ↳ `LevelLabel` | Label | "도달 레벨  Lv.14" |
 | ↳ `KillTotalLabel` | Label | "처치  487" |
 | ↳ `KillListLabel` | Label(Overflow=RESIZE_HEIGHT) | 종류별 킬 조인(여러 줄) |
-| ↳ `SpellListContent` | Node + **Layout**(VERTICAL, ResizeMode=CONTAINER) | 마법 행 런타임 생성 부모(코드가 채움) |
+| ↳ `SpellListContent` | Node + **Layout**(VERTICAL, ResizeMode=CONTAINER) | 마법 행 부모 — `spellRowPrefab` 복제로 채움(코드) |
 | ↳ `PassiveLabel` | Label(Overflow=RESIZE_HEIGHT) | 패시브 3줄(최대HP·이동속도·픽업) |
+| `SpellRow` **프리팹**(씬 밖 에셋) | Node(이름 Label + 강화 RichText) | 마법 한 행 템플릿 — `ResultController.spellRowPrefab`에 연결 |
 
 > Context7 확인(Cocos 3.8): ScrollView = `view`(Mask, 보이는 영역) + `content`(Layout **또는** Widget — 동시 불가). Layout은 자식 배치 + 컨테이너 크기 자동 조정. RichText 색은 `<color=#hex>…</color>`(중첩 가능, 순서 무관).
 
@@ -105,12 +106,12 @@ Canvas (기존)
    - Anchor Y=1(위 기준), Position Y=0 → 위에서부터 아래로 쌓임. ScrollView `Content`에 이 노드를 지정.
 4. **SurvivalLabel / LevelLabel / KillTotalLabel** — `StatsContent` 아래 Label 3개. Content Size 폭 ~700, Font Size 28, 좌측 정렬(값은 코드가 채움 — 초기 문자열 비워도 됨).
 5. **KillListLabel** — Label, `Overflow`=**RESIZE_HEIGHT**, `wrapText`=on, 폭 ~700, Font Size 22. 종류별 킬을 코드가 여러 줄로 조인.
-6. **SpellListContent** — Node + **Layout**(VERTICAL, ResizeMode=CONTAINER, SpacingY=8). 폭 ~700. **마법 행(이름 Label + 데미지·쿨다운 RichText)은 `ResultController`가 런타임 생성**하므로 에디터엔 빈 컨테이너만 둔다.
+6. **SpellListContent** — Node + **Layout**(VERTICAL, ResizeMode=CONTAINER, SpacingY=8). 폭 ~700. 마법 행은 `ResultController`가 `spellRowPrefab`을 `instantiate`해 채우므로 에디터엔 **빈 컨테이너**만 둔다.
 7. **PassiveLabel** — Label, `Overflow`=RESIZE_HEIGHT, 폭 ~700, Font Size 24. 최대HP·이동속도·픽업 3줄을 코드가 채운다.
-8. **프리팹화 불필요** — 마법 행은 코드가 `Node`+`RichText`로 만든다(에디터 행 노드 없음). `SpellListContent`만 부모로 연결.
-9. **`@property` 연결** — `Canvas`(또는 ResultController 보유 노드)의 `ResultController`에 아래 5.1 표대로 노드를 드래그해 연결.
+8. **SpellRow 프리팹 제작** — 별도 Node `SpellRow`에 이름 **Label**(Font 24, 좌측) + 강화 **RichText**(Font 20, `maxWidth`로 줄바꿈, 초기 문자열 비움) 배치 → **프리팹으로 저장**하고 `ResultController.spellRowPrefab`에 연결. `ResultController`가 보유 마법마다 이 프리팹을 `instantiate`해 첫 Label·첫 RichText를 채운다(`getComponentInChildren`으로 찾으므로 프리팹엔 **Label 1개·RichText 1개만**).
+9. **`@property` 연결** — `Canvas`(또는 ResultController 보유 노드)의 `ResultController`에 아래 5.1 표대로 노드·프리팹을 드래그해 연결.
 
-### 4.3 RichText 색 규약 (마법 강화 브레이크다운) (잠정 — 색값 확정은 목업/디자인)
+### 4.3 RichText 색 규약 (마법 강화 브레이크다운, 확정 — `ResultController.TIER_COLOR`)
 
 마법 행의 강화 줄은 RichText 한 개로 `Lv.N (효과%) = 전역 + 분류 + 개별`를 렌더하되, 세 티어 값에 색 태그를 건다.
 
@@ -126,19 +127,20 @@ Canvas (기존)
 
 ## 5. 에디터 연결 체크리스트 (`ResultController` `@property`)
 
-### 5.1 노드 매핑 (잠정 — `@property` 이름은 GREEN 후 코드 기준 확정)
+### 5.1 노드 매핑 (확정 — `ResultController` `@property` 기준)
 
-| `@property` (잠정) | 타입 | 연결 노드 | 상태 |
-|--------------------|------|-----------|------|
+| `@property` | 타입 | 연결 노드 | 상태 |
+|-------------|------|-----------|------|
 | `waveLabel` | Label | (기존) 결과 헤더 라벨 | ⬜ |
 | `retryButton` | Button | (기존) RetryButton | ⬜ |
 | `menuButton` | Button | (기존) MenuButton | ⬜ |
-| `survivalLabel` (잠정) | Label | `SurvivalLabel` | ⬜ |
-| `levelLabel` (잠정) | Label | `LevelLabel` | ⬜ |
-| `killTotalLabel` (잠정) | Label | `KillTotalLabel` | ⬜ |
-| `killListLabel` (잠정) | Label | `KillListLabel` | ⬜ |
-| `spellListContent` (잠정) | Node | `SpellListContent` | ⬜ |
-| `passiveLabel` (잠정) | Label | `PassiveLabel` | ⬜ |
+| `survivalLabel` | Label | `SurvivalLabel` | ⬜ |
+| `levelLabel` | Label | `LevelLabel` | ⬜ |
+| `killTotalLabel` | Label | `KillTotalLabel` | ⬜ |
+| `killListLabel` | Label | `KillListLabel` | ⬜ |
+| `spellListContent` | Node | `SpellListContent` | ⬜ |
+| `spellRowPrefab` | Prefab | `SpellRow` 프리팹(에셋) | ⬜ |
+| `passiveLabel` | Label | `PassiveLabel` | ⬜ |
 
 > 필수 `@property` 미연결 시 `ResultController.onLoad`가 loud-fail(`console.error`)하도록 구현 예정(배선 누락이 조용히 새지 않게 — 백로그 F29 결).
 

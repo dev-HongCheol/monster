@@ -6,6 +6,12 @@
   "result.defeat": "Reached wave {wave}",
   "result.retry": "RETRY",
   "result.menu": "MENU",
+  "result.stat.survival": "Survival",
+  "result.stat.level": "Level",
+  "result.stat.kills": "Kills",
+  "result.stat.passive.hp": "Max HP",
+  "result.stat.passive.move": "Move Speed",
+  "result.stat.passive.pickup": "Pickup Range",
 
   "gameover.title": "GAME OVER",
   "gameover.restart": "RESTART",

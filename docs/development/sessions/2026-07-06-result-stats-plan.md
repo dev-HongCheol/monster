@@ -151,8 +151,8 @@ result 씬 (1280×720)
 [변경] ui/ResultController.ts
   - buildResultStats 호출 → 통계 라벨들 렌더(코드 구동 i18n, main 씬 컨벤션과 동일 [[project_main_scene_i18n_convention]])
   - @property 통계 라벨 추가(생존·레벨·킬·패시브) + 보유 마법 섹션은 마법별 이름 Label + 강화 레벨 RichText.
-    RichText로 전역/분류/개별 레벨을 각각 다른 색(`<color=#…>` 태그)으로 렌더(구현 시 Context7 확인).
-    마법 행은 가변이라 런타임 인스턴스화. 기존 waveLabel·retry/menu 버튼 유지
+    RichText로 전역/분류/개별 레벨을 각각 다른 색(`<color=#…>` 태그, `TIER_COLOR`)으로 렌더.
+    마법 행은 가변이라 spellRowPrefab(이름 Label + RichText)을 instantiate. 기존 waveLabel·retry/menu 버튼 유지
 
 [변경] resources/i18n/ko.json·en.json
   - result.stat.* 키(라벨: 생존시간·레벨·킬·보유마법·패시브 + 단위/포맷) + 강화 브레이크다운 라벨
@@ -160,7 +160,7 @@ result 씬 (1280×720)
 
 [변경] result.scene (7단계 에디터)
   - ScrollView(view+Mask+content Layout VERTICAL/RESIZE_CONTAINER) + 통계 라벨들 +
-    보유 마법 섹션 컨테이너(마법 행 = 이름 Label + 강화 레벨 RichText, 런타임 인스턴스화) +
+    보유 마법 섹션 컨테이너(SpellListContent) + SpellRow 프리팹(이름 Label + 강화 RichText, 런타임 instantiate) +
     ResultController @property 연결 (§4.1b)
 
 [재사용] HudFormatLogic.formatTimer, SpellIconRowLogic.categoryInitial/티어정렬,
