@@ -10,6 +10,10 @@ export class DeckLogic {
   private _maxHpBonus = 0;
   private _moveSpeedBonus = 0;
   private _pickupRangeBonus = 0;
+  // 결과 화면 표시용 패시브 레벨(획득 횟수). 마법 강화와 달리 티어·상한 없는 단일 카운트.
+  private _maxHpLevel = 0;
+  private _moveSpeedLevel = 0;
+  private _pickupRangeLevel = 0;
 
   get maxHpBonus() {
     return this._maxHpBonus;
@@ -23,6 +27,21 @@ export class DeckLogic {
   /** 픽업범위 보너스 누적값 (가산·상한 없음). 소비처: ExperienceManager 픽업 반경 getter */
   get pickupRangeBonus() {
     return this._pickupRangeBonus;
+  }
+
+  /** 최대HP 강화 획득 횟수(레벨). 결과 화면 패시브 표시용. */
+  get maxHpLevel() {
+    return this._maxHpLevel;
+  }
+
+  /** 이동속도 강화 획득 횟수(레벨). 결과 화면 패시브 표시용. */
+  get moveSpeedLevel() {
+    return this._moveSpeedLevel;
+  }
+
+  /** 픽업범위 강화 획득 횟수(레벨). 결과 화면 패시브 표시용. */
+  get pickupLevel() {
+    return this._pickupRangeLevel;
   }
 
   /**
@@ -87,8 +106,18 @@ export class DeckLogic {
    */
   applyCard(card: ICardData): void {
     const e = card.effect;
-    if (e.maxHpBonus !== undefined) this._maxHpBonus += e.maxHpBonus;
-    if (e.moveSpeedBonus !== undefined) this._moveSpeedBonus += e.moveSpeedBonus;
-    if (e.pickupRangeBonus !== undefined) this._pickupRangeBonus += e.pickupRangeBonus;
+    // 보너스 누적 + 획득 횟수(레벨) 증가를 함께 센다(레벨은 결과 화면 표시용).
+    if (e.maxHpBonus !== undefined) {
+      this._maxHpBonus += e.maxHpBonus;
+      this._maxHpLevel++;
+    }
+    if (e.moveSpeedBonus !== undefined) {
+      this._moveSpeedBonus += e.moveSpeedBonus;
+      this._moveSpeedLevel++;
+    }
+    if (e.pickupRangeBonus !== undefined) {
+      this._pickupRangeBonus += e.pickupRangeBonus;
+      this._pickupRangeLevel++;
+    }
   }
 }

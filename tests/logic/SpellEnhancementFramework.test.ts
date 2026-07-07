@@ -9,6 +9,7 @@ import {
 import {
   CATEGORY_CURVE,
   EnhancementLogic,
+  GLOBAL_UPGRADE_CAP,
   INDIVIDUAL_CURVE,
   MIN_COOLDOWN_SEC,
   UPGRADE_CAP,
@@ -51,6 +52,38 @@ describe('EnhancementLogic — 레벨 상태', () => {
     expect(e.getLevel(UpgradeTrack.Category, SpellCategory.Fire, UpgradeOption.Damage)).toBe(
       UPGRADE_CAP,
     );
+  });
+});
+
+describe('EnhancementLogic — 전역 강화 레벨 상한(B2)', () => {
+  it('초기 전역 레벨은 0이다', () => {
+    const e = new EnhancementLogic();
+    expect(e.getGlobalLevel(UpgradeOption.Damage)).toBe(0);
+  });
+
+  it('addGlobal 1회당 전역 레벨이 +1 오른다', () => {
+    const e = new EnhancementLogic();
+    e.addGlobal(UpgradeOption.Damage, 0.05);
+    e.addGlobal(UpgradeOption.Damage, 0.05);
+    expect(e.getGlobalLevel(UpgradeOption.Damage)).toBe(2);
+  });
+
+  it('데미지·쿨다운 전역 레벨은 옵션별로 독립이다', () => {
+    const e = new EnhancementLogic();
+    e.addGlobal(UpgradeOption.Damage, 0.05);
+    expect(e.getGlobalLevel(UpgradeOption.Damage)).toBe(1);
+    expect(e.getGlobalLevel(UpgradeOption.Cooldown)).toBe(0);
+  });
+
+  it('전역 레벨은 GLOBAL_UPGRADE_CAP에서 고정되고 보너스도 더 안 쌓인다', () => {
+    const e = new EnhancementLogic();
+    for (let i = 0; i < GLOBAL_UPGRADE_CAP; i++) e.addGlobal(UpgradeOption.Damage, 0.05);
+    const cappedFactor = e.damageFactor(fireball);
+    // 상한 초과 시도 — 레벨·보너스 모두 불변이어야 한다
+    e.addGlobal(UpgradeOption.Damage, 0.05);
+    e.addGlobal(UpgradeOption.Damage, 0.05);
+    expect(e.getGlobalLevel(UpgradeOption.Damage)).toBe(GLOBAL_UPGRADE_CAP);
+    expect(e.damageFactor(fireball)).toBeCloseTo(cappedFactor);
   });
 });
 
