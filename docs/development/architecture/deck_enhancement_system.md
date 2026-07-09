@@ -58,14 +58,14 @@ classDiagram
 ## 2. 상세 흐름 분석 (Flow Detail)
 
 ### 2.1. 덱 구성 및 동적 카드 합성 (Draw Pool Creation)
-*   [DeckLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/DeckLogic.ts#L38-L67)의 `buildDrawPool`은 매 레벨업 시 드로우 대상이 되는 전체 카드 풀을 생성합니다.
-*   **정적 카드 로드:** [DataManager.ts](file:///F:/work/monster/game/assets/scripts/systems/DataManager.ts)에서 로드한 기본 스펙 카드 목록([cards.json](file:///F:/work/monster/game/assets/resources/data/cards.json))에 다국어 해석용 `nameKey`, `descKey`를 부여합니다.
+*   [DeckLogic.ts](../../../game/assets/scripts/logic/DeckLogic.ts#L38-L67)의 `buildDrawPool`은 매 레벨업 시 드로우 대상이 되는 전체 카드 풀을 생성합니다.
+*   **정적 카드 로드:** [DataManager.ts](../../../game/assets/scripts/systems/DataManager.ts)에서 로드한 기본 스펙 카드 목록([cards.json](../../../game/assets/resources/data/cards.json))에 다국어 해석용 `nameKey`, `descKey`를 부여합니다.
 *   **미보유 마법 추가 카드 합성:** 
     *   플레이어가 보유하지 않은 마법(`allSpells` 중 `owned`에 없는 마법)만을 추출해 임시 `magic` 타입 카드로 즉석 합성합니다.
     *   따라서 기획서 상의 마법들을 파일 데이터에 일일이 카드 목록으로 하드코딩해 두지 않고 데이터 한 줄로 무한히 카드를 파생시킵니다.
     *   만약 보유 마법 개수가 한도에 도달한 상태(`isFull` = `true`)라면 마법 추가 카드 합성을 차단하여 플레이어가 강제로 추가 슬롯을 여는 버그를 예방합니다.
 *   **동적 강화 카드 합성:** 
-    *   [EnhancementLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/EnhancementLogic.ts#L352-L388)의 `buildUpgradeCards`는 현재 플레이어가 장착하고 있는 마법에 대한 **개별 강화 카드**와 속성 분류(**분류 강화 카드**)를 동적으로 합성해 풀에 더합니다.
+    *   [EnhancementLogic.ts](../../../game/assets/scripts/logic/EnhancementLogic.ts#L352-L388)의 `buildUpgradeCards`는 현재 플레이어가 장착하고 있는 마법에 대한 **개별 강화 카드**와 속성 분류(**분류 강화 카드**)를 동적으로 합성해 풀에 더합니다.
     *   강화 레벨 상한(`UPGRADE_CAP` = 4)에 도달한 옵션은 루프에서 차단되어 드로우 풀에서 영구 제외됩니다.
 
 ---

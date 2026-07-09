@@ -9,7 +9,7 @@
 Cocos Creator 엔진(`.prefab`, `cc.Node`, 씬 계층 구조)에 강하게 결합된 코드는 테스트를 수행하기 위해 무거운 게임 에디터 런타임이나 브라우저 샌드박스를 띄워야 하므로 테스트 실행 비용이 크고 CI/CD 파이프라인 통합이 까다롭습니다.
 
 ### 1.1. 로직-컴포넌트 분리 패턴 (Architecture Isolation)
-본 프로젝트는 [002-scripts-logic-pattern.md](file:///F:/work/monster/docs/decisions/002-scripts-logic-pattern.md) 의사결정에 의거하여 모든 게임 기획 규칙을 순수 TypeScript 클래스로 격리하여 작성합니다.
+본 프로젝트는 [002-scripts-logic-pattern.md](../../decisions/002-scripts-logic-pattern.md) 의사결정에 의거하여 모든 게임 기획 규칙을 순수 TypeScript 클래스로 격리하여 작성합니다.
 *   **비즈니스 로직 (`logic/`):** Cocos API(cc) 임포트가 단 한 줄도 없는 순수한 TypeScript 클래스 및 함수들입니다. (예: `DeckLogic`, `FireSchedulerLogic`, `SpatialGrid` 등)
 *   **컴포넌트 래퍼 (`components/`, `ui/`):** Cocos 노드에 부착되어 Cocos 라이프사이클을 연계하고, 순수 로직 클래스를 인스턴스화하여 감싸는 껍데기 역할만 담당합니다.
 *   **테스트 고속화:** 이 격리 구조 덕분에 무거운 게임 엔진 로딩 없이 가볍고 정밀한 단위 테스트 프레임워크인 Vitest 환경에서 로직들을 1초 미만의 속도로 고속 실행하여 검증할 수 있습니다.
@@ -36,7 +36,7 @@ function makeRng(seed: number): () => number {
 
 ### 2.2. 브루트포스 비교를 통한 Parity 테스트 (Mathematical Parity)
 공간 격자 그리드(`SpatialGrid`)나 부채꼴 범위 충돌과 같이 다차원 배열 탐색 및 수학 기하학이 얽힌 연산의 무결성을 증명하기 위해, 단순하고 직관적이지만 느린 브루트포스(Brute-force) 탐색 논리를 테스트 내부에 구현한 뒤 프로덕션 격자 쿼리와 결과를 교차 검증합니다.
-*   [SpatialGrid.test.ts](file:///F:/work/monster/tests/logic/SpatialGrid.test.ts#L163-L201)는 임의의 좌표에 수백 개의 서로 다른 충돌 반경을 가진 몬스터를 스폰하고, 무작위 위치에서 질의를 던져:
+*   [SpatialGrid.test.ts](../../../tests/logic/SpatialGrid.test.ts#L163-L201)는 임의의 좌표에 수백 개의 서로 다른 충돌 반경을 가진 몬스터를 스폰하고, 무작위 위치에서 질의를 던져:
     1.  모든 개체를 선형 루프로 돌며 기하학 거리를 전수 비교한 정밀 목록(`preciseHits`)을 얻습니다.
     2.  Spatial Grid가 돌려준 최적화된 후보 리스트(`candidates`)를 조회합니다.
     3.  `preciseHits`에 든 모든 항목이 `candidates` 안에 단 하나도 빠짐없이(`preciseHits` $\subseteq$ `candidates`) 포착되었는지 검증하여 수학적 누락이 없음을 완전 무결하게 입증합니다.

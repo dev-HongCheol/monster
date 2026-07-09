@@ -66,16 +66,16 @@ classDiagram
 *   **레벨업 패널 트리거:** 
     플레이어가 경험치 픽업 범위를 넓혀 요구치에 도달하면 `ExperienceManager`가 이벤트를 발생시키고 `GameManager.enterLevelUp()`이 호출됩니다.
     *   게임 루프의 물리/투사체 틱 진행을 전면 일시정지(`GameState.LevelUp`)시킵니다.
-    *   [CardSelectPanel.ts](file:///F:/work/monster/game/assets/scripts/ui/CardSelectPanel.ts)가 화면에 표시되고, `DeckManager`를 통해 드로우된 카드 리스트의 번역 키를 해석해 카드를 렌더링합니다.
+    *   [CardSelectPanel.ts](../../../game/assets/scripts/ui/CardSelectPanel.ts)가 화면에 표시되고, `DeckManager`를 통해 드로우된 카드 리스트의 번역 키를 해석해 카드를 렌더링합니다.
 *   **카드 선택 완료:** 카드가 선택되면 3-Tier 강화 데이터에 누적시킨 뒤, 즉시 `GameManager.resumeFromLevelUp()`을 호출하여 패널을 닫고 원래 플레이 속도로 게임을 이행합니다.
 
 ---
 
 ### 2.2. 다국어 로딩 및 옵저버 라벨 관리 (Observer pattern)
 *   **DataManager 선결 조건 게이팅:** 
-    다국어 리소스 로드가 늦어 화면 라벨에 로우 데이터 번역 키(예: `spell.fireball.name`)가 노출되는 현상을 방지하고자, `I18n` 싱글톤 클래스는 `executionOrder(-1)`을 가져가 씬 로드 시 가장 먼저 메모리에 상주하고 [I18n.ts](file:///F:/work/monster/game/assets/systems/I18n.ts#L88-L101)의 비동기 `Promise.all`로 언어 팩들을 병렬 적재합니다.
+    다국어 리소스 로드가 늦어 화면 라벨에 로우 데이터 번역 키(예: `spell.fireball.name`)가 노출되는 현상을 방지하고자, `I18n` 싱글톤 클래스는 `executionOrder(-1)`을 가져가 씬 로드 시 가장 먼저 메모리에 상주하고 [I18n.ts](../../../game/assets/systems/I18n.ts#L88-L101)의 비동기 `Promise.all`로 언어 팩들을 병렬 적재합니다.
 *   **라벨 레지스트리 (Observer Pattern):**
-    *   씬 내 노드에 부착된 [LocalizedLabel.ts](file:///F:/work/monster/game/assets/scripts/ui/LocalizedLabel.ts) 컴포넌트는 Cocos 수명주기인 `onEnable()` 시점에 전역 `I18n` 레지스트리에 자신을 스스로 등록(`register`)합니다.
+    *   씬 내 노드에 부착된 [LocalizedLabel.ts](../../../game/assets/scripts/ui/LocalizedLabel.ts) 컴포넌트는 Cocos 수명주기인 `onEnable()` 시점에 전역 `I18n` 레지스트리에 자신을 스스로 등록(`register`)합니다.
     *   언어 리소스 로드 완료 에지 또는 런타임 언어 스위칭(`setLanguage`) 발생 시, `I18n`이 보관하던 레지스트리 `Set`을 전수 순회하여 등록된 모든 라벨들의 `refresh()` 함수를 호출함으로써 일괄적으로 다국어 텍스트를 실시간 치환합니다.
     *   컴포넌트 비활성화(`onDisable`) 및 노드 해제 시 레지스트리에서 자동 제외(`unregister`)시켜 메모리 누수를 원천 차단합니다.
 
@@ -83,7 +83,7 @@ classDiagram
 
 ## 3. 번역 및 정합성 검증 엔진 (Translation & I18nKeyGuard)
 
-[I18nLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/I18nLogic.ts)와 [I18nKeyGuard.ts](file:///F:/work/monster/game/assets/scripts/logic/I18nKeyGuard.ts)는 기획 번역 팩의 오류 및 누락을 감지하고 폴백을 보장하는 순수 엔진입니다.
+[I18nLogic.ts](../../../game/assets/scripts/logic/I18nLogic.ts)와 [I18nKeyGuard.ts](../../../game/assets/scripts/logic/I18nKeyGuard.ts)는 기획 번역 팩의 오류 및 누락을 감지하고 폴백을 보장하는 순수 엔진입니다.
 
 ### 3.1. 번역 조회 및 폴백 체인 (Fallback Chain)
 `t(key, params)` 호출 시 다국어 번역을 찾기 위해 체인 구조를 타고 내려갑니다.

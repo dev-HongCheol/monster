@@ -77,11 +77,11 @@ classDiagram
 
 ### 2.1. 자동 발사 및 쿨다운 스케줄링 (Fire Scheduling)
 1. **쿨다운 누적:** 
-   [SpellCaster.ts](file:///F:/work/monster/game/assets/scripts/components/SpellCaster.ts)의 `update(dt)`가 실행되면 소유하고 있는 [FireSchedulerLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/FireSchedulerLogic.ts)의 `tick(dt, spells)`를 매 프레임 호출합니다.
+   [SpellCaster.ts](../../../game/assets/scripts/components/SpellCaster.ts)의 `update(dt)`가 실행되면 소유하고 있는 [FireSchedulerLogic.ts](../../../game/assets/scripts/logic/FireSchedulerLogic.ts)의 `tick(dt, spells)`를 매 프레임 호출합니다.
    * `timers` 맵에 등록되지 않은 신규 장착 마법은 남은 시간이 `0`으로 즉시 초기화되어 바로 발사 가능 상태가 됩니다.
    * 기존 마법들의 쿨다운은 프레임 델타 `dt`만큼 균등 차감됩니다.
 2. **조준 타겟 검색:** 
-   [SpellCaster.ts](file:///F:/work/monster/game/assets/scripts/components/SpellCaster.ts#L410-L427)는 플레이어 기준 최근접 유효 적 노드를 탐색하여 방향 단위 벡터 `aim`을 계산합니다.
+   [SpellCaster.ts](../../../game/assets/scripts/components/SpellCaster.ts#L410-L427)는 플레이어 기준 최근접 유효 적 노드를 탐색하여 방향 단위 벡터 `aim`을 계산합니다.
 3. **발사 분기:** 
    `isReady(id)`가 `true`인 마법에 대해 발사를 시작합니다.
    * **Nova (자기중심 AoE):** 조준(aim) 방향이나 적 존재 유무와 무관하게 쿨다운마다 즉각 발동하며, `consume()`으로 쿨다운을 리셋합니다.
@@ -92,26 +92,26 @@ classDiagram
 
 ## 3. 발사체 생성 및 패턴 기하학 (Projectile Pattern & Geometry)
 *   **다발 발사 방향 계산:** 
-    [SpellPatternLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/SpellPatternLogic.ts)의 `buildFirePlan()`은 마법 패턴(`SpellPattern.Directional` 등)과 유효 투사체 개수(`count`)를 결합해 [FireGeometry.ts](file:///F:/work/monster/game/assets/scripts/logic/FireGeometry.ts)로 벡터를 연산합니다.
+    [SpellPatternLogic.ts](../../../game/assets/scripts/logic/SpellPatternLogic.ts)의 `buildFirePlan()`은 마법 패턴(`SpellPattern.Directional` 등)과 유효 투사체 개수(`count`)를 결합해 [FireGeometry.ts](../../../game/assets/scripts/logic/FireGeometry.ts)로 벡터를 연산합니다.
     *   **부채꼴(fanDirections):** aim 벡터를 중심으로 균등하게 부채꼴 각도(`spreadAngleDeg`)만큼 퍼져나가는 방향 리스트를 반환합니다.
         $$\text{offsetDeg} = -\frac{\text{spreadAngle}}{2} + \frac{i \times \text{spreadAngle}}{n - 1}$$
     *   **링(radialDirections):** 탄막 생성용 확산 각도로, 360도를 $n$으로 나누어 회전시키되 첫 점과 끝 점이 중복으로 겹쳐서 스폰되지 않도록 끝점을 배제합니다.
 *   **발사체 풀링 초기화:** 
-    계산된 방향에 맞춰 `PoolManager`에서 [Projectile.ts](file:///F:/work/monster/game/assets/scripts/components/Projectile.ts) 노드를 꺼내 `init()`합니다.
+    계산된 방향에 맞춰 `PoolManager`에서 [Projectile.ts](../../../game/assets/scripts/components/Projectile.ts) 노드를 꺼내 `init()`합니다.
     이때 최종 곱산 배율이 반영된 데미지 및 폭발 범위/CC 옵션을 주입합니다.
 
 ---
 
 ## 4. 명중 판정 및 폭발/CC 처리 (Hit Resolution & Explosion & CC)
 *   **제곱거리 충돌 검사 (Optimization):** 
-    [Projectile.ts](file:///F:/work/monster/game/assets/scripts/components/Projectile.ts#L105-L130)는 매 프레임 이동 후 Spatial Grid에서 후보 몬스터 목록을 수집한 후, 무거운 제곱근(`sqrt`) 계산을 회피하고자 제곱거리 비교 공식을 사용하여 충돌을 판정합니다.
+    [Projectile.ts](../../../game/assets/scripts/components/Projectile.ts#L105-L130)는 매 프레임 이동 후 Spatial Grid에서 후보 몬스터 목록을 수집한 후, 무거운 제곱근(`sqrt`) 계산을 회피하고자 제곱거리 비교 공식을 사용하여 충돌을 판정합니다.
     $$\text{dx}^2 + \text{dy}^2 < (R_{\text{projectile}} + R_{\text{enemy}})^2$$
 *   **단일 타격 vs 폭발 (AoE) 분기:**
-    *   **단일 마법:** 대상에게 직격 피해를 입히고, 마법 데이터에 `onHitStatus`가 명시된 경우 [StatusEffectLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/StatusEffectLogic.ts)의 `shouldApplyControl` 순수 함수를 거쳐 확률적으로 CC(정지, 슬로우, 빙결)를 겁니다.
+    *   **단일 마법:** 대상에게 직격 피해를 입히고, 마법 데이터에 `onHitStatus`가 명시된 경우 [StatusEffectLogic.ts](../../../game/assets/scripts/logic/StatusEffectLogic.ts)의 `shouldApplyControl` 순수 함수를 거쳐 확률적으로 CC(정지, 슬로우, 빙결)를 겁니다.
     *   **폭발 마법:** 직격 데미지 없이 명중점을 중심으로 하는 광역 폭발 피해(`_detonate`)만 가합니다.
 *   **시전 단위 중복 피해 방지 (Dedup):** 
     동시에 발사된 여러 발사체의 폭발 영역이 겹칠 때 한 마리의 몬스터가 중복으로 피해를 받아 순식간에 녹아내리는 현상을 차단하기 위해, 한 번의 시전(`volley`)에 속한 발사체들은 단일 `hitSet` 참조 인스턴스를 공유합니다.
-    [ExplosionLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/ExplosionLogic.ts)의 `selectExplosionHits`는 이 `hitSet`에 기록되지 않은 몬스터에만 피해를 입히고 ID를 `hitSet`에 영구 등록합니다.
+    [ExplosionLogic.ts](../../../game/assets/scripts/logic/ExplosionLogic.ts)의 `selectExplosionHits`는 이 `hitSet`에 기록되지 않은 몬스터에만 피해를 입히고 ID를 `hitSet`에 영구 등록합니다.
 
 ---
 
@@ -120,7 +120,7 @@ classDiagram
 궤도 마법(예: 인페르노)은 발사체와 별개로 플레이어 주변을 공전하며 다중 타격 및 간격 규칙을 고유하게 가져갑니다.
 
 ### 5.1. 각도 보존 단일 인스턴스 설계 (Angle Preservation)
-*   [OrbitLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/OrbitLogic.ts#L73-L83)의 `spawn()`은 쿨다운 만료로 궤도 마법을 재시전할 때 새로 인스턴스를 생성하지 않고 기존 `OrbitState`를 덮어씁니다.
+*   [OrbitLogic.ts](../../../game/assets/scripts/logic/OrbitLogic.ts#L73-L83)의 `spawn()`은 쿨다운 만료로 궤도 마법을 재시전할 때 새로 인스턴스를 생성하지 않고 기존 `OrbitState`를 덮어씁니다.
 *   이때 누적 회전각 `theta`를 초기화하지 않고 그대로 유지하여, 재시전 시 돌고 있던 오브의 각도가 튀어 비주얼적으로 부자연스럽게 점프하는 버그를 완벽하게 방지합니다.
 
 ### 5.2. 충돌 겹침 및 파묻힘 방지 반경 계산 (Dynamic Ring Radius)

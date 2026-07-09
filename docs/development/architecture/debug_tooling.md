@@ -19,7 +19,7 @@ graph TD
 ```
 
 *   **배선 구조:** 
-    [DeckManager.ts](file:///F:/work/monster/game/assets/scripts/systems/DeckManager.ts#L79-L87)의 `start()` 단계에서 `DEV` 상수 게이트가 열려 있는 경우에만 프로젝트 리소스 경로의 디버깅 설정 파일([debug-enhancements.json](file:///F:/work/monster/game/assets/resources/data/debug-enhancements.json))을 비동기로 강제 인출합니다.
+    [DeckManager.ts](../../../game/assets/scripts/systems/DeckManager.ts#L79-L87)의 `start()` 단계에서 `DEV` 상수 게이트가 열려 있는 경우에만 프로젝트 리소스 경로의 디버깅 설정 파일([debug-enhancements.json](../../../game/assets/resources/data/debug-enhancements.json))을 비동기로 강제 인출합니다.
 *   **즉각 반영:** 
     가져온 데이터는 카드 선택 프로세스를 완전히 우회(Bypass)하여 마법 강화 트랙에 직접 레벨을 강제 적재합니다. 릴리스 빌드 시에는 트리쉐이킹 및 빌드 타임 코드 제외 처리를 거쳐 실제 프로덕션 패키지 크기나 데이터 유출에 무해하도록 격리됩니다.
 
@@ -28,7 +28,7 @@ graph TD
 ## 2. 안전 파싱 및 무결성 정규화 (Robust Parsing)
 
 디버그용 JSON 설정 파일은 개발자가 손으로 직접 텍스트 에디터에서 작성하므로, 실수로 지원하지 않는 강화 항목 문자열을 적거나(오타), 0~4레벨 범위를 넘어서는 비정상적인 수치 값을 적어 시스템 크래시를 유발할 수 있습니다. 
-이를 예방하기 위해 [DebugEnhancementSeed.ts](file:///F:/work/monster/game/assets/scripts/logic/DebugEnhancementSeed.ts)의 `parseDebugEnhancementSeed` 순수 함수에서 다중 안전 필터를 적용합니다.
+이를 예방하기 위해 [DebugEnhancementSeed.ts](../../../game/assets/scripts/logic/DebugEnhancementSeed.ts)의 `parseDebugEnhancementSeed` 순수 함수에서 다중 안전 필터를 적용합니다.
 
 ### 2.1. 옵션 이름 무결성 가드 (Option Gating)
 데이터 테이블 상에서 수동으로 전달된 키가 실제 런타임 Enum 값에 포함되는 옵션인지 1차로 필터링합니다.

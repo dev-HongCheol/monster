@@ -74,7 +74,7 @@ classDiagram
 
 ### 2.1. 웨이브 기반 몬스터 스폰 디렉션 (Spawning Direction)
 *   **구간 스폰 가중치 테이블:** 
-    [SpawnDirectorLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/SpawnDirectorLogic.ts)는 기획 테이블([spawn-table.json](file:///F:/work/monster/game/assets/resources/data/spawn-table.json))을 `fromWave` 기준 오름차순으로 정렬하여 적재합니다.
+    [SpawnDirectorLogic.ts](../../../game/assets/scripts/logic/SpawnDirectorLogic.ts)는 기획 테이블([spawn-table.json](../../../game/assets/resources/data/spawn-table.json))을 `fromWave` 기준 오름차순으로 정렬하여 적재합니다.
 *   **구간 맵핑 및 가중치 선택:**
     *   현재 웨이브 값 이하인 가장 큰 `fromWave`를 지닌 엔트리를 선출합니다.
     *   `selectEnemyId(wave, Math.random())` 호출 시 주입된 난수를 가중치의 총합(`total`) 영역에 비례하여 구간별로 누적 적재하며 매핑하는 가중치 비례 선택 알고리즘을 사용합니다.
@@ -84,22 +84,22 @@ classDiagram
 
 ## 3. 적 AI 상태 기계 및 행동 패턴 (Enemy AI FSM)
 
-[EnemyController.ts](file:///F:/work/monster/game/assets/scripts/components/EnemyController.ts)는 개체의 복잡한 이동 및 공격 패턴을 상태 기계(FSM) 모듈에 위임하여 처리합니다.
+[EnemyController.ts](../../../game/assets/scripts/components/EnemyController.ts)는 개체의 복잡한 이동 및 공격 패턴을 상태 기계(FSM) 모듈에 위임하여 처리합니다.
 
 ### 3.1. 지그재그 이동 (Zigzag - 어둑시니)
-[MovementLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/MovementLogic.ts#L106-L121)의 `zigzagDirection`을 사용합니다. 플레이어를 조준한 전진 벡터에 수직인 방향 성분을 구하고, 프레임 경과 시간 누적 시계에 맞춰 삼각함수(Sin) 값으로 사인파 오프셋을 더합니다.
+[MovementLogic.ts](../../../game/assets/scripts/logic/MovementLogic.ts#L106-L121)의 `zigzagDirection`을 사용합니다. 플레이어를 조준한 전진 벡터에 수직인 방향 성분을 구하고, 프레임 경과 시간 누적 시계에 맞춰 삼각함수(Sin) 값으로 사인파 오프셋을 더합니다.
 $$\text{수직 벡터} = (-y_{\text{toPlayer}}, x_{\text{toPlayer}})$$
 $$\text{Offset} = \text{수직 벡터} \times \sin\left(\frac{2\pi \times \text{elapsed}}{\text{period}}\right) \times \text{amplitude}$$
 
 ### 3.2. 유격 이동 (Kite - 구미호)
-[MovementLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/MovementLogic.ts#L129-L149)의 `kiteDirection`을 사용합니다. 플레이어와 적 사이의 거리를 측정하여:
+[MovementLogic.ts](../../../game/assets/scripts/logic/MovementLogic.ts#L129-L149)의 `kiteDirection`을 사용합니다. 플레이어와 적 사이의 거리를 측정하여:
 *   선호 거리(`preferredRange`) + 데드존 반경보다 멀면 플레이어를 향해 접근합니다.
 *   선호 거리 - 데드존 반경보다 가까우면 플레이어의 역방향으로 후퇴합니다.
 *   오차 대역인 데드존(`KITE_DEADZONE_BAND` = 40px) 밴드 구간 안에서는 떨림 현상을 방지하기 위해 속도를 0으로 설정하여 멈춥니다.
 
 ### 3.3. 돌진 공격 (Lunge - 불가사리)
 돌진 이동 FSM은 `Chase` -> `Windup` -> `Lunge` -> `Cooldown` 단계를 가집니다.
-*   [MovementLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/MovementLogic.ts#L226-L255)의 `tickLunge`를 통해 트리거됩니다.
+*   [MovementLogic.ts](../../../game/assets/scripts/logic/MovementLogic.ts#L226-L255)의 `tickLunge`를 통해 트리거됩니다.
 *   **Windup (텔레그래프 경고):** 돌진하기 전 플레이어 방향으로 각도를 잠그고(`_lockDir` 래치), 붉은색 윈드업 점멸 연출과 바닥 마커(`lungeMarker`) 스케일을 주입합니다.
 *   **Lunge (돌진 돌파):** 잠긴 방향으로 빠르게 돌진합니다.
 *   **락아웃 동결 최적화:** 정지나 빙결 등의 CC에 적이 걸린 경우 FSM 타이머 진행과 속도를 완전히 동결하여, CC가 풀린 이후에 남아있던 공격/돌진 동작을 의도치 않게 공중에서 실행하지 않고 쿨다운을 정상 이행하게 합니다.

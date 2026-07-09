@@ -9,7 +9,7 @@
 몬스터와 발사체 간의 물리 충돌 판정을 브루트포스 방식으로 전수 비교하게 되면 연산 횟수는 적과 투사체 수의 곱인 $O(N^2)$으로 급증하여 프레임 드랍을 유발합니다. 이를 극복하고자 2D 희소 공간 그리드를 도입했습니다.
 
 ### 1.1. 시간 복잡도 변환 ($O(N^2) \to O(N)$)
-*   [SpatialGrid.ts](file:///F:/work/monster/game/assets/scripts/logic/SpatialGrid.ts)는 전체 월드 영역을 일정한 변의 길이를 가진 균일 셀(Grid Cell, e.g., 64px)로 구획합니다.
+*   [SpatialGrid.ts](../../../game/assets/scripts/logic/SpatialGrid.ts)는 전체 월드 영역을 일정한 변의 길이를 가진 균일 셀(Grid Cell, e.g., 64px)로 구획합니다.
 *   **Insert ($O(1)$):** 매 프레임 모든 몬스터의 좌표를 floor 연산하여 1차원 문자열 키로 맵핑하고, 희소 맵의 셀 버킷 리스트에 객체를 삽입합니다.
     $$\text{cellKey}(x, y) = \left\lfloor \frac{x}{\text{cellSize}} \right\rfloor + "," + \left\lfloor \frac{y}{\text{cellSize}} \right\rfloor$$
 *   **QueryRadius ($O(1)$):** 투사체 또는 폭발의 반경을 기반으로 검색 범위가 교차하는 인접 셀 집합을 산출하고, 해당 버킷 내에 위치한 적들에 대해서만 정밀 제곱거리 연산을 수행합니다.
@@ -30,10 +30,10 @@ $$\text{QueryRadius}_{\text{final}} = \text{Radius}_{\text{projectile}} + \max(R
 
 ### 2.1. 얇은 결합 레이어 아키텍처 (Wrapper & Ledger)
 풀링 시스템은 엔진 배선이 제거된 순수 배열 장부와 Cocos Creator 연동 모듈로 이중화되어 있습니다.
-1.  **순수 풀링 장부 ([ObjectPoolLogic.ts](file:///F:/work/monster/game/assets/scripts/logic/ObjectPoolLogic.ts)):**
+1.  **순수 풀링 장부 ([ObjectPoolLogic.ts](../../../game/assets/scripts/logic/ObjectPoolLogic.ts)):**
     *   Cocos API를 일절 참조하지 않고 순수 TS 제네릭 배열 `_free: T[]`를 관리합니다.
     *   가용 객체의 `acquire` 분기, 회수 시 `release` 판단, 그리고 누적 활성 개체 수 회계장부 연산에만 전념하여 단위 테스트를 통해 비가비지 작동을 고정합니다.
-2.  **노드 풀 연동 ([PoolManager.ts](file:///F:/work/monster/game/assets/scripts/components/PoolManager.ts)):**
+2.  **노드 풀 연동 ([PoolManager.ts](../../../game/assets/scripts/components/PoolManager.ts)):**
     *   `ObjectPoolLogic` 장부 위에 Cocos의 프리팹 객체화(`instantiate`), 렌더링 활성 전환(`active=true/false`), 폐기(`destroy`) 등 부수 효과를 입히는 얇은 Wrapper 역할만 완수합니다.
     *   이로 인해 에디터 상에 컴포넌트 프리팹을 여러 개 중첩 배치하는 배선 비용을 제거하고 소유 컴포넌트가 new 연산자로 즉시 인스턴스화할 수 있도록 구현되었습니다.
 
