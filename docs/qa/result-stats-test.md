@@ -12,7 +12,7 @@
 
 ## 1. 자동 테스트로 검증 (`tests/logic/ResultStats.test.ts`)
 
-> **GREEN 확인(2026-07-07):** 피처 테스트 16/16 + 전체 스위트 427/427 통과. 순수 로직 커밋 `638c38d`. 아래 항목 전부 자동 테스트로 덮음.
+> **GREEN 확인(2026-07-07):** 전체 스위트 427/427 통과(리뷰 C1 반영 후 재확인). `buildResultStats`는 해석된 입력만 받는 순수 포맷터라 result 씬에서 DataManager 비의존. 아래 항목 자동 테스트로 덮음(정합 가드는 스냅샷 계층으로 이동).
 
 순수 함수 `buildResultStats(input, getSpell, getEnemy)` 조립을 덮는다.
 
@@ -20,10 +20,10 @@
 - [x] 도달 레벨 그대로 전달
 - [x] 킬 총계 = 표시된 종류별 킬의 합
 - [x] 킬 종류별을 count 내림차순 정렬 + 적 이름은 데이터(`getEnemy(id).name`)에서 (한국어 고정, §2 OUT)
-- [x] `getEnemy=null`인 킬은 리스트·총계에서 생략 (정합 가드)
+- [~] 정합 가드(미존재 적 킬 제외)는 **스냅샷 계층으로 이동**(리뷰 C1) — `GameManager._snapshotResult`가 `getEnemy=null` 킬을 제외(수동 QA). 순수 함수는 해석된 이름만 받음
 - [x] 마법 티어 라벨(`categoryInitial+티어`, 예 `F1`) + 이름 i18n 키(`spell.<id>.name`) 출력
 - [x] 보유 마법 티어 오름차순 정렬 (F1 → I3)
-- [x] `getSpell=null`인 마법은 생략 (정합 가드)
+- [~] 정합 가드(미존재 마법 제외)는 **스냅샷 계층으로 이동**(리뷰 C1) — `DeckManager.resultSpellSnapshots`가 `getSpell=null` 마법을 제외(수동 QA)
 - [x] 강화 브레이크다운: 옵션 순서 = 데미지 → 쿨다운
 - [x] 브레이크다운: `총합 = 전역 + 분류 + 개별`, 각 티어 레벨 그대로
 - [x] 데미지 최종 효과 % = `+(factor−1)` 반올림 (배율 2.0 → +100)
@@ -32,7 +32,7 @@
 - [x] 패시브 레벨·보너스 그대로 전달
 - [x] 빈 입력(킬 0·마법 0) → 빈 리스트·총계 0·생존 `"00:00"`
 
-> **전역 상한(B2)·패시브 레벨 집계**는 각각 `EnhancementLogic`·`DeckLogic` 테스트(구현 시 확장)가 덮는다: 전역 레벨이 `GLOBAL_UPGRADE_CAP`에서 고정·maxed 전역 카드 제외 / `applyCard` N회 → 패시브 level N.
+> **전역 상한(B2) 레벨·패시브 레벨 집계**는 각각 `EnhancementLogic`·`DeckLogic` 테스트가 덮는다: 전역 레벨이 `GLOBAL_UPGRADE_CAP`에서 고정·보너스 동결 / `applyCard` N회 → 패시브 level N. **단, "maxed 전역 카드 드로우 풀 제외"는 `DeckManager._isMaxedGlobalCard`(cc, 단위 테스트 밖) → 수동 QA**(리뷰 M1 정정).
 
 ---
 
@@ -70,7 +70,7 @@
 | ↳ `KillListLabel` | Label(Overflow=RESIZE_HEIGHT) | 종류별 킬 조인(여러 줄) |
 | ↳ `SpellListContent` | Node + **Layout**(VERTICAL, ResizeMode=CONTAINER) | 마법 행 부모 — `spellRowPrefab` 복제로 채움(코드) |
 | ↳ `PassiveLabel` | Label(Overflow=RESIZE_HEIGHT) | 패시브 3줄(최대HP·이동속도·픽업) |
-| `SpellRow` **프리팹**(씬 밖 에셋) | Node(이름 Label + 강화 RichText) | 마법 한 행 템플릿 — `ResultController.spellRowPrefab`에 연결 |
+| `SpellRow` **프리팹**(씬 밖 에셋) | Node → 자식 `Name`(Label) + `Breakdown`(RichText) | 마법 한 행 템플릿 — `ResultController.spellRowPrefab`에 연결 |
 
 > Context7 확인(Cocos 3.8): ScrollView = `view`(Mask, 보이는 영역) + `content`(Layout **또는** Widget — 동시 불가). Layout은 자식 배치 + 컨테이너 크기 자동 조정. RichText 색은 `<color=#hex>…</color>`(중첩 가능, 순서 무관).
 
@@ -108,7 +108,7 @@ Canvas (기존)
 5. **KillListLabel** — Label, `Overflow`=**RESIZE_HEIGHT**, `wrapText`=on, 폭 ~700, Font Size 22. 종류별 킬을 코드가 여러 줄로 조인.
 6. **SpellListContent** — Node + **Layout**(VERTICAL, ResizeMode=CONTAINER, SpacingY=8). 폭 ~700. 마법 행은 `ResultController`가 `spellRowPrefab`을 `instantiate`해 채우므로 에디터엔 **빈 컨테이너**만 둔다.
 7. **PassiveLabel** — Label, `Overflow`=RESIZE_HEIGHT, 폭 ~700, Font Size 24. 최대HP·이동속도·픽업 3줄을 코드가 채운다.
-8. **SpellRow 프리팹 제작** — 별도 Node `SpellRow`에 이름 **Label**(Font 24, 좌측) + 강화 **RichText**(Font 20, `maxWidth`로 줄바꿈, 초기 문자열 비움) 배치 → **프리팹으로 저장**하고 `ResultController.spellRowPrefab`에 연결. `ResultController`가 보유 마법마다 이 프리팹을 `instantiate`해 첫 Label·첫 RichText를 채운다(`getComponentInChildren`으로 찾으므로 프리팹엔 **Label 1개·RichText 1개만**).
+8. **SpellRow 프리팹 제작** — Node `SpellRow` 아래에 자식 Node **`Name`**(Label, Font 24, 좌측) + 자식 Node **`Breakdown`**(RichText, Font 20, `maxWidth`로 줄바꿈, 초기 문자열 **비움**) 배치 → **프리팹으로 저장**하고 `ResultController.spellRowPrefab`에 연결. `ResultController`가 보유 마법마다 `instantiate` 후 **`getChildByName('Name')`·`getChildByName('Breakdown')`** 로 찾아 채우므로 두 자식 이름은 정확히 **`Name`·`Breakdown`** 이어야 한다(위치 탐색 아님 — 리뷰 I2).
 9. **`@property` 연결** — `Canvas`(또는 ResultController 보유 노드)의 `ResultController`에 아래 5.1 표대로 노드·프리팹을 드래그해 연결.
 
 ### 4.3 RichText 색 규약 (마법 강화 브레이크다운, 확정 — `ResultController.TIER_COLOR`)
@@ -142,7 +142,7 @@ Canvas (기존)
 | `spellRowPrefab` | Prefab | `SpellRow` 프리팹(에셋) | ⬜ |
 | `passiveLabel` | Label | `PassiveLabel` | ⬜ |
 
-> 필수 `@property` 미연결 시 `ResultController.onLoad`가 loud-fail(`console.error`)하도록 구현 예정(배선 누락이 조용히 새지 않게 — 백로그 F29 결).
+> 필수 `@property` 미연결 시 `ResultController.onLoad`가 loud-fail(`console.error`로 누락 목록 출력 + 컴포넌트 비활성)한다(배선 누락이 조용히 새지 않게 — 백로그 F29 결, 리뷰 I1). 인게임에서 통계가 안 뜨면 콘솔의 `[ResultController] 필수 @property 미연결: …`를 먼저 확인한다.
 
 ---
 
