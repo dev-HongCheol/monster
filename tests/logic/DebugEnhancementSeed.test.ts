@@ -83,4 +83,12 @@ describe('parseDebugEnhancementSeed', () => {
     const ops = parseDebugEnhancementSeed({ global: { damage: 0, cooldown: 0.05 } });
     expect(ops.globals).toEqual([{ option: UpgradeOption.Cooldown, bonus: 0.05 }]);
   });
+
+  it('음수 전역 보너스(디버프 시드)는 걸러내지 않는다', () => {
+    // 가드가 `bonus === 0`인 이유. 개별·분류의 `level <= 0`을 그대로 흉내 내 `bonus <= 0`으로
+    // 쓰면 디버프 시드가 조용히 사라진다. EnhancementLogic은 음수 전역 보너스를 상정하고
+    // `MIN_GLOBAL_MULT`로 factor 하한을 잡는다(그쪽 JSDoc: "디버프성 전역 보너스(≤ -1)").
+    const ops = parseDebugEnhancementSeed({ global: { damage: -0.1 } });
+    expect(ops.globals).toEqual([{ option: UpgradeOption.Damage, bonus: -0.1 }]);
+  });
 });
