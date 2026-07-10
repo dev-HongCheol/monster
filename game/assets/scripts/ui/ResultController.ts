@@ -140,14 +140,14 @@ export class ResultController extends Component {
     }
   }
 
-  /** 강화 한 줄: `데미지 Lv.6 (+201%) = <색>전역</> + <색>분류</> + <색>개별</>` (RichText color 태그). */
+  /** 강화 한 줄: `데미지 (+201%) = <색>전역</> + <색>분류</> + <색>개별</>` (RichText color 태그). */
   private _upgradeLine(u: ResultUpgradeView): string {
     const optionKey = u.option === UpgradeOption.Damage ? 'upgrade.damage' : 'upgrade.cooldown';
     const sign = u.effectPct >= 0 ? '+' : '';
     const g = `<color=${TIER_COLOR.global}>${u.global}</color>`;
     const c = `<color=${TIER_COLOR.category}>${u.category}</color>`;
     const i = `<color=${TIER_COLOR.individual}>${u.individual}</color>`;
-    return `${this._t(optionKey)} Lv.${u.total} (${sign}${u.effectPct}%) = ${g} + ${c} + ${i}`;
+    return `${this._t(optionKey)} (${sign}${u.effectPct}%) = ${g} + ${c} + ${i}`;
   }
 
   /** 패시브 3줄 — 최대HP는 flat 보너스, 이동속도·픽업은 비율(%)로 표시. */

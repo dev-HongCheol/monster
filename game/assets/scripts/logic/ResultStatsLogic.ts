@@ -75,8 +75,6 @@ export interface ResultStatsInput {
 export interface ResultUpgradeView {
   /** 강화 옵션 — 데미지 또는 쿨다운 */
   option: UpgradeOption.Damage | UpgradeOption.Cooldown;
-  /** 총 레벨 = global + category + individual (레벨 합) */
-  total: number;
   /** 전역 레벨 */
   global: number;
   /** 분류 레벨 */
@@ -131,7 +129,7 @@ function cooldownPct(factor: number): number {
   return Math.round((1 / factor - 1) * 100);
 }
 
-/** 한 옵션의 브레이크다운 뷰를 조립한다(총합 = 세 티어 레벨 합). */
+/** 한 옵션의 브레이크다운 뷰를 조립한다(세 티어 레벨 + 최종 효과 %). */
 function upgradeView(
   option: UpgradeOption.Damage | UpgradeOption.Cooldown,
   tiers: UpgradeTierSnapshot,
@@ -139,7 +137,6 @@ function upgradeView(
 ): ResultUpgradeView {
   return {
     option,
-    total: tiers.g + tiers.c + tiers.i,
     global: tiers.g,
     category: tiers.c,
     individual: tiers.i,

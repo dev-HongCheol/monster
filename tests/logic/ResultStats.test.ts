@@ -147,17 +147,19 @@ describe('buildResultStats — 강화 레벨 브레이크다운', () => {
     ]);
   });
 
-  it('총합 = 전역 + 분류 + 개별이고 각 티어 레벨을 그대로 낸다', () => {
+  it('세 티어 레벨을 그대로 내고 총합 필드는 두지 않는다', () => {
     const view = buildResultStats(
       input({
         spells: [spellSnap('fireball', SpellCategory.Fire, 1, lv(1, 2, 3, 2), lv(1, 0, 0, 1.25))],
       }),
     );
-    expect(view.spells[0].upgrades[0]).toMatchObject({
+    // 합계는 `1 + 2 + 3` 형태로 렌더에 이미 드러나므로 뷰모델에 total을 두지 않는다(toEqual로 형태 고정).
+    expect(view.spells[0].upgrades[0]).toEqual({
+      option: UpgradeOption.Damage,
       global: 1,
       category: 2,
       individual: 3,
-      total: 6,
+      effectPct: 100,
     });
   });
 
@@ -184,7 +186,7 @@ describe('buildResultStats — 강화 레벨 브레이크다운', () => {
       input({ spells: [spellSnap('fireball', SpellCategory.Fire, 1)] }),
     );
     for (const u of view.spells[0].upgrades) {
-      expect(u).toMatchObject({ global: 0, category: 0, individual: 0, total: 0, effectPct: 0 });
+      expect(u).toMatchObject({ global: 0, category: 0, individual: 0, effectPct: 0 });
     }
   });
 });
