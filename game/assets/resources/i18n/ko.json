@@ -14,6 +14,15 @@
   },
   "result.retry": { "message": "RETRY", "desc": "결과 화면 다시 시작 버튼" },
   "result.menu": { "message": "MENU", "desc": "결과 화면 메뉴로 버튼" },
+  "result.stat.survival": { "message": "생존 시간", "desc": "결과 화면 통계 — 생존 시간 라벨" },
+  "result.stat.level": { "message": "도달 레벨", "desc": "결과 화면 통계 — 도달 레벨 라벨" },
+  "result.stat.kills": { "message": "처치", "desc": "결과 화면 통계 — 총 처치 수 라벨" },
+  "result.stat.passive.hp": { "message": "최대 HP", "desc": "결과 화면 패시브 — 최대 체력 라벨" },
+  "result.stat.passive.move": { "message": "이동속도", "desc": "결과 화면 패시브 — 이동속도 라벨" },
+  "result.stat.passive.pickup": {
+    "message": "픽업 범위",
+    "desc": "결과 화면 패시브 — 픽업 범위 라벨"
+  },
 
   "gameover.title": { "message": "GAME OVER", "desc": "게임오버 패널 제목" },
   "gameover.restart": { "message": "RESTART", "desc": "게임오버 패널 재시작 버튼" },

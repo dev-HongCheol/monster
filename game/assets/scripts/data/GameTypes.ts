@@ -318,4 +318,29 @@ export interface IXPData {
 export const GameResult = {
   waveReached: 0,
   gameVictory: false,
+  // ── 런 통계 스냅샷 (사망/승리 시 GameManager.goToResult()에서 채움 — 씬 파괴를 넘어 전달) ──
+  /** 생존 시간(초) = gameDuration − gameTimer */
+  survivalSec: 0,
+  /** 도달 레벨 */
+  level: 1,
+  /** 적 종류별 킬 (이름 해석 완료 — 미존재 적 제외). 스냅샷 시점 DataManager로 해석해 result 씬 비의존 */
+  kills: [] as { name: string; count: number }[],
+  /**
+   * 보유 마법별 강화 스냅샷 — 분류·티어(라벨용) + 데미지·쿨다운의 전역(g)/분류(c)/개별(i) 레벨 + 최종 배율(factor).
+   * ResultStatsLogic.ResultSpellSnapshot과 구조 동일(구조적 호환 — 순환 import 회피용 인라인 타입).
+   */
+  spells: [] as {
+    id: string;
+    category: SpellCategory;
+    tier: number;
+    dmg: { g: number; c: number; i: number; factor: number };
+    cd: { g: number; c: number; i: number; factor: number };
+  }[],
+  /** 패시브 레벨(획득 횟수) + 누적 보너스 — 최대HP·이동속도·픽업범위 */
+  passiveHpLevel: 0,
+  passiveHpBonus: 0,
+  passiveMoveLevel: 0,
+  passiveMoveBonus: 0,
+  passivePickupLevel: 0,
+  passivePickupBonus: 0,
 };

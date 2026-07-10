@@ -66,3 +66,39 @@ describe('DeckLogic.applyCard — 플레이어 강화(전역 패시브)', () => 
     expect(deck.maxHpBonus).toBe(0);
   });
 });
+
+describe('DeckLogic.applyCard — 패시브 레벨(획득 횟수, 결과 화면 표시용)', () => {
+  let deck: DeckLogic;
+
+  beforeEach(() => {
+    deck = new DeckLogic();
+  });
+
+  it('초기 패시브 레벨은 모두 0이다', () => {
+    expect(deck.maxHpLevel).toBe(0);
+    expect(deck.moveSpeedLevel).toBe(0);
+    expect(deck.pickupLevel).toBe(0);
+  });
+
+  it('maxHp 카드를 N회 적용하면 maxHpLevel=N (보너스와 별개로 횟수를 센다)', () => {
+    deck.applyCard(makeCard('x', { maxHpBonus: 20 }));
+    deck.applyCard(makeCard('y', { maxHpBonus: 10 }));
+    expect(deck.maxHpLevel).toBe(2);
+    expect(deck.maxHpBonus).toBe(30);
+  });
+
+  it('이동속도·픽업도 각자 레벨을 센다', () => {
+    deck.applyCard(makeCard('m', { moveSpeedBonus: 0.05 }));
+    deck.applyCard(makeCard('p', { pickupRangeBonus: 0.1 }));
+    deck.applyCard(makeCard('p2', { pickupRangeBonus: 0.1 }));
+    expect(deck.moveSpeedLevel).toBe(1);
+    expect(deck.pickupLevel).toBe(2);
+  });
+
+  it('effect가 비어 있으면 어떤 패시브 레벨도 오르지 않는다', () => {
+    deck.applyCard(makeCard('x', {}));
+    expect(deck.maxHpLevel).toBe(0);
+    expect(deck.moveSpeedLevel).toBe(0);
+    expect(deck.pickupLevel).toBe(0);
+  });
+});

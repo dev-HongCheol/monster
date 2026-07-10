@@ -1,6 +1,6 @@
 {
-  "feature": "pause-menu",
-  "phase": "pr-ready",
+  "feature": "result-stats",
+  "phase": "user-verification",
   "test_skipped": false,
   "test_skip_reason": null,
   "verification": {

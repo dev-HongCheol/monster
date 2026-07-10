@@ -1,0 +1,214 @@
+# 결과 화면 런 통계 (J4 P0-4) — 구현 계획
+
+- **작성일:** 2026-07-06
+- **상태:** **완료** (PR #54, 2026-07-11 머지). 7단계 사용자 테스트에서 두 건을 리워크했다 — DEV 강화 시드의 전역 보너스 `0`이 전역 레벨을 올리던 회귀 수정, 브레이크다운 총합 `Lv.N` 제거. 상세는 `../../qa/result-stats-review-issues.md` 재리뷰 섹션.
+- **브랜치:** feat/result-stats
+- **성격:** 기능 개발 계획. `/office-hours` 스코프 확정(통계 항목·마법 표시·킬 종류별) + `/autoplan` 집중 리뷰(Codex 미설치 → 단일 리뷰어) 반영.
+- **정본 연결:** `docs/design/ui-completeness-plan.md` §4 P0-4, `docs/development/backlog.md` 테마 J4 · J2, [[project_v1_completeness_pivot]]
+
+---
+
+## 1. 배경과 목적
+
+v1 완성도 전환(로드맵 v0.3) UI 트랙의 P0 중 하나가 "결과 화면 런 통계"다. 지금 결과 화면(`ResultController`)은 **승/패 + 도달 웨이브 숫자 하나**만 보여준다. 한 판을 20분 가까이 돌려도 끝나면 "N웨이브 도달"만 뜨니, 내가 얼마나 버텼고 뭘 잡았고 어떤 빌드였는지 돌아볼 게 없다 — ui-completeness-plan이 "현재 웨이브 숫자만 있는 큰 공백"이라 부른 지점이다. 이 슬라이스는 생존 시간·도달 레벨·킬 수(적 종류별)·보유 마법·패시브 요약을 결과 화면에 얹어 런 요약을 채운다.
+
+## 2. 스코프
+
+`/office-hours`에서 확정(2026-07-06).
+
+### IN (이번 슬라이스)
+- **통계 5종 표시:** 생존 시간, 도달 레벨, **킬 수(적 종류별 + 총계)**, 보유 마법(**항목별 한 줄** — 티어 라벨 + 이름, 그 아래 **강화 레벨 브레이크다운**), **패시브(최대HP·이동속도·픽업범위) — 마법과 같은 `Lv.N` 레벨 포맷**(단, 패시브는 티어가 없어 3색 브레이크다운 없이 단일 레벨). 기존 승/패 + 도달 웨이브 라벨은 유지.
+- **킬 카운터 신설:** 현재 없음. `GameManager`가 적 종류별 킬 맵(`Record<enemyId, number>`)을 들고, `EnemyController._startDeath()`에서 `registerKill(enemyId)`로 종류별 +1.
+- **마법 강화 레벨 브레이크다운(§2 OUT에서 IN으로 이동):** 각 마법 아래에 **데미지·쿨다운** 옵션의 강화를 `Lv.총합 (최종 효과%) = 전역 + 분류 + 개별`로 표시한다 — 레벨은 정수라 합, 괄호는 **실제 효과**(데미지는 증가 +%, 쿨다운은 배율이 쿨다운을 나눠 줄이므로 단축 −%). 세 티어 값을 각각 **다른 색**으로 렌더한다(Cocos `RichText`). 순서는 전역 → 분류 → 개별. 발사체 수는 전역 트랙이 없어(개별+분류 가산) 이 3티어 형식에서 빠진다(§4.2).
+- **전역 강화 레벨 상한 신설(백로그 B2 처리):** 전역(플레이어) 강화는 지금 무한 누적(`addGlobal`)이라 "레벨"이 없고, 다수 누적 시 "개별>분류>전역" 위계가 점근적으로 깨질 수 있다(B2). 이 슬라이스에서 **옵션별 전역 레벨 상한**을 도입해 개별·분류처럼 0~N레벨로 유계화하고, 상한 도달 시 전역 강화 카드가 더 안 뜨게 한다 — 레벨 표시의 전제이자 위계 보정. 상한 값은 밸런싱 placeholder(§4.2).
+- **씬 간 스냅샷:** main→result는 씬 교체라 `GameManager`·`DeckManager`·`SpellCaster`·`ExperienceManager`가 전부 파괴된다. 그래서 사망/승리 시점(둘 다 `goToResult()` 경유)에 모든 통계 + **마법별 강화 레벨(개별·분류·전역 × 데미지·쿨다운)** + **패시브 레벨(획득 횟수)**을 `GameResult` 전역에 스냅샷하고, `ResultController`는 `GameResult`만 읽는다.
+- **순수 로직 seam:** `buildResultStats(스냅샷 + getSpell/getEnemy → 뷰모델)` — 시간 포맷·마법 라벨·**강화 레벨 브레이크다운 조립**·킬 종류별 리스트·패시브 조립.
+
+### OUT (후속/이월)
+- **적 이름 현지화** — 적 이름은 `enemies.json`에 직접 문자열(처녀귀신 등)로 있고 i18n 키가 없다(`enemy.*` 0건). 킬 리스트의 적 이름은 **한국어 고정**(EN 모드에서도 한국어). 12종 `enemy.*` i18n는 별도 작업이라 이월(도감 J3와 함께 닫을 후보).
+- **마법 강화 HUD 호버 툴팁** — 결과 화면의 **상시** 강화 레벨 브레이크다운은 위 IN으로 옮겼다. 인게임 HUD(spell-icon-row)에서 호버로 같은 정보를 띄우는 인터랙션만 후속으로 남긴다.
+- **메타 통계**(누적 클리어·최고 기록·골드) — 세이브(J3)와 함께.
+- **결과 화면 비주얼 폴리시**(레이아웃·모션) — `/design-consultation` 단계.
+
+## 3. 이 슬라이스가 닫는 백로그 항목
+- **J4 P0-4** (ui-completeness-plan) — 결과 화면 런 통계. 이 슬라이스가 생존·레벨·킬·마법·패시브 표시를 닫는다.
+- **J2 일부** — "게임오버 → 결과 화면" 완성도. 결과 화면이 요약 정보를 갖추며 플로우 완결감이 오른다(J2 자체는 나머지로 계속 열림).
+- **B2(밸런싱)** — 전역 강화 트랙 cap. 전역 강화에 옵션별 레벨 상한을 도입해, 다수 누적에서도 "개별>분류>전역" 위계가 유지되게 한다(레벨 브레이크다운 표시의 전제).
+
+## 4. 설계
+
+### 4.1 데이터 흐름 (씬 전환 스냅샷)
+
+```
+[플레이 중] EnemyController._startDeath()
+   → GameManager.registerKill(enemyId)   // 종류별 킬 맵 +1
+
+[사망/승리] GameManager.goToResult()  (사망: _applyDamage→_startDeathSequence→done, 승리: update)
+   → _snapshotResult():  아직 살아 있는 매니저들에서 GameResult로 복사
+        survivalSec = gameDuration - gameTimer
+        level       = ExperienceManager.level
+        killsByType = { ...GameManager 킬 맵 }
+        spells      = 보유 마법별 강화 레벨(개별·분류·전역 × 데미지·쿨다운) — DeckManager 경유
+        passive{Hp,Move,Pickup}{Level,Bonus} = DeckManager getter(레벨=획득 횟수 + 보너스값)
+   → director.loadScene('result')       // 여기서 매니저들 파괴됨
+
+[결과 씬] ResultController.onLoad()
+   → buildResultStats(GameResult, DataManager.getSpell, DataManager.getEnemy)  // 순수
+   → 라벨들에 렌더(코드 구동 i18n — result.stat.* + 값)
+```
+
+**왜 `goToResult()`에서 스냅샷하나:** 사망·승리 두 경로가 모두 이 메서드를 지난다(한 곳). `loadScene` 직전이라 매니저가 전부 살아 있고, 이 시점 이후 값이 바뀌지 않는다(게임은 GameOver/Victory로 얼어 있음). DRY 스냅샷 지점.
+
+### 4.1b 결과 화면 레이아웃 (스크롤 영역)
+
+통계는 나중에 늘 수 있으므로(메타 통계·최고 기록 등) 가운데 통계 영역을 **`ScrollView`**로 둔다. 헤더(승/패·웨이브)와 RETRY/MENU 버튼은 고정, 통계만 스크롤한다.
+
+```
+result 씬 (1280×720)
+  결과 헤더(승/패 + 웨이브)              ← 고정 (기존 waveLabel)
+  ScrollView (세로 스크롤)              ← 신규
+   ↳ view (Mask — 보이는 영역 정의·클립)
+      ↳ content (Layout VERTICAL + RESIZE_CONTAINER — 자식 높이만큼 자동 확장)
+         ↳ 생존시간 / 레벨 / 킬 총계 라벨
+         ↳ 킬 종류별 라벨 (Overflow RESIZE_HEIGHT — 여러 줄 자동)
+         ↳ 보유 마법 섹션 (마법별: 이름 라벨 + 강화 레벨 RichText 브레이크다운, RESIZE_HEIGHT)
+         ↳ 패시브 라벨
+  RETRY · MENU 버튼                     ← 고정 (기존)
+```
+
+- **스크롤:** `content`의 Layout이 자식 높이 합만큼 자동으로 커지고, `view`보다 커지면 스크롤된다. 통계 항목을 추가해도 라벨을 content에 넣으면 자동으로 스크롤 대상이 된다(확장성).
+- **클립(안 맞을 때 숨김):** `view`의 `Mask`가 뷰 밖 내용을 잘라낸다 — 넘친 부분은 화면에서 숨고 스크롤로 접근한다. 가변 길이 항목(킬 종류별·마법 리스트)은 Label `Overflow=RESIZE_HEIGHT`로 여러 줄 확장 → content가 더 자라 스크롤에 반영. (Cocos 3.8 공식 ScrollView = view(Mask)+content(Layout) 구조 확인.)
+- **라벨 구성:** 통계 행은 `ResultController`가 `@property`로 잡은 Label들에 `buildResultStats` 결과를 코드로 채운다. 킬 종류별·패시브 등 단순 텍스트는 고정 라벨(가변 리스트는 한 라벨에 조인)로 P0 저비용. **보유 마법**은 마법별로 이름 Label + 강화 레벨 **RichText**(`<color=#…>전역</> · <color>분류</> · <color>개별</>`)로 구성한다 — 한 줄 안에서 세 티어 레벨을 각각 다른 색으로 렌더하려면 색 구간이 필요해 단색 Label로는 안 되고 RichText가 정본(Cocos 3.8 RichText color 태그, 구현 시 Context7 확인). 마법 수가 가변이라 마법 행은 런타임 인스턴스화(에디터 무변경), content Layout이 높이를 자동 확장. 완전 데이터 구동(행 프리팹화)은 통계가 더 복잡해지면 후속.
+
+### 4.2 아키텍처 (신규/변경)
+
+```
+[신규] logic/ResultStatsLogic.ts (순수, cc import 없음)
+  - buildResultStats(snapshot, getSpell, getEnemy): ResultStatsView
+      ResultStatsView = {
+        survivalTime: string,       // formatTimer(survivalSec) = mm:ss
+        level: number,
+        killTotal: number,
+        killsByType: { name: string; count: number }[],  // count 내림차순
+        spells: {                                          // "F1 파이어볼" 티어 오름차순
+          label: string,
+          upgrades: {                 // 데미지·쿨다운 강화 레벨 브레이크다운
+            option: 'damage' | 'cooldown',
+            total: number,            // = global + category + individual (레벨 합)
+            global: number, category: number, individual: number,  // 각 티어 레벨(3색 렌더)
+            effectPct: number,        // 최종 효과 % — 데미지=+(factor−1), 쿨다운=−(1−1/factor)
+          }[],
+        }[],
+        passives: {                     // 티어 없음 — Lv.N 단일(3색 브레이크다운 X)
+          maxHp:     { level: number; bonus: number },
+          moveSpeed: { level: number; bonusPct: number },
+          pickup:    { level: number; bonusPct: number },
+        },
+      }
+      · getEnemy(id)=null 인 킬 항목 생략(정합 가드), getSpell(id)=null 마법 생략
+      · 마법 라벨은 SpellIconRowLogic.categoryInitial + 티어 오름차순(재사용)
+      · 강화 레벨은 스냅샷의 마법별 {개별,분류,전역}×{데미지,쿨다운} 정수를 그대로 조립.
+        최종 효과 %는 스냅샷한 배율(factor)에서 산출(데미지 +(factor−1)·쿨다운 −(1−1/factor)) —
+        곡선은 스냅샷 시점에 이미 반영돼, buildResultStats는 factor→% 포맷만 한다(순수·곡선 import 불필요)
+
+[변경] data/GameTypes.ts — GameResult 확장
+  - survivalSec, level, killsByType: Record<string, number>,
+    spells: { id: string;
+              dmg: {g:number;c:number;i:number;factor:number};
+              cd:  {g:number;c:number;i:number;factor:number} }[]
+       (마법 id + 데미지·쿨다운의 전역/분류/개별 레벨 + 최종 배율 factor[%는 이걸로 산출] — 기존 spellIds 대체),
+    passiveHp{Level,Bonus}, passiveMove{Level,Bonus}, passivePickup{Level,Bonus}
+       (레벨=획득 횟수 + 보너스값 — 기존 보너스-only 대체; 기존 waveReached·gameVictory 유지)
+
+[변경] systems/GameManager.ts
+  - _killsByType: Record<string, number> = {}  (onLoad에서 초기화)
+  - registerKill(enemyId: string): 종류별 +1
+  - goToResult(): _snapshotResult() 후 loadScene (§4.1)
+  - _snapshotResult(): 위 필드들 + 보유 마법별 강화 레벨(DeckManager 경유 개별·분류·전역 × 데미지·쿨다운)을 GameResult에 복사(매니저 null 가드)
+
+[변경] components/EnemyController.ts
+  - _startDeath()에서 GameManager.instance?.registerKill(this.enemyId) 1회
+    (takeDamage→_hp<=0→_startDeath 경로 = 실제 킬만. despawn/onDestroy 아님)
+
+[변경] logic/EnhancementLogic.ts — 전역 강화 상한(B2) + 티어 레벨 조회
+  - 전역(플레이어) 강화에 옵션별 '레벨'(전역 강화 획득 횟수)과 상한 GLOBAL_UPGRADE_CAP
+    (초기값 placeholder — 밸런싱에서 확정)을 도입해 무한 누적을 유계화한다. 상한 도달 시
+    그 옵션의 전역 보너스가 더 안 쌓이고, buildUpgradeCards도 maxed 전역 옵션을 제외(개별·분류와 대칭).
+  - getGlobalLevel(option) 노출 + 기존 getLevel(개별/분류)로 마법별 3티어 레벨을 조회(스냅샷·표시용).
+  - factor() 곱셈 배율은 유지 — 전역은 계속 (1 + 누적 보너스)이되 이제 상한으로 유계.
+  - 위계(개별>분류>전역)는 per-level 값(전역 per-pick 최소)으로 계속 유지.
+
+[변경] logic/DeckLogic.ts — 패시브 레벨(획득 횟수) 집계
+  - applyCard가 지금은 보너스값만 누적(`_maxHpBonus += …`). 여기에 패시브 옵션별
+    **획득 횟수(레벨)**를 함께 센다(maxHp/moveSpeed/pickup). 마법 강화와 달리 티어·cap 없음(표시용 단일 레벨).
+  - maxHpLevel/moveSpeedLevel/pickupLevel getter 노출(스냅샷·표시용). 기존 보너스 getter 유지.
+
+[변경] systems/DeckManager.ts
+  - 스냅샷·표시가 읽을 티어 레벨 조회를 노출(개별=마법 id, 분류=category, 전역=옵션)
+    — EnhancementLogic getLevel/getGlobalLevel 패스스루. 보유 마법 순회는 loadout에서.
+  - 패시브 레벨 getter 패스스루(DeckLogic maxHpLevel/moveSpeedLevel/pickupLevel).
+  - 최종 효과 % 산출용 배율 노출: damageFactor(기존) + cooldownFactor(신규 패스스루 — EnhancementLogic 보유).
+
+[변경] ui/ResultController.ts
+  - buildResultStats 호출 → 통계 라벨들 렌더(코드 구동 i18n, main 씬 컨벤션과 동일 [[project_main_scene_i18n_convention]])
+  - @property 통계 라벨 추가(생존·레벨·킬·패시브) + 보유 마법 섹션은 마법별 이름 Label + 강화 레벨 RichText.
+    RichText로 전역/분류/개별 레벨을 각각 다른 색(`<color=#…>` 태그, `TIER_COLOR`)으로 렌더.
+    마법 행은 가변이라 spellRowPrefab(이름 Label + RichText)을 instantiate. 기존 waveLabel·retry/menu 버튼 유지
+
+[변경] resources/i18n/ko.json·en.json
+  - result.stat.* 키(라벨: 생존시간·레벨·킬·보유마법·패시브 + 단위/포맷) + 강화 브레이크다운 라벨
+    (데미지·쿨다운은 upgrade.damage/upgrade.cooldown 재사용, 전역/분류/개별 티어 라벨). 적 이름은 미대상(§2 OUT)
+
+[변경] result.scene (7단계 에디터)
+  - ScrollView(view+Mask+content Layout VERTICAL/RESIZE_CONTAINER) + 통계 라벨들 +
+    보유 마법 섹션 컨테이너(SpellListContent) + SpellRow 프리팹(이름 Label + 강화 RichText, 런타임 instantiate) +
+    ResultController @property 연결 (§4.1b)
+
+[재사용] HudFormatLogic.formatTimer, SpellIconRowLogic.categoryInitial/티어정렬,
+         DataManager.getSpell/getEnemy, DeckManager.maxHpBonus/moveSpeedBonus/pickupRangeBonus,
+         EnhancementLogic.getLevel(개별·분류) + (신규) getGlobalLevel, upgrade.damage/upgrade.cooldown i18n,
+         ExperienceManager.level, GameManager.gameTimer/gameDuration
+```
+
+## 5. 리뷰 요약 (/autoplan 집중 리뷰 — Codex 미설치, 단일 리뷰어)
+
+### CEO/스코프
+- 올바른 P0 문제. "웨이브 숫자만"의 큰 공백을 채워 런 완결감을 준다(저비용·고체감). 재사용이 강함 — 새로 만드는 건 킬 카운터·`GameResult` 스냅샷·순수 `buildResultStats`뿐, 나머지는 기존 매니저/포맷/로직 재사용.
+- 킬 종류별·패시브 포함은 사용자 요구 반영한 완성도 확장(단일 킬 수보다 "무엇과 싸웠나"가 요약으로 유의미).
+- 6개월 후회 낮음 — 스냅샷 구조는 메타 통계(세이브 J3)·도감으로 그대로 확장된다.
+
+### Eng
+- **아키텍처 건전.** `GameResult` 전역 스냅샷이 씬 파괴를 넘는 유일한 올바른 경로. `buildResultStats` 순수·`ResultController` 렌더 전용 분리.
+- **킬 카운트 위치:** `_startDeath()`가 `takeDamage`의 `_hp<=0`에서만 불려 킬당 정확히 1회. `unregisterEnemy`/`onDestroy`(씬 teardown 포함 모든 제거)엔 넣지 않아 오버카운트 없음. `EnemyController.enemyId`(@property) 존재 → 인자 확보.
+- **스냅샷 타이밍:** 사망 경로는 `_startDeathSequence`(연출 ~0.8s) 후 `goToResult()`지만, 그 사이 값이 안 변함(GameOver 프리즈). 승리도 `goToResult()` 경유. 한 곳 스냅샷으로 양쪽 커버. `_snapshotResult`는 매니저 null 가드.
+- **엣지:** 킬 0/마법 0 → 빈 리스트, `getEnemy/getSpell=null` → 해당 항목 생략(정합 가드, SpellIconRow·F4류), 승리 시 `survivalSec=gameDuration`(gameTimer=0).
+- **테스트 seam:** `buildResultStats`는 순수(스냅샷 + 조회 콜백) → 피처 테스트로 덮음. **스킵 아님.**
+
+### Design (UI 스코프)
+- **정보 위계:** 승/패 결과(기존) → 생존시간·레벨(핵심 지표) → 킬(총계 + 종류별) → 보유 마법 → 패시브. retry/menu 버튼 유지.
+- **레이아웃:** 통계는 라벨 몇 개(생존·레벨·킬 총계 헤더) + 리스트 라벨(킬 종류별·마법). 구체 노드·좌표는 7단계 QA 레시피에서 확정.
+- **i18n:** 라벨은 `result.stat.*` 코드 구동. 적 이름은 한국어 고정(§2 OUT — 기존 갭).
+
+### 타세(taste) 결정 — 계획 승인 시 조정 가능
+- **킬 리스트 정렬:** count 내림차순(많이 잡은 순) 권장. 로스터 순서도 가능.
+- **적 이름 현지화 미포함:** EN 모드서도 적 이름 한국어. 이번 스코프 밖(별도 enemy.* i18n 작업). 계획 승인 시 포함 요청 가능하나 12종 키 추가 = 스코프 확대.
+
+## 6. 테스트 전략
+- **피처 테스트 `tests/logic/ResultStats.test.ts`** (RED→GREEN):
+  - 생존시간 포맷(예 600초 → "10:00"), 레벨 전달, 킬 총계 = 종류별 합, 킬 리스트 count 내림차순, 마법 라벨(티어 오름차순 "F1"·"I3"), 패시브 값 전달, `getEnemy=null` 킬 생략, `getSpell=null` 마법 생략, 빈 입력(킬 0·마법 0).
+  - **강화 레벨 브레이크다운:** 옵션별(데미지·쿨다운) `total = global + category + individual`, 값 전달 정확, 미강화 마법 = 세 티어 모두 0, 순서(전역→분류→개별). **최종 효과 %**: 데미지=+(factor−1)·쿨다운=−(1−1/factor) 반올림(예 factor 1.638 → 쿨다운 −39%).
+  - **패시브 레벨:** maxHp/moveSpeed/pickup 각 `Lv.N`(획득 횟수) + 보너스값 전달, 미획득 = Lv.0.
+- **전역 상한(B2) — `EnhancementLogic` 테스트 확장:** 전역 레벨이 GLOBAL_UPGRADE_CAP에서 고정(추가 addGlobal에도 레벨·보너스 불변), buildUpgradeCards가 maxed 전역 옵션 제외, getGlobalLevel 반환값.
+- **패시브 레벨 집계 — `DeckLogic` 테스트 확장:** applyCard를 같은 패시브로 N회 → level N + 보너스 누적.
+- **Cocos 의존부**(스냅샷 실제 채움, registerKill 실동작, RichText 렌더·색, 씬 전환)는 순수 밖 → 수동 QA. 순수 조립은 피처 테스트가 덮음 → **전체 스킵 아님.**
+- wf 파일명 규칙: 피처 PascalCase = `ResultStats` ([[project_wf_test_filename]]).
+
+## 7. QA·에디터 (7단계용 — 상세는 qa 문서)
+- result.scene에 통계 라벨 노드 추가(생존·레벨·킬 총계·킬 종류별 리스트·마법 리스트·패시브) + `ResultController` @property 연결.
+- 인게임: 한 판 플레이 → 사망 또는 20분 승리 → 결과 화면에서 생존시간·레벨·킬(총계+종류별)·보유 마법·패시브가 실제 플레이와 맞는지 확인. 킬 카운트가 종류별로 정확한지(적 몇 마리 잡고 확인).
+
+## 8. 열어 두는 후속 (백로그 반영)
+- 적 이름 i18n(`enemy.*` 12종) — 도감(J3)과 함께.
+- 메타 통계(누적 클리어·최고 기록) — 세이브(J3).
+- 결과 화면 비주얼 폴리시 — `/design-consultation`.
+- 마법 강화 브레이크다운 **HUD 호버 툴팁** — 결과 화면 상시 표시는 이번 슬라이스로 IN. 인게임 HUD 호버 인터랙션만 후속(spell-icon-row).

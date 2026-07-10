@@ -309,6 +309,8 @@ export class EnemyController extends Component {
    */
   private _startDeath(): void {
     this._dead = true;
+    // 실제 처치만 이 경로를 지난다(despawn/onDestroy 아님) → 종류별 킬 1회 누적(결과 화면 통계).
+    GameManager.instance?.registerKill(this.enemyId);
     GameManager.instance?.unregisterEnemy(this);
     this._dropXpItem();
     this._deathElapsed = 0;

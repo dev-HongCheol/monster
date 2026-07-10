@@ -11,7 +11,7 @@ export interface IDebugEnhancementSeed {
   individual?: Record<string, Record<string, number>>;
   /** 분류 트랙: category → (옵션 문자열 → 레벨 0~4) */
   category?: Record<string, Record<string, number>>;
-  /** 전역(플레이어) 보너스: 옵션 문자열 → factor 가산 보너스(예: 0.05 → ×1.05) */
+  /** 전역(플레이어) 보너스: 옵션 문자열 → factor 가산 보너스(예: 0.05 → ×1.05). 0 = 시드하지 않음 */
   global?: Record<string, number>;
 }
 
@@ -75,6 +75,8 @@ function collectRaises(
 /**
  * 디버그 시드 원시 객체를 적용 가능한 op 목록으로 정규화한다 — 순수 함수(cc import 없음).
  * 알 수 없는 옵션·비수치 값·범위 밖 레벨을 방어적으로 걸러 잘못된 시드가 게임을 깨지 않게 한다.
+ * 레벨 0(개별·분류)과 보너스 0(전역)은 "시드하지 않음"이라 op을 만들지 않는다 — 시드 파일이
+ * 모든 노브를 0으로 나열한 템플릿이기 때문이다.
  * @param raw 시드 파일 JSON(부분/누락 가능). null/undefined면 빈 ops.
  */
 export function parseDebugEnhancementSeed(
@@ -93,6 +95,9 @@ export function parseDebugEnhancementSeed(
       const option = toOption(optStr);
       if (!option) continue;
       if (typeof bonus !== 'number' || !Number.isFinite(bonus)) continue;
+      // 보너스 0 = "이 옵션은 시드하지 않는다"(레벨 0과 같은 의미). op으로 내보내면 DeckManager가
+      // addGlobal(option, 0)을 호출해 보너스 없이 전역 레벨만 1 올린다.
+      if (bonus === 0) continue;
       globals.push({ option, bonus });
     }
   }

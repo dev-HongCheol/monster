@@ -10,6 +10,14 @@ import {
 export const UPGRADE_CAP = 4;
 
 /**
+ * 전역(플레이어) 강화 레벨 상한 (백로그 B2). 개별·분류(UPGRADE_CAP)와 대칭으로 전역도 유계화해,
+ * 다수 누적 시에도 "개별 > 분류 > 전역" 위계가 점근적으로 깨지지 않게 한다. 상한 도달 시 그 옵션의
+ * 전역 보너스가 더 쌓이지 않고, 전역 강화 카드도 드로우 풀에서 빠진다(`DeckManager.drawCards`).
+ * **정확한 값은 밸런싱 단계에서 확정(placeholder).**
+ */
+export const GLOBAL_UPGRADE_CAP = 4;
+
+/**
  * 비선형 가속 곡선 (기획 § 7.4) — level → 누적 배율. 데미지는 곱(↑), 쿨다운은 나눗셈(간격↓).
  *
  * **강화 위계: 개별 > 분류 > 전역(플레이어).** 적용 범위가 좁을수록 레벨당 값이 크다 —
@@ -190,6 +198,8 @@ export class EnhancementLogic {
   private _category = new Map<string, Map<UpgradeOption, number>>();
   /** 전역(플레이어) 강화 보너스: option → 누적 보너스(factor = 1 + 보너스). 모든 마법 공통 */
   private _global = new Map<UpgradeOption, number>();
+  /** 전역 강화 레벨(획득 횟수): option → count. 상한 GLOBAL_UPGRADE_CAP(B2). 표시·유계화용. */
+  private _globalLevel = new Map<UpgradeOption, number>();
 
   /**
    * 트랙·키·옵션의 현재 강화 레벨을 반환한다 (미강화는 0).
@@ -223,11 +233,20 @@ export class EnhancementLogic {
 
   /**
    * 전역(플레이어) 강화 보너스를 누적한다 (모든 마법 공통, 위계상 가장 작음).
+   * 옵션별 레벨 상한(GLOBAL_UPGRADE_CAP·B2)으로 유계화한다 — 상한 도달 시 레벨·보너스 모두 고정(no-op).
    * @param option 강화 옵션 (데미지/쿨다운)
    * @param bonus factor 가산 보너스 (예: 0.05 → ×1.05)
    */
   addGlobal(option: UpgradeOption, bonus: number): void {
+    const level = this._globalLevel.get(option) ?? 0;
+    if (level >= GLOBAL_UPGRADE_CAP) return;
+    this._globalLevel.set(option, level + 1);
     this._global.set(option, (this._global.get(option) ?? 0) + bonus);
+  }
+
+  /** 전역(플레이어) 강화 레벨(획득 횟수, 0~GLOBAL_UPGRADE_CAP). 결과 화면 브레이크다운 표시용. */
+  getGlobalLevel(option: UpgradeOption): number {
+    return this._globalLevel.get(option) ?? 0;
   }
 
   /**
