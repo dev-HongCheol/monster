@@ -1,6 +1,7 @@
 # 결과 화면 런 통계 (J4 P0-4) — 구현 계획
 
 - **작성일:** 2026-07-06
+- **상태:** **완료** (PR #54, 2026-07-11 머지). 7단계 사용자 테스트에서 두 건을 리워크했다 — DEV 강화 시드의 전역 보너스 `0`이 전역 레벨을 올리던 회귀 수정, 브레이크다운 총합 `Lv.N` 제거. 상세는 `../../qa/result-stats-review-issues.md` 재리뷰 섹션.
 - **브랜치:** feat/result-stats
 - **성격:** 기능 개발 계획. `/office-hours` 스코프 확정(통계 항목·마법 표시·킬 종류별) + `/autoplan` 집중 리뷰(Codex 미설치 → 단일 리뷰어) 반영.
 - **정본 연결:** `docs/design/ui-completeness-plan.md` §4 P0-4, `docs/development/backlog.md` 테마 J4 · J2, [[project_v1_completeness_pivot]]

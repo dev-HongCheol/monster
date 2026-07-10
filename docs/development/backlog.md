@@ -58,7 +58,6 @@
 | # | 상태 | 우선 | 항목 | 요약 · 왜 | 출처 |
 |---|------|------|------|-----------|------|
 | B1 | 보류 | — | ⚖️ 발사체당 데미지 페널티 `r` 확정 + 선형→곱연산 전환 | 다발=군집 이득 / 단일 손해 트레이드오프 곡선의 강도를 좌우한다. 현재 `(1 − r × 증가수)`는 선형이라 상한 부근에서 0·음수로 떨어져 하한 클램프에 의존 → 곱연산 `(1 − r)^증가수`로 바꿀지 함께 확정. 수치 확정 구간에 진입해야 의미가 있다. | `../qa/projectile-count-review-issues.md`, `../planning/magic-system-mage.md` §7.6 |
-| B2 | 진행중 | — | ⚖️ 전역 강화 트랙 상한 도입 | 개별·분류 곡선은 상한 4인데 전역은 무한 누적이라 "개별>분류>전역" 위계가 다수 누적 시 깨진다. **result-stats 슬라이스(PR #54)가 옵션별 레벨 상한을 도입해 처리 중** — 레벨 브레이크다운 표시의 전제. | `../qa/spell-enhancement-framework-review-issues.md` #4, `sessions/2026-07-06-result-stats-plan.md` |
 | B3 | 보류 | — | ⚖️ 강화 곡선·전역 수치 placeholder 확정 | `INDIVIDUAL_CURVE`·`CATEGORY_CURVE`·전역 ±5%가 모두 임시값이다(설계 §10 TBD). | `../qa/spell-enhancement-framework-review-issues.md` #5 |
 | B4 | 보류 | — | ⚖️ `spreadAngleDeg` 기본 30° 튜닝 | 총 부채꼴 각도라 발사체가 늘어도 외곽이 ±15°로 고정돼 촘촘하다. | `../qa/spell-pattern-engine-review-issues.md` |
 | B5 | 열림 | 중 | ⚖️ 마법 카드 추첨 가중치 / 웨이브 등급 게이팅 | 합성 카드가 base 카드와 평면 풀에서 균등 무작위라, 마법 종수가 늘수록 특정 강화 카드 확률이 희석된다. 기획 §6.2 가중치 추첨이 미구현. | `../qa/magic-add-card-review-issues.md` #1 |
@@ -111,6 +110,7 @@
 
 ## 완료 아카이브 (게임)
 
+- **B2** 전역 강화 트랙 상한 도입 → **완료**(`feat/result-stats`, PR #54, 2026-07-11). 개별·분류 곡선은 상한 4인데 전역만 무한 누적이라 다수 누적 시 "개별>분류>전역" 위계가 점근적으로 깨졌다. 옵션별 `GLOBAL_UPGRADE_CAP`을 도입해 0~N레벨로 유계화하고, 상한 도달 시 해당 전역 강화 카드가 드로우 풀에서 빠지게 했다(`DeckManager._isMaxedGlobalCard`). 결과 화면 레벨 브레이크다운 표시의 전제였다. 상한 값 자체는 밸런싱 placeholder. → `sessions/2026-07-06-result-stats-plan.md`, `../qa/spell-enhancement-framework-review-issues.md` #4
 - **A3** 범위·지속시간 강화 활성화 → **완료**(`feat/inferno`). 프로스트 노바가 **범위**의 첫 대상(노바 반경 × rangeFactor)을, 인페르노 오브 활성 수명이 **지속시간**의 첫 비-CC 대상을 얻어 no-op이 사라졌다. CC 지속(정지·슬로우)엔 이미 `durationFactor`가 곱해지고 있었다. 인페르노는 강화 5종이 전부 의미 있는 유일한 마법이다. → `sessions/2026-06-24-inferno-plan.md`
 - **F8** 카드 설명 라벨 텍스트 잘림 → **완료**(`card-layer-fix`). 너비 150·`overflow=CLAMP`라 `"파이어볼 발사체 수 +1레벨"`이 `"이어볼 발사체 수 +1레"`로 양끝이 잘려 **아이스볼 카드로 오인**됐다. `overflow=SHRINK`로 해소. → `../qa/card-layer-fix-test.md` §2-3
 - **F26** 사망→게임오버 연출 (바가 0으로 비는 비트 없이 result 씬 직행) → **완료**(`feat/death-flow`, 2026-07-05). 피해가 0.5초 무적 구간 틱 단위라 마지막 틱이 HP를 한 방에 0으로 만들고 즉시 씬이 바뀌어 **바가 비는 장면을 볼 수 없었다.** 죽음 비트 추가 + `gameOverPanel` 죽은 코드 정리. → `sessions/2026-07-05-death-flow-plan.md`
