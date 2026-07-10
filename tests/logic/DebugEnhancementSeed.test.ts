@@ -70,4 +70,17 @@ describe('parseDebugEnhancementSeed', () => {
     });
     expect(ops.globals).toEqual([{ option: UpgradeOption.Cooldown, bonus: 0.05 }]);
   });
+
+  it('전역 보너스 0은 op을 만들지 않는다 (레벨 0과 같은 "시드 안 함" 의미)', () => {
+    // 시드 파일은 모든 노브를 0으로 나열한 템플릿이다. 0이 op으로 새면 DeckManager가
+    // addGlobal(option, 0)을 호출해 보너스 없이 전역 레벨만 1 올린다 —
+    // 결과 화면에 `Lv.1 (+0%)`라는 모순된 값이 찍힌다.
+    const ops = parseDebugEnhancementSeed({ global: { damage: 0, cooldown: 0 } });
+    expect(ops.globals).toEqual([]);
+  });
+
+  it('전역 보너스 0은 걸러도 같은 시드의 유효한 보너스는 남긴다', () => {
+    const ops = parseDebugEnhancementSeed({ global: { damage: 0, cooldown: 0.05 } });
+    expect(ops.globals).toEqual([{ option: UpgradeOption.Cooldown, bonus: 0.05 }]);
+  });
 });
