@@ -69,6 +69,8 @@ export class DeckManager extends Component {
       if (spell === null) continue;
       snaps.push({
         id,
+        category: spell.category,
+        tier: spell.tier,
         dmg: {
           g: e.getGlobalLevel(UpgradeOption.Damage),
           c: e.getLevel(UpgradeTrack.Category, spell.category, UpgradeOption.Damage),
@@ -180,7 +182,11 @@ export class DeckManager extends Component {
     return this._logic.drawCards(available, n);
   }
 
-  /** 전역 강화(데미지/쿨다운) 카드가 해당 옵션 상한에 도달했는지 — drawCards 풀 제외용. */
+  /**
+   * 전역 강화(데미지/쿨다운) 카드가 해당 옵션 상한에 도달했는지 — drawCards 풀 제외용.
+   * 현 전역 카드는 damageMult·cooldownMult 중 하나만 갖는다(damage_boost·cooldown_reduce 분리).
+   * 둘 다 가진 카드가 생기면 한 옵션만 maxed여도 제외되므로, 그때 옵션별 판정으로 분리할 것.
+   */
   private _isMaxedGlobalCard(card: ICardData): boolean {
     const e = card.effect;
     if (

@@ -1,13 +1,14 @@
-import type { IEnemyData, ISpellData } from '../data/GameTypes';
-import { UpgradeOption } from '../data/GameTypes';
+import { type SpellCategory, UpgradeOption } from '../data/GameTypes';
 import { formatTimer } from './HudFormatLogic';
 import { categoryInitial } from './SpellIconRowLogic';
 
 /**
  * 결과 화면 런 통계 조립 순수 로직 — cc import 없음(ADR 002).
  *
- * 씬 전환으로 매니저가 파괴되므로 사망/승리 시점에 GameResult로 스냅샷한 값(+ 마법·적 조회 콜백)만
- * 받아 결과 화면 뷰모델로 조립한다. 시간 포맷(`formatTimer`)·마법 라벨(`categoryInitial`)은 재사용한다.
+ * 씬 전환으로 매니저(특히 `DataManager`)가 파괴돼 result 씬에는 존재하지 않으므로, 표시에 필요한
+ * 이름·분류·티어는 **스냅샷 시점(메인 씬, DataManager 생존)에 이미 해석**해 `GameResult`에 담는다.
+ * 이 함수는 해석된 값만 받아 시간 포맷·정렬·강화 브레이크다운을 조립한다(표시 규칙의 정본).
+ * 데이터 정합 가드(미존재 적/마법 제외)는 해석 계층(스냅샷)이 담당한다.
  */
 
 /** 한 옵션(데미지/쿨다운)의 3티어 강화 레벨 + 최종 배율 — GameResult 스냅샷 원본. */
@@ -22,9 +23,16 @@ export interface UpgradeTierSnapshot {
   factor: number;
 }
 
-/** 결과 화면용 마법 강화 스냅샷 (마법별). */
+/**
+ * 결과 화면용 마법 강화 스냅샷 (마법별). 표시에 필요한 분류·티어까지 포함해 result 씬에서
+ * DataManager 없이 라벨을 만들 수 있게 한다.
+ */
 export interface ResultSpellSnapshot {
   id: string;
+  /** 분류 — 티어 라벨(분류 이니셜)용 */
+  category: SpellCategory;
+  /** 등급 — 티어 라벨·정렬용 */
+  tier: number;
   /** 데미지 옵션 티어 레벨 + 배율 */
   dmg: UpgradeTierSnapshot;
   /** 쿨다운 옵션 티어 레벨 + 배율 */
@@ -39,15 +47,21 @@ export interface PassiveSnapshot {
   bonus: number;
 }
 
-/** `buildResultStats` 입력 — GameResult 스냅샷의 통계 부분(순수). */
+/** 킬 종류별 한 행 — 적 이름은 스냅샷 시점에 이미 해석(§2 OUT 한국어 고정, 미존재 적은 제외됨). */
+export interface ResultKillView {
+  name: string;
+  count: number;
+}
+
+/** `buildResultStats` 입력 — GameResult 스냅샷의 통계 부분(전부 해석 완료, 순수). */
 export interface ResultStatsInput {
   /** 생존 시간(초) */
   survivalSec: number;
   /** 도달 레벨 */
   level: number;
-  /** 적 종류별 킬 수 (enemyId → count) */
-  killsByType: Record<string, number>;
-  /** 보유 마법 강화 스냅샷 */
+  /** 적 종류별 킬 (이름 해석 완료 — 미존재 적은 스냅샷에서 이미 제외) */
+  kills: ResultKillView[];
+  /** 보유 마법 강화 스냅샷 (데이터 정합 getSpell=null은 스냅샷에서 이미 제외) */
   spells: ResultSpellSnapshot[];
   /** 플레이어 패시브 레벨/보너스 */
   passives: {
@@ -82,12 +96,6 @@ export interface ResultSpellView {
   nameKey: string;
   /** 데미지·쿨다운 강화 브레이크다운 */
   upgrades: ResultUpgradeView[];
-}
-
-/** 킬 종류별 한 행 (적 이름은 데이터 직접 문자열 — §2 OUT). */
-export interface ResultKillView {
-  name: string;
-  count: number;
 }
 
 /** 결과 화면 뷰모델 — `ResultController`가 라벨/RichText로 렌더. */
@@ -140,38 +148,26 @@ function upgradeView(
 }
 
 /**
- * 런 통계 스냅샷을 결과 화면 뷰모델로 조립한다(순수).
- * 시간 포맷·킬 종류별(내림차순·이름)·마법 라벨(티어 오름차순)·강화 레벨 브레이크다운(3티어 + 효과%)·패시브.
- * `getEnemy`/`getSpell`이 null인 항목은 데이터 정합 가드로 리스트·총계에서 생략한다.
- * @param input GameResult 스냅샷의 통계 부분
- * @param getSpell id→마법 데이터 조회(미존재 null)
- * @param getEnemy id→적 데이터 조회(미존재 null)
+ * 해석 완료된 런 통계 스냅샷을 결과 화면 뷰모델로 조립한다(순수).
+ * 시간 포맷·킬 종류별(내림차순)·마법 라벨(티어 오름차순)·강화 레벨 브레이크다운(3티어 + 효과%)·패시브.
+ * 동률은 입력 순서를 보존한다(명시적 안정 정렬).
+ * @param input GameResult 스냅샷의 통계 부분(이름·분류·티어 해석 완료)
  */
-export function buildResultStats(
-  input: ResultStatsInput,
-  getSpell: (id: string) => ISpellData | null,
-  getEnemy: (id: string) => IEnemyData | null,
-): ResultStatsView {
-  // 킬: 유효 적만(정합 가드) → count 내림차순. 총계 = 표시된 합.
-  const kills: ResultKillView[] = [];
-  for (const [id, count] of Object.entries(input.killsByType)) {
-    const data = getEnemy(id);
-    if (data === null) continue;
-    kills.push({ name: data.name, count });
-  }
-  kills.sort((a, b) => b.count - a.count);
+export function buildResultStats(input: ResultStatsInput): ResultStatsView {
+  // 킬: count 내림차순(동률은 입력 순서 보존). 총계 = 합.
+  const kills: ResultKillView[] = input.kills
+    .map((k, idx) => ({ k, idx }))
+    .sort((a, b) => b.k.count - a.k.count || a.idx - b.idx)
+    .map((e) => e.k);
   const killTotal = kills.reduce((sum, k) => sum + k.count, 0);
 
-  // 마법: 유효 마법만 → 티어 오름차순(동률은 입력=획득 순서 보존, 명시적 안정 정렬). 라벨 + 강화 브레이크다운.
+  // 마법: 티어 오름차순(동률은 입력=획득 순서 보존). 라벨 + 강화 브레이크다운.
   const spells: ResultSpellView[] = input.spells
-    .map((snap, idx) => ({ snap, idx, data: getSpell(snap.id) }))
-    .filter(
-      (e): e is { snap: ResultSpellSnapshot; idx: number; data: ISpellData } => e.data !== null,
-    )
-    .sort((a, b) => a.data.tier - b.data.tier || a.idx - b.idx)
-    .map(({ snap, data }) => ({
+    .map((snap, idx) => ({ snap, idx }))
+    .sort((a, b) => a.snap.tier - b.snap.tier || a.idx - b.idx)
+    .map(({ snap }) => ({
       id: snap.id,
-      tierLabel: `${categoryInitial(data.category)}${data.tier}`,
+      tierLabel: `${categoryInitial(snap.category)}${snap.tier}`,
       nameKey: `spell.${snap.id}.name`,
       upgrades: [
         upgradeView(UpgradeOption.Damage, snap.dmg, damagePct(snap.dmg.factor)),

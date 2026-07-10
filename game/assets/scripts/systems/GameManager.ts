@@ -304,7 +304,15 @@ export class GameManager extends Component {
   private _snapshotResult(): void {
     GameResult.survivalSec = this.gameDuration - this._gameTimer;
     GameResult.level = ExperienceManager.instance?.level ?? 1;
-    GameResult.killsByType = { ...this._killsByType };
+    // 적 이름을 지금(메인 씬, DataManager 생존) 해석해 담는다 — result 씬엔 DataManager가 없다.
+    // 데이터 미존재 적(getEnemy=null)은 여기서 제외한다(정합 가드).
+    const kills: { name: string; count: number }[] = [];
+    for (const [id, count] of Object.entries(this._killsByType)) {
+      const name = DataManager.instance?.getEnemy(id)?.name;
+      if (name == null) continue;
+      kills.push({ name, count });
+    }
+    GameResult.kills = kills;
     const ownedIds = SpellCaster.instance?.loadout.spells ?? [];
     GameResult.spells = DeckManager.instance?.resultSpellSnapshots(ownedIds) ?? [];
     const deck = DeckManager.instance;
