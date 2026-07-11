@@ -42,4 +42,10 @@
 
 ## 재검증
 
-리뷰 #1 수정 후: 피처 테스트 13/13, 전체 스위트 443/443 GREEN. biome clean, TS 진단 0(Projectile·EnemyProjectile·ArenaLogic). 수정이 코드리뷰발이라 `pnpm wf invalidate`로 전체 검증 초기화 후 cso부터 재실행.
+리뷰 #1 수정 후: 피처 테스트 13/13, 전체 스위트 443/443 GREEN. biome clean, TS 진단 0(Projectile·EnemyProjectile·ArenaLogic). 수정이 코드리뷰발이라 `pnpm wf invalidate`로 전체 검증 초기화 후 cso→ts→lint 재통과.
+
+## 재리뷰 (원 리뷰어, HEAD e3f53bb)
+
+**판정: Yes — Critical #1 해소, 진행 가능. 신규 correctness 이슈 없음.** 2400² 아레나에서 컬 임계 ±1300 > 플레이어 로밍 ±1175라 벽 발사가 살아남고, 아레나 밖 ~125px에서만 컬링된다. 미로드 폴백(화면 기준)은 카메라 정적 구간과 정합. 비정방 아레나도 width/height 축 독립 처리로 정상. 임포트 순환 없음.
+
+**비블로킹 옵션 노트(이연) → `backlog-implement.md` F36:** ① 발사체 핫패스 `isOutsideArena({x,y}, …)` 프레임당 리터럴 할당(미미한 GC 압박, G1 할당 위생으로) ② `isOutsideArena` 테스트가 정방만 커버(비정방 케이스 1건 추가 권장). 둘 다 리뷰어가 "지금 고치지 말 것" 권고.
