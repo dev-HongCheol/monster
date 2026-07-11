@@ -63,3 +63,15 @@ export function cameraFollowPosition(
     y: clampRange(player.y, -halfH + viewHalfH, halfH - viewHalfH),
   };
 }
+
+/**
+ * 위치가 아레나(원점 중심) 경계에서 margin을 넘어 벗어났는지 판정한다(발사체 화면 밖 컬링).
+ * 카메라가 플레이어를 따라가므로 컬링 기준을 화면 원점이 아니라 아레나 경계로 잡는다 —
+ * 안 그러면 플레이어가 벽 근처에서 쏜 발사체가 원점 기준 한도를 넘어 즉시 사라진다.
+ * @param pos 판정할 위치
+ * @param arena 아레나 크기
+ * @param margin 경계 바깥 허용 여유(px)
+ */
+export function isOutsideArena(pos: Vec2, arena: Arena, margin: number): boolean {
+  return Math.abs(pos.x) > arena.width / 2 + margin || Math.abs(pos.y) > arena.height / 2 + margin;
+}

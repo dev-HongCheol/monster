@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { cameraFollowPosition, clampToArena } from '../../game/assets/scripts/logic/ArenaLogic';
+import {
+  cameraFollowPosition,
+  clampToArena,
+  isOutsideArena,
+} from '../../game/assets/scripts/logic/ArenaLogic';
 
 /**
  * 계획 문서(2026-07-11-map-arena-plan.md §6·§9)의 순수 아레나 로직.
@@ -74,5 +78,25 @@ describe('cameraFollowPosition — 팔로우 + 벽 클램프', () => {
       x: 0,
       y: 0,
     });
+  });
+});
+
+describe('isOutsideArena — 아레나 경계 + 여유 밖 판정 (발사체 컬링)', () => {
+  const MARGIN = 100; // halfW 1200 + 100 = 1300
+
+  it('아레나 안쪽은 밖이 아니다', () => {
+    expect(isOutsideArena({ x: 1000, y: -1000 }, ARENA, MARGIN)).toBe(false);
+  });
+
+  it('경계+여유 정확히 위는 밖이 아니다 (경계 포함)', () => {
+    expect(isOutsideArena({ x: 1300, y: 0 }, ARENA, MARGIN)).toBe(false);
+  });
+
+  it('x가 경계+여유를 넘으면 밖이다', () => {
+    expect(isOutsideArena({ x: 1301, y: 0 }, ARENA, MARGIN)).toBe(true);
+  });
+
+  it('y가 경계+여유를 넘으면 밖이다', () => {
+    expect(isOutsideArena({ x: 0, y: -1301 }, ARENA, MARGIN)).toBe(true);
   });
 });
