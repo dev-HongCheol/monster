@@ -194,13 +194,24 @@ enum GameState { Playing, Paused, GameOver }
 
 ```ts
 export class GameManager extends Component {
-  static instance: GameManager = null!;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
+  static instance: GameManager = null as unknown as GameManager;
 
   onLoad() {
     GameManager.instance = this;
   }
+
+  onDestroy() {
+    if (GameManager.instance === this) {
+      GameManager.instance = null as unknown as GameManager;
+    }
+  }
 }
 ```
+
+`static instance!: T`(정의 할당 단언)는 **쓰지 않는다.** TypeScript는 정의 할당 단언을 static 멤버에 허용하지 않아 `TS1255`가 되며, Cocos는 타입 검사 없이 트랜스파일만 하기 때문에 지금껏 조용히 통과했을 뿐이다. `= null!` 형태도 아래 [null 처리](#null-처리)의 `!` 금지(Biome `noNonNullAssertion`)에 걸리므로 `null as unknown as T`를 쓴다.
+
+> **알려진 부채:** 위 타입은 거짓말이다 — `onDestroy`가 실제로 null을 넣으므로 `instance`는 런타임에 null일 수 있는데 타입은 "절대 null 아님"이라고 말한다. 정직한 타입은 `static instance: T | null = null`(`I18n`이 이미 그렇게 쓴다)이고, 그러면 가드 없는 역참조 73곳이 드러난다. 백로그 **F24**가 이 전환을 다룬다.
 
 ---
 

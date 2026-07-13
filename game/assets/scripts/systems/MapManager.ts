@@ -7,7 +7,8 @@ const { ccclass, property } = _decorator;
 /** 활성 맵 데이터로 아레나 크기와 배경을 구성하는 싱글톤. 아레나 크기의 단일 출처다. */
 @ccclass('MapManager')
 export class MapManager extends Component {
-  static instance!: MapManager;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
+  static instance: MapManager = null as unknown as MapManager;
 
   /** 배경 스프라이트 — 아레나 크기에 맞춰 리사이즈되고, 맵 배경 이미지가 있으면 교체된다. */
   @property(Sprite) backdropSprite: Sprite | null = null;

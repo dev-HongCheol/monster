@@ -7,7 +7,8 @@ const { ccclass, property } = _decorator;
 /** 타이머 기반 웨이브 진행을 관리하는 싱글톤 */
 @ccclass('WaveManager')
 export class WaveManager extends Component {
-  static instance!: WaveManager;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
+  static instance: WaveManager = null as unknown as WaveManager;
 
   /** 웨이브당 지속 시간 (sec). 테스트 편의로 60(1분) — 출시 전 밸런싱에서 재검토. */
   @property waveDuration: number = 60;

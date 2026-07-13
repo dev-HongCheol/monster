@@ -25,7 +25,8 @@ const DEATH_BEAT_SEC = 0.8;
 /** 게임 전체 상태와 플레이어 HP를 관리하는 싱글톤 */
 @ccclass('GameManager')
 export class GameManager extends Component {
-  static instance!: GameManager;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
+  static instance: GameManager = null as unknown as GameManager;
 
   /** 전체 게임 제한 시간 (sec). 0이 되면 승리 */
   @property gameDuration: number = 900;

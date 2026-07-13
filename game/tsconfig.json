@@ -4,7 +4,15 @@
 
   /* Add your custom configuration here. */
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+    /* Cocos가 생성하는 base는 target=ES2015에 lib 미지정이라 Object.entries·padStart 등이
+       TS2550으로 뜨고, 연쇄로 콜백이 implicit any가 된다(F30). lib은 타입 검사만 바꾸고
+       Cocos의 실제 빌드 산출물에는 영향이 없다. */
+    "lib": ["ES2017", "DOM", "DOM.Iterable"],
+    /* cc.d.ts 자신이 WebGPU 타입·미해결 모듈(pal/*, cc/editor/*)을 참조해 102건의 에러를 낸다.
+       우리가 고칠 수 없는 엔진 선언이므로 검사에서 제외한다. 단, 미해결 모듈이 타이핑하던
+       심볼은 any로 남는다(입력 서브시스템). */
+    "skipLibCheck": true
   },
   "exclude": ["**/*.test.ts"]
 }

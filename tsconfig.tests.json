@@ -1,0 +1,31 @@
+{
+  /* Cocos 비의존 타입체크 프로젝트.
+   *
+   * `logic/`과 `data/`는 `cc`를 import하지 않으므로(확인: import 0건) Cocos가 생성하는
+   * `game/temp/` 선언 없이도 검사할 수 있다. 그래서 이 프로젝트는 **프레시 클론에서도 돈다** —
+   * `game/tsconfig.json`이 gitignore된 `game/temp/tsconfig.cocos.json`을 extends하는 것과 대비된다.
+   *
+   * Cocos base를 extends하지 않는 이유: 그 base는 module=ES2015라 테스트가 쓰는 `import.meta`가
+   * TS1343으로 터진다.
+   *
+   * 이 프로젝트가 처음으로 `tests/`를 타입 검사한다 — 루트 tsconfig가 없고 vitest는 타입을 보지
+   * 않아, 지금껏 테스트 코드는 어떤 컴파일러도 보지 않았다.
+   */
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2020"],
+    /* 테스트 6개가 실 JSON을 node:fs로 읽어 데이터 정합을 단언한다. */
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "tests/**/*.ts",
+    "game/assets/scripts/logic/**/*.ts",
+    "game/assets/scripts/data/**/*.ts"
+  ]
+}

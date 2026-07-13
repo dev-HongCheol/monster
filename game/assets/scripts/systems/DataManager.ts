@@ -14,7 +14,8 @@ const { ccclass } = _decorator;
 /** JSON 데이터 파일을 로드하고 제공하는 싱글톤 */
 @ccclass('DataManager')
 export class DataManager extends Component {
-  static instance!: DataManager;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
+  static instance: DataManager = null as unknown as DataManager;
 
   private _playerData: IPlayerBaseData | null = null;
   private _spells: ISpellData[] = [];

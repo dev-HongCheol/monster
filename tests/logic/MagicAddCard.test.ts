@@ -3,6 +3,7 @@ import {
   type ICardData,
   type ISpellData,
   SpellCategory,
+  SpellPattern,
 } from '../../game/assets/scripts/data/GameTypes';
 import { DeckLogic } from '../../game/assets/scripts/logic/DeckLogic';
 
@@ -21,6 +22,7 @@ const makeSpell = (id: string, category = SpellCategory.Fire): ISpellData => ({
   projectileRadius: 8,
   cooldown: 0.5,
   projectileCount: 1,
+  pattern: SpellPattern.Directional,
 });
 
 describe('DeckLogic.buildDrawPool', () => {

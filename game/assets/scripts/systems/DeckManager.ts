@@ -22,7 +22,8 @@ const { ccclass } = _decorator;
 /** 카드 풀 관리, 드로우, 강화 적용(플레이어 패시브 + per-spell/분류)을 담당하는 싱글톤 */
 @ccclass('DeckManager')
 export class DeckManager extends Component {
-  static instance!: DeckManager;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
+  static instance: DeckManager = null as unknown as DeckManager;
 
   private _logic = new DeckLogic();
   private _enhancement = new EnhancementLogic();

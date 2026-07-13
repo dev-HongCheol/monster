@@ -10,7 +10,8 @@ const { ccclass } = _decorator;
 /** 경험치 및 레벨업을 관리하는 싱글톤 */
 @ccclass('ExperienceManager')
 export class ExperienceManager extends Component {
-  static instance!: ExperienceManager;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
+  static instance: ExperienceManager = null as unknown as ExperienceManager;
 
   private _logic: ExperienceLogic | null = null;
   private _onLevelUp: (() => void) | null = null;
