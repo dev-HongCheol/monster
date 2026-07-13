@@ -1,12 +1,13 @@
 {
-  "feature": "result-stats",
-  "phase": "pr-ready",
-  "test_skipped": false,
-  "test_skip_reason": null,
+  "feature": "ts-toolchain",
+  "phase": "verification",
+  "test_skipped": true,
+  "test_skip_reason": "신규 순수 로직 없음 — 변경은 컴파일러 설정(tsconfig), 워크플로우 CLI(workflow.mjs), 싱글톤 선언 7줄, 테스트 헬퍼 파일 이동뿐. 회귀 방어는 이 슬라이스가 설치하는 타입 게이트 자체가 맡으며, 게이트 강제 여부는 QA 문서 4절에서 검증한다(일부러 타입 에러를 넣고 pass ts가 실패하는지).",
   "verification": {
     "cso_done": true,
     "ts_check_clean": true,
     "lint_clean": true,
-    "code_review_clean": true
-  }
+    "code_review_clean": false
+  },
+  "ts_check_scope": "full"
 }
