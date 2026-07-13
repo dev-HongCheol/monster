@@ -95,9 +95,11 @@
 
 `approve-pr`이 타입체크를 **실제로** 돌리는지 확인한다. 이 커맨드는 `phase: "user-verification"`에서만 동작하므로, **7단계 진입 직후(Draft PR 생성 전)** 실패 경로만 밟아 확인한다(성공 경로를 밟으면 `pr-ready`로 전이해 버린다).
 
-- [ ] 타입 에러를 하나 심고(스크립트 편집이 잠긴 phase이므로 `tests/` 쪽 파일에 심는다) `pnpm wf approve-pr`이 **차단**되는지 확인한다.
-- [ ] 차단 시 상태 파일의 `ts_check_clean`이 `false`, `ts_check_scope`가 `null`로 **덮어써지는지** 확인한다(기록이 낡은 값을 계속 말하지 않아야 한다).
-- [ ] 심은 에러를 되돌리고 타입체크가 다시 깨끗한지 확인한다.
+> **수행됨 (2026-07-14, `user-verification` 진입 직후).** `tests/logic/PauseMenu.test.ts`에 `const __gateDrill: number = "not a number";`를 심고 `pnpm wf approve-pr`을 실행했다.
+
+- [x] 타입 에러를 하나 심고(스크립트 편집이 잠긴 phase이므로 `tests/` 쪽 파일에 심는다) `pnpm wf approve-pr`이 **차단**되는지 확인한다. → **차단됨.** `TS2322`를 그대로 출력하고 종료코드 1, `phase`는 `user-verification`에 그대로 남았다(전이 없음).
+- [x] 차단 시 상태 파일의 `ts_check_clean`이 `false`, `ts_check_scope`가 `null`로 **덮어써지는지** 확인한다(기록이 낡은 값을 계속 말하지 않아야 한다). → **덮어써짐** (`ts_check_clean: false`, `ts_check_scope: null`).
+- [x] 심은 에러를 되돌리고 타입체크가 다시 깨끗한지 확인한다. → **통과 (범위: full).**
 
 > **드릴이 실패하면(= 게이트가 안 막으면):** `approve-pr`이 `pr-ready`로 전이해 버리고, 거기서 `user-verification`으로 되돌리는 wf 커맨드가 없다(`rework`는 `user-verification`에서만, `invalidate`는 `verification`에서만 된다). 복구는 `git restore .claude/workflow-state.json`이다.
 >
