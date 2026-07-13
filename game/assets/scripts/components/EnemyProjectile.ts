@@ -56,7 +56,10 @@ export class EnemyProjectile extends Component {
     this._damage = damage;
     this._radius = radius;
     this._playerNode = playerNode;
-    this._playerCollisionRadius = DataManager.instance.playerData.collisionRadius;
+    // 조기 return을 두지 않는다 — 여기서 빠져나가면 아래 _despawned = false가 실행되지 않아
+    // 풀에서 되살아난 발사체가 영영 반환되지 않는(그리고 계속 피해를 주는) 노드가 된다.
+    // 데이터가 없으면 명중 반경만 살짝 줄어들 뿐이고, 그 상황은 다른 곳에서 이미 시끄럽게 신고된다.
+    this._playerCollisionRadius = DataManager.instance?.playerData?.collisionRadius ?? 0;
     this._onDespawn = onDespawn;
     this._despawned = false;
   }
@@ -72,9 +75,10 @@ export class EnemyProjectile extends Component {
   update(dt: number) {
     // 레벨업 일시정지(state !== Playing) 중엔 멈춘다 — 가드가 없으면 메뉴 중에도
     // 플레이어로 날아가 damagePlayer가 발생한다(I1, 공정성).
-    if (GameManager.instance.state !== GameState.Playing) return;
+    const gm = GameManager.instance;
+    if (!gm || gm.state !== GameState.Playing) return;
     this._move(dt);
-    this._checkPlayerHit();
+    this._checkPlayerHit(gm);
     this._checkOutOfBounds();
   }
 
@@ -88,8 +92,11 @@ export class EnemyProjectile extends Component {
     );
   }
 
-  /** 플레이어와 충돌하면 버스트 피해를 게이트에 제출하고 자신을 제거한다. 적은 절대 질의하지 않는다. */
-  private _checkPlayerHit(): void {
+  /**
+   * 플레이어와 충돌하면 버스트 피해를 게이트에 제출하고 자신을 제거한다. 적은 절대 질의하지 않는다.
+   * @param gm 피해 게이트 (호출부가 확인해 넘긴다)
+   */
+  private _checkPlayerHit(gm: GameManager): void {
     if (!this._playerNode?.isValid) return;
     const pos = this.node.position;
     const pp = this._playerNode.position;
@@ -98,7 +105,7 @@ export class EnemyProjectile extends Component {
     const dy = pos.y - pp.y;
     const reach = this._radius + this._playerCollisionRadius;
     if (dx * dx + dy * dy < reach * reach) {
-      GameManager.instance.damagePlayer(this._damage);
+      gm.damagePlayer(this._damage);
       this._despawn();
     }
   }

@@ -42,7 +42,15 @@ export class I18n extends Component {
     this._loadAll();
   }
 
+  /**
+   * 인스턴스를 내리고 **대기 중인 콜백과 라벨 레지스트리를 비운다.** `_loadAll`이 비동기라
+   * 카탈로그 로딩 중 씬을 떠나면 이 컴포넌트가 파괴된 뒤에 로드가 끝나는데, 그때 남아 있던
+   * 콜백·라벨은 이미 파괴된 컴포넌트를 붙들고 있다(예: ResultController가 등록한 render가
+   * 죽은 Label에 쓴다). DataManager와 같은 부류의 누수라 같은 방식으로 막는다.
+   */
   onDestroy() {
+    this._onReadyCallbacks = [];
+    this._registry.clear();
     if (I18n.instance === this) I18n.instance = null;
   }
 
@@ -105,7 +113,12 @@ export class I18n extends Component {
     for (const label of this._registry) label.refresh();
   }
 
-  /** resources.load를 Promise로 래핑해 카탈로그 JSON을 로드한다. */
+  /**
+   * resources.load를 Promise로 래핑해 카탈로그 JSON을 로드한다.
+   * `asset`은 Cocos 타입 정의상 non-nullable이지만 실제로는 null이 올 수 있고(타입체크가
+   * 강제해 주지 않는다), `JsonAsset.json`도 nullable이라 둘 다 확인한다. 실패해도 t()는
+   * 키 폴백으로 계속 동작하므로 여기서는 reject만 하면 된다.
+   */
   private _load(path: string): Promise<I18nCatalog> {
     return new Promise((resolve, reject) => {
       resources.load(path, JsonAsset, (err, asset) => {
@@ -113,7 +126,12 @@ export class I18n extends Component {
           reject(err);
           return;
         }
-        resolve(asset.json as I18nCatalog);
+        const json = asset?.json;
+        if (json == null) {
+          reject(new Error(`[I18n] ${path}: 에셋 또는 json이 비어 있습니다.`));
+          return;
+        }
+        resolve(json as I18nCatalog);
       });
     });
   }

@@ -25,8 +25,8 @@ const DEATH_BEAT_SEC = 0.8;
 /** 게임 전체 상태와 플레이어 HP를 관리하는 싱글톤 */
 @ccclass('GameManager')
 export class GameManager extends Component {
-  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
-  static instance: GameManager = null as unknown as GameManager;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 정직하게 nullable이다 (싱글톤 컨벤션 참고). */
+  static instance: GameManager | null = null;
 
   /** 전체 게임 제한 시간 (sec). 0이 되면 승리 */
   @property gameDuration: number = 900;
@@ -79,7 +79,19 @@ export class GameManager extends Component {
   }
 
   start() {
-    DataManager.instance.onReady(() => this._onDataReady());
+    const dm = DataManager.instance;
+    if (!dm) {
+      console.error(
+        '[GameManager] DataManager 없음 — 게임을 시작할 수 없습니다. 씬 배선을 확인하세요.',
+      );
+      this.enabled = false;
+      return;
+    }
+    // 콜백은 씬을 넘어 살아남을 수 있으므로(로딩 중 재시작) 발화 시점에 자신이 유효한지 확인한다.
+    dm.onReady(() => {
+      if (!this.isValid) return;
+      this._onDataReady();
+    });
   }
 
   // 프레임 토큰 증가(그리드 지연 재구축 키) → 전체 게임 타이머를 감소시키고, 0이 되면 승리로 전환해 result 씬으로 보낸다
@@ -94,7 +106,10 @@ export class GameManager extends Component {
     this._gameTimer -= dt;
     if (this._gameTimer <= 0) {
       this._gameTimer = 0;
-      GameResult.waveReached = WaveManager.instance.waveNumber;
+      // waveReached는 결과 화면에 찍히는 장식적 통계라 폴백(0)이 안전하다. 반면 아래 승리
+      // 전이는 폴백이 없다 — 여기서 조기 return하면 타이머가 0에 박힌 채 런이 영원히 끝나지
+      // 않으므로, 값이 없어도 전이는 반드시 실행한다.
+      GameResult.waveReached = WaveManager.instance?.waveNumber ?? 0;
       GameResult.gameVictory = true;
       this._state = GameState.Victory;
       this.goToResult();
@@ -103,19 +118,36 @@ export class GameManager extends Component {
 
   onDestroy() {
     if (GameManager.instance === this) {
-      GameManager.instance = null as unknown as GameManager;
+      GameManager.instance = null;
     }
   }
 
-  /** 데이터 로드 완료 후 플레이어 HP를 초기화하고 첫 웨이브를 시작한다. */
+  /**
+   * 데이터 로드 완료 후 플레이어 HP를 초기화하고 첫 웨이브를 시작한다.
+   *
+   * **부팅은 전부 성공하거나 전부 실패해야 한다.** 필요한 것(플레이어 데이터·경험치 매니저·
+   * 웨이브 매니저)을 먼저 다 받아 두고, 하나라도 없으면 `_started`를 켜지 않은 채 시끄럽게
+   * 실패한다. 중간에 빠져나가면 `_started`만 켜진 반쪽 부팅이 되어 — 게임은 돌지만 웨이브가
+   * 영영 오지 않고 레벨업 콜백도 안 걸린 상태가 되며, 콘솔에는 아무 단서가 남지 않는다.
+   * (클로저 안이라 start()의 내로잉이 여기까지 오지 않으므로 다시 받는다.)
+   */
   private _onDataReady() {
-    const base = DataManager.instance.playerData;
+    const base = DataManager.instance?.playerData;
+    const xp = ExperienceManager.instance;
+    const wave = WaveManager.instance;
+    if (!base || !xp || !wave) {
+      console.error(
+        '[GameManager] 부팅 실패 — 플레이어 데이터/ExperienceManager/WaveManager 중 누락이 있어 ' +
+          '게임을 시작하지 않습니다. 씬 배선과 resources/data/player.json을 확인하세요.',
+      );
+      return;
+    }
     this._maxPlayerHp = base.maxHp;
     this._playerHp = base.maxHp;
     this._gameTimer = this.gameDuration;
     this._started = true;
-    ExperienceManager.instance.setOnLevelUp(() => this.enterLevelUp());
-    WaveManager.instance.startWave();
+    xp.setOnLevelUp(() => this.enterLevelUp());
+    wave.startWave();
   }
 
   /** 활성 적 목록에 등록한다. */
@@ -236,7 +268,9 @@ export class GameManager extends Component {
   private _applyDamage(amount: number): void {
     this._playerHp = Math.max(0, this._playerHp - amount);
     if (this._playerHp <= 0) {
-      GameResult.waveReached = WaveManager.instance.waveNumber;
+      // waveReached는 장식적 통계라 폴백(0)이 안전하다. GameOver 전이와 죽음 연출은 아니다 —
+      // 여기서 조기 return하면 HP가 0인데 게임오버도 연출도 일어나지 않는다. 항상 실행한다.
+      GameResult.waveReached = WaveManager.instance?.waveNumber ?? 0;
       this._state = GameState.GameOver;
       this._startDeathSequence();
     }
@@ -264,14 +298,23 @@ export class GameManager extends Component {
     this._state = GameState.LevelUp;
   }
 
-  /** 카드 HP 보너스(이번 레벨업 증가분)를 적용하고 게임을 재개한다. */
+  /**
+   * 카드 HP 보너스(이번 레벨업 증가분)를 적용하고 게임을 재개한다.
+   * HP 보너스 계산은 부수적이라 필요한 것이 없으면 건너뛰지만, **재개(Playing 복귀)는 어떤
+   * 경우에도 실행한다** — 여기서 빠져나가면 레벨업 상태에 영구히 갇힌다(카드 패널이 열린 채
+   * 게임이 멈춘다).
+   */
   resumeFromLevelUp(): void {
     if (this._state !== GameState.LevelUp) return;
-    const newMaxHp = DataManager.instance.playerData.maxHp + DeckManager.instance.maxHpBonus;
-    if (newMaxHp > this._maxPlayerHp) {
-      const hpDelta = newMaxHp - this._maxPlayerHp;
-      this._maxPlayerHp = newMaxHp;
-      this._playerHp = Math.min(this._playerHp + hpDelta, this._maxPlayerHp);
+    const base = DataManager.instance?.playerData;
+    const deck = DeckManager.instance;
+    if (base && deck) {
+      const newMaxHp = base.maxHp + deck.maxHpBonus;
+      if (newMaxHp > this._maxPlayerHp) {
+        const hpDelta = newMaxHp - this._maxPlayerHp;
+        this._maxPlayerHp = newMaxHp;
+        this._playerHp = Math.min(this._playerHp + hpDelta, this._maxPlayerHp);
+      }
     }
     this._state = GameState.Playing;
     // 웨이브 타이머는 LevelUp 동안 WaveManager.update의 state 가드로 이미 멈춰 있으므로,

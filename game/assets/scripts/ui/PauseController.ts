@@ -58,7 +58,9 @@ export class PauseController extends Component {
 
   // 상태가 Paused로 바뀌면 오버레이를 켜고(열 때 현재 언어로 라벨 채움), 벗어나면 끈다.
   update() {
-    const state = GameManager.instance.state;
+    const gm = GameManager.instance;
+    if (!gm) return;
+    const state = gm.state;
     if (state === this._prevState) return;
     this._prevState = state;
     const paused = state === GameState.Paused;
@@ -91,20 +93,24 @@ export class PauseController extends Component {
   /** ESC: 현재 상태에 따라 일시정지/재개하고, 그 외(카드 선택·게임오버·승리)는 무시한다. */
   private _onKeyDown(e: EventKeyboard): void {
     if (e.keyCode !== KeyCode.ESCAPE) return;
-    const action = pauseToggleAction(GameManager.instance.state);
-    if (action === 'pause') GameManager.instance.enterPause();
-    else if (action === 'resume') GameManager.instance.resumePause();
+    // 입력 핸들러는 컴포넌트가 비활성이어도 발화하므로 여기서 직접 받는다.
+    const gm = GameManager.instance;
+    if (!gm) return;
+    const action = pauseToggleAction(gm.state);
+    if (action === 'pause') gm.enterPause();
+    else if (action === 'resume') gm.resumePause();
   }
 
+  // 아래 버튼 콜백들은 반환값을 쓰지 않는 호출이라 옵셔널 체이닝이 안전하다.
   private _onResume(): void {
-    GameManager.instance.resumePause();
+    GameManager.instance?.resumePause();
   }
 
   private _onRestart(): void {
-    GameManager.instance.restart();
+    GameManager.instance?.restart();
   }
 
   private _onMenu(): void {
-    GameManager.instance.goToMenu();
+    GameManager.instance?.goToMenu();
   }
 }

@@ -88,9 +88,10 @@ export class Projectile extends Component {
   update(dt: number) {
     // 레벨업 일시정지(state !== Playing) 중엔 멈춘다 — 발사체는 발사 후 독립 이동해,
     // 가드가 없으면 메뉴 중에도 이동·명중·폭발이 계속된다(I1).
-    if (GameManager.instance.state !== GameState.Playing) return;
+    const gm = GameManager.instance;
+    if (!gm || gm.state !== GameState.Playing) return;
     this._move(dt);
-    this._checkEnemyHit();
+    this._checkEnemyHit(gm);
     this._checkOutOfBounds();
   }
 
@@ -104,12 +105,15 @@ export class Projectile extends Component {
     );
   }
 
-  /** 적과 충돌 여부를 검사해 명중 시 (폭발이면 반경 AoE, 아니면 단일) 데미지를 주고 자신을 제거한다. */
-  private _checkEnemyHit(): void {
+  /**
+   * 적과 충돌 여부를 검사해 명중 시 (폭발이면 반경 AoE, 아니면 단일) 데미지를 주고 자신을 제거한다.
+   * @param gm 적 후보 질의 출처 (호출부가 확인해 넘긴다)
+   */
+  private _checkEnemyHit(gm: GameManager): void {
     const pos = this.node.position;
     // 그리드가 돌려준 후보 배열은 질의마다 새로 생성되므로, takeDamage → unregisterEnemy가
     // 원본 적 목록을 변경해도 순회 누락이 없다(기존 [...enemies] 스냅샷 역할을 대체).
-    for (const enemy of GameManager.instance.queryEnemiesInRadius(pos.x, pos.y, this._radius)) {
+    for (const enemy of gm.queryEnemiesInRadius(pos.x, pos.y, this._radius)) {
       if (!enemy?.isValid) continue;
       const ep = enemy.node.position;
       // 2D 평면 가정(모두 z=0) — z 성분은 보지 않는다. 종전 Vec3.distance(3D) 대비 평면상 동일.
@@ -120,7 +124,7 @@ export class Projectile extends Component {
       if (dx * dx + dy * dy < reach * reach) {
         // 폭발이면 직격 없이 명중 지점 반경 AoE만(§9.3) — 충돌한 적도 폭발 반경 안이라 1회 받음.
         if (this._explosion) {
-          this._detonate(pos);
+          this._detonate(pos, gm);
         } else {
           // 단일 명중: 데미지 + (설정돼 있으면) 확률 상태이상(정지 등 §9.4).
           enemy.takeDamage(this._damage);
@@ -137,11 +141,12 @@ export class Projectile extends Component {
    * 같은 시전의 겹친 폭발이 한 적을 1회만 때린다. 후보 적은 폭발 반경으로 그리드를 질의해
    * 추리고(G1), selectExplosionHits가 그 후보에 정밀 판정·dedup을 적용한다.
    * @param center 폭발 중심 (발사체 명중 위치)
+   * @param gm 적 후보 질의 출처 (호출부가 확인해 넘긴다)
    */
-  private _detonate(center: Readonly<Vec3>): void {
+  private _detonate(center: Readonly<Vec3>, gm: GameManager): void {
     if (!this._explosion) return;
     // 후보 수집은 F16 공유 헬퍼로(노바·궤도와 동일 블록). 정밀 판정·dedup은 selectExplosionHits.
-    const { targets, ctrls } = GameManager.instance.collectTargetsInRadius(
+    const { targets, ctrls } = gm.collectTargetsInRadius(
       center.x,
       center.y,
       this._explosion.radius,

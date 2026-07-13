@@ -14,8 +14,8 @@ const { ccclass } = _decorator;
 /** JSON 데이터 파일을 로드하고 제공하는 싱글톤 */
 @ccclass('DataManager')
 export class DataManager extends Component {
-  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
-  static instance: DataManager = null as unknown as DataManager;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 정직하게 nullable이다 (싱글톤 컨벤션 참고). */
+  static instance: DataManager | null = null;
 
   private _playerData: IPlayerBaseData | null = null;
   private _spells: ISpellData[] = [];
@@ -30,8 +30,9 @@ export class DataManager extends Component {
   get isReady() {
     return this._isReady;
   }
-  get playerData(): IPlayerBaseData {
-    return this._playerData as IPlayerBaseData;
+  /** 로드 완료(`isReady`) 전에는 null이다 — 캐스트로 지우지 않고 소비처가 가드한다. */
+  get playerData(): IPlayerBaseData | null {
+    return this._playerData;
   }
   get cards(): ICardData[] {
     return this._cards;
@@ -42,11 +43,13 @@ export class DataManager extends Component {
   get spawnTable(): ISpawnTableEntry[] {
     return this._spawnTable;
   }
-  get xpData(): IXPData {
-    return this._xpData as IXPData;
+  /** 로드 완료(`isReady`) 전에는 null이다. */
+  get xpData(): IXPData | null {
+    return this._xpData;
   }
-  get mapData(): IMapData {
-    return this._mapData as IMapData;
+  /** 로드 완료(`isReady`) 전에는 null이다. */
+  get mapData(): IMapData | null {
+    return this._mapData;
   }
 
   /** id로 마법 데이터를 반환한다. 없으면 null. */
@@ -64,9 +67,17 @@ export class DataManager extends Component {
     this._loadAll();
   }
 
+  /**
+   * 인스턴스를 내리고 **대기 중인 콜백을 버린다.** 후자가 중요하다 — `_loadAll`이 비동기라
+   * 로딩 중 재시작하면 이 컴포넌트가 파괴된 뒤에 로드가 끝난다. 그때 남아 있던 콜백은
+   * 파괴된 옛 컴포넌트를 붙든 채 발화하고, 그 시점의 `DataManager.instance`는 null이 아니라
+   * **새 씬의 인스턴스**라 옵셔널 체이닝으로는 전혀 걸러지지 않는다(멀쩡히 성공해서 죽은
+   * 컴포넌트에 쓴다). 목록을 비우고, 콜백 쪽에서도 `this.isValid`로 한 번 더 막는다.
+   */
   onDestroy() {
+    this._onReadyCallbacks = [];
     if (DataManager.instance === this) {
-      DataManager.instance = null as unknown as DataManager;
+      DataManager.instance = null;
     }
   }
 
@@ -103,11 +114,25 @@ export class DataManager extends Component {
       for (const cb of this._onReadyCallbacks) cb();
       this._onReadyCallbacks = [];
     } catch (err) {
-      console.error('[DataManager] 게임 데이터 로드 실패:', err);
+      // 실패하면 _isReady가 영영 켜지지 않아 onReady 콜백이 전부 버려진다 — 게임은 켜지지만
+      // 웨이브도 마법도 이동도 없는 정지 상태가 되고, 화면엔 아무 단서가 없다. 무엇이 왜
+      // 멈췄는지 콘솔에 크게 남긴다(조용한 실패 금지).
+      const pending = this._onReadyCallbacks.length;
+      this._onReadyCallbacks = [];
+      console.error(
+        `[DataManager] 게임 데이터 로드 실패 — 게임을 시작할 수 없습니다. ` +
+          `대기 중이던 초기화 콜백 ${pending}건을 취소합니다. resources/data/* 를 확인하세요:`,
+        err,
+      );
     }
   }
 
-  /** resources.load를 Promise로 래핑해 JSON 에셋을 로드한다. */
+  /**
+   * resources.load를 Promise로 래핑해 JSON 에셋을 로드한다.
+   * `asset`은 Cocos 타입 정의상 non-nullable이지만 실제로는 null이 올 수 있고(타입체크가
+   * 강제해 주지 않는다), `JsonAsset.json`도 nullable이라 둘 다 확인한다 — 여기서 null을
+   * 흘려보내면 `_playerData` 등이 null인 채로 `_isReady`가 켜져 더 깊은 곳에서 터진다.
+   */
   private _load<T>(path: string): Promise<T> {
     return new Promise((resolve, reject) => {
       resources.load(path, JsonAsset, (err, asset) => {
@@ -115,7 +140,12 @@ export class DataManager extends Component {
           reject(err);
           return;
         }
-        resolve(asset.json as T);
+        const json = asset?.json;
+        if (json == null) {
+          reject(new Error(`[DataManager] ${path}: 에셋 또는 json이 비어 있습니다.`));
+          return;
+        }
+        resolve(json as T);
       });
     });
   }

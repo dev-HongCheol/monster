@@ -84,6 +84,7 @@ export class HudController extends Component {
   private _updateHp(): void {
     if (!this.hpLabel) return;
     const gm = GameManager.instance;
+    if (!gm) return;
     this.hpLabel.string = this._t('hud.hp', {
       cur: formatNumber(Math.ceil(gm.playerHp)),
     });
@@ -93,12 +94,13 @@ export class HudController extends Component {
   /** 웨이브 번호와 전체 게임 잔여 시간을 갱신한다. */
   private _updateWaveInfo(): void {
     const wm = WaveManager.instance;
-    if (this.waveLabel) {
+    const gm = GameManager.instance;
+    if (wm && this.waveLabel) {
       this.waveLabel.string = this._t('hud.wave', { wave: wm.waveNumber });
     }
-    if (this.timerLabel) {
+    if (gm && this.timerLabel) {
       this.timerLabel.string = this._t('hud.timer', {
-        time: formatTimer(GameManager.instance.gameTimer),
+        time: formatTimer(gm.gameTimer),
       });
     }
   }
@@ -123,7 +125,9 @@ export class HudController extends Component {
 
   /** 게임 상태 변경을 감지해 레벨업 카드 선택 패널을 전환한다. (게임오버는 별도 result 씬으로 처리) */
   private _handleStateChange(): void {
-    const state = GameManager.instance.state;
+    const gm = GameManager.instance;
+    if (!gm) return;
+    const state = gm.state;
     if (state === this._prevState) return;
     this._prevState = state;
 
