@@ -55,6 +55,36 @@
 ## 리뷰가 확인한 강점 (기록)
 
 - **`ts_check_scope`를 `verification` 객체 *밖*에 둔 것.** 안에 넣었으면 `Object.values(s.verification).every(Boolean)`에서 문자열이 항상 truthy가 되어 **`pass` 하나만으로 `user-verification`에 조기 전이**했을 것이다.
+
+---
+
+# 재리뷰 (`f1096fa..83985c8` — 수정분 검증)
+
+**판정:** I-1·I-2의 코드 수정은 **정확하고 부작용이 없다.** 재리뷰가 상태 경로를 전수해 "실패했는데 디스크는 초록" 상태가 **도달 불가**임을 확인했다. `scope: null`의 모든 소비자도 안전하고, `skipLibCheck`가 우리 코드 에러를 하나도 숨기지 않음을 실측(`--skipLibCheck false`와 대조)으로 확인했다.
+
+세 가지가 남아 있었고 전부 고쳤다.
+
+### R-1. `CLAUDE.md`가 코드에서 지운 막다른 길을 그대로 말하고 있었다 — **수정됨**
+
+I-2가 `approve-pr`의 안내 메시지를 `invalidate` → `rework`로 고쳤는데, **같은 안내가 `CLAUDE.md` 9번 항목에 그대로 남아 있었다.** AI가 절차서로 읽는 문서가 실행 불가 명령을 지시하므로 코드 수정의 효과가 반감된다. → `rework` → `start-verification`으로 정정하고 왜 `invalidate`를 쓸 수 없는지도 한 줄 남겼다.
+
+### R-2. `runTypecheck()`의 JSDoc이 바뀐 계약을 안 따라왔다 — **수정됨**
+
+`@returns {{ status: number, scope: 'full'|'logic-only' }}`인데 수정으로 **둘 다 `null`일 수 있게** 됐다(시그널사 시 `status`, 실패 시 `scope`). 시그니처가 바뀌면 JSDoc을 갱신한다는 규칙 대상이다.
+
+### R-3. 계획 문서가 상태 키 위치를 틀리게 적고 있었다 — **수정됨**
+
+`verification.ts_check_scope`로 적었으나 실제 코드는 **`verification` 밖 최상위**다. 안에 넣었으면 `every(Boolean)`이 문자열을 truthy로 먹어 조기 전이했을 자리라 **코드가 옳고 문서가 낡았다.** 코드 기준으로 고치고 그 이유도 함께 적었다.
+
+---
+
+## 재리뷰가 찾은 잔여 구멍 — 백로그 **F44**로 이관 (이번 슬라이스 밖)
+
+`verification` phase는 스크립트 편집이 허용되므로, `pass ts` 통과 → **코드 수정 → `invalidate`도 `pass ts` 재실행도 안 함** → 나머지 `pass`만 채우면 타입이 깨진 코드가 머지된다. 크로스머신 stale도 같은 구멍의 변형이다.
+
+**이번 슬라이스가 회귀시킨 것이 아니다.** 성질이 `cso`·`lint`·`review` 세 플래그가 이미 갖고 있는 노출과 동일하고(같은 편집이 저 셋도 stale로 만든다), `CLAUDE.md`가 "코드 수정 → `invalidate`"를 절차로 못박아 규율 층에서 덮고 있다. 상태 머신의 원래 설계 경계다.
+
+다만 **`ts`만은 기계 검증이 가능하다**는 것이 이 슬라이스의 명제이므로 여기까지 마감할 수 있다. 봉합안(`approve-pr`이 `runTypecheck()`를 실측)과 함께 **F44**로 등록했다.
 - **`ts_check_scope` 초기화 경로에 새는 곳이 없다** — `freshState`(start)·`resetVerification`(approve-plan·start-verification·invalidate·rework) 전수 확인.
 - **종료코드 2를 안 것.** `=== 1`로 짰으면 **모든 타입 에러를 통과시키는** 게이트가 됐다.
 - **프레시 클론 경로가 루프홀이 아니다.** exit 0 + `scope: logic-only`는 통과처럼 보이지만 `approve-pr`이 거부하므로 머지 전에 반드시 게임 코드가 검사된다.

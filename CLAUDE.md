@@ -155,7 +155,7 @@ planning → qa-setup → implementation → verification → user-verification 
    - **`pass cso` 전 다음 단계 진행 불가**
 9. `pnpm typecheck` 실행 → 에러 0건 확인 (있으면 수정)
    - 두 프로젝트를 검사한다: `tsconfig.tests.json`(tests+logic+data — Cocos 무관, 어디서든 동작)과 `game/tsconfig.json`(게임 전체 — Cocos가 생성한 `game/temp/` 필요).
-   - **전제조건:** `game/temp/`는 gitignore 대상이라 Cocos Creator로 프로젝트를 한 번이라도 연 머신에서만 게임 프로젝트가 검사된다. 안 열었으면 검사 범위가 `logic-only`로 기록되고 **`approve-pr`이 차단**한다 — 그 경우 Cocos로 프로젝트를 한 번 열고 `pnpm wf invalidate` 후 재검증한다.
+   - **전제조건:** `game/temp/`는 gitignore 대상이라 Cocos Creator로 프로젝트를 한 번이라도 연 머신에서만 게임 프로젝트가 검사된다. 안 열었으면 검사 범위가 `logic-only`로 기록되고 **`approve-pr`이 차단**한다 — 그 경우 Cocos로 프로젝트를 한 번 연 뒤 `pnpm wf rework` → `pnpm wf start-verification`으로 검증을 다시 돌린다. (`invalidate`는 `verification`에서만 가능한데 `approve-pr` 차단은 `user-verification`에서 일어나므로 여기선 쓸 수 없다.)
    - 완료 후: `pnpm wf pass ts` — **이 커맨드가 타입체크를 직접 다시 돌린다.** 실패하면 전이가 막히므로 "돌렸다고 말하는 것"으로는 통과할 수 없다.
 10. `pnpm check --write` 실행 → lint + format 최종 확인
     - 완료 후: `pnpm wf pass lint`

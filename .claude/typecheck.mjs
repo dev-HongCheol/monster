@@ -40,8 +40,10 @@ function runTsc(project) {
 
 /**
  * 두 프로젝트를 검사한다.
- * @returns {{ status: number, scope: 'full'|'logic-only' }}
- *   status 0 = 통과. scope는 실제로 검사한 범위 — 'logic-only'면 게임 코드는 안 봤다는 뜻이다.
+ * @returns {{ status: number|null, scope: 'full'|'logic-only'|null }}
+ *   status 0 = 통과. 그 외는 실패이며, 프로세스가 시그널로 죽으면 null일 수 있다(호출자는 `!== 0`으로 판정할 것).
+ *   scope는 **통과했을 때** 실제로 검사한 범위다 — 'logic-only'면 게임 코드는 안 봤다는 뜻이다.
+ *   실패 시 scope는 null이다("검사 못 함"과 "게임 코드는 안 봄"은 다른 상태).
  */
 export function runTypecheck() {
   console.log("\n▶ 타입체크 1/2: tsconfig.tests.json (tests + logic + data — Cocos 무관)");

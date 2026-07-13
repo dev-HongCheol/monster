@@ -75,7 +75,7 @@ node "C:/ProgramData/cocos/editors/Creator/3.8.8/resources/app.asar.unpacked/nod
 - **프레시 클론 처리 + 검사 범위 기록.** `game/temp/tsconfig.cocos.json`은 gitignore 대상이고 내부에 절대 경로(`F:\work\monster\...`, `C:\ProgramData\cocos\...`)가 박혀 있어, **Cocos로 프로젝트를 한 번도 안 연 머신에서는 게임 프로젝트 타입체크가 TS5083으로 죽는다.** 사용자는 크로스머신으로 작업한다(F9).
   - 테스트 프로젝트는 **항상** 돈다(Cocos 무관).
   - 게임 프로젝트는 그 파일이 있을 때만 돌리고, 없으면 사람이 읽는 안내를 낸다.
-  - 어느 범위가 돌았는지를 상태 파일에 `verification.ts_check_scope: "full" | "logic-only"`로 남기고, **`approve-pr`이 `logic-only`를 거부한다.** 이게 없으면 "Cocos 안 깐 머신 = 타입 게이트 프리패스"가 되어, 죽이려던 명예제도가 머신 상태를 키로 부활한다.
+  - 어느 범위가 돌았는지를 상태 파일 최상위의 `ts_check_scope: "full" | "logic-only"`로 남기고(`verification` 객체 **안이 아니다** — 안에 넣으면 `pass()`의 `Object.values(verification).every(Boolean)` 판정에 문자열이 섞여 `pass` 하나만으로 조기 전이한다), **`approve-pr`이 `logic-only`를 거부한다.** 이게 없으면 "Cocos 안 깐 머신 = 타입 게이트 프리패스"가 되어, 죽이려던 명예제도가 머신 상태를 키로 부활한다.
 - `.vscode/settings.json` — `typescript.tsdk`를 워크스페이스 TypeScript로 지정해 편집기와 CLI가 같은 컴파일러를 본다.
 - `CLAUDE.md` — 6단계 9번의 `pass ts` 절차를 `pnpm typecheck` 기준으로 바꾸고, 프레시 클론 전제조건을 한 줄 명시한다.
 
