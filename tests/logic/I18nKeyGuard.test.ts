@@ -8,7 +8,7 @@ import {
   findCatalogIssues,
   type I18nKeyGuardInput,
   type I18nKeyIssue,
-} from '../../game/assets/scripts/logic/I18nKeyGuard';
+} from '../helpers/I18nKeyGuard';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');

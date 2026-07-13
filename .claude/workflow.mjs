@@ -7,6 +7,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { runTypecheck } from "./typecheck.mjs";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const STATE_PATH = path.join(ROOT, ".claude", "workflow-state.json");
@@ -44,6 +45,11 @@ function freshState(feature) {
     phase: "planning",
     test_skipped: false,
     test_skip_reason: null,
+    // `pass ts`가 실제로 검사한 범위. "full" = 게임 코드 포함, "logic-only" = Cocos 생성물이
+    // 없어 게임 코드를 못 봄. approve-pr이 "full"이 아니면 거부한다(머신 상태로 게이트를
+    // 우회하는 것을 막는다). verification 안이 아니라 밖에 두는 이유: pass()의
+    // `Object.values(verification).every(Boolean)` 판정에 문자열이 섞이면 안 된다.
+    ts_check_scope: null,
     verification: {
       cso_done: false,
       ts_check_clean: false,
@@ -79,6 +85,7 @@ function requirePhase(state, expected) {
 
 function resetVerification(state) {
   for (const f of Object.values(CHECK_FLAG)) state.verification[f] = false;
+  state.ts_check_scope = null; // 검사 범위도 함께 무효화 — 재검증 없이 남으면 안 된다
 }
 
 // vitest를 항상 run 모드로 실행한다 (bare vitest = watch 모드 → hang 방지).
@@ -318,6 +325,26 @@ const commands = {
     const check = args[0];
     if (!CHECKS.includes(check))
       fail(`사용법: pass <${CHECKS.join("|")}>`);
+
+    // TS 게이트: 다른 검증(cso·lint·review)은 사람/AI의 판단이라 플래그로만 기록하지만,
+    // 타입체크는 기계가 판정할 수 있다. 그러니 실제로 돌린다 — 안 돌리면 `pass ts`는
+    // "돌렸다고 말하는 것"에 지나지 않는다. ready-impl이 vitest로 RED를,
+    // start-verification이 GREEN을 확인하는 것과 같은 패턴이다.
+    if (check === "ts") {
+      const { status, scope } = runTypecheck();
+      if (status !== 0) {
+        // 실패는 이전 통과를 **능동적으로 회수**한다. 그냥 fail()만 하면 디스크의
+        // ts_check_clean=true가 남아, verification 중 코드를 고쳐 타입이 깨져도
+        // 나머지 pass만 채우면 user-verification·approve-pr까지 통과해 버린다
+        // (= 이 슬라이스가 죽이려던 바로 그 명예제도).
+        s.verification.ts_check_clean = false;
+        s.ts_check_scope = null;
+        save(s);
+        fail("타입체크 실패 — 에러를 고친 뒤 다시 실행하세요. (`pnpm typecheck`로 재현)");
+      }
+      s.ts_check_scope = scope;
+    }
+
     s.verification[CHECK_FLAG[check]] = true;
     const allClean = Object.values(s.verification).every(Boolean);
     if (allClean) {
@@ -369,6 +396,18 @@ const commands = {
   "approve-pr"() {
     const s = load();
     requirePhase(s, "user-verification");
+    // 타입체크 범위 게이트: `pass ts`가 게임 코드까지 봤어야 한다.
+    // Cocos를 한 번도 안 연 머신에서는 game/temp/가 없어 게임 프로젝트를 검사할 수 없고,
+    // 그 상태를 통과시키면 "Cocos 안 깐 머신 = 타입 게이트 프리패스"가 된다.
+    if (s.ts_check_scope !== "full") {
+      // 복구 경로는 rework다 — invalidate는 phase="verification"에서만 되는데
+      // approve-pr은 user-verification에서 돌므로 여기서 invalidate를 안내하면 막다른 길이다.
+      fail(
+        `타입체크 범위가 "${s.ts_check_scope ?? "미검사"}"입니다 — 게임 코드가 검사되지 않았습니다.\n` +
+          "    Cocos Creator로 프로젝트를 한 번 열어 game/temp/를 생성한 뒤,\n" +
+          "    `pnpm wf rework` → 구현으로 복귀 → `pnpm wf start-verification` → 검증을 다시 돌리세요."
+      );
+    }
     // 메타 게이트: 신규 자산의 .meta가 모두 커밋돼야 PR을 승인할 수 있다.
     // (머지 직전 마지막 안전장치 — 누락 시 머지 후 모든 환경에서 참조가 깨진다.)
     console.log("\n▶ 에셋 .meta 누락 검사");

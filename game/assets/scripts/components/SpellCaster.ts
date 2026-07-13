@@ -44,7 +44,8 @@ const STATUS_KIND_STRENGTH: Record<'stun' | 'slow' | 'freeze', ControlStrength> 
  */
 @ccclass('SpellCaster')
 export class SpellCaster extends Component {
-  static instance!: SpellCaster;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
+  static instance: SpellCaster = null as unknown as SpellCaster;
 
   /** 발사체 프리팹 (인스펙터에서 연결) */
   @property(Prefab) bulletPrefab: Prefab | null = null;

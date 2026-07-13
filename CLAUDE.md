@@ -91,14 +91,16 @@ planning → qa-setup → implementation → verification → user-verification 
 | `pnpm wf skip-test "<사유>"` | AI | 테스트 스킵 (순수 로직 없음, 사유 필수) |
 | `pnpm wf ready-impl` | AI | `qa-setup` → `implementation` (문서·테스트 파일 확인 + 스킵 아니면 피처 테스트 **RED** 검증) |
 | `pnpm wf start-verification` | AI | `implementation` → `verification` (전체 스위트 **GREEN** 검증 후 전환) |
-| `pnpm wf pass <cso\|ts\|lint\|review>` | AI | 개별 검증 통과 (4개 모두 통과 + **QA 확정 게이트** 통과 시 자동 `user-verification`) |
+| `pnpm wf pass <cso\|ts\|lint\|review>` | AI | 개별 검증 통과 (4개 모두 통과 + **QA 확정 게이트** 통과 시 자동 `user-verification`). **`pass ts`는 타입체크를 직접 실행**해 실패하면 차단한다 |
 | `pnpm wf invalidate` | AI | `verification` 중 코드 변경 → 전체 검증 초기화 |
 | `pnpm wf rework` | 사용자 트리거(`리워크`)→AI | `user-verification` → `implementation` (버그 발견 복귀) |
-| `pnpm wf approve-pr` | 사용자 트리거(`PR 승인`)→AI | `user-verification` → `pr-ready` (**에셋 `.meta` 누락 게이트**: 누락 시 차단) |
+| `pnpm wf approve-pr` | 사용자 트리거(`PR 승인`)→AI | `user-verification` → `pr-ready` (**에셋 `.meta` 누락 게이트** + **타입체크 범위 게이트**: `logic-only`면 차단) |
 | `pnpm wf pr-done` | AI | `pr-ready` → `done` |
 | `pnpm wf check-meta` | AI/사용자 | 에셋 `.meta` 누락 검사 (전이 없음, 누락 시 종료코드 1) |
 | `pnpm wf check-qa` | AI/사용자 | QA 문서 미확정(잠정) 표시 검사 (전이 없음, 남아 있으면 종료코드 1) |
 | `pnpm wf status` | — | 현재 상태 + 편집 가능 여부 출력 |
+
+> **`pnpm typecheck`** (wf 커맨드가 아님) — 타입체크 단독 실행. `pass ts`가 내부적으로 **같은 코드**(`.claude/typecheck.mjs`)를 호출하므로, 여기서 통과하면 게이트도 통과한다.
 
 > **사람 게이트 (사용자 트리거 → AI 실행):** 아래 세 전이는 사람의 판단이 필요한 지점이다. 사용자가 자연어로 지시하면 **AI가 해당 커맨드를 대신 실행**한다.
 >
@@ -151,8 +153,10 @@ planning → qa-setup → implementation → verification → user-verification 
    - 이슈 발견 시: `docs/qa/[feature]-security-issues.md`에 기록 → 즉시 수정 → 해당 항목에 "수정됨" 표시 → **`pnpm wf invalidate`** (전체 검증 초기화) → 8번 재실행 (이후 9→10→11→12까지 순차 재실행)
    - 재실행 시 기존 문서는 유지하고 신규 이슈만 추가. 모든 이슈 "수정됨" 확인 시 `pass cso`
    - **`pass cso` 전 다음 단계 진행 불가**
-9. `mcp__ide__getDiagnostics` 호출 → TypeScript Error severity 0건 확인 (있으면 수정)
-   - 완료 후: `pnpm wf pass ts`
+9. `pnpm typecheck` 실행 → 에러 0건 확인 (있으면 수정)
+   - 두 프로젝트를 검사한다: `tsconfig.tests.json`(tests+logic+data — Cocos 무관, 어디서든 동작)과 `game/tsconfig.json`(게임 전체 — Cocos가 생성한 `game/temp/` 필요).
+   - **전제조건:** `game/temp/`는 gitignore 대상이라 Cocos Creator로 프로젝트를 한 번이라도 연 머신에서만 게임 프로젝트가 검사된다. 안 열었으면 검사 범위가 `logic-only`로 기록되고 **`approve-pr`이 차단**한다 — 그 경우 Cocos로 프로젝트를 한 번 연 뒤 `pnpm wf rework` → `pnpm wf start-verification`으로 검증을 다시 돌린다. (`invalidate`는 `verification`에서만 가능한데 `approve-pr` 차단은 `user-verification`에서 일어나므로 여기선 쓸 수 없다.)
+   - 완료 후: `pnpm wf pass ts` — **이 커맨드가 타입체크를 직접 다시 돌린다.** 실패하면 전이가 막히므로 "돌렸다고 말하는 것"으로는 통과할 수 없다.
 10. `pnpm check --write` 실행 → lint + format 최종 확인
     - 완료 후: `pnpm wf pass lint`
 11. 기능 단위로 커밋 분리 후 순차 커밋 (husky가 staged 파일에 `biome check --write` 자동 실행)
