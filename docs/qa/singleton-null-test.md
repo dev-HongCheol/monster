@@ -99,6 +99,10 @@
 - [ ] 차단 시 상태 파일의 `ts_check_clean`이 `false`, `ts_check_scope`가 `null`로 **덮어써지는지** 확인한다(기록이 낡은 값을 계속 말하지 않아야 한다).
 - [ ] 심은 에러를 되돌리고 타입체크가 다시 깨끗한지 확인한다.
 
+> **드릴이 실패하면(= 게이트가 안 막으면):** `approve-pr`이 `pr-ready`로 전이해 버리고, 거기서 `user-verification`으로 되돌리는 wf 커맨드가 없다(`rework`는 `user-verification`에서만, `invalidate`는 `verification`에서만 된다). 복구는 `git restore .claude/workflow-state.json`이다.
+>
+> **드릴 후 상태 파일이 `ts_check_clean: false`로 남는 것은 정상이다** — `approve-pr`은 그 플래그를 읽지 않고 매번 다시 계산하므로 다음 승인에서 자동으로 복구된다.
+
 ---
 
 ## 5. 알려진 비-이슈

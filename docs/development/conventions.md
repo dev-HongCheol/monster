@@ -223,12 +223,13 @@ export class GameManager extends Component {
 캐시 형태의 예시는 이렇다(Cocos가 모든 `onLoad` 뒤에 `start`를 부르므로 이 시점엔 `instance`가 세팅돼 있다).
 
 ```ts
+// SpellCaster처럼 씬에 고정된 컴포넌트 — 매니저 부재는 배선 실수이므로 끄면서 알린다.
 private _gm: GameManager | null = null;
 
 start() {
   const gm = GameManager.instance;
   if (!gm) {
-    console.error('[Projectile] GameManager 없음 — 비활성화합니다. 씬 배선을 확인하세요.');
+    console.error('[SpellCaster] GameManager 없음 — 비활성화합니다. 씬 배선을 확인하세요.');
     this.enabled = false;
     return;
   }
@@ -238,6 +239,17 @@ start() {
 update(dt: number) {
   const gm = this._gm;
   if (!gm) return;            // 함수 진입부 1회 — 아래 모든 참조가 이 하나로 좁혀진다
+  if (gm.state !== GameState.Playing) return;
+  …
+}
+```
+
+풀링 노드(`Projectile` 등)는 **이 형태를 쓰지 않는다.** `enabled = false`가 풀에 반환된 뒤 다음 생까지 따라붙어 그 노드가 영영 돌지 않는다. 대신 진입부에서 정적 참조를 호이스트하고 그 프레임만 건너뛴다.
+
+```ts
+update(dt: number) {
+  const gm = GameManager.instance;
+  if (!gm) return;            // 끄지 않는다 — 이번 프레임만 건너뛴다
   if (gm.state !== GameState.Playing) return;
   …
 }

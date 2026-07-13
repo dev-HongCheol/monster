@@ -33,6 +33,21 @@
 
 ---
 
+---
+
+## 재리뷰 (`bdc392f` → `f8196e5`)
+
+수정분을 같은 방식으로 다시 검토했다. **신규 Critical 0건**, I2·Minor 6건 전부 수정 확인. 두 가지가 더 나왔다.
+
+### R1 — `conventions.md` 코드 예시가 표가 금지한 패턴을 시연 → 수정됨
+I3에서 표는 고쳤지만 **그 아래 코드 예시가 `[Projectile]`(풀링 노드)로 `enabled = false`를 시연**하고 있었다. 표가 "풀링 노드에 그러면 다음 생까지 꺼진 채 남는다"고 경고하는 바로 그 클래스다. 다음 슬라이스가 가장 복사해 가기 쉬운 자리라 I3의 해악이 산문에서 예시로 옮겨간 셈이었다. 예시를 씬 고정 컴포넌트(`SpellCaster`)로 바꾸고, 풀링 노드용 대비 예시를 함께 넣었다. → **수정됨**
+
+### R2 — QA 문서 §4 드릴에 실패 분기가 없었다 → 수정됨
+게이트가 **안 막는 것으로 드러나면** `approve-pr`이 `pr-ready`로 전이해 버리는데, 거기서 되돌리는 wf 커맨드가 없다(`rework`는 `user-verification`, `invalidate`는 `verification`에서만). 복구 경로(`git restore .claude/workflow-state.json`)와 "드릴 후 `ts_check_clean: false`로 남는 건 정상"이라는 안내를 §4에 추가했다. → **수정됨**
+
+---
+
 ## 백로그 이관 (이 PR 범위 밖)
 
+- **`HudController._prevState`와 카드 패널의 즉시 재개가 어긋난다 (재리뷰 발견)** — `_handleStateChange`가 `_prevState`를 먼저 쓰고 그 다음에 패널을 활성화하는데, Cocos가 활성화를 동기 처리하므로 `onEnable`의 빈 드로우 가드가 즉시 재개하면 `panel.active=true` + `state=Playing` + `_prevState=LevelUp`으로 어긋난다. 다음 프레임에 레벨업이 또 오면 HUD가 조기 return해 `onEnable`이 재발화하지 않아 **카드 없이 영구 정지**한다. 지금은 `drawCards`가 `[]`를 못 돌려주므로 도달 불가. 봉합은 HUD 쪽(패널 활성화 뒤 상태 재확인). → **`backlog-implement.md` F46**
 - **부팅 불변식이 소비처를 가로질러 강제되지 않는다** — `GameManager._onDataReady()`는 "전부 성공하거나 전부 실패"를 지키지만, `EnemySpawner.update()`는 `GameManager._started`를 보지 않고 `gm`·`wm`·`dm.isReady`만 본다(`_state` 기본값이 `Playing`이다). `_onDataReady`가 loud-fail한 상황에서도 스포너는 `wave = 0`으로 적을 뿌린다. 올바른 씬 배선에서는 도달 불가이고 이번 변경 이전부터 있던 성질이지만, 소비처마다 준비 상태를 각자 재유도하는 대신 `GameManager.isStarted` 게터 하나를 보게 하면 불변식이 정직해진다. → **`backlog-implement.md` F45**
