@@ -410,10 +410,13 @@ const commands = {
     s.verification.ts_check_clean = status === 0;
     save(s);
     if (status !== 0) {
+      // 복구 경로를 먼저 말한다 — 지금 phase는 user-verification이라 훅이 스크립트 편집을
+      // 막고 있다. "고친 뒤 다시 승인하세요"를 앞세우면 게임 코드 에러일 때 따라갈 수 없는
+      // 안내가 된다(아래 범위 게이트가 피하는 것과 같은 막다른 길).
       fail(
         "타입체크 실패 — 머지될 코드에 타입 에러가 있습니다.\n" +
-          "    `pnpm typecheck`로 재현해 고친 뒤 다시 승인하세요.\n" +
-          "    (코드를 고쳤다면 `pnpm wf rework` → 재구현 → `pnpm wf start-verification`으로 검증을 다시 돌리세요.)"
+          "    `pnpm wf rework` → 구현으로 복귀해 고친 뒤 → `pnpm wf start-verification`으로 검증을 다시 돌리세요.\n" +
+          "    (에러 재현: `pnpm typecheck`)"
       );
     }
     // 범위 게이트: 게임 코드까지 봤어야 한다. Cocos를 한 번도 안 연 머신에는 game/temp/가 없어

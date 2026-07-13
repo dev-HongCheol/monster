@@ -50,7 +50,12 @@ export class MapManager extends Component {
   private _applyMap(): void {
     // 클로저 안이라 start()의 내로잉이 살아남지 않는다 — 여기서 다시 받는다.
     const map = DataManager.instance?.mapData;
-    if (!map) return;
+    if (!map) {
+      // 조용히 빠지면 아레나가 {0,0}으로 남아 플레이어 클램프가 사라지고 발사체 컬링이
+      // 화면 기준 폴백으로 되돌아간다(카메라 팔로우라 부정확). 눈에 보이게 알린다.
+      console.error('[MapManager] 맵 데이터 없음 — 아레나가 구성되지 않았습니다.');
+      return;
+    }
     this._arena = { width: map.size[0], height: map.size[1] };
     this._sizeBackdrop(map.size[0], map.size[1]);
     this._loadBackdrop(map.backdrop);

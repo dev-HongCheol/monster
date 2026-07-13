@@ -42,6 +42,14 @@ export class CardSelectPanel extends Component {
     const ownedSpellIds = loadout ? loadout.spells : [];
     const isFull = loadout ? loadout.isFull : false;
     this._drawnCards = deck.drawCards(3, ownedSpellIds, isFull);
+    if (this._drawnCards.length === 0) {
+      // 뽑힌 카드가 없으면 버튼이 전부 꺼져 고를 게 없는 패널만 열린 채 상태가 LevelUp에
+      // 머문다(= 영구 정지). 현재 데이터로는 도달하지 않지만, 카드 풀이 비는 경로가
+      // 생기면 곧바로 그 함정이 되므로 여기서 재개시킨다.
+      console.error('[CardSelectPanel] 뽑을 카드가 없음 — 카드를 건너뛰고 게임을 재개합니다.');
+      GameManager.instance?.resumeFromLevelUp();
+      return;
+    }
     for (let i = 0; i < this.cardButtons.length; i++) {
       const card = this._drawnCards[i];
       if (!card) {
@@ -94,7 +102,9 @@ export class CardSelectPanel extends Component {
     if (!card) return;
     const deck = DeckManager.instance;
     if (card.type === 'magic' && card.spellId) {
-      SpellCaster.instance?.addSpell(card.spellId);
+      const caster = SpellCaster.instance;
+      if (caster) caster.addSpell(card.spellId);
+      else console.error('[CardSelectPanel] SpellCaster 없음 — 마법 추가를 건너뛰고 재개합니다.');
     } else if (deck) {
       deck.applyCard(card);
     } else {

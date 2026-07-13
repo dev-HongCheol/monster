@@ -211,9 +211,16 @@ export class GameManager extends Component {
 
 **타입은 사실을 말한다.** `onDestroy`가 실제로 null을 넣으므로 `instance`는 런타임에 null일 수 있고(씬 리로드 시 매니저가 다른 컴포넌트보다 먼저 파괴된다 — 커밋 `497fb90`이 그 크래시를 고쳤다), 타입도 그렇게 적는다. `null as unknown as T`나 `static instance!: T`(정의 할당 단언 — static 멤버엔 `TS1255`라 애초에 불가)로 null을 지우지 않는다.
 
-### 싱글톤 소비 — 활성화 시 한 번 받고, 실패는 시끄럽게
+### 싱글톤 소비 — 진입부에서 한 번 받고, 실패는 시끄럽게
 
-싱글톤을 쓰는 컴포넌트는 **`start()`에서 한 번 받아 필드에 잡아 둔다**(Cocos가 모든 `onLoad` 뒤에 `start`를 부르므로 이 시점엔 이미 세팅돼 있다). 없으면 조용히 넘어가지 말고 컴포넌트를 끄면서 크게 알린다 — 핫패스에서 매니저가 없다는 것은 **씬 배선 실수**지 정상적인 수명주기가 아니다.
+**어디서 받든 규칙은 하나다 — 함수 진입부에서 1회 받고, 그 뒤로는 그 지역 변수만 쓴다.** 참조할 때마다 `X.instance`를 다시 쓰지 않는다. 받는 방식은 컴포넌트 성격에 따라 두 가지다.
+
+| 형태 | 쓰는 곳 | 이유 |
+|------|---------|------|
+| **캐시 + loud-fail** — `start()`/`onEnable()`에서 필드에 잡아 두고, 없으면 `console.error` + `this.enabled = false` | 씬에 고정된 컴포넌트(`GameManager`·`SpellCaster`·`PlayerController`·`MapManager`) | 매니저 부재 = **씬 배선 실수**이므로 크게 드러나야 한다. 끄면 조용한 no-op이 반복되지 않는다 |
+| **정적 참조를 진입부에서 호이스트** — `const gm = GameManager.instance; if (!gm) return;` | 풀링 노드(`Projectile`·`EnemyProjectile`·`XPItemController`·`EnemyController`)와 항상 돌아야 하는 컴포넌트(`WaveManager`·`EnemySpawner`·`HudController`·`PauseController`) | 풀에서 되살아나는 노드는 `enabled = false`가 다음 생까지 따라붙어 영영 죽는다. 이쪽은 끄지 않고 그 프레임만 건너뛴다 |
+
+캐시 형태의 예시는 이렇다(Cocos가 모든 `onLoad` 뒤에 `start`를 부르므로 이 시점엔 `instance`가 세팅돼 있다).
 
 ```ts
 private _gm: GameManager | null = null;

@@ -137,8 +137,9 @@ export class DeckManager extends Component {
   start() {
     if (!DEV) return;
     // 파일이 없으면 err만 받고 조용히 넘어간다(시드 미사용 = 정상). 릴리스는 DEV 게이트로 아예 로드 안 함.
+    // 비동기라 씬을 넘어 살아남을 수 있으므로(로딩 중 재시작) 파괴된 인스턴스에 쓰지 않도록 isValid를 본다.
     resources.load(DEBUG_SEED_PATH, JsonAsset, (err, asset) => {
-      if (err || !asset) return;
+      if (err || !asset || !this.isValid) return;
       this.applyDebugSeed(asset.json as IDebugEnhancementSeed);
       console.log('[DeckManager] DEV 강화 시드 적용:', asset.json);
     });

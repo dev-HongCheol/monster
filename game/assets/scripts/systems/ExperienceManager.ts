@@ -58,6 +58,8 @@ export class ExperienceManager extends Component {
   start() {
     const dm = DataManager.instance;
     if (!dm) {
+      // 다른 소비처와 달리 enabled=false를 하지 않는다 — 이 매니저는 update()가 없어 끌 것이 없고,
+      // instance는 살아 있어야 소비처(XP 아이템·HUD)가 정상 경로를 탄다.
       console.error(
         '[ExperienceManager] DataManager 없음 — 경험치가 동작하지 않습니다. 씬 배선을 확인하세요.',
       );

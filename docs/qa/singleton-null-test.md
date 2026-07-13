@@ -27,7 +27,8 @@
 | `components/XPItemController.ts` | 캐시 | XP 오브 흡수 |
 | `ui/HudController.ts` | 캐시 | HP/XP 바, 웨이브·타이머·레벨 표시, 마법 아이콘 행 |
 | `ui/CardSelectPanel.ts` | `onEnable`·`_onPickCard` 재설계 | **카드 3장 표시 · 카드 선택 → 게임 재개** |
-| `ui/PauseController.ts` · `ResultController.ts` · `LocalizedLabel.ts` | 캐시/가드 | 일시정지 메뉴, 결과 화면, 라벨 번역 |
+| `ui/PauseController.ts` | 진입부 호이스트 + 입력 핸들러 가드 | 일시정지 메뉴(ESC·재개·재시작·메뉴 버튼) |
+| `ui/ResultController.ts` · `LocalizedLabel.ts` | **코드 변경 없음** — `I18n` 수명주기 변경의 영향만 받는다 | 결과 화면 라벨, 번역 라벨 갱신 (특히 카탈로그 로딩 중 씬 이동) |
 | `.claude/workflow.mjs` | `approve-pr`이 타입체크 실측 (F44) | 인게임 무관 — 4절에서 별도 검증 |
 
 **씬·프리팹 변경 없음. 에디터 연결 작업 없음.** `@property` 추가·삭제가 없으므로 노드 배선을 새로 할 것이 없다. 기존 씬을 그대로 열어 플레이하면 된다.
@@ -90,13 +91,13 @@
 
 ---
 
-## 4. F44 게이트 자체 검증 (인게임 무관, AI가 6단계에서 수행)
+## 4. F44 게이트 자체 검증 (인게임 무관, AI가 수행)
 
-`approve-pr`이 타입체크를 **실제로** 돌리는지 확인한다.
+`approve-pr`이 타입체크를 **실제로** 돌리는지 확인한다. 이 커맨드는 `phase: "user-verification"`에서만 동작하므로, **7단계 진입 직후(Draft PR 생성 전)** 실패 경로만 밟아 확인한다(성공 경로를 밟으면 `pr-ready`로 전이해 버린다).
 
-- [ ] 일부러 타입 에러를 하나 넣은 상태에서 `pnpm wf check-meta`가 아니라 `approve-pr` 경로가 **차단**되는지 확인 후 되돌린다.
-- [ ] 신선한 타입체크 결과의 `scope`가 `full`이 아니면(= Cocos를 한 번도 안 연 머신) 차단되는지 확인한다.
-- [ ] 상태 파일의 `ts_check_scope`가 새 결과로 덮어써지는지 확인한다.
+- [ ] 타입 에러를 하나 심고(스크립트 편집이 잠긴 phase이므로 `tests/` 쪽 파일에 심는다) `pnpm wf approve-pr`이 **차단**되는지 확인한다.
+- [ ] 차단 시 상태 파일의 `ts_check_clean`이 `false`, `ts_check_scope`가 `null`로 **덮어써지는지** 확인한다(기록이 낡은 값을 계속 말하지 않아야 한다).
+- [ ] 심은 에러를 되돌리고 타입체크가 다시 깨끗한지 확인한다.
 
 ---
 
