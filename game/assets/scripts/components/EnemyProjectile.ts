@@ -1,7 +1,9 @@
 import { _decorator, Component, type Node, Vec3, view } from 'cc';
 import { GameState } from '../data/GameTypes';
+import { isOutsideArena } from '../logic/ArenaLogic';
 import { DataManager } from '../systems/DataManager';
 import { GameManager } from '../systems/GameManager';
+import { MapManager } from '../systems/MapManager';
 
 const { ccclass } = _decorator;
 
@@ -59,7 +61,8 @@ export class EnemyProjectile extends Component {
     this._despawned = false;
   }
 
-  // 화면 밖 제거 기준 거리를 계산한다 — 좌표계 원점이 화면 중앙이므로 절반 + 여유 100
+  // 화면 밖 제거 폴백 기준 거리 — 아레나 로드 전에만 쓴다(정적 카메라 가정, 화면 절반 + 여유 100).
+  // 아레나 로드 후엔 _checkOutOfBounds가 아레나 경계로 컬링한다(카메라 팔로우라 원점 기준은 무효).
   onLoad() {
     const size = view.getVisibleSize();
     this._outOfBoundsLimit = Math.max(size.width, size.height) / 2 + 100;
@@ -100,9 +103,14 @@ export class EnemyProjectile extends Component {
     }
   }
 
-  /** 화면 경계를 벗어나면 풀로 반환한다. */
+  /** 아레나(원점 중심) 경계 + 여유를 벗어나면 풀로 반환한다. 아레나 미로드 시 화면 기준 폴백. */
   private _checkOutOfBounds(): void {
     const pos = this.node.position;
+    const arena = MapManager.instance?.arena;
+    if (arena && arena.width > 0) {
+      if (isOutsideArena({ x: pos.x, y: pos.y }, arena, 100)) this._despawn();
+      return;
+    }
     if (Math.abs(pos.x) > this._outOfBoundsLimit || Math.abs(pos.y) > this._outOfBoundsLimit) {
       this._despawn();
     }

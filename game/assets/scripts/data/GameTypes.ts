@@ -314,6 +314,18 @@ export interface IXPData {
   xpMultiplier: number;
 }
 
+/**
+ * 맵 데이터 (resources/data/maps/<id>.json) — 언어 중립. 원점(0,0) 중심 경계형 아레나.
+ * 장애물·지형(obstacles/regions) 필드는 장애물 슬라이스에서 추가한다(현재 미포함).
+ */
+export interface IMapData {
+  id: string;
+  /** 아레나 크기 [width, height] (px). 원점(0,0) 중심. */
+  size: [number, number];
+  /** 배경 스프라이트 리소스 경로 (resources 기준, 확장자 없음) */
+  backdrop: string;
+}
+
 /** 씬 간 결과 데이터 전달용 전역 객체 */
 export const GameResult = {
   waveReached: 0,

@@ -1,8 +1,10 @@
 import { _decorator, Component, type EventKeyboard, Input, input, KeyCode, Vec3 } from 'cc';
 import { GameState } from '../data/GameTypes';
+import { clampToArena } from '../logic/ArenaLogic';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
+import { MapManager } from '../systems/MapManager';
 
 const { ccclass } = _decorator;
 
@@ -76,10 +78,16 @@ export class PlayerController extends Component {
     const speed =
       DataManager.instance.playerData.speed * (1 + (DeckManager.instance?.moveSpeedBonus ?? 0));
     const pos = this.node.position;
-    this.node.setPosition(
-      pos.x + this._moveDir.x * speed * dt,
-      pos.y + this._moveDir.y * speed * dt,
-      pos.z,
-    );
+    const nextX = pos.x + this._moveDir.x * speed * dt;
+    const nextY = pos.y + this._moveDir.y * speed * dt;
+    // 아레나 경계 안으로 클램프 — 플레이어가 벽을 넘지 못하게 한다(아레나 로드 전엔 무클램프).
+    const arena = MapManager.instance?.arena;
+    if (arena && arena.width > 0) {
+      const radius = DataManager.instance.playerData.collisionRadius;
+      const clamped = clampToArena({ x: nextX, y: nextY }, radius, arena);
+      this.node.setPosition(clamped.x, clamped.y, pos.z);
+      return;
+    }
+    this.node.setPosition(nextX, nextY, pos.z);
   }
 }

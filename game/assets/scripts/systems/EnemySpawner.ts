@@ -3,9 +3,11 @@ import { EnemyController, type FireProjectileFn } from '../components/EnemyContr
 import { EnemyProjectile } from '../components/EnemyProjectile';
 import { PoolManager } from '../components/PoolManager';
 import { GameState } from '../data/GameTypes';
+import { clampToArena } from '../logic/ArenaLogic';
 import { SpawnDirectorLogic } from '../logic/SpawnDirectorLogic';
 import { DataManager } from './DataManager';
 import { GameManager } from './GameManager';
+import { MapManager } from './MapManager';
 import { WaveManager } from './WaveManager';
 
 const { ccclass, property } = _decorator;
@@ -145,6 +147,13 @@ export class EnemySpawner extends Component {
     );
 
     const enemyId = this._director.selectEnemyId(wave, Math.random());
+    // 플레이어가 벽 근처면 반경 스폰이 아레나 밖으로 나갈 수 있어 아레나 안으로 클램프한다.
+    const arena = MapManager.instance?.arena;
+    if (arena && arena.width > 0) {
+      const radius = DataManager.instance?.getEnemy(enemyId)?.collisionRadius ?? 0;
+      const clamped = clampToArena({ x: spawnPos.x, y: spawnPos.y }, radius, arena);
+      spawnPos.set(clamped.x, clamped.y, 0);
+    }
     // 풀에서 적을 꺼낸다(가용분 재사용 또는 신규 instantiate). acquire가 Canvas 부착·active=true까지
     // 보장하므로, 종류별 데이터·연출 상태는 acquire 직후 reset()이 매번 새로 적용한다(잔류 방지).
     const enemy = this._enemyPool.acquire();

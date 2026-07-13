@@ -2,6 +2,7 @@ import { _decorator, Component, JsonAsset, resources } from 'cc';
 import type {
   ICardData,
   IEnemyData,
+  IMapData,
   IPlayerBaseData,
   ISpawnTableEntry,
   ISpellData,
@@ -21,6 +22,7 @@ export class DataManager extends Component {
   private _spawnTable: ISpawnTableEntry[] = [];
   private _cards: ICardData[] = [];
   private _xpData: IXPData | null = null;
+  private _mapData: IMapData | null = null;
   private _isReady = false;
   private _onReadyCallbacks: (() => void)[] = [];
 
@@ -41,6 +43,9 @@ export class DataManager extends Component {
   }
   get xpData(): IXPData {
     return this._xpData as IXPData;
+  }
+  get mapData(): IMapData {
+    return this._mapData as IMapData;
   }
 
   /** id로 마법 데이터를 반환한다. 없으면 null. */
@@ -76,13 +81,15 @@ export class DataManager extends Component {
   /** 모든 JSON 데이터 파일을 병렬 로드하고 완료 콜백을 실행한다. */
   private async _loadAll() {
     try {
-      const [player, spells, enemies, spawnTable, cards, xpData] = await Promise.all([
+      const [player, spells, enemies, spawnTable, cards, xpData, mapData] = await Promise.all([
         this._load<IPlayerBaseData>('data/player'),
         this._load<ISpellData[]>('data/spells'),
         this._load<IEnemyData[]>('data/enemies'),
         this._load<ISpawnTableEntry[]>('data/spawn-table'),
         this._load<ICardData[]>('data/cards'),
         this._load<IXPData>('data/experience'),
+        // 활성 맵은 현재 seoul 고정 — 다중 맵 셀렉터는 이월(계획 §7)
+        this._load<IMapData>('data/maps/seoul'),
       ]);
       this._playerData = player;
       this._spells = spells;
@@ -90,6 +97,7 @@ export class DataManager extends Component {
       this._spawnTable = spawnTable;
       this._cards = cards;
       this._xpData = xpData;
+      this._mapData = mapData;
       this._isReady = true;
       for (const cb of this._onReadyCallbacks) cb();
       this._onReadyCallbacks = [];
