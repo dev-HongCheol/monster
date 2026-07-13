@@ -17,7 +17,7 @@
 | `tsconfig.tests.json` (신규) | Cocos 비의존 타입체크 프로젝트 | `tests/**` + `logic/**` + `data/**` 에러 0. **Cocos 없이도 돈다**(프레시 클론 검증) |
 | `package.json` | `typescript`·`@types/node` devDep + `typecheck` 스크립트 | `pnpm install` 후 `pnpm typecheck` 동작 |
 | `.claude/workflow.mjs` | `pass ts`가 실제로 타입체크 실행 | **일부러 타입 에러를 넣었을 때 `pass ts`가 실패하는가** (§4) |
-| 싱글톤 선언 7곳 (`= null!`) | 임시 다리 | 런타임 무영향. 게임 정상 구동 + **재시작(씬 리로드)** |
+| 싱글톤 선언 7곳 (`null as unknown as T`) | 임시 다리 | 런타임 무영향. 게임 정상 구동 + **재시작(씬 리로드)** |
 | `I18nKeyGuard.ts` → `tests/helpers/` | 파일 이동 (게임 번들에서 제거) | 게임 코드가 이 파일을 참조하지 않으므로 씬·프리팹 참조가 깨질 수 없다. **Cocos 에디터가 에러 없이 열리는지**만 확인 |
 | `tests/logic/MagicAddCard.test.ts` | 기존 타입 에러 수정 (`pattern` 누락) | 해당 테스트 통과 유지 |
 | `.vscode/settings.json` | 편집기 TS 버전 정렬 | VS Code가 워크스페이스 TS(5.8.x)를 쓰는지 |
@@ -47,7 +47,8 @@
 - [x] `pnpm typecheck` — 테스트 프로젝트(`tsconfig.tests.json`) 에러 **0** (`✓ tests/logic/data 통과`). 이 프로젝트가 **처음으로** 테스트 코드를 타입 검사했고, 곧바로 `MagicAddCard.test.ts`의 진짜 타입 에러(TS2741 — `ISpellData.pattern` 누락)를 잡아 수정했다.
 - [x] `pnpm test:run` — **443/443 통과** (순수 로직 무변경이므로 회귀 0)
 - [x] `pnpm check` — lint·format 통과
-- [x] **게이트 강제 검증 (핵심).** `WaveManager.ts`에 의도적 타입 에러(`const x: number = "not a number"`)를 넣고 `pnpm wf pass ts` 실행 → **TS2322를 잡아내고 종료코드 1로 실패**했으며, 결정적으로 **`ts_check_clean`이 `false`로 남았다**(플래그 미변경). 개편 전 코드였다면 검증 없이 `true`가 됐을 자리다. 확인 후 에러를 완전히 제거했다(`grep __gateProbe` → 잔여 0).
+- [x] **게이트 강제 검증 (핵심).** `WaveManager.ts` 끝에 의도적 타입 에러 `export const __gateProbe: number = "not a number";`를 넣고 `pnpm wf pass ts` 실행 → **TS2322를 잡아내고 종료코드 1로 실패**했으며, 결정적으로 **`ts_check_clean`이 `false`로 남았다**. 개편 전 코드였다면 검증 없이 `true`가 됐을 자리다. 확인 후 프로브를 완전히 제거했다(`grep -r __gateProbe game/` → 잔여 0).
+- [x] **게이트 강제 검증 (재리뷰 후 추가).** 코드 리뷰가 찾은 구멍 — `pass ts` 실패가 **이전에 저장된 통과 플래그를 회수하지 않던 것** — 을 막았다. 이제 실패 시 `ts_check_clean = false` + `ts_check_scope = null`을 저장한 뒤 종료한다. 즉 "통과했다가 코드를 고쳐 타입이 깨져도 나머지 pass만 채우면 PR까지 가는" 경로가 닫혔다.
 - [x] **종료코드 판정.** tsc는 타입 에러에도 종료코드 **2**를 낸다(1이 아니다 — 설정 에러도 2). `.claude/typecheck.mjs`가 `status !== 0`으로 판정하며, `=== 1` 비교를 쓰지 않는다(그랬다면 모든 타입 에러를 통과시켰을 것). 주석으로 근거를 남겼다.
 - [x] **프레시 클론 시뮬레이션.** `game/temp/tsconfig.cocos.json`을 치운 상태에서 `pnpm typecheck` 실행 → TS5083 대신 **사람이 읽는 안내**가 떴고, 테스트 프로젝트는 정상 검사됐으며, 범위가 **`logic-only`** 로 보고됐다. `approve-pr`이 이 범위를 거부하는 가드를 `workflow.mjs`에 넣었다(코드 검증 — 실제 차단은 8단계에서 발현).
 
@@ -57,7 +58,7 @@
 
 ## 5. 수동 테스트 체크리스트 (7단계 — 사용자)
 
-게임 로직이 안 바뀌었으므로 **가볍다.** 확인 목적은 "임시 다리(`= null!`)와 파일 이동이 런타임을 깨지 않았는가"다.
+게임 로직이 안 바뀌었으므로 **가볍다.** 확인 목적은 "임시 다리(`null as unknown as T`)와 파일 이동이 런타임을 깨지 않았는가"다.
 
 ### 5-1. Cocos 에디터
 
@@ -75,7 +76,7 @@
 
 ### 5-3. 에디터 프리뷰 핫리로드
 
-- [ ] 프리뷰를 실행한 상태에서 스크립트를 하나 저장해 **핫리로드**를 유발한다 → 게임이 죽거나 싱글톤이 사라지지 않는지 본다. (`static instance: T = null!`은 기존 `!` 형태와 달리 모듈 평가 시점에 실제로 `null`을 대입하므로, 모듈이 재평가되면 살아 있는 인스턴스를 지울 이론적 여지가 있다. 실무상 Cocos가 씬을 리로드해 무해할 것으로 보지만 한 번 밟아 본다.)
+- [ ] 프리뷰를 실행한 상태에서 스크립트를 하나 저장해 **핫리로드**를 유발한다 → 게임이 죽거나 싱글톤이 사라지지 않는지 본다. (`static instance: T = null as unknown as T`는 기존 `instance!:` 형태와 달리 모듈 평가 시점에 실제로 `null`을 대입하므로, 모듈이 재평가되면 살아 있는 인스턴스를 지울 이론적 여지가 있다. 실무상 Cocos가 씬을 리로드해 무해할 것으로 보지만 한 번 밟아 본다.)
 
 ### 5-4. 크로스머신 (선택 — 다른 장비가 있을 때)
 

@@ -21,7 +21,10 @@
     "strict": true,
     "noEmit": true,
     "isolatedModules": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    /* @types/node가 캐럿 범위라, 마이너 업그레이드가 선언 파일 에러를 들여오면 우리 코드와
+       무관하게 게이트가 빨간불이 된다. 게임 프로젝트와 대칭을 맞춘다. */
+    "skipLibCheck": true
   },
   "include": [
     "tests/**/*.ts",

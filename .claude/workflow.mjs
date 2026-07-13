@@ -333,6 +333,13 @@ const commands = {
     if (check === "ts") {
       const { status, scope } = runTypecheck();
       if (status !== 0) {
+        // 실패는 이전 통과를 **능동적으로 회수**한다. 그냥 fail()만 하면 디스크의
+        // ts_check_clean=true가 남아, verification 중 코드를 고쳐 타입이 깨져도
+        // 나머지 pass만 채우면 user-verification·approve-pr까지 통과해 버린다
+        // (= 이 슬라이스가 죽이려던 바로 그 명예제도).
+        s.verification.ts_check_clean = false;
+        s.ts_check_scope = null;
+        save(s);
         fail("타입체크 실패 — 에러를 고친 뒤 다시 실행하세요. (`pnpm typecheck`로 재현)");
       }
       s.ts_check_scope = scope;
@@ -393,10 +400,12 @@ const commands = {
     // Cocos를 한 번도 안 연 머신에서는 game/temp/가 없어 게임 프로젝트를 검사할 수 없고,
     // 그 상태를 통과시키면 "Cocos 안 깐 머신 = 타입 게이트 프리패스"가 된다.
     if (s.ts_check_scope !== "full") {
+      // 복구 경로는 rework다 — invalidate는 phase="verification"에서만 되는데
+      // approve-pr은 user-verification에서 돌므로 여기서 invalidate를 안내하면 막다른 길이다.
       fail(
         `타입체크 범위가 "${s.ts_check_scope ?? "미검사"}"입니다 — 게임 코드가 검사되지 않았습니다.\n` +
-          "    Cocos Creator로 프로젝트를 한 번 열어 game/temp/를 생성한 뒤 " +
-          "`pnpm wf invalidate` → 검증을 다시 돌리세요."
+          "    Cocos Creator로 프로젝트를 한 번 열어 game/temp/를 생성한 뒤,\n" +
+          "    `pnpm wf rework` → 구현으로 복귀 → `pnpm wf start-verification` → 검증을 다시 돌리세요."
       );
     }
     // 메타 게이트: 신규 자산의 .meta가 모두 커밋돼야 PR을 승인할 수 있다.

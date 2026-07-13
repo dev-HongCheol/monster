@@ -50,7 +50,7 @@ node "C:/ProgramData/cocos/editors/Creator/3.8.8/resources/app.asar.unpacked/nod
 
 ### 임시 다리 — 의도적으로 남기는 거짓말
 
-매니저 7개는 이번에 `static instance: T = null!;`로 바꾼다. 이건 **거짓말이다** — 7개 전부 `onDestroy`에서 `instance`에 null을 넣으므로 null은 정상 런타임 값인데, `= null!`은 컴파일러에게 "절대 null 아님"이라 말한다.
+매니저 7개는 이번에 `static instance: T = null as unknown as T;`로 바꾼다(`= null!`이 아니다 — Biome의 `noNonNullAssertion`이 `!`를 금지하며, `onDestroy`가 이미 쓰던 관용구가 이쪽이다). 이건 **거짓말이다** — 7개 전부 `onDestroy`에서 `instance`에 null을 넣으므로 null은 정상 런타임 값인데, 이 타입은 컴파일러에게 "절대 null 아님"이라 말한다.
 
 그런데도 이렇게 하는 이유는, **게이트를 초록불로 만들어 지금 강제하기 위해서**다. TS1255 7건이 남아 있으면 `pnpm typecheck`가 통과하지 못하고 게이트를 켤 수 없다. 이 다리는 **다음 슬라이스가 곧바로 철거한다.** 오래 두지 않으며, F24가 73곳 측정치와 함께 백로그 상단에 대기한다.
 
@@ -63,7 +63,7 @@ node "C:/ProgramData/cocos/editors/Creator/3.8.8/resources/app.asar.unpacked/nod
 - `game/assets/scripts/logic/I18nKeyGuard.ts` → `tests/helpers/I18nKeyGuard.ts`로 옮긴다(테스트 import 경로 수정, Cocos가 만들었던 `.meta` 제거). 게임 번들에서 빠지고, shipped 코드의 `lib`이 ES2017로 내려간다.
 
 **임시 다리 (F27)**
-- 싱글톤 선언 7곳(`GameManager`·`DataManager`·`DeckManager`·`WaveManager`·`MapManager`·`ExperienceManager`·`SpellCaster`)을 `static instance: T = null!;`로. §4의 단서를 코드 주석에도 남겨 다음 슬라이스가 철거 대상임을 알게 한다.
+- 싱글톤 선언 7곳(`GameManager`·`DataManager`·`DeckManager`·`WaveManager`·`MapManager`·`ExperienceManager`·`SpellCaster`)을 `static instance: T = null as unknown as T;`로. §4의 단서를 코드 주석에도 남겨 다음 슬라이스가 철거 대상임을 알게 한다.
 
 **타입체크 명령**
 - `package.json` — `typescript`(Cocos 번들과 같은 5.8.x 고정)와 **`@types/node`** 를 devDependency로 추가하고 `typecheck` 스크립트를 더한다. `@types/node`가 없으면 새 테스트 프로젝트가 `node:fs` 등으로 TS2307 18건을 낸다(테스트 6개가 JSON을 `fs`로 읽는다).
@@ -123,6 +123,6 @@ node "C:/ProgramData/cocos/editors/Creator/3.8.8/resources/app.asar.unpacked/nod
 
 ## 10. 리스크
 
-`static instance: T = null!`은 정적 초기화 시점에 실제로 `null`을 대입한다(기존 `!` 형태는 코드를 만들지 않았다). `target: ES2015` + `useDefineForClassFields` 미사용이라 모듈 평가 시점의 단순 대입으로 컴파일되며 `onLoad`보다 앞서므로 안전하다. 다만 **에디터 프리뷰의 스크립트 핫리로드**로 모듈이 재평가되면 살아 있는 인스턴스를 지울 수 있다 — 실무상 Cocos가 씬을 리로드하므로 위험은 낮지만, 7단계에서 에디터 프리뷰를 껐다 켜는 경로를 한 번 밟아 본다.
+`static instance: T = null as unknown as T`는 정적 초기화 시점에 실제로 `null`을 대입한다(기존 `instance!:` 형태는 코드를 만들지 않았다). `target: ES2015` + `useDefineForClassFields` 미사용이라 모듈 평가 시점의 단순 대입으로 컴파일되며 `onLoad`보다 앞서므로 안전하다. 다만 **에디터 프리뷰의 스크립트 핫리로드**로 모듈이 재평가되면 살아 있는 인스턴스를 지울 수 있다 — 실무상 Cocos가 씬을 리로드하므로 위험은 낮지만, 7단계에서 에디터 프리뷰를 껐다 켜는 경로를 한 번 밟아 본다.
 
 `I18nKeyGuard.ts`를 `game/assets/`에서 빼면 Cocos가 그 자산을 잃는다. 게임 코드가 이 파일을 import하지 않음을 확인했으므로(참조 0건) 씬·프리팹 참조가 깨질 여지가 없다.

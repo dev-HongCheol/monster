@@ -97,7 +97,7 @@ sequenceDiagram
 
 ## 7. 키 정합 가드 (CI)
 
-§1~§6은 카탈로그가 **이미 정합인 상태**에서 번역이 어떻게 흐르는지를 다룬다. 하지만 카탈로그(`ko.json`/`en.json`)와 그 키를 실제로 쓰는 코드·데이터는 서로 다른 파일이라 시간이 지나며 어긋난다 — AI가 여러 세션에 걸쳐 마법·카드를 추가하며 키를 깜빡하거나, ko만 고치고 사용처를 놓치면 화면에 `menu.ply` 같은 **생키 문자열**이 그대로 노출된다. 이를 사람이 매번 눈으로 잡을 수는 없으므로, vitest 영구 게이트로 **CI에서 자동 차단**한다. 순수 로직은 `logic/I18nKeyGuard.ts`의 `findCatalogIssues`이고, 파일을 읽고 소스를 스캔하는 부분은 `tests/logic/I18nKeyGuard.test.ts`가 맡는다.
+§1~§6은 카탈로그가 **이미 정합인 상태**에서 번역이 어떻게 흐르는지를 다룬다. 하지만 카탈로그(`ko.json`/`en.json`)와 그 키를 실제로 쓰는 코드·데이터는 서로 다른 파일이라 시간이 지나며 어긋난다 — AI가 여러 세션에 걸쳐 마법·카드를 추가하며 키를 깜빡하거나, ko만 고치고 사용처를 놓치면 화면에 `menu.ply` 같은 **생키 문자열**이 그대로 노출된다. 이를 사람이 매번 눈으로 잡을 수는 없으므로, vitest 영구 게이트로 **CI에서 자동 차단**한다. 순수 로직은 `tests/helpers/I18nKeyGuard.ts`의 `findCatalogIssues`이고, 파일을 읽고 소스를 스캔하는 부분은 `tests/logic/I18nKeyGuard.test.ts`가 맡는다. (이 가드는 게임 런타임에서 한 줄도 돌지 않는 테스트 전용 헬퍼라, `feat/ts-toolchain`에서 `game/assets/scripts/logic/`을 떠나 `tests/helpers/`로 옮겼다.)
 
 ### 7.1. 잡는 이슈 4종
 

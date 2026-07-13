@@ -95,11 +95,12 @@ planning → qa-setup → implementation → verification → user-verification 
 | `pnpm wf invalidate` | AI | `verification` 중 코드 변경 → 전체 검증 초기화 |
 | `pnpm wf rework` | 사용자 트리거(`리워크`)→AI | `user-verification` → `implementation` (버그 발견 복귀) |
 | `pnpm wf approve-pr` | 사용자 트리거(`PR 승인`)→AI | `user-verification` → `pr-ready` (**에셋 `.meta` 누락 게이트** + **타입체크 범위 게이트**: `logic-only`면 차단) |
-| `pnpm typecheck` | AI/사용자 | 타입체크 단독 실행 (전이 없음). `pass ts`가 내부적으로 같은 코드를 호출한다 |
 | `pnpm wf pr-done` | AI | `pr-ready` → `done` |
 | `pnpm wf check-meta` | AI/사용자 | 에셋 `.meta` 누락 검사 (전이 없음, 누락 시 종료코드 1) |
 | `pnpm wf check-qa` | AI/사용자 | QA 문서 미확정(잠정) 표시 검사 (전이 없음, 남아 있으면 종료코드 1) |
 | `pnpm wf status` | — | 현재 상태 + 편집 가능 여부 출력 |
+
+> **`pnpm typecheck`** (wf 커맨드가 아님) — 타입체크 단독 실행. `pass ts`가 내부적으로 **같은 코드**(`.claude/typecheck.mjs`)를 호출하므로, 여기서 통과하면 게이트도 통과한다.
 
 > **사람 게이트 (사용자 트리거 → AI 실행):** 아래 세 전이는 사람의 판단이 필요한 지점이다. 사용자가 자연어로 지시하면 **AI가 해당 커맨드를 대신 실행**한다.
 >

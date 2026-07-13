@@ -46,7 +46,8 @@ function runTsc(project) {
 export function runTypecheck() {
   console.log("\n▶ 타입체크 1/2: tsconfig.tests.json (tests + logic + data — Cocos 무관)");
   const testsStatus = runTsc("tsconfig.tests.json");
-  if (testsStatus !== 0) return { status: testsStatus, scope: "logic-only" };
+  // 실패 시 scope는 null이다 — "검사 못 함"과 "게임 코드는 안 봄(logic-only)"은 다른 상태다.
+  if (testsStatus !== 0) return { status: testsStatus, scope: null };
   console.log("✓ tests/logic/data 통과");
 
   if (!fs.existsSync(COCOS_BASE)) {
@@ -62,7 +63,7 @@ export function runTypecheck() {
 
   console.log("\n▶ 타입체크 2/2: game/tsconfig.json (게임 전체)");
   const gameStatus = runTsc("game/tsconfig.json");
-  if (gameStatus !== 0) return { status: gameStatus, scope: "full" };
+  if (gameStatus !== 0) return { status: gameStatus, scope: null };
   console.log("✓ 게임 코드 통과");
 
   return { status: 0, scope: "full" };
@@ -70,12 +71,14 @@ export function runTypecheck() {
 
 // CLI로 직접 실행된 경우 (= `pnpm typecheck`).
 // pathToFileURL을 쓴다 — Windows 경로를 손으로 file:// URL로 만들면 슬래시 개수가 어긋난다.
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { status, scope } = runTypecheck();
   if (status === 0) {
     console.log(`\n✓ 타입체크 통과 (범위: ${scope})`);
   } else {
     process.stderr.write("\n✗ 타입체크 실패\n");
   }
-  process.exit(status);
+  // status가 null일 수 있다(프로세스가 시그널로 죽은 경우). process.exit(null)은 종료코드 0이라
+  // 실패가 성공으로 읽힌다 — CI·훅에 물리는 순간 구멍이 되므로 1로 접는다.
+  process.exit(status ?? 1);
 }
