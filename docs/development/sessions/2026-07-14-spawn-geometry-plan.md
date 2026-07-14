@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-07-14
 - **브랜치:** feat/spawn-geometry
-- **상태:** 계획 (검토 대기)
+- **상태:** 구현·검증 완료 — 코드 리뷰 5회차 통과, 7단계 사용자 검증 중 (Draft PR [#58](https://github.com/dev-HongCheol/monster/pull/58))
 - **백로그:** **F35**(경계형 아레나 벽 근처 스폰 몰림) 종결. PR #55가 남긴 스폰 회귀 수정.
 - **부모 문서:** [`2026-07-14-map-space-roadmap.md`](2026-07-14-map-space-roadmap.md) — 「맵 장애물」이 셋으로 갈라진 경위와 결정
 - **성격:** 회귀 수정(`fix:`). 순수 로직 하나 + 배선 한 곳. 새 에셋 없음.
@@ -57,7 +57,9 @@ export function offViewSpawnPoint(field: SpawnField, roll: number): Vec2;
 
 > **인자를 객체로 묶는 이유**(코드 리뷰 M-1, 2026-07-15). `cam`과 `player`가 둘 다 `Vec2`라 위치를 바꿔 넘겨도 타입이 통과하는데, 그 순간 이 슬라이스가 고친 회귀가 그대로 되살아난다. 이름을 붙여 그 실수를 불가능하게 만든다. `player`가 필요한 이유는 아래 사후조건의 폴백이 "플레이어에게서 가장 먼 점"을 요구하기 때문이다.
 
-**사후조건(테스트로 고정한다).** 반환점은 항상 ① 뷰 사각형 **밖**, ② 아레나 **안**(적 반경 포함), ③ 카메라 중심에서 최소 `viewHalf + margin` 이상 떨어진 곳이다. 퇴화 입력(비유한값·음수 크기)은 정규화하고, 그래도 유효 구간 길이가 0이면(아레나가 뷰보다 작거나 겨우 큰 소형 맵) **플레이어에게서 가장 먼 아레나 안쪽 점**으로 폴백한다 — 절대 중심(=플레이어 근처)으로 돌아가지 않는다. 이 경고는 스폰 틱마다가 아니라 1회만 찍는다(`SpawnDirectorLogic._validate`와 같은 규율).
+**사후조건(테스트로 고정한다).** 반환점은 항상 ① 뷰 사각형 **밖**(카메라 중심에서 `viewHalf + margin` 이상), ② 아레나 **안**(적 반경 포함), ③ **최대 스폰 거리(`maxSpawnDistance`) 이내**다. ③이 필요한 이유는 §5.1에 있다 — 스폰점이 재활용 거리를 넘으면 스폰하자마자 회수되는 루프가 돈다. ③에는 전제조건이 하나 붙는다(코드 리뷰 3차에서 확인): **아레나가 적 지름보다 커야** 한다. `2400×50` 같은 종잇장 맵은 적을 놓을 띠 자체가 없어 폴백이 반대편 끝을 돌려주므로 ③을 넘을 수 있다 — 플레이 불가능한 맵 데이터이고 호출부가 1회 경고한다.
+
+퇴화 입력(비유한값·음수 크기)은 정규화하고, 그래도 유효 구간 길이가 0이면(아레나가 뷰보다 작거나 겨우 큰 소형 맵) **플레이어에게서 가장 먼 아레나 안쪽 점**으로 폴백한다 — 절대 중심(=플레이어 근처)으로 돌아가지 않는다. 아레나 데이터 자체가 없으면 그 "가장 먼 안쪽 점"을 정의할 수 없으므로 **스폰 사각형 위쪽 변**을 돌려준다(코드 리뷰 I-3 — 이 분기가 플레이어 좌표를 그대로 반환하고 있었다). 경고는 스폰 틱마다가 아니라 1회만 찍는다(`SpawnDirectorLogic._validate`와 같은 규율).
 
 **이 설계가 F35를 닫는다.** 지금은 벽 밖으로 나간 스폰 지점을 아레나 안으로 클램프해서, 플레이어가 벽에 붙으면 적들이 벽면을 따라 플레이어 코앞에 몰린다. 앞으로는 벽 쪽 구간이 유효 둘레에서 아예 빠지고 **공간이 있는 방향에서만** 적이 온다. 구석에 몰리면 오는 방향이 좁아지는데, 그건 버그가 아니라 경계형 아레나가 의도한 긴장이다.
 
@@ -71,7 +73,7 @@ export function offViewSpawnPoint(field: SpawnField, roll: number): Vec2;
 
 **포함한다.**
 
-- 신규 순수 모듈 `SpawnGeometry.ts` — `offViewSpawnPoint(cam, viewHalfW, viewHalfH, margin, arena, radius, roll)` + 파생 거리 3종(`engagementRadius`·`maxSpawnDistance`·`clampRecycleDistance`) + 스폰 게이트 규칙 `canSpawn(engaged, inbound, maxEngaged, maxInbound)`
+- 신규 순수 모듈 `SpawnGeometry.ts` — `offViewSpawnPoint(field: SpawnField, roll)`(§3의 시그니처와 같다 — 인자를 객체로 묶은 이유는 §3의 각주) + 파생 거리 3종(`engagementRadius`·`maxSpawnDistance`·`clampRecycleDistance`) + 스폰 게이트 규칙 `canSpawn(engaged, inbound, maxEngaged, maxInbound)` + 적 분류 규칙 `classifyByDistance(distSq, engageSq, recycleSq)`(코드 리뷰 I-4에서 `EnemySpawner`의 스윕에서 추출)
 - `CameraController` — `viewHalfW`/`viewHalfH` 게터 노출 (뷰 크기의 단일 출처)
 - `EnemySpawner` — `cameraController` `@property` 추가 + `_spawnEnemy` 재작성(순수 함수 1회 호출) + 방어 경로
 - `margin`을 `@property`로 노출 (하한 클램프)
@@ -148,7 +150,7 @@ alive - engaged >= maxInbound  → 스폰 보류   (성능 상한 — 신규)
 
 `offViewSpawnPoint` 하나에 알고리즘 전체가 들어오므로 테스트가 곧 안전망이다.
 
-- **불변식(속성 테스트, 가장 중요)** — 플레이어 위치를 아레나 전역(중앙·변·구석·클램프 경계)으로 훑고 × `roll`을 0~1로 촘촘히 훑으며, 모든 결과가 ① 뷰 밖 ② 아레나 안(반경 포함) ③ 카메라에서 최소 거리 이상을 만족하는지 단언한다.
+- **불변식(속성 테스트, 가장 중요)** — 플레이어 위치를 아레나 전역(중앙·변·구석·클램프 경계)으로 훑고 × `roll`을 0~1로 촘촘히 훑으며, 모든 결과가 §3의 사후조건 ①(뷰 밖) ②(아레나 안, 반경 포함) ③(최대 스폰 거리 이내)을 만족하는지 단언한다.
 - **구석 케이스** — 플레이어가 우상단 구석이면 좌·하 방향에서만 나오고 우·상에서는 절대 나오지 않는다.
 - **카메라 기준 회귀 가드** — 플레이어가 벽에 붙었을 때 스폰 사각형이 **카메라** 중심임을 단언한다(플레이어 기준으로 되돌리는 리팩터를 막는다).
 - **비정방 아레나**(3200×1800) — 축 스왑 회귀. F36이 `isOutsideArena` 테스트가 정방 2400²만 덮는다고 이미 같은 구멍을 지적했다. 새 모듈에서 반복하지 않는다.
