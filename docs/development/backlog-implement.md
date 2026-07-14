@@ -82,6 +82,7 @@
 |---|------|------|------|-----------|------|
 | F9 | 열림(부분 완료) | 낮음 | 🔧 씬 **UICamera** 크로스머신 churn | MacBook 작업 / Windows 테스트 시 `main.scene` Camera 노드의 `_lpos.y`·`_orthoHeight`가 재계산돼 무관한 diff가 난다(장비별 해상도 차이로 에디터가 카메라를 재fit·재직렬화). 매 PR 테스트마다 반복된다. **2026-07-13 map-arena에서 게임 `Camera`는 해결** — `CameraController`가 `orthoHeight=360`을 못박고 `Canvas.alignCanvasWithScreen=false`로 꺼서 더는 튀지 않는다. **잔존 범위는 `UICamera` 하나** — `UICanvas.alignCanvasWithScreen=true`라 Cocos가 화면 크기에 맞춰 재fit하며, map-arena 7단계 테스트에서도 `1175.2965…` → `871.6564…`로 churn이 재발했다. 해소하려면 UICanvas 정렬 정책을 바꿔야 하는데 **HUD 스케일링 회귀 검증이 따라붙으므로** 별도 슬라이스로 남긴다. | projectile-count 테스트 (2026-06-11), `../qa/map-arena-test.md` §6 (2026-07-13) |
 | F10 | 열림 | 중 | 🔧 `workflow-state.json` 크로스머신 동기화 정책 결정 | 전이를 커밋 안 하면 타 장비가 stale해지고(실제로 겪음), 커밋하면 main 오염·머지 충돌·락 상속이 생긴다. "추적 유지 + 핸드오프 시점만 커밋"(권장) vs `.gitignore` 제외 중 택해 ADR 004에 반영. | `troubleshooting/workflow-state-cross-machine.md`, ADR 004 |
+| F47 | 열림 | 낮음 | 📐 "인과를 복원할 수 있게 쓴다" 규칙이 3중 복사본 | 같은 3원칙이 `CLAUDE.md`(요약)·`conventions.md`(코드 예시)·`writing-style.md`(문서 예시)에 축자적으로 들어가 있다. 도입한 슬라이스 안에서 **한 곳만 고치는 사고가 두 번** 났다(규칙 ①의 CLAUDE.md 미갱신, 리뷰 문서 헤더 미갱신). 규칙 자신이 "복사본은 함께 고친다"고 적어 놓고 어긴 셈이다. `conventions.md` 쪽을 원칙 나열 없이 예시 + `writing-style.md` 링크로 줄이는 안이 리뷰에서 제시됐다. | `../qa/spawn-geometry-review-issues.md` R3-6·R4-1·R5-1 |
 
 ---
 
