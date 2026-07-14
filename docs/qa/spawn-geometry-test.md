@@ -24,7 +24,7 @@
 
 ## 2. 자동 테스트로 검증 (`tests/logic/SpawnGeometry.test.ts`)
 
-> **통과 근거:** 피처 테스트 30/30 + 전체 스위트 473/473 (34 파일) GREEN.
+> **통과 근거:** 피처 테스트 39/39 + 전체 스위트 482/482 (34 파일) GREEN — 코드 리뷰 2회차 수정 반영 후. 리뷰 이슈: [`spawn-geometry-review-issues.md`](spawn-geometry-review-issues.md).
 
 - [x] **파생 거리 유도** — `engagementRadius`는 스폰 사각형 모서리까지의 거리(`hypot(viewHalfW+margin, viewHalfH+margin)` ≈ 871px), `maxSpawnDistance`는 카메라 클램프까지 감안한 최대 거리(`hypot(2·viewHalfW+margin, 2·viewHalfH+margin)` ≈ 1605px).
 - [x] **순서 불변식(안전 계약)** — 모든 종횡비(16:9·세로 창·21:9·뷰가 아레나보다 넓은 경우)와 여유값에서 `engagementRadius < maxSpawnDistance`. 이 순서가 깨지면 구석 캠핑 수정이 조용히 무효가 된다.
@@ -40,6 +40,9 @@
 - [x] **퇴화 입력** — 아레나 데이터 없음, 아레나가 뷰보다 작음(가장 먼 안쪽 점으로 폴백 — 중심으로 돌아가지 않는다), `roll` −1·0·1·2·NaN, 뷰 절반 0·음수·NaN·무한대, 반경 0·40·아레나 절반 초과.
 - [x] **결정성** — 같은 입력은 같은 출력.
 - [x] **`canSpawn` 진리표** — 교전 상한·이동 상한 각각의 경계값, 그리고 "도착하지 않은 적은 압박 상한을 먹지 않는다"(구석 캠핑이 스폰을 멈추지 못한다).
+- [x] **`classifyByDistance` 경계값** — 교전 반경 경계는 교전에 포함, 재활용 거리 경계는 아직 회수 안 함, 그리고 **거리가 비유한값이면 회수**(NaN 좌표의 유령 적이 이동 중 상한을 영구 점유하지 못하게 한다).
+- [x] **카메라·플레이어 좌표 NaN·무한대 정규화** — 스폰 좌표로 NaN이 새어 나가지 않는다.
+- [x] **폴백의 최대 거리 보장(전 폴백 영역)** — 폴백이 실제로 발생하는 아레나·플레이어 구성을 전부 훑으며 사후조건 ③(최대 스폰 거리 이내)을 단언한다. 스폰 직후 회수되는 무한 churn을 구조적으로 배제한다.
 
 Cocos 배선(`EnemySpawner`·`CameraController`·`EnemyController.recycle`)은 프레임워크 의존이라 아래 수동 항목으로 검증한다.
 

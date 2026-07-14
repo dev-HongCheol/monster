@@ -340,6 +340,39 @@ describe('offViewSpawnPoint — 퇴화 입력 (조용한 폴백이 곧 플레이
     expect(p).toEqual({ x: -400, y: -400 });
   });
 
+  it('폴백도 최대 스폰 거리를 넘지 않는다 — 스폰 즉시 회수되는 무한 churn 방지 (전 폴백 영역)', () => {
+    // 사후조건 ③은 폴백 경로에서도 지켜져야 한다. 안 그러면 재활용 거리를 하한(=maxSpawnDistance)까지
+    // 낮춘 설정에서 스폰 → 즉시 회수가 무한 반복돼 화면에 적이 하나도 없게 된다.
+    //
+    // 성질은 기하가 스스로 보장한다. 네 변이 전부 잘리려면(=폴백) 카메라가 아레나 중앙 근처여야 하고,
+    // 그러려면 아레나가 충분히 작아야 하므로 대각선이 maxSpawnDistance 아래로 묶인다. 손으로 고른
+    // 몇 점이 아니라 폴백이 실제로 발생하는 영역 전체를 훑어 이 자기 제한을 못박는다.
+    const maxSpawn = maxSpawnDistance(VIEW_HALF_W, VIEW_HALF_H, MARGIN);
+    let fallbackCases = 0;
+
+    for (let w = 200; w <= 2000; w += 60) {
+      for (let h = 200; h <= 2000; h += 60) {
+        const arena = { width: w, height: h };
+        const hx = Math.max(0, w / 2 - RADIUS);
+        const hy = Math.max(0, h / 2 - RADIUS);
+        for (const px of [-hx, 0, hx]) {
+          for (const py of [-hy, 0, hy]) {
+            const player = { x: px, y: py };
+            const field = fieldFor(player, arena);
+            if (spawnPerimeterLength(field) > 0) continue; // 폴백이 아닌 정상 경로
+            fallbackCases++;
+            const p = offViewSpawnPoint(field, 0.5);
+            expect(Math.hypot(p.x - px, p.y - py)).toBeLessThanOrEqual(maxSpawn + EPS);
+            // 폴백점은 여전히 아레나 안이다
+            expect(Math.abs(p.x)).toBeLessThanOrEqual(w / 2 + EPS);
+            expect(Math.abs(p.y)).toBeLessThanOrEqual(h / 2 + EPS);
+          }
+        }
+      }
+    }
+    expect(fallbackCases).toBeGreaterThan(100); // 폴백 영역을 실제로 훑었는지 확인
+  });
+
   it('roll이 범위를 벗어나거나 NaN이어도 유효한 점을 돌려준다', () => {
     const player = { x: 0, y: 0 };
     for (const roll of [-1, 0, 1, 2, Number.NaN]) {

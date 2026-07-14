@@ -137,10 +137,11 @@ export class EnemySpawner extends Component {
     // 스폰 테이블 로드 전이면 보류(타이머 유지) — 데이터 준비 후 디렉터 생성
     if (!this._ensureDirector()) return;
 
-    // 창 크기를 못 읽으면(뷰 절반 0) 이번 프레임을 통째로 건너뛴다. 안 막으면 스폰 좌표가 NaN이 되고,
-    // NaN 좌표의 적은 죽지도 닿지도 사라지지도 않으면서 상한 슬롯을 영구 점유한다.
+    // 창 크기를 못 읽으면 이번 프레임을 통째로 건너뛴다. 비교를 뒤집어 쓴 것은 NaN 때문이다 —
+    // `NaN <= 0`은 false라 그냥 통과해 버리고, 그러면 normSize가 뷰 절반을 0으로 접어 스폰 사각형이
+    // 여유 크기(100×100)로 쪼그라든다. 즉 적이 화면 안에서 스폰된다 — 이 슬라이스가 고친 바로 그 회귀다.
     const viewHalfW = cam.viewHalfW;
-    if (viewHalfW <= 0) return;
+    if (!(viewHalfW > 0)) return;
     const viewHalfH = cam.viewHalfH;
 
     this._sweepEnemies(gm, viewHalfW, viewHalfH);

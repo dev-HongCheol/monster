@@ -21,13 +21,15 @@ export class CameraController extends Component {
 
   /**
    * 카메라 뷰 가로 절반(px). 창 종횡비에서 유도한다(프로젝트 설정이 FIXED_HEIGHT라 visibleSize의
-   * 종횡비가 실제 창 종횡비와 일치한다). 창 크기를 못 읽으면 0을 돌려주며, 호출부는 그 프레임을
-   * 건너뛴다 — 나눗셈이 Infinity/NaN이 되면 그 좌표의 적이 죽지도 닿지도 사라지지도 않는다.
+   * 종횡비가 실제 창 종횡비와 일치한다). 창 크기를 못 읽거나 결과가 비유한값이면 **0**을 돌려주며,
+   * 호출부는 그 프레임을 건너뛴다 — Infinity/NaN 좌표의 적은 죽지도 닿지도 사라지지도 않는다.
+   * 유한성 검사를 결과에 직접 거는 이유는 `NaN <= 0`이 false라 크기 검사만으로는 새기 때문이다.
    */
   get viewHalfW(): number {
     const size = view.getVisibleSize();
-    if (size.height <= 0) return 0;
-    return this.orthoHeight * (size.width / size.height);
+    if (!(size.height > 0)) return 0;
+    const half = this.orthoHeight * (size.width / size.height);
+    return Number.isFinite(half) && half > 0 ? half : 0;
   }
 
   onLoad() {
@@ -47,8 +49,9 @@ export class CameraController extends Component {
     const arena = MapManager.instance?.arena;
     if (!arena || arena.width <= 0) return;
 
+    // 창 크기를 못 읽음 — 이번 프레임만 건너뛴다. `NaN <= 0`은 false라 그냥 통과하므로 비교를 뒤집는다.
     const viewHalfW = this.viewHalfW;
-    if (viewHalfW <= 0) return; // 창 크기를 못 읽음 — 이번 프레임만 건너뛴다
+    if (!(viewHalfW > 0)) return;
     const viewHalfH = this.viewHalfH;
 
     const p = this.playerNode.position;
