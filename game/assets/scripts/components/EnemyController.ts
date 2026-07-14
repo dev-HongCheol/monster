@@ -269,6 +269,18 @@ export class EnemyController extends Component {
     this._control = mergeControl(this._control, strength, durationSec);
   }
 
+  /**
+   * 사망 경로를 거치지 않고 즉시 풀로 반환한다 — 너무 멀어져 도착하지 못한 적을 회수한다(스포너가
+   * 재활용 거리를 넘은 적에게 호출). **재활용은 사망이 아니다** — `_startDeath`를 타지 않으므로 킬로
+   * 집계되지 않고 XP도 떨구지 않으며 사망 연출도 재생하지 않는다. 풀 반환이 `active=false` →
+   * `onDisable` → `unregisterEnemy`를 태우므로 활성 목록에서도 빠진다.
+   * 이미 사망 연출 중인 적은 그대로 둔다(연출이 끝나며 스스로 반환된다).
+   */
+  recycle(): void {
+    if (this._dead) return;
+    this._returnToPool();
+  }
+
   /** 데이터의 색(tint)·크기(threatScale)를 Sprite/node에 적용한다(스폰 시 1회). */
   private _applyVisualBaseline(data: IEnemyData): void {
     this._baseScale = data.threatScale ?? 1;

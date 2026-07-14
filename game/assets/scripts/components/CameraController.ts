@@ -14,6 +14,22 @@ export class CameraController extends Component {
 
   private _camera: Camera | null = null;
 
+  /** 카메라 뷰 세로 절반(px) — 직교 투영에서 orthoHeight가 곧 뷰 절반이다. */
+  get viewHalfH(): number {
+    return this.orthoHeight;
+  }
+
+  /**
+   * 카메라 뷰 가로 절반(px). 창 종횡비에서 유도한다(프로젝트 설정이 FIXED_HEIGHT라 visibleSize의
+   * 종횡비가 실제 창 종횡비와 일치한다). 창 크기를 못 읽으면 0을 돌려주며, 호출부는 그 프레임을
+   * 건너뛴다 — 나눗셈이 Infinity/NaN이 되면 그 좌표의 적이 죽지도 닿지도 사라지지도 않는다.
+   */
+  get viewHalfW(): number {
+    const size = view.getVisibleSize();
+    if (size.height <= 0) return 0;
+    return this.orthoHeight * (size.width / size.height);
+  }
+
   onLoad() {
     this._camera = this.getComponent(Camera);
     if (!this.playerNode || !this._camera) {
@@ -31,10 +47,9 @@ export class CameraController extends Component {
     const arena = MapManager.instance?.arena;
     if (!arena || arena.width <= 0) return;
 
-    const size = view.getVisibleSize();
-    if (size.height <= 0) return;
-    const viewHalfH = this.orthoHeight;
-    const viewHalfW = viewHalfH * (size.width / size.height);
+    const viewHalfW = this.viewHalfW;
+    if (viewHalfW <= 0) return; // 창 크기를 못 읽음 — 이번 프레임만 건너뛴다
+    const viewHalfH = this.viewHalfH;
 
     const p = this.playerNode.position;
     const cam = cameraFollowPosition({ x: p.x, y: p.y }, viewHalfW, viewHalfH, arena);

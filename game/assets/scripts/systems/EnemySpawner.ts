@@ -1,10 +1,18 @@
 import { _decorator, Component, Node, Prefab, Vec3 } from 'cc';
+import { CameraController } from '../components/CameraController';
 import { EnemyController, type FireProjectileFn } from '../components/EnemyController';
 import { EnemyProjectile } from '../components/EnemyProjectile';
 import { PoolManager } from '../components/PoolManager';
 import { GameState } from '../data/GameTypes';
-import { clampToArena } from '../logic/ArenaLogic';
+import type { Arena } from '../logic/ArenaLogic';
 import { SpawnDirectorLogic } from '../logic/SpawnDirectorLogic';
+import {
+  canSpawn,
+  clampRecycleDistance,
+  engagementRadius,
+  offViewSpawnPoint,
+  spawnPerimeterLength,
+} from '../logic/SpawnGeometry';
 import { DataManager } from './DataManager';
 import { GameManager } from './GameManager';
 import { MapManager } from './MapManager';
@@ -12,7 +20,10 @@ import { WaveManager } from './WaveManager';
 
 const { ccclass, property } = _decorator;
 
-/** 주기적으로 적을 스폰하는 시스템 */
+/** 아레나 데이터가 없을 때 쓰는 빈 아레나 — 이때 스폰은 뷰 사각 둘레에서만 뽑는다. */
+const NO_ARENA: Arena = { width: 0, height: 0 };
+
+/** 주기적으로 적을 카메라 뷰 밖에서 스폰하고, 너무 멀어진 적을 풀로 회수하는 시스템 */
 @ccclass('EnemySpawner')
 export class EnemySpawner extends Component {
   /** 적 프리팹 (인스펙터에서 연결) */
@@ -21,18 +32,25 @@ export class EnemySpawner extends Component {
   @property(Prefab) enemyBulletPrefab: Prefab | null = null;
   /** 플레이어 노드 (인스펙터에서 연결) */
   @property(Node) playerNode: Node | null = null;
+  /** 게임 카메라의 컨트롤러 (인스펙터에서 연결) — 뷰 크기·위치의 단일 출처 */
+  @property(CameraController) cameraController: CameraController | null = null;
   /** 웨이브당 기본 스폰 간격 (sec) */
   @property spawnInterval: number = 2;
-  /** 동시에 존재할 수 있는 최대 적 수 */
+  /** 교전 중인 적(교전 반경 안)의 상한 — 도착하지 못한 적은 여기 세지 않는다 */
   @property maxEnemies: number = 20;
+  /** 이동 중인 적(교전 반경 밖)의 상한 — 파이프라인 무제한 증식을 막는 성능 상한 */
+  @property maxInbound: number = 25;
   /** 웨이브마다 추가되는 최대 적 수 */
   @property enemiesPerWaveScale: number = 4;
   /** 웨이브마다 줄어드는 스폰 간격 (sec) */
   @property intervalReductionPerWave: number = 0.5;
   /** 스폰 간격 최솟값 (sec) */
   @property minSpawnInterval: number = 0.05;
+  /** 화면 밖 여유 (px) — 적 몸통이 화면 안에서 태어나지 않도록 하는 계약. 하한 클램프됨 */
+  @property spawnMargin: number = 100;
+  /** 이 거리를 넘어간 적을 풀로 회수한다 (px). 최대 스폰 거리 위로 클램프됨 */
+  @property recycleDistance: number = 2200;
 
-  private readonly _spawnRadius: number = 350;
   private _spawnTimer: number = 0;
   private _canvas: Node | null = null;
   /** 웨이브별 적 종류 선택 디렉터. 데이터 로드 후 첫 스폰 시점에 생성 */
@@ -43,6 +61,12 @@ export class EnemySpawner extends Component {
   private readonly _releaseEnemy = (node: Node): void => {
     this._enemyPool?.release(node);
   };
+  /** 이번 프레임 교전 반경 안에 있는 적 수 (_sweepEnemies가 매 프레임 갱신). */
+  private _engaged: number = 0;
+  /** 이번 프레임 교전 반경 밖에서 걸어오는 중인 적 수 (_sweepEnemies가 매 프레임 갱신). */
+  private _inbound: number = 0;
+  /** 유효 스폰 둘레가 0인 퇴화 맵을 이미 경고했는지 — 스폰 틱마다 쏟아지지 않도록 1회만 찍는다. */
+  private _warnedDegenerate: boolean = false;
   /** 적 발사체 노드 재사용 풀 (영속 단일 소유자 — onLoad에서 생성). */
   private _enemyBulletPool: PoolManager | null = null;
   /** 적 발사체 반환 콜백 — 1회 바인딩해 재사용. */
@@ -81,7 +105,7 @@ export class EnemySpawner extends Component {
 
   // 필수 프로퍼티를 검증하고(실패 시 비활성화) 스폰 부모로 쓸 Canvas 참조와 적 풀을 준비한다
   onLoad() {
-    if (!this.enemyPrefab || !this.playerNode) {
+    if (!this.enemyPrefab || !this.playerNode || !this.cameraController) {
       console.error('[EnemySpawner] required properties not assigned');
       this.enabled = false;
       return;
@@ -101,28 +125,39 @@ export class EnemySpawner extends Component {
     }
   }
 
-  // 스폰 타이머가 차면 웨이브 스케일링(최대 적 수↑·간격↓) 한도 내에서 적 1마리를 스폰한다
+  // 멀어진 적을 회수하며 교전/이동 중 적을 집계하고, 스폰 타이머가 차면 두 상한 안에서 1마리 스폰한다
   update(dt: number) {
     const gm = GameManager.instance;
     const wm = WaveManager.instance;
-    if (!gm || !wm) return;
+    const cam = this.cameraController;
+    if (!gm || !wm || !cam || !this.playerNode) return;
     if (gm.state !== GameState.Playing) return;
     // 스폰 테이블 로드 전이면 보류(타이머 유지) — 데이터 준비 후 디렉터 생성
     if (!this._ensureDirector()) return;
+
+    // 창 크기를 못 읽으면(뷰 절반 0) 이번 프레임을 통째로 건너뛴다. 안 막으면 스폰 좌표가 NaN이 되고,
+    // NaN 좌표의 적은 죽지도 닿지도 사라지지도 않으면서 상한 슬롯을 영구 점유한다.
+    const viewHalfW = cam.viewHalfW;
+    if (viewHalfW <= 0) return;
+    const viewHalfH = cam.viewHalfH;
+
+    this._sweepEnemies(gm, viewHalfW, viewHalfH);
 
     this._spawnTimer -= dt;
     if (this._spawnTimer > 0) return;
 
     const wave = wm.waveNumber;
-    const maxEnemies = this.maxEnemies + (wave - 1) * this.enemiesPerWaveScale;
-    if (gm.enemies.length >= maxEnemies) return;
+    const maxEngaged = this.maxEnemies + (wave - 1) * this.enemiesPerWaveScale;
+    // 압박 상한은 교전 중인 적만 센다 — 도착하지 못한 적이 상한을 먹으면 구석에 붙어 있는 것만으로
+    // 신규 스폰이 멈춘다(구석 캠핑 악용). 이동 중인 적은 별도 상한(maxInbound)으로 막는다.
+    if (!canSpawn(this._engaged, this._inbound, maxEngaged, this.maxInbound)) return;
 
     const interval = Math.max(
       this.minSpawnInterval,
       this.spawnInterval - (wave - 1) * this.intervalReductionPerWave,
     );
     this._spawnTimer = interval;
-    this._spawnEnemy(wave);
+    this._spawnEnemy(wave, viewHalfW, viewHalfH);
   }
 
   /** 디렉터를 보장한다. 데이터 미로드면 false(스폰 보류). 최초 1회만 생성. */
@@ -135,36 +170,104 @@ export class EnemySpawner extends Component {
   }
 
   /**
-   * 플레이어 주변 랜덤 위치에 적을 스폰하고, 디렉터가 고른 종류·추적 대상을 설정한다.
-   * @param wave 현재 웨이브 (스폰 디렉터의 종류 선택 게이팅에 사용)
+   * 활성 적을 한 번 훑어 (a) 재활용 거리를 넘은 적을 풀로 회수하고 (b) 교전/이동 중 적 수를 집계한다.
+   * 회수는 목록을 변형하므로 **역순 순회**로 인덱스가 밀리지 않게 한다. 매 프레임 도는 경로라
+   * 할당 없이 제곱 거리로만 비교한다.
+   * @param gm 활성 적 목록 소유자
+   * @param viewHalfW 카메라 뷰 가로 절반(px)
+   * @param viewHalfH 카메라 뷰 세로 절반(px)
    */
-  private _spawnEnemy(wave: number): void {
-    if (!this.playerNode || !this._director || !this._enemyPool) return;
+  private _sweepEnemies(gm: GameManager, viewHalfW: number, viewHalfH: number): void {
+    this._engaged = 0;
+    this._inbound = 0;
+    if (!this.playerNode) return;
 
-    const angle = Math.random() * Math.PI * 2;
-    const spawnPos = new Vec3(
-      this.playerNode.position.x + Math.cos(angle) * this._spawnRadius,
-      this.playerNode.position.y + Math.sin(angle) * this._spawnRadius,
-      0,
-    );
+    const engageSq = engagementRadius(viewHalfW, viewHalfH, this.spawnMargin) ** 2;
+    const recycleSq =
+      clampRecycleDistance(this.recycleDistance, viewHalfW, viewHalfH, this.spawnMargin) ** 2;
+    const p = this.playerNode.position;
+
+    const enemies = gm.enemies;
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const enemy = enemies[i];
+      const pos = enemy.node.position;
+      const dx = pos.x - p.x;
+      const dy = pos.y - p.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq > recycleSq) {
+        enemy.recycle(); // 사망이 아니다 — XP·킬 집계·연출을 거치지 않고 곧장 풀로
+        continue;
+      }
+      if (distSq <= engageSq) this._engaged++;
+      else this._inbound++;
+    }
+  }
+
+  /**
+   * 카메라 뷰 사각형 바깥(+ 아레나 안)에 적을 스폰하고, 디렉터가 고른 종류·추적 대상을 설정한다.
+   * 기준은 플레이어가 아니라 **카메라**다 — 카메라는 벽에서 클램프되므로 플레이어가 벽에 붙으면
+   * 플레이어는 화면 중앙이 아니고, 플레이어 기준으로 뽑으면 반대편 점이 화면 안에 들어온다.
+   * @param wave 현재 웨이브 (스폰 디렉터의 종류 선택 게이팅에 사용)
+   * @param viewHalfW 카메라 뷰 가로 절반(px)
+   * @param viewHalfH 카메라 뷰 세로 절반(px)
+   */
+  private _spawnEnemy(wave: number, viewHalfW: number, viewHalfH: number): void {
+    if (!this.playerNode || !this.cameraController || !this._director || !this._enemyPool) return;
 
     const enemyId = this._director.selectEnemyId(wave, Math.random());
-    // 플레이어가 벽 근처면 반경 스폰이 아레나 밖으로 나갈 수 있어 아레나 안으로 클램프한다.
-    const arena = MapManager.instance?.arena;
-    if (arena && arena.width > 0) {
-      const radius = DataManager.instance?.getEnemy(enemyId)?.collisionRadius ?? 0;
-      const clamped = clampToArena({ x: spawnPos.x, y: spawnPos.y }, radius, arena);
-      spawnPos.set(clamped.x, clamped.y, 0);
-    }
+    const radius = DataManager.instance?.getEnemy(enemyId)?.collisionRadius ?? 0;
+    // 맵 데이터가 없으면(MapManager가 에러만 찍고 {0,0}으로 남기는 경로) 아레나 제약 없이 뷰 사각
+    // 둘레에서만 뽑는다. 이 분기가 없으면 모든 계산이 원점으로 붕괴해 적이 전부 플레이어 몸 안에서
+    // 스폰된다 — "시끄럽게 에러 찍고 플레이는 굴러간다"가 "플레이 불가"로 바뀐다.
+    const arena = MapManager.instance?.arena ?? NO_ARENA;
+
+    const camNode = this.cameraController.node.position;
+    const cam = { x: camNode.x, y: camNode.y };
+    const player = { x: this.playerNode.position.x, y: this.playerNode.position.y };
+    this._warnDegenerateOnce(cam, viewHalfW, viewHalfH, arena, radius);
+
+    const spawn = offViewSpawnPoint(
+      cam,
+      player,
+      viewHalfW,
+      viewHalfH,
+      this.spawnMargin,
+      arena,
+      radius,
+      Math.random(),
+    );
+
     // 풀에서 적을 꺼낸다(가용분 재사용 또는 신규 instantiate). acquire가 Canvas 부착·active=true까지
     // 보장하므로, 종류별 데이터·연출 상태는 acquire 직후 reset()이 매번 새로 적용한다(잔류 방지).
     const enemy = this._enemyPool.acquire();
-    enemy.setPosition(spawnPos);
+    enemy.setPosition(new Vec3(spawn.x, spawn.y, 0));
     const enemyCtrl = enemy.getComponent(EnemyController);
     if (!enemyCtrl) {
       this._enemyPool.release(enemy);
       return;
     }
     enemyCtrl.reset(enemyId, this.playerNode, this._releaseEnemy, this._fireEnemyProjectile);
+  }
+
+  /**
+   * 뷰 밖이면서 아레나 안인 지점이 아예 없는 맵(아레나가 뷰보다 작음)을 1회만 경고한다.
+   * 이때 스폰은 "플레이어에게서 가장 먼 아레나 안쪽 점"으로 폴백하므로 플레이는 굴러가지만,
+   * 적이 화면 안에서 나타나므로 맵 크기가 잘못됐다는 사실은 드러나야 한다.
+   */
+  private _warnDegenerateOnce(
+    cam: { x: number; y: number },
+    viewHalfW: number,
+    viewHalfH: number,
+    arena: Arena,
+    radius: number,
+  ): void {
+    if (this._warnedDegenerate) return;
+    if (spawnPerimeterLength(cam, viewHalfW, viewHalfH, this.spawnMargin, arena, radius) > 0)
+      return;
+    this._warnedDegenerate = true;
+    console.warn(
+      '[EnemySpawner] 아레나가 카메라 뷰보다 작아 화면 밖 스폰 지점이 없습니다 — ' +
+        '가장 먼 아레나 안쪽 점으로 폴백합니다. 맵 크기를 확인하세요.',
+    );
   }
 }
