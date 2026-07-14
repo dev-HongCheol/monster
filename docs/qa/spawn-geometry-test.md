@@ -24,7 +24,7 @@
 
 ## 2. 자동 테스트로 검증 (`tests/logic/SpawnGeometry.test.ts`)
 
-> **통과 근거:** 피처 테스트 39/39 + 전체 스위트 482/482 (34 파일) GREEN — 코드 리뷰 2회차 수정 반영 후. 리뷰 이슈: [`spawn-geometry-review-issues.md`](spawn-geometry-review-issues.md).
+> **통과 근거:** 피처 테스트 40/40 + 전체 스위트 483/483 (34 파일) GREEN — 코드 리뷰 3회차 반영 후. 리뷰 이슈: [`spawn-geometry-review-issues.md`](spawn-geometry-review-issues.md).
 
 - [x] **파생 거리 유도** — `engagementRadius`는 스폰 사각형 모서리까지의 거리(`hypot(viewHalfW+margin, viewHalfH+margin)` ≈ 871px), `maxSpawnDistance`는 카메라 클램프까지 감안한 최대 거리(`hypot(2·viewHalfW+margin, 2·viewHalfH+margin)` ≈ 1605px).
 - [x] **순서 불변식(안전 계약)** — 모든 종횡비(16:9·세로 창·21:9·뷰가 아레나보다 넓은 경우)와 여유값에서 `engagementRadius < maxSpawnDistance`. 이 순서가 깨지면 구석 캠핑 수정이 조용히 무효가 된다.
