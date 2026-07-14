@@ -3,10 +3,12 @@ import { cameraFollowPosition } from '../../game/assets/scripts/logic/ArenaLogic
 import {
   canSpawn,
   clampRecycleDistance,
+  classifyByDistance,
   engagementRadius,
   MIN_SPAWN_MARGIN,
   maxSpawnDistance,
   offViewSpawnPoint,
+  type SpawnField,
   spawnPerimeterLength,
 } from '../../game/assets/scripts/logic/SpawnGeometry';
 
@@ -46,18 +48,28 @@ function camFor(player: { x: number; y: number }, arena = ARENA) {
   return cameraFollowPosition(player, VIEW_HALF_W, VIEW_HALF_H, arena);
 }
 
-/** 표준 인자로 스폰점 하나를 뽑는다. */
-function spawn(player: { x: number; y: number }, roll: number, arena = ARENA, radius = RADIUS) {
-  return offViewSpawnPoint(
-    camFor(player, arena),
+/** 표준 스폰 필드 — 카메라는 실제 배선과 같이 벽 클램프를 거쳐 얻는다. */
+function fieldFor(
+  player: { x: number; y: number },
+  arena = ARENA,
+  radius = RADIUS,
+  viewHalfW = VIEW_HALF_W,
+  viewHalfH = VIEW_HALF_H,
+): SpawnField {
+  return {
+    cam: cameraFollowPosition(player, viewHalfW, viewHalfH, arena),
     player,
-    VIEW_HALF_W,
-    VIEW_HALF_H,
-    MARGIN,
+    viewHalfW,
+    viewHalfH,
+    margin: MARGIN,
     arena,
     radius,
-    roll,
-  );
+  };
+}
+
+/** 표준 인자로 스폰점 하나를 뽑는다. */
+function spawn(player: { x: number; y: number }, roll: number, arena = ARENA, radius = RADIUS) {
+  return offViewSpawnPoint(fieldFor(player, arena, radius), roll);
 }
 
 /** roll을 0~1로 촘촘히 훑는다(균등 샘플러라 경계 포함). */
@@ -96,7 +108,7 @@ describe('파생 거리 — 뷰 크기에서 유도하고 순서를 보장한다
     );
   });
 
-  it('engagementRadius < maxSpawnDistance — 모든 종횡비·여유에서 (안전 계약)', () => {
+  it('engagementRadius < maxSpawnDistance ≤ recycleDistance — 모든 종횡비·여유에서 (안전 계약)', () => {
     const views = [
       [640, 360], // 16:9
       [360, 640], // 세로 창
@@ -106,9 +118,21 @@ describe('파생 거리 — 뷰 크기에서 유도하고 순서를 보장한다
     ];
     for (const [w, h] of views) {
       for (const m of [0, 40, 100, 400]) {
-        expect(engagementRadius(w, h, m)).toBeLessThan(maxSpawnDistance(w, h, m));
+        const engage = engagementRadius(w, h, m);
+        const maxSpawn = maxSpawnDistance(w, h, m);
+        expect(engage).toBeLessThan(maxSpawn);
+        // 셋째 고리 — 인스펙터가 어떤 값을 주든 재활용 거리는 최대 스폰 거리 아래로 못 내려간다
+        for (const requested of [0, 500, 2200, Number.NaN]) {
+          expect(clampRecycleDistance(requested, w, h, m)).toBeGreaterThanOrEqual(maxSpawn);
+        }
       }
     }
+  });
+
+  it('뷰가 퇴화(절반 0)면 두 거리가 같아진다 — 이때 호출부는 스폰을 보류한다', () => {
+    // 순서 불변식의 유일한 예외. EnemySpawner가 viewHalfW <= 0에서 그 프레임을 건너뛰므로
+    // 실제 스폰 경로에는 도달하지 않는다. 계약을 문서화해 두어 나중에 "왜 <가 아니지"로 새지 않게 한다.
+    expect(engagementRadius(0, 0, MARGIN)).toBe(maxSpawnDistance(0, 0, MARGIN));
   });
 
   it('margin은 하한(MIN_SPAWN_MARGIN)이 있다 — 0·음수·NaN이면 하한으로 올린다', () => {
@@ -143,32 +167,26 @@ describe('clampRecycleDistance — 재활용은 최대 스폰 거리보다 멀�
 
 describe('spawnPerimeterLength — 아레나 밖 구간을 잘라낸 유효 둘레', () => {
   it('플레이어가 중앙이면 스폰 사각형 네 변이 모두 유효하다', () => {
-    expect(spawnPerimeterLength(camFor({ x: 0, y: 0 }), VIEW_HALF_W, VIEW_HALF_H, MARGIN, ARENA, 0))
-      // 사각 둘레 = 2*(2*HW) + 2*(2*HH)
-      .toBeCloseTo(4 * (HW + HH), 6);
+    // 사각 둘레 = 2*(2*HW) + 2*(2*HH)
+    expect(spawnPerimeterLength(fieldFor({ x: 0, y: 0 }, ARENA, 0))).toBeCloseTo(4 * (HW + HH), 6);
   });
 
   it('플레이어가 우상단 구석이면 좌·하 두 변만 남는다', () => {
     // cam = (560, 840) — x는 1200-640, y는 1200-360에서 클램프
-    const cam = camFor({ x: 1175, y: 1175 });
-    expect(cam).toEqual({ x: 560, y: 840 });
+    expect(camFor({ x: 1175, y: 1175 })).toEqual({ x: 560, y: 840 });
 
     // 좌변 x=-180 (y: 380..1175 → 795) + 하변 y=380 (x: -180..1175 → 1355)
-    const len = spawnPerimeterLength(cam, VIEW_HALF_W, VIEW_HALF_H, MARGIN, ARENA, RADIUS);
-    expect(len).toBeCloseTo(795 + 1355, 6);
+    expect(spawnPerimeterLength(fieldFor({ x: 1175, y: 1175 }))).toBeCloseTo(795 + 1355, 6);
   });
 
   it('아레나가 뷰보다 작으면 유효 둘레가 0이다 (퇴화 — 폴백 경로)', () => {
     const small = { width: 800, height: 800 };
-    const cam = camFor({ x: 300, y: 300 }, small);
-    expect(spawnPerimeterLength(cam, VIEW_HALF_W, VIEW_HALF_H, MARGIN, small, 0)).toBe(0);
+    expect(spawnPerimeterLength(fieldFor({ x: 300, y: 300 }, small, 0))).toBe(0);
   });
 
   it('아레나 데이터가 없으면(width<=0) 아레나 제약 없이 뷰 사각 둘레 전체를 쓴다', () => {
     const none = { width: 0, height: 0 };
-    expect(
-      spawnPerimeterLength({ x: 0, y: 0 }, VIEW_HALF_W, VIEW_HALF_H, MARGIN, none, RADIUS),
-    ).toBeCloseTo(4 * (HW + HH), 6);
+    expect(spawnPerimeterLength(fieldFor({ x: 0, y: 0 }, none))).toBeCloseTo(4 * (HW + HH), 6);
   });
 });
 
@@ -286,11 +304,12 @@ describe('offViewSpawnPoint — 비정방 아레나·종횡비 변주 (축 스�
 
   it('세로 창(뷰 절반 360×640)에서도 뷰 밖·아레나 안이다', () => {
     const player = { x: 800, y: 800 };
-    const cam = cameraFollowPosition(player, 360, 640, ARENA);
+    const field = fieldFor(player, ARENA, RADIUS, 360, 640);
     for (const roll of ROLLS) {
-      const p = offViewSpawnPoint(cam, player, 360, 640, MARGIN, ARENA, RADIUS, roll);
+      const p = offViewSpawnPoint(field, roll);
       const outside =
-        Math.abs(p.x - cam.x) >= 360 + MARGIN - EPS || Math.abs(p.y - cam.y) >= 640 + MARGIN - EPS;
+        Math.abs(p.x - field.cam.x) >= 360 + MARGIN - EPS ||
+        Math.abs(p.y - field.cam.y) >= 640 + MARGIN - EPS;
       expect(outside).toBe(true);
       expect(Math.abs(p.x)).toBeLessThanOrEqual(1200 - RADIUS + EPS);
       expect(Math.abs(p.y)).toBeLessThanOrEqual(1200 - RADIUS + EPS);
@@ -299,21 +318,16 @@ describe('offViewSpawnPoint — 비정방 아레나·종횡비 변주 (축 스�
 });
 
 describe('offViewSpawnPoint — 퇴화 입력 (조용한 폴백이 곧 플레이어 위 스폰)', () => {
-  it('아레나 데이터가 없으면(width<=0) 뷰 사각 둘레에서만 뽑는다 — 원점으로 붕괴하지 않는다', () => {
+  it('아레나 데이터가 없으면(width<=0) 아레나 제약 없이 뷰 사각 둘레에서 뽑는다', () => {
+    // 맵 데이터가 깨지면 CameraController가 lateUpdate를 조기 반환해 카메라가 그 자리에 멈춘다.
+    // 그래도 계약은 그대로다 — 스폰점은 그 멈춘 카메라의 뷰 밖이다. 이 분기가 없으면 네 변이 전부
+    // 잘려 유효 둘레가 0이 되고, 폴백이 플레이어 근처로 적을 쏟아 놓는다.
     const none = { width: 0, height: 0 };
-    const player = { x: 500, y: -300 };
+    const field = fieldFor({ x: 500, y: -300 }, none);
     for (const roll of ROLLS) {
-      const p = offViewSpawnPoint(
-        player,
-        player,
-        VIEW_HALF_W,
-        VIEW_HALF_H,
-        MARGIN,
-        none,
-        RADIUS,
-        roll,
-      );
-      const outside = Math.abs(p.x - player.x) >= HW - EPS || Math.abs(p.y - player.y) >= HH - EPS;
+      const p = offViewSpawnPoint(field, roll);
+      const outside =
+        Math.abs(p.x - field.cam.x) >= HW - EPS || Math.abs(p.y - field.cam.y) >= HH - EPS;
       expect(outside).toBe(true);
     }
   });
@@ -337,12 +351,29 @@ describe('offViewSpawnPoint — 퇴화 입력 (조용한 폴백이 곧 플레이
     }
   });
 
-  it('뷰 절반이 0·음수·NaN이어도 유한한 점을 돌려준다 (NaN 좌표 적은 상한 슬롯을 영구 점유한다)', () => {
+  it('뷰 절반이 0·음수·NaN·무한대여도 유한한 점을 돌려준다', () => {
     const player = { x: 0, y: 0 };
     for (const bad of [0, -100, Number.NaN, Number.POSITIVE_INFINITY]) {
-      const p = offViewSpawnPoint(player, player, bad, bad, MARGIN, ARENA, RADIUS, 0.5);
+      const p = offViewSpawnPoint(fieldFor(player, ARENA, RADIUS, bad, bad), 0.5);
       expect(Number.isFinite(p.x)).toBe(true);
       expect(Number.isFinite(p.y)).toBe(true);
+    }
+  });
+
+  it('카메라·플레이어 좌표가 NaN·무한대여도 유한한 점을 돌려준다 (좌표 NaN이 적을 유령으로 만든다)', () => {
+    // NaN 좌표의 적은 재활용 거리 비교도 교전 판정도 전부 false가 돼, 죽지도 닿지도 사라지지도
+    // 않으면서 이동 중 상한 슬롯을 영구 점유한다. 스폰 단계에서 NaN이 새어 나가면 안 된다.
+    const bad = [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
+    for (const v of bad) {
+      for (const field of [
+        { ...fieldFor({ x: 0, y: 0 }), cam: { x: v, y: 0 } },
+        { ...fieldFor({ x: 0, y: 0 }), cam: { x: 0, y: v } },
+        { ...fieldFor({ x: 0, y: 0 }), player: { x: v, y: v } },
+      ]) {
+        const p = offViewSpawnPoint(field, 0.5);
+        expect(Number.isFinite(p.x)).toBe(true);
+        expect(Number.isFinite(p.y)).toBe(true);
+      }
     }
   });
 
@@ -353,6 +384,39 @@ describe('offViewSpawnPoint — 퇴화 입력 (조용한 폴백이 곧 플레이
       expect(Number.isFinite(p.x)).toBe(true);
       expect(Math.abs(p.x)).toBeLessThanOrEqual(1200 + EPS);
       expect(Math.abs(p.y)).toBeLessThanOrEqual(1200 + EPS);
+    }
+  });
+});
+
+describe('classifyByDistance — 매 프레임 스윕의 분류 규칙', () => {
+  const ENGAGE_SQ = 871 ** 2;
+  const RECYCLE_SQ = 2200 ** 2;
+
+  it('교전 반경 안이면 engaged', () => {
+    expect(classifyByDistance(500 ** 2, ENGAGE_SQ, RECYCLE_SQ)).toBe('engaged');
+  });
+
+  it('교전 반경 경계는 engaged에 포함한다', () => {
+    expect(classifyByDistance(ENGAGE_SQ, ENGAGE_SQ, RECYCLE_SQ)).toBe('engaged');
+  });
+
+  it('교전 반경 밖·재활용 거리 안이면 inbound (걸어오는 중 — 압박 상한을 먹지 않는다)', () => {
+    expect(classifyByDistance(1500 ** 2, ENGAGE_SQ, RECYCLE_SQ)).toBe('inbound');
+  });
+
+  it('재활용 거리 경계는 아직 회수하지 않는다 (스폰 직후 회수 루프 방지의 경계)', () => {
+    expect(classifyByDistance(RECYCLE_SQ, ENGAGE_SQ, RECYCLE_SQ)).toBe('inbound');
+  });
+
+  it('재활용 거리를 넘으면 recycle', () => {
+    expect(classifyByDistance(2500 ** 2, ENGAGE_SQ, RECYCLE_SQ)).toBe('recycle');
+  });
+
+  it('거리가 NaN·무한대면 recycle — 유령 적이 상한 슬롯을 영구 점유하지 못하게 한다', () => {
+    // 순진하게 비교하면 NaN은 모든 비교가 false라 "회수도 안 되고 교전도 아닌" inbound로 빠져
+    // 슬롯을 영원히 점유한다. 분류를 명시적으로 recycle로 몰아 스스로 청소되게 한다.
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(classifyByDistance(bad, ENGAGE_SQ, RECYCLE_SQ)).toBe('recycle');
     }
   });
 });

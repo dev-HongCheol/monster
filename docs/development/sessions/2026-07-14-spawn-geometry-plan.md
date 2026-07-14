@@ -42,11 +42,20 @@
 
 ```ts
 // logic/SpawnGeometry.ts
-export function offViewSpawnPoint(
-  cam: Vec2, viewHalfW: number, viewHalfH: number, margin: number,
-  arena: Arena, radius: number, roll: number,
-): Vec2;
+export interface SpawnField {
+  cam: Vec2;      // 벽 클램프가 적용된 실재 카메라 (재계산하지 않는다)
+  player: Vec2;   // 퇴화 입력에서 폴백 방향을 정하는 데만 쓴다
+  viewHalfW: number;
+  viewHalfH: number;
+  margin: number;
+  arena: Arena;
+  radius: number;
+}
+
+export function offViewSpawnPoint(field: SpawnField, roll: number): Vec2;
 ```
+
+> **인자를 객체로 묶는 이유**(코드 리뷰 M-1, 2026-07-15). `cam`과 `player`가 둘 다 `Vec2`라 위치를 바꿔 넘겨도 타입이 통과하는데, 그 순간 이 슬라이스가 고친 회귀가 그대로 되살아난다. 이름을 붙여 그 실수를 불가능하게 만든다. `player`가 필요한 이유는 아래 사후조건의 폴백이 "플레이어에게서 가장 먼 점"을 요구하기 때문이다.
 
 **사후조건(테스트로 고정한다).** 반환점은 항상 ① 뷰 사각형 **밖**, ② 아레나 **안**(적 반경 포함), ③ 카메라 중심에서 최소 `viewHalf + margin` 이상 떨어진 곳이다. 퇴화 입력(비유한값·음수 크기)은 정규화하고, 그래도 유효 구간 길이가 0이면(아레나가 뷰보다 작거나 겨우 큰 소형 맵) **플레이어에게서 가장 먼 아레나 안쪽 점**으로 폴백한다 — 절대 중심(=플레이어 근처)으로 돌아가지 않는다. 이 경고는 스폰 틱마다가 아니라 1회만 찍는다(`SpawnDirectorLogic._validate`와 같은 규율).
 

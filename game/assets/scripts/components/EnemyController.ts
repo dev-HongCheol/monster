@@ -247,9 +247,15 @@ export class EnemyController extends Component {
   /**
    * 피해를 입힌다. HP가 0 이하면 사망 연출을 시작하고, 아니면 피격 플래시를 트리거한다.
    * 사망 연출 중에는 중복 피격을 무시한다.
+   *
+   * `_despawned`(풀에 반환됨)도 함께 막는다 — 공간 그리드는 프레임당 1회만 갱신되는데
+   * `EnemySpawner`가 프레임 도중 재활용하므로, 같은 프레임에 만들어진 그리드가 이미 풀에 들어간
+   * 적을 발사체에 넘길 수 있다(`isValid`는 파괴 여부일 뿐 활성 여부가 아니라 걸러지지 않는다).
+   * 이걸 막지 않으면 회수된 적이 피해를 받아 사망 경로를 타고, 유령 킬이 결과 화면 통계에 잡히며
+   * 아무도 없는 곳에 경험치가 떨어진다.
    */
   takeDamage(amount: number): void {
-    if (this._dead) return;
+    if (this._dead || this._despawned) return;
     this._hp -= amount;
     if (this._hp <= 0) {
       this._startDeath();

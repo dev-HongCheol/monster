@@ -9,8 +9,10 @@ import { SpawnDirectorLogic } from '../logic/SpawnDirectorLogic';
 import {
   canSpawn,
   clampRecycleDistance,
+  classifyByDistance,
   engagementRadius,
   offViewSpawnPoint,
+  type SpawnField,
   spawnPerimeterLength,
 } from '../logic/SpawnGeometry';
 import { DataManager } from './DataManager';
@@ -182,6 +184,8 @@ export class EnemySpawner extends Component {
     this._inbound = 0;
     if (!this.playerNode) return;
 
+    // 매 프레임 재계산한다 — 셋 다 @property라 7단계에서 인스펙터로 조이는 값이고, 캐시하면
+    // 조정이 반영되지 않는다. hypot 두 번은 프레임당 비용으로 잡히지 않는다.
     const engageSq = engagementRadius(viewHalfW, viewHalfH, this.spawnMargin) ** 2;
     const recycleSq =
       clampRecycleDistance(this.recycleDistance, viewHalfW, viewHalfH, this.spawnMargin) ** 2;
@@ -190,16 +194,21 @@ export class EnemySpawner extends Component {
     const enemies = gm.enemies;
     for (let i = enemies.length - 1; i >= 0; i--) {
       const enemy = enemies[i];
+      if (!enemy?.isValid) continue;
       const pos = enemy.node.position;
       const dx = pos.x - p.x;
       const dy = pos.y - p.y;
-      const distSq = dx * dx + dy * dy;
-      if (distSq > recycleSq) {
-        enemy.recycle(); // 사망이 아니다 — XP·킬 집계·연출을 거치지 않고 곧장 풀로
-        continue;
+      switch (classifyByDistance(dx * dx + dy * dy, engageSq, recycleSq)) {
+        case 'recycle':
+          enemy.recycle(); // 사망이 아니다 — XP·킬 집계·연출을 거치지 않고 곧장 풀로
+          break;
+        case 'engaged':
+          this._engaged++;
+          break;
+        default:
+          this._inbound++;
+          break;
       }
-      if (distSq <= engageSq) this._engaged++;
-      else this._inbound++;
     }
   }
 
@@ -221,21 +230,23 @@ export class EnemySpawner extends Component {
     // 스폰된다 — "시끄럽게 에러 찍고 플레이는 굴러간다"가 "플레이 불가"로 바뀐다.
     const arena = MapManager.instance?.arena ?? NO_ARENA;
 
-    const camNode = this.cameraController.node.position;
-    const cam = { x: camNode.x, y: camNode.y };
-    const player = { x: this.playerNode.position.x, y: this.playerNode.position.y };
-    this._warnDegenerateOnce(cam, viewHalfW, viewHalfH, arena, radius);
-
-    const spawn = offViewSpawnPoint(
-      cam,
-      player,
+    // 카메라 위치는 CameraController가 lateUpdate에서 쓴 것이라 여기서는 한 프레임 낡았다.
+    // 최대 오차는 카메라 속도 × 1프레임(300px/s에서 ~5px)이라 여유(margin 100)가 통째로 흡수한다.
+    // 재계산하지 않는 것이 더 중요하다 — 복제본을 들면 F42(카메라 스무딩)에서 말없이 어긋난다.
+    const camPos = this.cameraController.node.position;
+    const playerPos = this.playerNode.position;
+    const field: SpawnField = {
+      cam: { x: camPos.x, y: camPos.y },
+      player: { x: playerPos.x, y: playerPos.y },
       viewHalfW,
       viewHalfH,
-      this.spawnMargin,
+      margin: this.spawnMargin,
       arena,
       radius,
-      Math.random(),
-    );
+    };
+    this._warnIfDegenerate(field);
+
+    const spawn = offViewSpawnPoint(field, Math.random());
 
     // 풀에서 적을 꺼낸다(가용분 재사용 또는 신규 instantiate). acquire가 Canvas 부착·active=true까지
     // 보장하므로, 종류별 데이터·연출 상태는 acquire 직후 reset()이 매번 새로 적용한다(잔류 방지).
@@ -250,20 +261,17 @@ export class EnemySpawner extends Component {
   }
 
   /**
-   * 뷰 밖이면서 아레나 안인 지점이 아예 없는 맵(아레나가 뷰보다 작음)을 1회만 경고한다.
+   * 뷰 밖이면서 아레나 안인 지점이 아예 없는 맵(아레나가 뷰보다 작음)이면 경고한다.
    * 이때 스폰은 "플레이어에게서 가장 먼 아레나 안쪽 점"으로 폴백하므로 플레이는 굴러가지만,
    * 적이 화면 안에서 나타나므로 맵 크기가 잘못됐다는 사실은 드러나야 한다.
+   *
+   * 검사 자체는 스폰마다 한다(맵 교체·창 크기 변경으로 상태가 뒤집힐 수 있다). 경고 출력만 1회로
+   * 잠근다 — 스폰 틱마다 콘솔이 쏟아지면 정작 다른 경고가 묻힌다. 스폰은 초당 0.5~2회라 비용은
+   * 무시할 수준이다(계획 §4 — 스폰 경로 할당 최적화는 스코프 밖).
    */
-  private _warnDegenerateOnce(
-    cam: { x: number; y: number },
-    viewHalfW: number,
-    viewHalfH: number,
-    arena: Arena,
-    radius: number,
-  ): void {
+  private _warnIfDegenerate(field: SpawnField): void {
     if (this._warnedDegenerate) return;
-    if (spawnPerimeterLength(cam, viewHalfW, viewHalfH, this.spawnMargin, arena, radius) > 0)
-      return;
+    if (spawnPerimeterLength(field) > 0) return;
     this._warnedDegenerate = true;
     console.warn(
       '[EnemySpawner] 아레나가 카메라 뷰보다 작아 화면 밖 스폰 지점이 없습니다 — ' +

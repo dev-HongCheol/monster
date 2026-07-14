@@ -17,6 +17,33 @@ import type { Arena, Vec2 } from './ArenaLogic';
  */
 export const MIN_SPAWN_MARGIN = 40;
 
+/**
+ * 스폰 지점을 정하는 데 필요한 판 전체.
+ *
+ * 인자를 객체로 묶는 이유는 `cam`과 `player`가 **둘 다 `Vec2`**라서다. 위치를 바꿔 넘겨도 타입은
+ * 통과하는데, 그 순간 이 슬라이스가 고친 회귀(플레이어 기준으로 뽑아 적이 화면 안에서 스폰됨)가
+ * 그대로 되살아난다. 이름을 붙여 그 실수를 불가능하게 만든다.
+ */
+export interface SpawnField {
+  /** 카메라 위치 — 벽 클램프가 적용된 **실재 카메라**다(여기서 재계산하지 않는다). */
+  cam: Vec2;
+  /** 플레이어 위치 — 퇴화 입력에서 폴백 방향을 정하는 데만 쓴다. */
+  player: Vec2;
+  /** 카메라 뷰 가로 절반(px) */
+  viewHalfW: number;
+  /** 카메라 뷰 세로 절반(px) */
+  viewHalfH: number;
+  /** 스폰 여유(px, 하한 클램프됨) */
+  margin: number;
+  /** 아레나 크기 (width <= 0이면 뷰 사각 둘레에서만 뽑는다) */
+  arena: Arena;
+  /** 스폰할 적의 충돌 반경(px) */
+  radius: number;
+}
+
+/** 매 프레임 스윕이 적 하나를 분류한 결과. */
+export type EnemyProximity = 'engaged' | 'inbound' | 'recycle';
+
 /** 스폰 사각형 한 변의 유효 구간 — 아레나 밖으로 나간 부분을 잘라낸 뒤의 선분. */
 interface Segment {
   /** 고정 좌표값 (세로 변이면 x, 가로 변이면 y) */
@@ -32,6 +59,18 @@ interface Segment {
 /** 뷰 절반 크기를 정규화한다 — 비유한값·음수는 0으로(호출부가 그 프레임 스폰을 보류한다). */
 function normSize(v: number): number {
   return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
+/**
+ * 좌표를 정규화한다 — 비유한 성분은 0으로.
+ * NaN 좌표가 새어 나가면 그 적은 재활용 거리 비교도 교전 판정도 전부 false가 돼(모든 NaN 비교가
+ * false), 죽지도 닿지도 사라지지도 않으면서 이동 중 상한 슬롯을 영구 점유한다.
+ */
+function normPoint(p: Vec2): Vec2 {
+  return {
+    x: Number.isFinite(p.x) ? p.x : 0,
+    y: Number.isFinite(p.y) ? p.y : 0,
+  };
 }
 
 /** 여유를 정규화한다 — 하한(MIN_SPAWN_MARGIN) 미만·비유한값은 하한으로 올린다. */
@@ -111,28 +150,62 @@ export function canSpawn(
 }
 
 /**
+ * 매 프레임 스윕이 적 하나를 분류한다 — 회수 대상인가, 교전 중인가, 걸어오는 중인가.
+ *
+ * 거리가 비유한값(NaN·무한대)이면 **회수**한다. 순진하게 비교하면 NaN은 모든 비교가 false라
+ * "회수도 안 되고 교전도 아닌" inbound로 빠져 상한 슬롯을 영원히 점유한다 — 죽지도 닿지도
+ * 사라지지도 않는 유령 적이 된다. 명시적으로 회수로 몰아 스스로 청소되게 한다.
+ *
+ * @param distSq 플레이어까지의 제곱 거리 (sqrt를 아끼려고 제곱으로 받는다)
+ * @param engageSq 교전 반경의 제곱
+ * @param recycleSq 재활용 거리의 제곱
+ */
+export function classifyByDistance(
+  distSq: number,
+  engageSq: number,
+  recycleSq: number,
+): EnemyProximity {
+  if (!Number.isFinite(distSq)) return 'recycle';
+  if (distSq > recycleSq) return 'recycle';
+  return distSq <= engageSq ? 'engaged' : 'inbound';
+}
+
+/** 스폰 사각형의 네 변 — 고정 좌표가 x인지(세로 변) 정한다. */
+const EDGES: readonly {
+  readonly signX: number;
+  readonly signY: number;
+  readonly fixedIsX: boolean;
+}[] = [
+  { signX: -1, signY: 0, fixedIsX: true }, // 좌변
+  { signX: 1, signY: 0, fixedIsX: true }, // 우변
+  { signX: 0, signY: -1, fixedIsX: false }, // 하변
+  { signX: 0, signY: 1, fixedIsX: false }, // 상변
+];
+
+/** 아레나 크기가 실제 경계로 쓸 만한 값인지 — 아니면 제약 없이 뷰 사각 둘레만 쓴다. */
+function isBounded(arena: Arena): boolean {
+  return (
+    Number.isFinite(arena.width) &&
+    Number.isFinite(arena.height) &&
+    arena.width > 0 &&
+    arena.height > 0
+  );
+}
+
+/**
  * 스폰 사각형 네 변에서 아레나 안에 들어오는 구간만 남긴다.
  * 아레나 데이터가 없으면(width·height <= 0) 제약을 걸지 않고 네 변을 통째로 쓴다 — 이 분기가 없으면
  * 모든 계산이 원점으로 붕괴해 적이 전부 플레이어 몸 안에서 스폰된다.
  */
-function clipSegments(
-  cam: Vec2,
-  viewHalfW: number,
-  viewHalfH: number,
-  margin: number,
-  arena: Arena,
-  radius: number,
-): Segment[] {
-  const m = normMargin(margin);
-  const hw = normSize(viewHalfW) + m;
-  const hh = normSize(viewHalfH) + m;
-  const r = normSize(radius);
+function clipSegments(field: SpawnField): Segment[] {
+  const cam = normPoint(field.cam);
+  const m = normMargin(field.margin);
+  const hw = normSize(field.viewHalfW) + m;
+  const hh = normSize(field.viewHalfH) + m;
+  const r = normSize(field.radius);
 
-  const bounded =
-    Number.isFinite(arena.width) &&
-    Number.isFinite(arena.height) &&
-    arena.width > 0 &&
-    arena.height > 0;
+  const arena = field.arena;
+  const bounded = isBounded(arena);
   // 적 반경까지 감안한 아레나 안쪽 허용 범위. 아레나가 없으면 무한 범위 = 클리핑 없음.
   const xMin = bounded ? -arena.width / 2 + r : Number.NEGATIVE_INFINITY;
   const xMax = bounded ? arena.width / 2 - r : Number.POSITIVE_INFINITY;
@@ -140,54 +213,36 @@ function clipSegments(
   const yMax = bounded ? arena.height / 2 - r : Number.POSITIVE_INFINITY;
 
   const segs: Segment[] = [];
-  for (const [fixed, fixedIsX] of [
-    [cam.x - hw, true],
-    [cam.x + hw, true],
-    [cam.y - hh, false],
-    [cam.y + hh, false],
-  ] as [number, boolean][]) {
+  for (const edge of EDGES) {
+    const fixed = edge.fixedIsX ? cam.x + edge.signX * hw : cam.y + edge.signY * hh;
     // 고정 좌표가 아레나 밖이면 그 변은 통째로 버린다(벽 쪽 구간이 유효 둘레에서 빠지는 지점 — F35).
-    const fixedMin = fixedIsX ? xMin : yMin;
-    const fixedMax = fixedIsX ? xMax : yMax;
+    const fixedMin = edge.fixedIsX ? xMin : yMin;
+    const fixedMax = edge.fixedIsX ? xMax : yMax;
     if (fixed < fixedMin || fixed > fixedMax) continue;
 
     // 변하는 좌표를 아레나 안으로 자른다.
-    const center = fixedIsX ? cam.y : cam.x;
-    const half = fixedIsX ? hh : hw;
-    const varMin = fixedIsX ? yMin : xMin;
-    const varMax = fixedIsX ? yMax : xMax;
+    const center = edge.fixedIsX ? cam.y : cam.x;
+    const half = edge.fixedIsX ? hh : hw;
+    const varMin = edge.fixedIsX ? yMin : xMin;
+    const varMax = edge.fixedIsX ? yMax : xMax;
     const from = Math.max(center - half, varMin);
     const to = Math.min(center + half, varMax);
     if (to <= from) continue;
 
-    segs.push({ fixed, from, fixedIsX, length: to - from });
+    segs.push({ fixed, from, fixedIsX: edge.fixedIsX, length: to - from });
   }
   return segs;
 }
 
 /**
  * 아레나 밖 구간을 잘라낸 뒤 남은 유효 둘레의 총 길이(px).
- * 0이면 뷰 밖이면서 아레나 안인 지점이 존재하지 않는다(아레나가 뷰보다 작은 소형 맵) — 호출부는
- * 이때만 폴백 경로를 타므로, 스폰 틱마다가 아니라 1회만 경고하기 위해 이 값을 따로 노출한다.
- * @param cam 카메라 위치(벽 클램프가 적용된 실제 카메라)
- * @param viewHalfW 카메라 뷰 가로 절반(px)
- * @param viewHalfH 카메라 뷰 세로 절반(px)
- * @param margin 스폰 여유(px)
- * @param arena 아레나 크기 (width <= 0이면 제약 없음)
- * @param radius 스폰할 적의 충돌 반경(px)
+ * 0이면 뷰 밖이면서 아레나 안인 지점이 존재하지 않는다(아레나가 뷰보다 작은 소형 맵). 호출부가
+ * 이 값으로 퇴화 맵을 감지해 경고할 수 있도록 따로 노출한다.
+ * @param field 카메라·뷰·아레나·적 반경
  */
-export function spawnPerimeterLength(
-  cam: Vec2,
-  viewHalfW: number,
-  viewHalfH: number,
-  margin: number,
-  arena: Arena,
-  radius: number,
-): number {
+export function spawnPerimeterLength(field: SpawnField): number {
   let total = 0;
-  for (const s of clipSegments(cam, viewHalfW, viewHalfH, margin, arena, radius)) {
-    total += s.length;
-  }
+  for (const s of clipSegments(field)) total += s.length;
   return total;
 }
 
@@ -195,16 +250,21 @@ export function spawnPerimeterLength(
  * 유효 둘레가 0일 때의 폴백 — 플레이어에게서 가장 먼 아레나 안쪽 점.
  * 사각형에서 한 점으로부터 가장 먼 내부 점은 언제나 반대편 구석이다. 절대 중심(= 플레이어 근처)으로
  * 돌아가지 않는다 — 드문 사건이 플레이어 몸 안에서 터지는 것을 막는다.
+ *
+ * 아레나가 없으면 여기 오지 않는다(제약이 없으니 유효 둘레가 항상 양수다). 그래도 방어적으로,
+ * 플레이어 위가 아니라 **스폰 사각형 위쪽 변**을 돌려준다 — 이 함수가 절대 하지 말아야 할 한 가지가
+ * "플레이어 위에 스폰"이다.
  */
-function farthestInsidePoint(player: Vec2, arena: Arena, radius: number): Vec2 {
-  const bounded =
-    Number.isFinite(arena.width) &&
-    Number.isFinite(arena.height) &&
-    arena.width > 0 &&
-    arena.height > 0;
-  if (!bounded) return { x: player.x, y: player.y };
+function fallbackSpawnPoint(field: SpawnField): Vec2 {
+  const player = normPoint(field.player);
+  const arena = field.arena;
+  const r = normSize(field.radius);
 
-  const r = normSize(radius);
+  if (!isBounded(arena)) {
+    const hh = normSize(field.viewHalfH) + normMargin(field.margin);
+    return { x: player.x, y: player.y + hh };
+  }
+
   const xMin = -arena.width / 2 + r;
   const xMax = arena.width / 2 - r;
   const yMin = -arena.height / 2 + r;
@@ -223,29 +283,14 @@ function farthestInsidePoint(player: Vec2, arena: Arena, radius: number): Vec2 {
  * 반환점은 항상 ① 뷰 사각형 밖(카메라에서 viewHalf + margin 이상) ② 아레나 안(적 반경 포함)
  * ③ 최대 스폰 거리(maxSpawnDistance) 이내다.
  *
- * @param cam 카메라 위치(벽 클램프가 적용된 실제 카메라 — 여기서 재계산하지 않는다)
- * @param player 플레이어 위치 (유효 둘레가 0인 퇴화 입력에서 폴백 방향을 정하는 데만 쓴다)
- * @param viewHalfW 카메라 뷰 가로 절반(px)
- * @param viewHalfH 카메라 뷰 세로 절반(px)
- * @param margin 스폰 여유(px, 하한 클램프됨)
- * @param arena 아레나 크기 (width <= 0이면 뷰 사각 둘레에서만 뽑는다)
- * @param radius 스폰할 적의 충돌 반경(px)
+ * @param field 카메라·플레이어·뷰·여유·아레나·적 반경 (cam과 player를 바꿔 넘기는 사고를 막으려고 객체로 받는다)
  * @param roll [0,1] 난수 (테스트 결정성을 위해 주입 — 호출부가 Math.random()을 넘긴다)
  */
-export function offViewSpawnPoint(
-  cam: Vec2,
-  player: Vec2,
-  viewHalfW: number,
-  viewHalfH: number,
-  margin: number,
-  arena: Arena,
-  radius: number,
-  roll: number,
-): Vec2 {
-  const segs = clipSegments(cam, viewHalfW, viewHalfH, margin, arena, radius);
+export function offViewSpawnPoint(field: SpawnField, roll: number): Vec2 {
+  const segs = clipSegments(field);
   let total = 0;
   for (const s of segs) total += s.length;
-  if (total <= 0) return farthestInsidePoint(player, arena, radius);
+  if (!(total > 0)) return fallbackSpawnPoint(field); // NaN도 여기로 — 비교를 뒤집어 놓았다
 
   let t = normRoll(roll) * total;
   let last = segs[0];
