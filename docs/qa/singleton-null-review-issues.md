@@ -1,0 +1,53 @@
+# 싱글톤 타입 정직화 (F24) — 코드 리뷰 이슈
+
+- **브랜치:** feat/singleton-null
+- **리뷰 커밋:** `4422efb`(base) → `bdc392f`(head)
+- **리뷰 방식:** `superpowers:requesting-code-review` — 별도 subagent가 계획의 불변식을 하나씩 코드로 대조
+- **결과:** **Critical 0건.** 계획이 약속한 불변식(상태 전이 보존·게임플레이 값 폴백 금지·풀링 재초기화 순서·teardown 정적 참조·클로저 재호이스트)은 전부 코드에서 지켜지고 있음을 확인했다.
+
+---
+
+## Important
+
+### I1 — F44 게이트가 실제로 검증되지 않았다 → 7단계 진입 시 수행
+`approve-pr`의 타입체크 실측(F44)은 이 슬라이스에서 **테스트도 수동 QA도 없는 유일한 변경**인데, 앞으로 모든 머지를 통과시키는 게이트다. "리뷰어가 읽어 봤다"는 이 문서가 스스로 세운 기준이 아니다.
+
+`approve-pr`은 `phase: "user-verification"`에서만 도는 커맨드라 6단계에서는 밟을 수 없다. → **7단계 진입 직후(Draft PR 생성 전) 실패 경로를 밟아 확인**하도록 QA 문서 §4를 고쳐 절차를 명시했다. 성공 경로를 밟으면 `pr-ready`로 전이해 버리므로 실패 경로만 확인한다. → **절차 확정됨(7단계에서 수행)**
+
+### I2 — 타입체크 실패 메시지가 막다른 길로 안내 → 수정됨
+`workflow.mjs`의 실패 메시지가 "고친 뒤 다시 승인하세요"를 앞세웠는데, 이 메시지가 뜨는 `user-verification` phase에서는 훅이 `game/assets/scripts/**/*.ts` 편집을 **막고 있다.** 게임 코드에 타입 에러가 난 가장 흔한 경우에 따라갈 수 없는 안내가 된다(바로 아래 범위 게이트가 명시적으로 피하는 것과 같은 함정). 복구 경로(`pnpm wf rework`)를 앞으로 올렸다. → **수정됨**
+
+### I3 — `conventions.md`가 코드가 안 따르는 패턴을 규칙으로 적음 → 수정됨
+새 싱글톤 절이 "`start()`에서 캐시"를 유일한 규칙처럼 적었는데, 실제로는 소비처 9곳이 매 프레임 정적 참조를 진입부에서 호이스트한다(풀링 노드와 항상 돌아야 하는 컴포넌트). 그건 **의도된 선택**이다 — 풀에서 되살아나는 노드에 `enabled = false`를 걸면 다음 생까지 꺼진 채로 남는다. 다음 슬라이스가 이 문서를 규범으로 읽으므로, 두 형태를 언제 쓰는지 표로 갈라 적고 공통 규칙("진입부 1회 호이스트")을 앞세웠다. → **수정됨**
+
+---
+
+## Minor
+
+- **`ExperienceManager.start()`가 형제들과 달리 `enabled = false`를 안 한다** — 이 매니저는 `update()`가 없어 끌 것이 없고 `instance`는 살아 있어야 소비처가 정상 경로를 탄다. 의도된 예외임을 주석으로 명시. → **수정됨**
+- **`MapManager._applyMap()`이 맵 데이터 없을 때 조용히 return** — 아레나가 `{0,0}`으로 남아 플레이어 클램프가 사라지고 발사체 컬링이 화면 기준 폴백으로 되돌아간다(카메라 팔로우라 부정확). 현재 도달 불가지만 이 슬라이스가 다시 쓴 파일에 남은 마지막 조용한 실패였다. `console.error` 추가. → **수정됨**
+- **`CardSelectPanel.onEnable()`이 빈 드로우를 가드하지 않음** — `drawCards()`가 `[]`를 돌려주면 버튼이 전부 꺼진 패널만 열린 채 상태가 `LevelUp`에 머문다(= 영구 정지, 이 슬라이스가 막으려던 바로 그 함정). 현재 데이터로는 도달하지 않지만 `drawCards`의 `return []` 경로가 **이번 커밋에서 새로 생겼다.** 빈 드로우면 재개시킨다. → **수정됨**
+- **`_onPickCard`의 마법 카드 경로가 조용함** — `SpellCaster`가 없으면 `?.`로 조용히 버려지는데, 바로 옆 `DeckManager` 부재 경로는 시끄럽게 알린다. 같은 부류인데 로그가 반쪽이었다. → **수정됨**
+- **QA 문서 Impact Map이 안 바뀐 파일을 올림** — `ResultController`·`LocalizedLabel`은 코드 변경이 없고 `I18n` 수명주기 변경의 영향만 받는다. 코드가 정본이므로 문서를 코드에 맞췄다. → **수정됨**
+- **`DeckManager`의 DEV 시드 `resources.load` 콜백에 `isValid` 가드 부재** — 이 슬라이스가 굳힌 5개 `onReady` 클로저와 같은 부류(비동기가 씬을 넘어 살아남음)인데 빠져 있었다. DEV 전용이라 무해하지만 같이 닫았다. → **수정됨**
+
+---
+
+---
+
+## 재리뷰 (`bdc392f` → `f8196e5`)
+
+수정분을 같은 방식으로 다시 검토했다. **신규 Critical 0건**, I2·Minor 6건 전부 수정 확인. 두 가지가 더 나왔다.
+
+### R1 — `conventions.md` 코드 예시가 표가 금지한 패턴을 시연 → 수정됨
+I3에서 표는 고쳤지만 **그 아래 코드 예시가 `[Projectile]`(풀링 노드)로 `enabled = false`를 시연**하고 있었다. 표가 "풀링 노드에 그러면 다음 생까지 꺼진 채 남는다"고 경고하는 바로 그 클래스다. 다음 슬라이스가 가장 복사해 가기 쉬운 자리라 I3의 해악이 산문에서 예시로 옮겨간 셈이었다. 예시를 씬 고정 컴포넌트(`SpellCaster`)로 바꾸고, 풀링 노드용 대비 예시를 함께 넣었다. → **수정됨**
+
+### R2 — QA 문서 §4 드릴에 실패 분기가 없었다 → 수정됨
+게이트가 **안 막는 것으로 드러나면** `approve-pr`이 `pr-ready`로 전이해 버리는데, 거기서 되돌리는 wf 커맨드가 없다(`rework`는 `user-verification`, `invalidate`는 `verification`에서만). 복구 경로(`git restore .claude/workflow-state.json`)와 "드릴 후 `ts_check_clean: false`로 남는 건 정상"이라는 안내를 §4에 추가했다. → **수정됨**
+
+---
+
+## 백로그 이관 (이 PR 범위 밖)
+
+- **`HudController._prevState`와 카드 패널의 즉시 재개가 어긋난다 (재리뷰 발견)** — `_handleStateChange`가 `_prevState`를 먼저 쓰고 그 다음에 패널을 활성화하는데, Cocos가 활성화를 동기 처리하므로 `onEnable`의 빈 드로우 가드가 즉시 재개하면 `panel.active=true` + `state=Playing` + `_prevState=LevelUp`으로 어긋난다. 다음 프레임에 레벨업이 또 오면 HUD가 조기 return해 `onEnable`이 재발화하지 않아 **카드 없이 영구 정지**한다. 지금은 `drawCards`가 `[]`를 못 돌려주므로 도달 불가. 봉합은 HUD 쪽(패널 활성화 뒤 상태 재확인). → **`backlog-implement.md` F46**
+- **부팅 불변식이 소비처를 가로질러 강제되지 않는다** — `GameManager._onDataReady()`는 "전부 성공하거나 전부 실패"를 지키지만, `EnemySpawner.update()`는 `GameManager._started`를 보지 않고 `gm`·`wm`·`dm.isReady`만 본다(`_state` 기본값이 `Playing`이다). `_onDataReady`가 loud-fail한 상황에서도 스포너는 `wave = 0`으로 적을 뿌린다. 올바른 씬 배선에서는 도달 불가이고 이번 변경 이전부터 있던 성질이지만, 소비처마다 준비 상태를 각자 재유도하는 대신 `GameManager.isStarted` 게터 하나를 보게 하면 불변식이 정직해진다. → **`backlog-implement.md` F45**

@@ -7,8 +7,8 @@ const { ccclass, property } = _decorator;
 /** 타이머 기반 웨이브 진행을 관리하는 싱글톤 */
 @ccclass('WaveManager')
 export class WaveManager extends Component {
-  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
-  static instance: WaveManager = null as unknown as WaveManager;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 정직하게 nullable이다 (싱글톤 컨벤션 참고). */
+  static instance: WaveManager | null = null;
 
   /** 웨이브당 지속 시간 (sec). 테스트 편의로 60(1분) — 출시 전 밸런싱에서 재검토. */
   @property waveDuration: number = 60;
@@ -30,7 +30,7 @@ export class WaveManager extends Component {
 
   onDestroy() {
     if (WaveManager.instance === this) {
-      WaveManager.instance = null as unknown as WaveManager;
+      WaveManager.instance = null;
     }
   }
 
@@ -44,8 +44,9 @@ export class WaveManager extends Component {
   // 웨이브 타이머를 감소시키고, 만료되면 웨이브 번호를 올린 뒤 타이머를 리셋한다
   update(dt: number) {
     if (!this._started) return;
-    if (!GameManager.instance) return;
-    if (GameManager.instance.state !== GameState.Playing) return;
+    const gm = GameManager.instance;
+    if (!gm) return;
+    if (gm.state !== GameState.Playing) return;
     this._waveTimer -= dt;
     if (this._waveTimer <= 0) {
       this._waveNumber++;

@@ -22,8 +22,8 @@ const { ccclass } = _decorator;
 /** 카드 풀 관리, 드로우, 강화 적용(플레이어 패시브 + per-spell/분류)을 담당하는 싱글톤 */
 @ccclass('DeckManager')
 export class DeckManager extends Component {
-  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
-  static instance: DeckManager = null as unknown as DeckManager;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 정직하게 nullable이다 (싱글톤 컨벤션 참고). */
+  static instance: DeckManager | null = null;
 
   private _logic = new DeckLogic();
   private _enhancement = new EnhancementLogic();
@@ -63,10 +63,15 @@ export class DeckManager extends Component {
    * @param ownedIds 보유 마법 id (로드아웃 순서)
    */
   resultSpellSnapshots(ownedIds: string[]): ResultSpellSnapshot[] {
+    const dm = DataManager.instance;
+    if (!dm) {
+      console.error('[DeckManager] DataManager 없음 — 결과 화면 마법 통계를 만들 수 없습니다.');
+      return [];
+    }
     const e = this._enhancement;
     const snaps: ResultSpellSnapshot[] = [];
     for (const id of ownedIds) {
-      const spell = DataManager.instance.getSpell(id);
+      const spell = dm.getSpell(id);
       if (spell === null) continue;
       snaps.push({
         id,
@@ -132,8 +137,9 @@ export class DeckManager extends Component {
   start() {
     if (!DEV) return;
     // 파일이 없으면 err만 받고 조용히 넘어간다(시드 미사용 = 정상). 릴리스는 DEV 게이트로 아예 로드 안 함.
+    // 비동기라 씬을 넘어 살아남을 수 있으므로(로딩 중 재시작) 파괴된 인스턴스에 쓰지 않도록 isValid를 본다.
     resources.load(DEBUG_SEED_PATH, JsonAsset, (err, asset) => {
-      if (err || !asset) return;
+      if (err || !asset || !this.isValid) return;
       this.applyDebugSeed(asset.json as IDebugEnhancementSeed);
       console.log('[DeckManager] DEV 강화 시드 적용:', asset.json);
     });
@@ -141,7 +147,7 @@ export class DeckManager extends Component {
 
   onDestroy() {
     if (DeckManager.instance === this) {
-      DeckManager.instance = null as unknown as DeckManager;
+      DeckManager.instance = null;
     }
   }
 
@@ -166,15 +172,16 @@ export class DeckManager extends Component {
    * @param isFull 로드아웃이 가득 찼는지 (true면 마법 추가 카드 미합성)
    */
   drawCards(n: number, ownedSpellIds: string[], isFull: boolean): ICardData[] {
-    const pool = this._logic.buildDrawPool(
-      DataManager.instance.cards,
-      DataManager.instance.spells,
-      ownedSpellIds,
-      isFull,
-    );
+    const dm = DataManager.instance;
+    if (!dm) {
+      console.error('[DeckManager] DataManager 없음 — 카드를 뽑을 수 없습니다.');
+      return [];
+    }
+    const pool = this._logic.buildDrawPool(dm.cards, dm.spells, ownedSpellIds, isFull);
     // 보유 마법·분류의 개별/분류 강화 카드를 합성해 풀에 더한다(레벨4·보조·발사체 적격은 EnhancementLogic이 처리).
+    // .map 클로저 안에서는 내로잉이 살아남지 않으므로 위에서 받아 둔 dm을 쓴다.
     const ownedSpells = ownedSpellIds
-      .map((id) => DataManager.instance.getSpell(id))
+      .map((id) => dm.getSpell(id))
       .filter((s): s is ISpellData => s !== null);
     const upgradeCards = this._enhancement.buildUpgradeCards(ownedSpells);
     // 전역 강화가 상한(GLOBAL_UPGRADE_CAP·B2)에 도달한 옵션의 베이스 카드는 풀에서 뺀다

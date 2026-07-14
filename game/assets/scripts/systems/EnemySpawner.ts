@@ -103,17 +103,19 @@ export class EnemySpawner extends Component {
 
   // 스폰 타이머가 차면 웨이브 스케일링(최대 적 수↑·간격↓) 한도 내에서 적 1마리를 스폰한다
   update(dt: number) {
-    if (!GameManager.instance) return;
-    if (GameManager.instance.state !== GameState.Playing) return;
+    const gm = GameManager.instance;
+    const wm = WaveManager.instance;
+    if (!gm || !wm) return;
+    if (gm.state !== GameState.Playing) return;
     // 스폰 테이블 로드 전이면 보류(타이머 유지) — 데이터 준비 후 디렉터 생성
     if (!this._ensureDirector()) return;
 
     this._spawnTimer -= dt;
     if (this._spawnTimer > 0) return;
 
-    const wave = WaveManager.instance.waveNumber;
+    const wave = wm.waveNumber;
     const maxEnemies = this.maxEnemies + (wave - 1) * this.enemiesPerWaveScale;
-    if (GameManager.instance.enemies.length >= maxEnemies) return;
+    if (gm.enemies.length >= maxEnemies) return;
 
     const interval = Math.max(
       this.minSpawnInterval,

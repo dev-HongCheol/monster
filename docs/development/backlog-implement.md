@@ -39,10 +39,10 @@
 |---|------|------|------|-----------|------|
 | F1 | 열림 | 낮음 | ✨ `startingSpellIds` 시드 실패 무알림 | `addSpell`이 6슬롯 초과·중복을 조용히 버린다. `console.warn` 진단 추가. | `sessions/2026-06-01-magic-followups.md` §2 |
 | F2 | 열림 | 낮음 | 🐛 `_onPickCard`가 `addSpell` 반환값을 버림 | 미발현 — 1회 픽 흐름엔 무해. 다중 픽 패널이 생기면 거부된 추가가 픽을 소모할 수 있다. | `../qa/magic-add-card-review-issues.md` |
-| F3 | 열림 | 낮음 | 🐛 `I18n`·`DataManager`의 `resources.load` 콜백 asset 널 가드 | 로드 실패 시 방어. 두 싱글톤에 일괄 적용. | [next-slice-i18n 메모리] |
 | F4 | 열림 | 낮음 | 🐛 `getEnemy(enemyId)`가 null이면 inert 적이 `maxEnemies`를 영구 점유 | 미발현 — director가 유효 id만 고른다. 데이터 정합성 이슈라 D2와 함께 볼 것. | `../qa/enemy-xp-pooling-review-issues.md` M-2 |
 | F25 | 열림 | 낮음 | 🐛 `HudFormatLogic` 비유한 입력 가드 | 미발현 — `formatTimer(NaN)` → `"NaN:NaN"`, `formatTimer(Infinity)` → `"Infinity:NaN"`, `barRatio(NaN, ·)` → `NaN`(그대로 `ProgressBar.progress`로 전파), `formatNumber(1e21)` → `"1e+21"`(지수 표기로 바뀌어 자릿수 그룹핑이 깨짐). 현재 호출자(`gameTimer`·`playerHp`·`currentXp`)는 전부 유한하고 1e21 미만이다. 세 함수에 `Number.isFinite` 가드(→ `"00:00"`·`0`·`"0"`) + 순수 테스트. ※ 아카이브의 완료된 F25(근접 마커 클램프)와 **번호가 겹친다** — 원본 문서의 표기 오류이며 이쪽이 현재 열려 있는 F25다. | `../qa/hud-layout-review-issues.md` M2·R3 |
 | F29 | 열림 | 낮음 | ✨🔧 에디터 배선 컴포넌트의 필수 `@property` 누락 loud-fail 정합화 | `PauseController.onLoad`는 `pausePanel` 미연결 시 조용히 no-op이라, 7단계 배선 실수가 "ESC로 얼어붙되 메뉴 안 뜸"으로 조용히 샌다. `HudController`·`ResultController`가 쓰는 house 패턴(`console.error` + `this.enabled = false`)으로 맞추면 크게 드러난다. **공통 규칙으로 승격 검토.** | `../qa/pause-menu-review-issues.md` O1 |
+| F47 | 열림 | 중 | 🐛🔧 새 프리팹의 Sprite 레이어가 UI_2D로 새어 게임 카메라에서 어긋나 보인다 | 게임 Canvas는 `DEFAULT` 레이어인데, Cocos 에디터에서 `Create → 2D Object → Sprite`로 자식 노드를 만들면 레이어가 `UI_2D`로 붙는다. 게임 `Camera`(visibility=DEFAULT)와 `UICamera`(visibility=UI_2D)의 마스크가 서로 배타적이라, 이렇게 새어 나간 스프라이트는 **플레이어를 따라가지 않는 고정 `UICamera`가, 그것도 다른 배율(orthoHeight 871 대 360)로** 그린다. 그래서 노드의 실제 좌표는 멀쩡한데 그림만 엉뚱한 곳에 찍히고, 에러도 경고도 나지 않는다. 실제로 `NovaVfx`·`OrbVfx`·`EnemyBullet`·`Enemy > LungeMarker`의 자식 Sprite 네 개가 이 병에 걸려 있었다(2026-07-14 에디터에서 레이어 교정). 카메라를 둘로 쪼갠 **H1(PR #35) 이후에 만든 프리팹이 전부 감염됐다는 게 핵심** — 새 프리팹을 만들 때마다 재발한다. 봉합 후보는 `PoolManager.acquire()`(또는 스폰 경로)가 꺼낸 노드의 자식 레이어를 부모 레이어로 강제하거나, 어긋난 레이어를 발견하면 개발 빌드에서 시끄럽게 경고하는 것이다. | 2026-07-14 인게임 테스트 (`feat/singleton-null` 7단계) |
 
 ### F-2. 데이터 불변식 (미발현 — D2와 함께 강제 후보)
 
@@ -64,30 +64,9 @@
 | F17 | 열림 | 낮음 | 🐛 돌진 Chase·Cooldown 이동에 겹침 가드 부재 | 미발현에 가까움 — `lungeMovement`가 `normalize(toPlayer)`를 반환하는데 `_followPlayer`에 있는 `lengthSqr < 1`(1px 이내 정지) 가드가 없다. 플레이어와 거의 겹치면 매 프레임 방향이 뒤집혀 ~1.6px 코스메틱 진동이 가능하다. 가드 + 순수 테스트 1건. | `../qa/enemy-movement-review-issues.md` #1 |
 | F21 | 열림 | 낮음 | ♻️ `radialDirections` 부분 확산(spread < 360) 비대칭 | 미발현 — 조준 방향에서 한쪽(CCW)으로만 분포해 `spread < 360`이면 조준이 호의 **가장자리**가 된다(`fanDirections`는 중심 분포라 대비). 유일 소비자 물귀신이 360을 써 완전 등분이다. 부분 호 소비자가 생기면 JSDoc 경고 또는 중심 분포 변형. | `../qa/enemy-multishot-review-issues.md` M1 |
 | F23 | 열림 | 낮음 | ♻️🔧 `KITE_DEADZONE_BAND`를 `MovementLogic`으로 추출 | F20 데이터 테스트가 cc 의존 상수(40)를 하드코딩으로 미러링해, 밴드를 튜닝하면 테스트가 조용히 드리프트할 수 있다. 그 값은 순수 `MovementLogic.kiteDirection(band)`로 흘러가므로 순수 모듈로 올려 컨트롤러·테스트가 같은 출처를 import하면 드리프트가 원천 제거된다. | `../qa/enemy-multishot-review-issues.md` M3 |
-| F24 | **열림(다음 슬라이스 후보)** | **높음** | 🐛📐 싱글톤 타입 정직화 — `static instance: T \| null` + 호출부 73곳 가드 | 매니저 7개 전부 `onDestroy`에서 `instance`에 null을 넣으므로 **null은 정상 런타임 값인데**, 타입은 `= null as unknown as T`로 "절대 null 아님"이라 말한다. 그래서 `feat/ts-toolchain`이 켠 타입 게이트가 **씬 리로드 시 싱글톤 null**이라는 실제 함정을 구조적으로 못 본다. 정직한 `T \| null`로 바꾸면 **가드 없는 역참조 73곳(13파일)** 이 드러난다(실측). `I18n.ts:26`은 이미 정직한 패턴이라 선례가 있다. 재료·지뢰·가드 규칙은 아래 **F24 상세** 참조. **원 항목(흡수됨):** 「`GameManager.instance` 접근 null 가드 컨벤션 불일치 — `EnemySpawner`·`WaveManager`는 `if (!GameManager.instance) return;`를 선행하는데 엔티티(`SpellCaster`·`EnemyController`·`PlayerController`·발사체)는 `.state`를 직접 읽는다. 한 컨벤션으로 통일할지 결정.」 타입을 정직하게 만들면 그 결정을 컴파일러가 강제하므로 같은 슬라이스로 합쳤다. | `sessions/2026-07-13-ts-toolchain-plan.md` §7, `../qa/projectile-pause-guard-review-issues.md` M2 |
+| F46 | 열림 | 낮음 | 🐛 `HudController._prevState`와 카드 패널의 즉시 재개가 어긋남 | 미발현(도달 불가 선행조건) — `_handleStateChange`가 `_prevState = state`를 **먼저** 쓰고 그 다음에 `cardSelectPanel.active = true`를 세운다. Cocos는 활성화를 동기 처리하므로 그 대입 안에서 `onEnable`이 돌고, 빈 드로우 가드가 즉시 `resumeFromLevelUp()`을 부르면 프레임 끝 상태가 `panel.active=true` + `state=Playing` + `_prevState=LevelUp`으로 어긋난다. 다음 프레임에 곧바로 레벨업이 또 오면 HUD가 `state === _prevState`로 보고 조기 return해 패널이 이미 열려 있으므로 `onEnable`이 재발화하지 않는다 → **카드 없이 LevelUp에 영구 정지.** 지금은 `drawCards`가 `[]`를 돌려줄 수 없어(무제한 패시브 카드) 도달하지 않는다. 봉합은 HUD 쪽 — 패널 활성화 **뒤** 상태를 다시 읽어 같은 프레임에 닫고 `_prevState`를 실제 값으로 맞춘다(한 프레임 빈 패널 깜빡임도 함께 사라진다). | `../qa/singleton-null-review-issues.md` 재리뷰 |
+| F45 | 열림 | 낮음 | 📐 부팅 불변식이 소비처를 가로질러 강제되지 않음 | 미발현 — `GameManager._onDataReady()`는 "전부 성공하거나 전부 실패"(`_started`·`setOnLevelUp`·`startWave`가 한 덩어리)를 지키지만, `EnemySpawner.update()`는 `_started`를 보지 않고 `gm`·`wm`·`dm.isReady`만 본다(`_state` 기본값이 `Playing`). 부팅이 loud-fail한 상황에서도 스포너는 `wave = 0`으로 적을 뿌린다. 소비처마다 준비 상태를 각자 재유도하는 대신 `GameManager.isStarted` 게터 하나를 보게 하면 불변식이 정직해진다(`SpellCaster`·`PlayerController`의 `_dataReady` 래치도 같은 후보). | `../qa/singleton-null-review-issues.md` |
 | F31 | 열림 | 낮음 | ♻️🐛 결과 스냅샷의 정합 가드 2개가 무테스트 + 실패 모드가 엇갈림 | 미발현 — result-stats의 C1 수정이 가드를 순수 함수에서 cc 계층으로 옮기며 순수 테스트 2건이 사라졌다. `buildSpellSnapshots(ownedIds, getSpell, …)` 같은 순수 헬퍼로 추출하면 회귀 테스트가 거의 공짜로 돌아온다. **이때 실패 모드도 통일할 것** — `resultSpellSnapshots`는 즉시 TypeError(시끄러운 실패)인데 `_snapshotResult`는 모든 킬을 조용히 드롭한다(C1이 고친 바로 그 장애 모드). | `../qa/result-stats-review-issues.md` R1·R4 |
-
-### F24 상세 — 다음 슬라이스가 쓸 재료
-
-`feat/ts-toolchain`의 CEO·Eng 리뷰가 **실측으로** 찾아낸 것들이다. 다음 슬라이스는 이걸 다시 발견하지 말고 여기서부터 시작한다. 출처: `sessions/2026-07-13-ts-toolchain-plan.md` §7.
-
-**73곳은 기계적이지 않다. 조기 return이 상태 전이를 반쪽 실행시키는 자리가 셋이다.**
-
-| 자리 | 조기 return을 넣으면 |
-|---|---|
-| `GameManager._applyDamage()` | HP를 0으로 깎은 **다음** 줄에서 `WaveManager.instance.waveNumber`를 읽는다 → **HP 0인데 GameOver 전이도 죽음 연출도 안 일어난다** |
-| `CardSelectPanel._onPickCard()` | `DeckManager.instance.applyCard()` 다음 줄이 `GameManager.instance.resumeFromLevelUp()`이다 → **카드 패널이 열린 채 게임 영구 정지** |
-| `GameManager.resumeFromLevelUp()` | 장식적인 HP 보너스 계산 때문에 빠져나오면 `this._state = GameState.Playing`에 도달 못 한다 → **레벨업에서 영구 락** |
-
-**가드 규칙 (이 방향이어야 한다).** 값을 반환하는 호출에 **옵셔널 체이닝을 쓰지 않는다.** `?.`는 `undefined`를 내고 `strict`가 `?? fallback`을 강제하는데, 그럴듯한 fallback이 전부 조용히 게임을 깨뜨린다 — `effectiveCooldown ?? 0`이면 **쿨다운 0 → 매 프레임 발사**, `damageFactor ?? 0`이면 **전 마법 데미지 0**, `_pickupRadius ?? 0`이면 **XP 픽업 영구 불능**. `?.`는 반환값을 버리는 void 호출에만 쓰고, 값이 필요하면 **호이스트 + 조기 return**이다. `SpellCaster.update()`가 최대 레버리지 — 루프 진입 전 싱글톤 3개를 몰아 받으면 23건 중 상당수가 가드 하나로 사라진다.
-
-**클로저에서는 내로잉이 살아남지 않는다.** `if (!X.instance) return;` 뒤라도 `.map(cb)`·`onReady(() => …)` 안에서는 TS18047이 다시 뜬다(Cocos 번들 tsc로 확인). 그 자리에서 호이스트는 선택이 아니라 강제다.
-
-**house 패턴이 이미 3종 공존한다** — `?.`+`??`(`GameManager._snapshotResult`), 호이스트+조기 return(`HudController`), 무가드. **73곳을 손대기 전에 한 가지로 확정**해야 세 스타일로 갈리지 않는다.
-
-**타입체크는 가드의 *존재*만 증명하지 *의미*를 증명하지 않는다.** 위 지뢰는 전부 타입체크 초록불이고, 가드가 들어갈 13개 파일은 전부 `systems/`·`components/`·`ui/`라 **vitest 커버리지 0%**다. 유일한 그물은 수동 플레이스루이며 체크리스트에 위 세 자리를 이름으로 박아야 한다.
-
-**함께 닫을 것 — `DataManager` 콜백 누수 (신규 발견).** `_loadAll()`이 async인데 `onDestroy()`가 `_onReadyCallbacks`를 비우지 않는다. 로딩 중 재시작하면 파괴된 구 컴포넌트의 콜백이 나중에 발화하고, 그때 `DataManager.instance`는 **null이 아니라 새 씬의 인스턴스**다. 옵셔널 체이닝은 이걸 전혀 못 본다 — 새 인스턴스에 대해 멀쩡히 성공해 그 결과를 죽은 컴포넌트에 쓴다. Cocos 관용구 **`this.isValid`** 가드 + `onDestroy`에서의 콜백 정리가 필요하다.
 
 ### F-4. 성능 위생 (G1 인접)
 
@@ -102,7 +81,6 @@
 | # | 상태 | 우선 | 항목 | 요약 · 왜 | 출처 |
 |---|------|------|------|-----------|------|
 | F9 | 열림(부분 완료) | 낮음 | 🔧 씬 **UICamera** 크로스머신 churn | MacBook 작업 / Windows 테스트 시 `main.scene` Camera 노드의 `_lpos.y`·`_orthoHeight`가 재계산돼 무관한 diff가 난다(장비별 해상도 차이로 에디터가 카메라를 재fit·재직렬화). 매 PR 테스트마다 반복된다. **2026-07-13 map-arena에서 게임 `Camera`는 해결** — `CameraController`가 `orthoHeight=360`을 못박고 `Canvas.alignCanvasWithScreen=false`로 꺼서 더는 튀지 않는다. **잔존 범위는 `UICamera` 하나** — `UICanvas.alignCanvasWithScreen=true`라 Cocos가 화면 크기에 맞춰 재fit하며, map-arena 7단계 테스트에서도 `1175.2965…` → `871.6564…`로 churn이 재발했다. 해소하려면 UICanvas 정렬 정책을 바꿔야 하는데 **HUD 스케일링 회귀 검증이 따라붙으므로** 별도 슬라이스로 남긴다. | projectile-count 테스트 (2026-06-11), `../qa/map-arena-test.md` §6 (2026-07-13) |
-| F44 | 열림 | 중 | 🔧 `approve-pr`이 타입체크를 **실측**하게 — stale 통과 플래그 봉합 | `feat/ts-toolchain`이 `pass ts`를 실제 강제로 만들었지만 **최신성까지는 못 본다.** `verification` phase는 스크립트 편집이 허용되므로, `pass ts` 통과 → 코드 수정 → **`invalidate`도 `pass ts` 재실행도 안 함** → 나머지 `pass`만 채우면 타입이 깨진 코드가 머지된다. 크로스머신 stale(A 머신에서 통과·커밋 → B 머신에서 편집)도 같은 구멍의 변형이다. **성질은 `cso`·`lint`·`review` 세 플래그가 이미 갖고 있는 노출과 같지만**(같은 편집이 저 셋도 stale로 만든다), `ts`만은 기계 검증이 가능하다는 게 그 슬라이스의 명제였으므로 여기까지 마감할 수 있다. **봉합안:** `approve-pr`에서 `runTypecheck()`를 한 번 더 돌린다 — 사람이 트리거하는 마지막 게이트라 tsc 1회 비용이 무의미하고, 편집·`invalidate` 순서와 무관하게 **머지 직전의 실제 코드**를 검사하게 된다(지금은 `ts_check_scope` **기록**만 본다). | `../qa/ts-toolchain-review-issues.md` 재리뷰 |
 | F10 | 열림 | 중 | 🔧 `workflow-state.json` 크로스머신 동기화 정책 결정 | 전이를 커밋 안 하면 타 장비가 stale해지고(실제로 겪음), 커밋하면 main 오염·머지 충돌·락 상속이 생긴다. "추적 유지 + 핸드오프 시점만 커밋"(권장) vs `.gitignore` 제외 중 택해 ADR 004에 반영. | `troubleshooting/workflow-state-cross-machine.md`, ADR 004 |
 
 ---
@@ -134,6 +112,9 @@
 
 ### 툴체인 · 타입 게이트
 
+- **F24** 싱글톤 타입 정직화 → **완료**(`feat/singleton-null`, 2026-07-14). 매니저 7개의 `static instance`를 `T | null`로 바꾸고, 타입체크가 짚어낸 **65곳**의 가드 없는 역참조를 닫았다. **설계가 계획 중에 한 번 뒤집혔다** — 원안(호출부마다 조기 return)을 리뷰가 실측으로 반박했다. ① 조기 return이 상태 전이를 반쪽 실행시키는 자리가 **3곳이 아니라 16곳**이었고(승리 전이·부팅 래치·경험치 로직·풀링 재초기화 4곳 — 전부 에러 없이 조용히 죽는다), ② 그 65곳 중 **약 85%는 null이 도달조차 못 하는 자리**였다(Cocos가 파괴를 프레임 끝으로 미루므로 `update()` 중 매니저가 사라지지 않는다 — 실제 null 창은 teardown 1곳뿐이고 이미 `?.`로 막혀 있었다). 채택한 방식은 **활성화 시 1회 검사 후 캐시 + loud-fail**이라, 핫패스에 새 분기가 생기지 않고 지뢰 16곳이 구조적으로 사라진다. 「던지는 게터」 대안은 실행해 보니 `?.`와 `if (!X.instance) return`을 게터가 먼저 throw시켜 `497fb90`이 고친 크래시를 되살려 폐기했다. 함께 닫음: `DataManager`·`I18n` 콜백 누수(`onDestroy` 미정리 → 죽은 컴포넌트 콜백이 **새 씬 인스턴스에 대해 성공** 실행), 데이터 로드 실패 loud-fail, `DataManager` 게터 캐스트 제거. 패턴은 `conventions.md` 「싱글톤 소비」에 박았다. → `sessions/2026-07-13-singleton-null-plan.md`
+- **F3** `resources.load` 콜백 asset 널 가드 → **완료**(`feat/singleton-null`, 2026-07-14). `DataManager`·`I18n` 둘 다. **타입체크가 이걸 강제해 주지 않는다** — Cocos 타입 정의상 콜백의 `asset`이 non-nullable이라 손으로 넣어야 한다. `asset`만이 아니라 `asset.json`(nullable)까지 확인한다 — 여기서 null을 흘려보내면 `_playerData`가 null인 채 `_isReady`가 켜져 더 깊은 곳에서 터진다.
+- **F44** `approve-pr`이 타입체크를 **실측** → **완료**(`feat/singleton-null`, 2026-07-14). 기록(`ts_check_scope`)만 보던 것을 머지 직전 `runTypecheck()` 실행으로 바꿨다. `verification`은 스크립트 편집을 허용하므로 `pass ts` 뒤에 코드를 고치고 `invalidate`를 잊으면 깨진 타입이 머지되던 구멍이다. 신선한 결과가 `scope === "full"`인지까지 보고(Cocos 미실행 머신의 `logic-only` 프리패스 차단), 상태 파일의 범위 기록도 새 결과로 덮어쓴다. **잔존:** `cso`·`lint`·`review` 세 플래그는 여전히 같은 stale 노출을 갖는다(기계 검증이 불가능한 판단이라 성격이 다르다).
 - **F27** `static instance!:`가 TS1255 → **완료**(`feat/ts-toolchain`, 2026-07-13). **원래 진단이 틀렸다.** 백로그는 이걸 "IDE와 Cocos 번들 TS의 버전 불일치로 인한 **오탐**"으로 적어 뒀는데, Cocos 3.8.8이 번들한 바로 그 TypeScript(5.8.2)를 직접 돌려 보니 **동일하게 TS1255를 냈다.** 버전 차이가 아니라 진짜 문법 위반이다 — 정의 할당 단언(`!`)은 static 멤버에 허용되지 않는다. 게임이 돌았던 건 **Cocos가 타입 검사 없이 트랜스파일만 하기 때문**이고, 우리는 진짜 에러를 조용히 무시하고 있었다. 선언 7곳(6개가 아니었다)을 `null as unknown as T`로 통일했다. **타입이 여전히 거짓말한다는 잔여 문제는 F24가 받는다.** → `sessions/2026-07-13-ts-toolchain-plan.md`, `troubleshooting/typescript-version-pin.md`
 - **F30** `lib` 미지정으로 ES2017 API가 TS2550 → **완료**(`feat/ts-toolchain`, 2026-07-13). `game/tsconfig.json`에 `lib: ["ES2017", "DOM", "DOM.Iterable"]` + `skipLibCheck` 추가. **제안됐던 `ScriptHost`는 불필요했고, ES2020도 불필요했다** — ES2020을 요구하던 유일한 파일(`I18nKeyGuard.ts`의 `matchAll`)이 알고 보니 **게임에서 한 줄도 안 도는 테스트 전용 헬퍼**였다(참조: 자기 테스트뿐). `tests/helpers/`로 옮기니 shipped 코드는 ES2017로 충분해졌다. `skipLibCheck`가 `cc.d.ts` 에러 102건을 없앤다(우리가 고칠 수 없는 엔진 선언). **단, 그중 미해결 모듈 15건(`pal/input/*`·`pal/audio/*`)은 보고만 꺼질 뿐 타입이 `any`로 새며 `PlayerController`가 그 영역이다.** → `sessions/2026-07-13-ts-toolchain-plan.md` §3
 - **타입 게이트 강제** → **완료**(`feat/ts-toolchain`, 2026-07-13). F27·F30을 고쳐도 게이트가 여전히 명예제도였다 — `workflow.mjs`의 `pass()`가 검증 없이 플래그만 뒤집었고, 절차서의 `mcp__ide__getDiagnostics`는 **VS Code에 열린 파일만** 봤다. 이제 `pnpm typecheck`(레포 소유, `tsc --noEmit`)를 신설하고 **`pass ts`가 그 코드를 직접 호출**한다. 검사 범위(`ts_check_scope`)를 상태에 기록해 `approve-pr`이 `logic-only`를 거부한다 — `game/temp/`가 gitignore 대상이라 Cocos를 안 연 머신에서 게임 코드가 검사되지 않는데, 그걸 통과시키면 "Cocos 안 깐 머신 = 게이트 프리패스"가 되기 때문이다. **테스트 코드도 이때 처음으로 타입 검사됐고**(루트 tsconfig 부재 + vitest는 타입을 안 본다), 곧바로 진짜 타입 에러 하나를 잡았다(`MagicAddCard.test.ts` — `ISpellData.pattern` 누락). → `sessions/2026-07-13-ts-toolchain-plan.md` §5

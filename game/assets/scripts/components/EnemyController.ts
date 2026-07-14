@@ -209,13 +209,17 @@ export class EnemyController extends Component {
     this._fireProjectileFn = fireProjectile;
     if (this.lungeMarker) this.lungeMarker.active = false;
     if (this.meleeConeMarker) this.meleeConeMarker.active = false;
-    this._data = DataManager.instance.getEnemy(enemyId);
+    // 데이터 조회는 위의 리셋 필드를 **전부 세운 뒤** 한다 — 여기서 값이 없어도 풀에서 되살아난
+    // 노드에 이전 생의 상태(_despawned·_dead·이동 FSM)가 남지 않는다.
+    const dm = DataManager.instance;
+    this._data = dm ? dm.getEnemy(enemyId) : null;
     if (this._data) {
       this._hp = this._data.maxHp;
       this.collisionRadius = this._data.collisionRadius;
       this._applyVisualBaseline(this._data);
     }
-    this._playerCollisionRadius = DataManager.instance.playerData.collisionRadius;
+    // _data가 없으면 update()가 첫 줄에서 빠지므로(적이 아무것도 하지 않는다) 이 값은 쓰이지 않는다.
+    this._playerCollisionRadius = dm?.playerData?.collisionRadius ?? 0;
   }
 
   // 데이터 준비 시 update 분기: 사망 연출 중이면 그것만, 아니면 플래시 갱신 + (Playing일 때) 추적·접촉
@@ -226,7 +230,8 @@ export class EnemyController extends Component {
       return;
     }
     this._updateFlash(dt);
-    if (GameManager.instance.state !== GameState.Playing) return;
+    const gm = GameManager.instance;
+    if (!gm || gm.state !== GameState.Playing) return;
     // 제어 중일 때만 틱한다(빈 적은 건너뛰어 매 프레임 할당 회피). appliedStrength는 반드시
     // 틱 *이후* 한 번 산출해 이동·접촉·틴트에 넘긴다 — 틱 전에 읽으면 만료가 한 프레임 늦는다.
     if (hasActiveControl(this._control)) {
@@ -629,7 +634,8 @@ export class EnemyController extends Component {
     const targetPos = this.playerNode.position;
     const toTarget: Vec2 = { x: targetPos.x - myPos.x, y: targetPos.y - myPos.y };
     if (coneHitsTarget(this._attackLockDir, toTarget, melee.coneAngleDeg, melee.range)) {
-      GameManager.instance.damagePlayer(atk.damage);
+      // 반환값을 쓰지 않는 호출이라 옵셔널 체이닝이 안전하다(값 폴백으로 게임이 왜곡될 여지가 없다).
+      GameManager.instance?.damagePlayer(atk.damage);
     }
   }
 
@@ -703,7 +709,8 @@ export class EnemyController extends Component {
     const dist = Vec3.distance(this.node.position, this.playerNode.position);
     const touchRadius = this.collisionRadius + this._playerCollisionRadius;
     if (dist < touchRadius) {
-      GameManager.instance.damagePlayerContact(this._data.contactDamagePerSec);
+      // 반환값을 쓰지 않는 호출이라 옵셔널 체이닝이 안전하다.
+      GameManager.instance?.damagePlayerContact(this._data.contactDamagePerSec);
     }
   }
 

@@ -44,8 +44,17 @@ const STATUS_KIND_STRENGTH: Record<'stun' | 'slow' | 'freeze', ControlStrength> 
  */
 @ccclass('SpellCaster')
 export class SpellCaster extends Component {
-  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
-  static instance: SpellCaster = null as unknown as SpellCaster;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 정직하게 nullable이다 (싱글톤 컨벤션 참고). */
+  static instance: SpellCaster | null = null;
+
+  /**
+   * 시전에 필요한 매니저 셋 — start()에서 한 번 받아 둔다. 이후 update()가 진입부에서 이 셋을
+   * 한 번 확인하고, 헬퍼에는 **인자로 넘긴다**(헬퍼마다 다시 가드하면 "폭발 없는 파이어볼" 같은
+   * 조용한 폴백이 생긴다).
+   */
+  private _gm: GameManager | null = null;
+  private _dm: DataManager | null = null;
+  private _deck: DeckManager | null = null;
 
   /** 발사체 프리팹 (인스펙터에서 연결) */
   @property(Prefab) bulletPrefab: Prefab | null = null;
@@ -129,7 +138,7 @@ export class SpellCaster extends Component {
 
   onDestroy() {
     if (SpellCaster.instance === this) {
-      SpellCaster.instance = null as unknown as SpellCaster;
+      SpellCaster.instance = null;
     }
   }
 
@@ -143,7 +152,22 @@ export class SpellCaster extends Component {
   }
 
   start() {
-    DataManager.instance.onReady(() => {
+    const gm = GameManager.instance;
+    const dm = DataManager.instance;
+    const deck = DeckManager.instance;
+    if (!gm || !dm || !deck) {
+      console.error(
+        '[SpellCaster] GameManager/DataManager/DeckManager 중 누락 — 마법 발사를 비활성화합니다. 씬 배선을 확인하세요.',
+      );
+      this.enabled = false;
+      return;
+    }
+    this._gm = gm;
+    this._dm = dm;
+    this._deck = deck;
+    // 콜백은 씬을 넘어 살아남을 수 있으므로(로딩 중 재시작) 발화 시점에 자신이 유효한지 확인한다.
+    dm.onReady(() => {
+      if (!this.isValid) return;
       for (const id of this.startingSpellIds) this._loadout.addSpell(id);
       this._dataReady = true;
     });
@@ -152,14 +176,20 @@ export class SpellCaster extends Component {
   // 스케줄러 tick → 자기중심(Nova)은 적 무관 발동, 발사체 마법은 최근접 적 조준 시에만 발동
   update(dt: number) {
     if (!this._dataReady) return;
-    if (GameManager.instance.state !== GameState.Playing) return;
+    // 진입부 1회 확인 — 아래 모든 참조가 이 하나로 좁혀진다. 셋 중 누락이 있으면 start()가
+    // 이미 시끄럽게 알리고 컴포넌트를 껐으므로 여기선 조용히 빠진다.
+    const gm = this._gm;
+    const dm = this._dm;
+    const deck = this._deck;
+    if (!gm || !dm || !deck) return;
+    if (gm.state !== GameState.Playing) return;
 
     const spells = this._loadout.spells;
     this._scheduler.tick(dt, spells);
 
     // 최근접 적 조준 단위벡터 — 적이 있을 때만 계산(없으면 null). 발사체 마법만 필요하다.
     // 자기중심(Nova)은 조준이 필요 없어(§10.1 self) 적이 없어도 아래에서 발동한다.
-    const target = this._findNearestEnemy();
+    const target = this._findNearestEnemy(gm);
     let aim: Vec3 | null = null;
     if (target) {
       aim = new Vec3();
@@ -171,20 +201,20 @@ export class SpellCaster extends Component {
 
     for (const id of spells) {
       if (!this._scheduler.isReady(id)) continue;
-      const spell = DataManager.instance.getSpell(id);
+      const spell = dm.getSpell(id);
       if (!spell) continue;
 
       if (spell.pattern === SpellPattern.Nova) {
         // 자기중심 즉발 버스트 — 적 유무와 무관하게 쿨다운마다 발동(조준 불필요).
-        this._scheduler.consume(id, DeckManager.instance.effectiveCooldown(spell));
-        this._castNova(spell);
+        this._scheduler.consume(id, deck.effectiveCooldown(spell));
+        this._castNova(spell, deck, gm);
         continue;
       }
 
       if (spell.pattern === SpellPattern.Orbit) {
         // 궤도는 적 유무와 무관하게 쿨다운마다 (재)시전 — 회전·타격은 _advanceOrbits가 매 프레임 처리.
-        this._scheduler.consume(id, DeckManager.instance.effectiveCooldown(spell));
-        this._castOrbit(spell);
+        this._scheduler.consume(id, deck.effectiveCooldown(spell));
+        this._castOrbit(spell, deck);
         continue;
       }
 
@@ -192,26 +222,24 @@ export class SpellCaster extends Component {
       if (!aim) continue;
 
       // per-spell/분류/전역 쿨다운 강화 반영(배율로 나눠 간격 단축 + 하한). 계산은 순수 로직에 위임.
-      this._scheduler.consume(id, DeckManager.instance.effectiveCooldown(spell));
+      this._scheduler.consume(id, deck.effectiveCooldown(spell));
 
       // 유효 발사체 수 = 기본 + 개별·분류 발사체 보너스(§7.6). 패턴 엔진이 부채꼴 형태를 결정.
-      const count = DeckManager.instance.effectiveProjectileCount(spell);
+      const count = deck.effectiveProjectileCount(spell);
       const plan = buildFirePlan(spell, { aimX: aim.x, aimY: aim.y, count });
       // 데미지 = per-spell/분류/전역 배율 × 발사체당 페널티(발사체 늘수록 발당 약화 §7.6).
-      const damageMult =
-        DeckManager.instance.damageFactor(spell) *
-        DeckManager.instance.projectilePenaltyFactor(spell);
+      const damageMult = deck.damageFactor(spell) * deck.projectilePenaltyFactor(spell);
       // 폭발형이면 이번 시전의 dedup 공유 집합 + 유효 반경을 만들어 모든 발사체가 공유한다(§10.2·§10.3).
-      const explosion = this._buildExplosion(spell);
+      const explosion = this._buildExplosion(spell, deck);
       // 명중 시 상태이상(CC)을 거는 마법이면 유효 지속까지 계산한 설정을 만든다(§9.4·§10.3 A3).
-      const status = this._buildStatusEffect(spell);
+      const status = this._buildStatusEffect(spell, deck);
       for (const shot of plan) {
         this._spawnShot(shot, damageMult, spell.category, explosion, status);
       }
     }
 
     // 활성 궤도(인페르노 등)는 패턴 루프와 무관하게 매 프레임 회전·수명·타격을 진행한다.
-    this._advanceOrbits(dt);
+    this._advanceOrbits(dt, dm, gm);
   }
 
   /**
@@ -219,11 +247,12 @@ export class SpellCaster extends Component {
    * 시전 단위 dedup 집합은 시전마다 새로 만들어 그 시전의 모든 발사체가 공유한다(§10.2).
    * 유효 폭발 반경 = 기본 반경 × 범위 강화 배율(§10.3 A3).
    * @param spell 발사 중인 마법
+   * @param deck 강화 배율 출처 (호출부가 확인해 넘긴다)
    */
-  private _buildExplosion(spell: ISpellData): ProjectileExplosion | null {
+  private _buildExplosion(spell: ISpellData, deck: DeckManager): ProjectileExplosion | null {
     if (spell.hitEffect !== 'explosion' || spell.explosionRadius === undefined) return null;
     return {
-      radius: spell.explosionRadius * DeckManager.instance.rangeFactor(spell),
+      radius: spell.explosionRadius * deck.rangeFactor(spell),
       hitSet: new Set<number>(),
       onVfx: this._spawnExplosionVfx,
     };
@@ -234,14 +263,15 @@ export class SpellCaster extends Component {
    * 데이터의 `kind` 문자열을 CC 강도로 매핑하고, 유효 지속 = 기본 지속 × 지속(Duration) 강화
    * 배율을 계산한다(§9.4·§10.3 A3).
    * @param spell 발사 중인 마법
+   * @param deck 강화 배율 출처 (호출부가 확인해 넘긴다)
    */
-  private _buildStatusEffect(spell: ISpellData): ProjectileStatus | null {
+  private _buildStatusEffect(spell: ISpellData, deck: DeckManager): ProjectileStatus | null {
     const s = spell.onHitStatus;
     if (!s) return null;
     return {
       strength: STATUS_KIND_STRENGTH[s.kind],
       chance: s.chance,
-      durationSec: s.durationSec * DeckManager.instance.durationFactor(spell),
+      durationSec: s.durationSec * deck.durationFactor(spell),
     };
   }
 
@@ -253,19 +283,17 @@ export class SpellCaster extends Component {
    * + `selectExplosionHits`)를 재사용한다 — 차이는 중심이 플레이어 위치, 트리거가 시전이라는 점뿐이다.
    * 발사체 수 페널티는 없다(노바는 발사체 수 ❌, §7.6).
    * @param spell 발동 중인 노바 마법
+   * @param deck 강화 배율 출처 (호출부가 확인해 넘긴다)
+   * @param gm 적 후보 질의 출처 (호출부가 확인해 넘긴다)
    */
-  private _castNova(spell: ISpellData): void {
+  private _castNova(spell: ISpellData, deck: DeckManager, gm: GameManager): void {
     if (spell.explosionRadius === undefined) return; // 데이터 방어 — 반경 없으면 발동 불가
-    const radius = spell.explosionRadius * DeckManager.instance.rangeFactor(spell);
-    const damage = spell.damage * DeckManager.instance.damageFactor(spell);
+    const radius = spell.explosionRadius * deck.rangeFactor(spell);
+    const damage = spell.damage * deck.damageFactor(spell);
     const center = this.node.position;
 
     // 폭발과 동일: 반경으로 후보를 수집(F16 공유 헬퍼)하고, dedup 집합은 1회 버스트라 새로 만든다(§10.2).
-    const { targets, ctrls } = GameManager.instance.collectTargetsInRadius(
-      center.x,
-      center.y,
-      radius,
-    );
+    const { targets, ctrls } = gm.collectTargetsInRadius(center.x, center.y, radius);
     const hits = selectExplosionHits(center.x, center.y, radius, targets, new Set<number>());
     for (const idx of hits) ctrls[idx].takeDamage(damage);
     this._spawnNovaVfx(center.x, center.y, radius);
@@ -276,15 +304,13 @@ export class SpellCaster extends Component {
    * 인스턴스로 띄운다. 데미지는 발사체 수 페널티(§7.6)까지 곱한다. 실제 회전·타격은 _advanceOrbits가 한다.
    * 적 유무와 무관하게 발동한다(자기중심 — §10.1 self).
    * @param spell 발동 중인 궤도 마법
+   * @param deck 강화 배율 출처 (호출부가 확인해 넘긴다)
    */
-  private _castOrbit(spell: ISpellData): void {
-    const count = DeckManager.instance.effectiveProjectileCount(spell);
-    const orbSize = spell.projectileRadius * DeckManager.instance.rangeFactor(spell);
-    const damage =
-      spell.damage *
-      DeckManager.instance.damageFactor(spell) *
-      DeckManager.instance.projectilePenaltyFactor(spell);
-    const lifetime = (spell.lifetimeSec ?? 0) * DeckManager.instance.durationFactor(spell);
+  private _castOrbit(spell: ISpellData, deck: DeckManager): void {
+    const count = deck.effectiveProjectileCount(spell);
+    const orbSize = spell.projectileRadius * deck.rangeFactor(spell);
+    const damage = spell.damage * deck.damageFactor(spell) * deck.projectilePenaltyFactor(spell);
+    const lifetime = (spell.lifetimeSec ?? 0) * deck.durationFactor(spell);
     this._orbitLogic.spawn(spell.id, {
       count,
       orbSize,
@@ -298,15 +324,18 @@ export class SpellCaster extends Component {
    * 매 프레임 활성 궤도를 전진시킨다 — 회전·수명을 진행하고(OrbitLogic.advance), 각 오브 위치에서 접촉
    * 타격을 적용하며, 오브 VFX를 플레이어 주위로 배치한다. 만료된 궤도의 VFX는 전부 반환한다.
    * @param dt 프레임 델타 (sec)
+   * @param dm 마법·플레이어 데이터 출처 (호출부가 확인해 넘긴다)
+   * @param gm 적 후보 질의 출처 (호출부가 확인해 넘긴다)
    */
-  private _advanceOrbits(dt: number): void {
+  private _advanceOrbits(dt: number, dm: DataManager, gm: GameManager): void {
     this._orbitLogic.tickRehit(dt);
     const { active, expired } = this._orbitLogic.advance(dt);
     // 에일리어싱 회피 — node.position 내부 벡터를 저장하지 않고 좌표만 매 프레임 읽는다.
     const center = this.node.position;
-    const playerRadius = DataManager.instance.playerData.collisionRadius;
+    // 데이터 준비 전에는 궤도가 존재할 수 없으므로(_dataReady 게이트) playerData는 여기서 항상 있다.
+    const playerRadius = dm.playerData?.collisionRadius ?? 0;
     for (const orbit of active) {
-      const spell = DataManager.instance.getSpell(orbit.spellId);
+      const spell = dm.getSpell(orbit.spellId);
       const baseRing = spell?.orbitRadius ?? 0;
       const rehitCooldown = spell?.rehitCooldownSec ?? 0;
       // spell?.orbGap이 undefined면 ringRadius의 기본값(ORB_GAP)이 적용된다(데이터 미지정 = 기존 동작).
@@ -336,6 +365,7 @@ export class SpellCaster extends Component {
           orbit.orbSize,
           orbit.damage,
           rehitCooldown,
+          gm,
         );
         nodes?.[i]?.setPosition(pos.x, pos.y, 0);
       }
@@ -353,6 +383,7 @@ export class SpellCaster extends Component {
    * @param orbSize 오브 충돌 반경
    * @param damage 타격당 피해
    * @param rehitCooldown 재타격 락아웃 (sec)
+   * @param gm 적 후보 질의 출처 (호출부가 확인해 넘긴다)
    */
   private _applyOrbHit(
     spellId: string,
@@ -362,8 +393,9 @@ export class SpellCaster extends Component {
     orbSize: number,
     damage: number,
     rehitCooldown: number,
+    gm: GameManager,
   ): void {
-    const { targets, ctrls } = GameManager.instance.collectTargetsInRadius(x, y, orbSize);
+    const { targets, ctrls } = gm.collectTargetsInRadius(x, y, orbSize);
     const hits = selectExplosionHits(x, y, orbSize, targets, new Set<number>());
     for (const idx of hits) {
       const spawnId = targets[idx].id;
@@ -407,9 +439,12 @@ export class SpellCaster extends Component {
     this._orbNodes.delete(spellId);
   }
 
-  /** 활성 적 중 가장 가까운 적 노드를 반환한다. 없으면 null. */
-  private _findNearestEnemy(): Node | null {
-    const enemies = GameManager.instance.enemies;
+  /**
+   * 활성 적 중 가장 가까운 적 노드를 반환한다. 없으면 null.
+   * @param gm 활성 적 목록 출처 (호출부가 확인해 넘긴다)
+   */
+  private _findNearestEnemy(gm: GameManager): Node | null {
+    const enemies = gm.enemies;
     if (enemies.length === 0) return null;
 
     let nearest: Node | null = null;

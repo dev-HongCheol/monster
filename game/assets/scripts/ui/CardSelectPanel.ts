@@ -23,12 +23,33 @@ export class CardSelectPanel extends Component {
   private _drawnCards: ICardData[] = [];
 
   // 패널이 열릴 때 카드 3장을 뽑아 버튼별 이름·설명을 채우고 선택 콜백을 배선한다
+  // (이 노드는 비활성으로 시작하므로 onEnable이 start보다 먼저 돈다 — 호이스트를 여기서 한다.)
   onEnable() {
-    if (!DataManager.instance?.isReady) return;
+    // 이전 레벨업의 카드가 남아 다시 적용되는 일이 없도록 먼저 비운다.
+    this._drawnCards = [];
+    const dm = DataManager.instance;
+    const deck = DeckManager.instance;
+    if (!dm?.isReady || !deck) {
+      // 카드를 못 뽑는 상태에서 패널만 열어 두면 플레이어가 레벨업에 영구히 갇힌다.
+      // 레벨업을 건너뛰더라도 게임은 반드시 재개시킨다.
+      console.error(
+        '[CardSelectPanel] 데이터/DeckManager 없음 — 카드를 건너뛰고 게임을 재개합니다.',
+      );
+      GameManager.instance?.resumeFromLevelUp();
+      return;
+    }
     const loadout = SpellCaster.instance?.loadout;
     const ownedSpellIds = loadout ? loadout.spells : [];
     const isFull = loadout ? loadout.isFull : false;
-    this._drawnCards = DeckManager.instance.drawCards(3, ownedSpellIds, isFull);
+    this._drawnCards = deck.drawCards(3, ownedSpellIds, isFull);
+    if (this._drawnCards.length === 0) {
+      // 뽑힌 카드가 없으면 버튼이 전부 꺼져 고를 게 없는 패널만 열린 채 상태가 LevelUp에
+      // 머문다(= 영구 정지). 현재 데이터로는 도달하지 않지만, 카드 풀이 비는 경로가
+      // 생기면 곧바로 그 함정이 되므로 여기서 재개시킨다.
+      console.error('[CardSelectPanel] 뽑을 카드가 없음 — 카드를 건너뛰고 게임을 재개합니다.');
+      GameManager.instance?.resumeFromLevelUp();
+      return;
+    }
     for (let i = 0; i < this.cardButtons.length; i++) {
       const card = this._drawnCards[i];
       if (!card) {
@@ -71,18 +92,27 @@ export class CardSelectPanel extends Component {
     return i18n.t(card.descKey, params);
   }
 
-  /** 카드를 선택해 효과(강화/패시브) 또는 마법 추가를 적용하고 게임을 재개한다. */
+  /**
+   * 카드를 선택해 효과(강화/패시브) 또는 마법 추가를 적용하고 게임을 재개한다.
+   * **재개는 어떤 경우에도 실행한다** — 카드 적용에 실패했다고 여기서 빠져나가면 패널이 열린 채
+   * 게임이 영구 정지한다. 카드 하나를 못 받는 것보다 게임이 멈추는 게 훨씬 나쁘다.
+   */
   private _onPickCard(idx: number): void {
     const card = this._drawnCards[idx];
     if (!card) return;
+    const deck = DeckManager.instance;
     if (card.type === 'magic' && card.spellId) {
-      SpellCaster.instance?.addSpell(card.spellId);
+      const caster = SpellCaster.instance;
+      if (caster) caster.addSpell(card.spellId);
+      else console.error('[CardSelectPanel] SpellCaster 없음 — 마법 추가를 건너뛰고 재개합니다.');
+    } else if (deck) {
+      deck.applyCard(card);
     } else {
-      DeckManager.instance.applyCard(card);
+      console.error('[CardSelectPanel] DeckManager 없음 — 카드 효과를 건너뛰고 재개합니다.');
     }
     this._logEnhancementDebug(card);
     this._logPassiveDebug();
-    GameManager.instance.resumeFromLevelUp();
+    GameManager.instance?.resumeFromLevelUp();
   }
 
   /**
@@ -93,9 +123,9 @@ export class CardSelectPanel extends Component {
    */
   private _logPassiveDebug(): void {
     if (!DEV) return;
-    if (!DataManager.instance?.isReady) return;
     const deck = DeckManager.instance;
-    const base = DataManager.instance.playerData;
+    const base = DataManager.instance?.playerData;
+    if (!base) return;
     const hpBonus = deck?.maxHpBonus ?? 0;
     const msBonus = deck?.moveSpeedBonus ?? 0;
     const prBonus = deck?.pickupRangeBonus ?? 0;
@@ -116,13 +146,16 @@ export class CardSelectPanel extends Component {
   private _logEnhancementDebug(card: ICardData): void {
     if (!DEV) return;
     const loadout = SpellCaster.instance?.loadout;
-    if (!loadout || !DataManager.instance?.isReady) return;
+    const dm = DataManager.instance;
+    const deck = DeckManager.instance;
+    if (!loadout || !dm?.isReady || !deck) return;
+    // .map 클로저 안에서는 내로잉이 살아남지 않으므로 위에서 받아 둔 dm을 쓴다.
     const spells = loadout.spells
-      .map((id) => DataManager.instance.getSpell(id))
+      .map((id) => dm.getSpell(id))
       .filter((s): s is ISpellData => s !== null);
     if (spells.length === 0) return;
 
-    const snap = DeckManager.instance.debugEnhancement(spells);
+    const snap = deck.debugEnhancement(spells);
     const i18n = I18n.instance;
     const round = (v: number, n: number): number => Number(v.toFixed(n));
     const table: Record<string, Record<string, number>> = {};

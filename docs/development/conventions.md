@@ -190,12 +190,12 @@ enum GameState { Playing, Paused, GameOver }
 | `node.emit / node.on` | 부모↔자식 이벤트 |
 | `@property` 직접 참조 | 씬에서 고정 연결된 관계 |
 
-싱글톤 패턴:
+### 싱글톤 선언
 
 ```ts
 export class GameManager extends Component {
-  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 실제로는 nullable — 타입 정직화는 F24. */
-  static instance: GameManager = null as unknown as GameManager;
+  /** 씬 리로드 시 onDestroy가 null로 되돌리므로 정직하게 nullable이다 (싱글톤 컨벤션 참고). */
+  static instance: GameManager | null = null;
 
   onLoad() {
     GameManager.instance = this;
@@ -203,15 +203,71 @@ export class GameManager extends Component {
 
   onDestroy() {
     if (GameManager.instance === this) {
-      GameManager.instance = null as unknown as GameManager;
+      GameManager.instance = null;
     }
   }
 }
 ```
 
-`static instance!: T`(정의 할당 단언)는 **쓰지 않는다.** TypeScript는 정의 할당 단언을 static 멤버에 허용하지 않아 `TS1255`가 되며, Cocos는 타입 검사 없이 트랜스파일만 하기 때문에 지금껏 조용히 통과했을 뿐이다. `= null!` 형태도 아래 [null 처리](#null-처리)의 `!` 금지(Biome `noNonNullAssertion`)에 걸리므로 `null as unknown as T`를 쓴다.
+**타입은 사실을 말한다.** `onDestroy`가 실제로 null을 넣으므로 `instance`는 런타임에 null일 수 있고(씬 리로드 시 매니저가 다른 컴포넌트보다 먼저 파괴된다 — 커밋 `497fb90`이 그 크래시를 고쳤다), 타입도 그렇게 적는다. `null as unknown as T`나 `static instance!: T`(정의 할당 단언 — static 멤버엔 `TS1255`라 애초에 불가)로 null을 지우지 않는다.
 
-> **알려진 부채:** 위 타입은 거짓말이다 — `onDestroy`가 실제로 null을 넣으므로 `instance`는 런타임에 null일 수 있는데 타입은 "절대 null 아님"이라고 말한다. 정직한 타입은 `static instance: T | null = null`(`I18n`이 이미 그렇게 쓴다)이고, 그러면 가드 없는 역참조 73곳이 드러난다. 백로그 **F24**가 이 전환을 다룬다.
+### 싱글톤 소비 — 진입부에서 한 번 받고, 실패는 시끄럽게
+
+**어디서 받든 규칙은 하나다 — 함수 진입부에서 1회 받고, 그 뒤로는 그 지역 변수만 쓴다.** 참조할 때마다 `X.instance`를 다시 쓰지 않는다. 받는 방식은 컴포넌트 성격에 따라 두 가지다.
+
+| 형태 | 쓰는 곳 | 이유 |
+|------|---------|------|
+| **캐시 + loud-fail** — `start()`/`onEnable()`에서 필드에 잡아 두고, 없으면 `console.error` + `this.enabled = false` | 씬에 고정된 컴포넌트(`GameManager`·`SpellCaster`·`PlayerController`·`MapManager`) | 매니저 부재 = **씬 배선 실수**이므로 크게 드러나야 한다. 끄면 조용한 no-op이 반복되지 않는다 |
+| **정적 참조를 진입부에서 호이스트** — `const gm = GameManager.instance; if (!gm) return;` | 풀링 노드(`Projectile`·`EnemyProjectile`·`XPItemController`·`EnemyController`)와 항상 돌아야 하는 컴포넌트(`WaveManager`·`EnemySpawner`·`HudController`·`PauseController`) | 풀에서 되살아나는 노드는 `enabled = false`가 다음 생까지 따라붙어 영영 죽는다. 이쪽은 끄지 않고 그 프레임만 건너뛴다 |
+
+캐시 형태의 예시는 이렇다(Cocos가 모든 `onLoad` 뒤에 `start`를 부르므로 이 시점엔 `instance`가 세팅돼 있다).
+
+```ts
+// SpellCaster처럼 씬에 고정된 컴포넌트 — 매니저 부재는 배선 실수이므로 끄면서 알린다.
+private _gm: GameManager | null = null;
+
+start() {
+  const gm = GameManager.instance;
+  if (!gm) {
+    console.error('[SpellCaster] GameManager 없음 — 비활성화합니다. 씬 배선을 확인하세요.');
+    this.enabled = false;
+    return;
+  }
+  this._gm = gm;
+}
+
+update(dt: number) {
+  const gm = this._gm;
+  if (!gm) return;            // 함수 진입부 1회 — 아래 모든 참조가 이 하나로 좁혀진다
+  if (gm.state !== GameState.Playing) return;
+  …
+}
+```
+
+풀링 노드(`Projectile` 등)는 **이 형태를 쓰지 않는다.** `enabled = false`가 풀에 반환된 뒤 다음 생까지 따라붙어 그 노드가 영영 돌지 않는다. 대신 진입부에서 정적 참조를 호이스트하고 그 프레임만 건너뛴다.
+
+```ts
+update(dt: number) {
+  const gm = GameManager.instance;
+  if (!gm) return;            // 끄지 않는다 — 이번 프레임만 건너뛴다
+  if (gm.state !== GameState.Playing) return;
+  …
+}
+```
+
+경로별 규칙은 이렇다.
+
+| 경로 | 규칙 |
+|------|------|
+| 핫패스(`update`와 거기서 불리는 헬퍼) | 함수 진입부에서 1회 호이스트 + 조기 return. 헬퍼에는 **인자로 넘긴다**(헬퍼마다 다시 가드하면 "폭발 없는 파이어볼" 같은 조용한 폴백이 생긴다) |
+| 값을 돌려받는 호출 | **`?.` + `?? 폴백` 금지.** `effectiveCooldown ?? 0`은 매 프레임 발사, `damageFactor ?? 0`은 전 마법 피해 0, `pickupRadius ?? 0`은 경험치 영구 미획득이다 — 전부 에러 없이 게임을 망가뜨린다 |
+| 반환값을 버리는 void 호출 | `?.` 허용 (`GameManager.instance?.damagePlayer(x)`) |
+| 장식적 값(결과 화면 통계 등) | `?? 폴백` 허용 — 틀린 통계는 깨진 게임보다 낫다 |
+| **상태 전이**(`_state` 대입, 씬 이동, 부팅 래치) | **가드는 "읽기"에만 걸고 전이는 항상 실행한다.** 전이 앞에서 조기 return하면 HP 0인데 게임오버가 안 되거나, 카드 패널이 열린 채 게임이 영구 정지한다 |
+| teardown(`onDisable`/`onDestroy`) | **캐시 필드를 쓰지 않는다.** 정적 참조 + `?.` — 캐시는 이미 파괴된 매니저를 가리킬 수 있다 |
+| 클로저(`onReady(() => …)`·`.map(cb)`) | 내로잉이 살아남지 않으므로 클로저 **안에서 다시** 호이스트한다. 비동기 콜백이면 `this.isValid`도 함께 확인한다(씬을 넘어 살아남아 죽은 컴포넌트에 쓰는 것을 막는다) |
+
+> **캐시가 안전한 전제:** `addPersistRootNode`를 쓰지 않아 모든 컴포넌트의 수명이 자기 씬의 수명 안에 있다. **persist root node를 도입하면 이 전제가 깨지므로 캐시 패턴을 재검토해야 한다.**
 
 ---
 

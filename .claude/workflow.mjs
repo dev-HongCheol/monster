@@ -396,14 +396,36 @@ const commands = {
   "approve-pr"() {
     const s = load();
     requirePhase(s, "user-verification");
-    // 타입체크 범위 게이트: `pass ts`가 게임 코드까지 봤어야 한다.
-    // Cocos를 한 번도 안 연 머신에서는 game/temp/가 없어 게임 프로젝트를 검사할 수 없고,
-    // 그 상태를 통과시키면 "Cocos 안 깐 머신 = 타입 게이트 프리패스"가 된다.
-    if (s.ts_check_scope !== "full") {
+    // 타입 게이트(머지 직전 실측): 기록이 아니라 **지금 코드**를 검사한다.
+    //
+    // `pass ts`의 통과 기록만 믿으면 구멍이 남는다 — phase="verification"에서는 스크립트 편집이
+    // 허용되므로 `pass ts` 뒤에 코드를 고치고 invalidate를 잊으면, 나머지 pass만 채워
+    // user-verification까지 올라온 뒤 깨진 타입이 그대로 머지된다. 타 장비에서 편집한 경우도
+    // 같은 구멍의 변형이다. 여기는 사람이 트리거하는 마지막 게이트라 tsc 1회 비용이 무의미하고,
+    // 편집·invalidate 순서와 무관하게 머지될 코드 그 자체를 본다. (F44)
+    console.log("\n▶ 타입체크 (머지 직전 실측)");
+    const { status, scope } = runTypecheck();
+    // 실측 결과를 상태에 반영한다 — 안 그러면 상태 파일이 낡은 값을 계속 말한다.
+    s.ts_check_scope = status === 0 ? scope : null;
+    s.verification.ts_check_clean = status === 0;
+    save(s);
+    if (status !== 0) {
+      // 복구 경로를 먼저 말한다 — 지금 phase는 user-verification이라 훅이 스크립트 편집을
+      // 막고 있다. "고친 뒤 다시 승인하세요"를 앞세우면 게임 코드 에러일 때 따라갈 수 없는
+      // 안내가 된다(아래 범위 게이트가 피하는 것과 같은 막다른 길).
+      fail(
+        "타입체크 실패 — 머지될 코드에 타입 에러가 있습니다.\n" +
+          "    `pnpm wf rework` → 구현으로 복귀해 고친 뒤 → `pnpm wf start-verification`으로 검증을 다시 돌리세요.\n" +
+          "    (에러 재현: `pnpm typecheck`)"
+      );
+    }
+    // 범위 게이트: 게임 코드까지 봤어야 한다. Cocos를 한 번도 안 연 머신에는 game/temp/가 없어
+    // 게임 프로젝트를 검사할 수 없고, 그 상태를 통과시키면 "Cocos 안 깐 머신 = 타입 게이트 프리패스"가 된다.
+    if (scope !== "full") {
       // 복구 경로는 rework다 — invalidate는 phase="verification"에서만 되는데
       // approve-pr은 user-verification에서 돌므로 여기서 invalidate를 안내하면 막다른 길이다.
       fail(
-        `타입체크 범위가 "${s.ts_check_scope ?? "미검사"}"입니다 — 게임 코드가 검사되지 않았습니다.\n` +
+        `타입체크 범위가 "${scope ?? "미검사"}"입니다 — 게임 코드가 검사되지 않았습니다.\n` +
           "    Cocos Creator로 프로젝트를 한 번 열어 game/temp/를 생성한 뒤,\n" +
           "    `pnpm wf rework` → 구현으로 복귀 → `pnpm wf start-verification` → 검증을 다시 돌리세요."
       );
