@@ -1,8 +1,8 @@
 {
-  "feature": "singleton-null",
-  "phase": "pr-ready",
-  "test_skipped": true,
-  "test_skip_reason": "새 순수 로직 없음 — 변경은 매니저 7개의 static instance 선언(T | null), cc 의존 컴포넌트 17개의 참조 캐시·호이스트, DataManager/I18n 수명주기(콜백 정리·asset 널 가드·로드 실패 loud-fail), workflow.mjs의 approve-pr 타입체크 실측(F44)뿐이다. 전부 Cocos 런타임에 묶여 vitest로 돌릴 수 없다(logic/은 건드리지 않음). 회귀 방어는 (1) pnpm typecheck가 가드 존재를 강제하고 (2) 기존 전체 스위트가 그대로 초록이어야 하며 (3) 의미 검증은 docs/qa/singleton-null-test.md의 수동 체크리스트가 맡는다 — 실패 모드가 전부 '에러 없이 조용한' 종류라 콜드 부팅 5종·상태 전이 4종·풀링 재사용을 이름으로 밟게 설계했다.",
+  "feature": "spawn-geometry",
+  "phase": "user-verification",
+  "test_skipped": false,
+  "test_skip_reason": null,
   "ts_check_scope": "full",
   "verification": {
     "cso_done": true,

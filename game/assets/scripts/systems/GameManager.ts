@@ -203,7 +203,9 @@ export class GameManager extends Component {
     const targets: ExplosionTarget[] = [];
     const ctrls: EnemyController[] = [];
     for (const enemy of this.queryEnemiesInRadius(cx, cy, r)) {
-      if (!enemy?.isValid) continue;
+      // 풀로 돌아간 적을 폭발·노바 대상에서 뺀다 — 그리드는 프레임당 1회만 갱신되므로 프레임 도중
+      // 회수·사망 반환된 적이 후보로 남는다(isValid는 파괴 여부일 뿐 활성 여부가 아니다).
+      if (!enemy?.isValid || !enemy.node.activeInHierarchy) continue;
       const p = enemy.node.position;
       targets.push({ x: p.x, y: p.y, collisionRadius: enemy.collisionRadius, id: enemy.spawnId });
       ctrls.push(enemy);

@@ -247,9 +247,15 @@ export class EnemyController extends Component {
   /**
    * 피해를 입힌다. HP가 0 이하면 사망 연출을 시작하고, 아니면 피격 플래시를 트리거한다.
    * 사망 연출 중에는 중복 피격을 무시한다.
+   *
+   * `_despawned`(풀에 반환됨)도 함께 막는다 — 공간 그리드는 프레임당 1회만 갱신되는데
+   * `EnemySpawner`가 프레임 도중 재활용하므로, 같은 프레임에 만들어진 그리드가 이미 풀에 들어간
+   * 적을 발사체에 넘길 수 있다(`isValid`는 파괴 여부일 뿐 활성 여부가 아니라 걸러지지 않는다).
+   * 이걸 막지 않으면 회수된 적이 피해를 받아 사망 경로를 타고, 유령 킬이 결과 화면 통계에 잡히며
+   * 아무도 없는 곳에 경험치가 떨어진다.
    */
   takeDamage(amount: number): void {
-    if (this._dead) return;
+    if (this._dead || this._despawned) return;
     this._hp -= amount;
     if (this._hp <= 0) {
       this._startDeath();
@@ -267,6 +273,18 @@ export class EnemyController extends Component {
    */
   applyControl(strength: ControlStrength, durationSec: number): void {
     this._control = mergeControl(this._control, strength, durationSec);
+  }
+
+  /**
+   * 사망 경로를 거치지 않고 즉시 풀로 반환한다 — 너무 멀어져 도착하지 못한 적을 회수한다(스포너가
+   * 재활용 거리를 넘은 적에게 호출). **재활용은 사망이 아니다** — `_startDeath`를 타지 않으므로 킬로
+   * 집계되지 않고 XP도 떨구지 않으며 사망 연출도 재생하지 않는다. 풀 반환이 `active=false` →
+   * `onDisable` → `unregisterEnemy`를 태우므로 활성 목록에서도 빠진다.
+   * 이미 사망 연출 중인 적은 그대로 둔다(연출이 끝나며 스스로 반환된다).
+   */
+  recycle(): void {
+    if (this._dead) return;
+    this._returnToPool();
   }
 
   /** 데이터의 색(tint)·크기(threatScale)를 Sprite/node에 적용한다(스폰 시 1회). */

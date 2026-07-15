@@ -114,7 +114,10 @@ export class Projectile extends Component {
     // 그리드가 돌려준 후보 배열은 질의마다 새로 생성되므로, takeDamage → unregisterEnemy가
     // 원본 적 목록을 변경해도 순회 누락이 없다(기존 [...enemies] 스냅샷 역할을 대체).
     for (const enemy of gm.queryEnemiesInRadius(pos.x, pos.y, this._radius)) {
-      if (!enemy?.isValid) continue;
+      // isValid는 "파괴되지 않았다"일 뿐 "활성"이 아니다. 그리드는 프레임당 1회만 갱신되는데 적은
+      // 프레임 도중 풀로 돌아갈 수 있으므로(사망 연출 종료·EnemySpawner 재활용), 이미 풀에 들어간
+      // 적이 후보로 남는다. 걸러내지 않으면 발사체가 그 적을 "맞고" 소멸해 아무 일 없이 사라진다.
+      if (!enemy?.isValid || !enemy.node.activeInHierarchy) continue;
       const ep = enemy.node.position;
       // 2D 평면 가정(모두 z=0) — z 성분은 보지 않는다. 종전 Vec3.distance(3D) 대비 평면상 동일.
       const dx = pos.x - ep.x;
