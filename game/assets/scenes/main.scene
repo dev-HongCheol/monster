@@ -5747,11 +5747,17 @@
     "playerNode": {
       "__id__": 125
     },
+    "cameraController": {
+      "__id__": 124
+    },
     "spawnInterval": 2,
     "maxEnemies": 10,
+    "maxInbound": 25,
     "enemiesPerWaveScale": 2,
     "intervalReductionPerWave": 0.2,
     "minSpawnInterval": 0.5,
+    "spawnMargin": 100,
+    "recycleDistance": 2200,
     "_id": "0a4vluSgdNELh9Kl+zppJF"
   },
   {
