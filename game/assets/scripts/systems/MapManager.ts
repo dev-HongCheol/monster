@@ -82,12 +82,13 @@ export class MapManager extends Component {
       const halfH = map.size[1] / 2;
       for (let i = 0; i < src.length; i++) {
         const r = src[i];
-        // poly가 배열이 아니거나(JSON 오타·누락 — DataManager는 as T라 런타임 미검증) 정점 3개
-        // 미만이면 건너뛰고 알린다. 배열 확인을 먼저 하지 않으면 .length 접근이 throw하고, 그 예외가
-        // DataManager._loadAll의 try에 삼켜져 남은 초기화(이동·웨이브·마법)를 통째로 취소한다.
-        if (!Array.isArray(r.poly) || r.poly.length < 3) {
+        // 구역 항목이 null이거나(예: "regions":[null]) poly가 배열이 아니거나(JSON 오타·누락 —
+        // DataManager는 as T라 런타임 미검증) 정점 3개 미만이면 건너뛰고 알린다. null·배열 확인을
+        // 먼저 하지 않으면 역참조가 throw하고, 그 예외가 DataManager._loadAll의 try에 삼켜져
+        // 남은 초기화(이동·웨이브·마법)를 통째로 취소한다.
+        if (!r || !Array.isArray(r.poly) || r.poly.length < 3) {
           console.warn(
-            `[MapManager] 물 구역 #${i} poly가 배열이 아니거나 정점 3개 미만 — 건너뜁니다.`,
+            `[MapManager] 물 구역 #${i} 항목/poly 무효(정점 3개 미만 포함) — 건너뜁니다.`,
           );
           continue;
         }

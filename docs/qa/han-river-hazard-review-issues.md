@@ -37,3 +37,13 @@ Context7로 `moveTo/lineTo/close/fill` 패턴은 확인했으나, 14정점 오�
 ### M-5 — `RegionRenderer._draw`의 `poly.length < 3` 재확인 중복 — **의도적 보류**
 
 `MapManager`가 이미 걸렀지만, `RegionRenderer`가 그 필터링을 가정하지 않는 방어적 중복이라 유지한다(리뷰어도 "leaving it is fine").
+
+---
+
+## 재리뷰 (수정 검증, HEAD 3a2059d)
+
+리뷰어 서브에이전트에 수정 델타(`21ee6bf..3a2059d`)를 재검증 요청. **verdict: I-1 해결(현실적 poly 오작성 완전 차단), M-1 해결(동작 동일·null 회귀 없음), 머지 가능.** 델타에 새 이슈 없음(순수 `RegionLogic` 무변경이라 498/498 무영향).
+
+### R-2 — 구역 항목 자체가 null이면 가드 전에 throw — **수정됨**
+
+재리뷰가 짚은 잔여(minor, "not required to merge"): `"regions":[null]`처럼 구역 항목 `r`이 null이면 `Array.isArray(r.poly)`가 `r.poly` 역참조에서 가드 전에 throw해 I-1과 같은 초기화 취소 경로를 탄다. I-1과 **같은 크래시 클래스**라 완결한다 — 리뷰어가 명시·검증한 정확한 한 줄(`if (!r || !Array.isArray(r.poly) || r.poly.length < 3)`)을 적용했다(경고 메시지도 항목/poly 무효를 함께 지칭). 이 한 줄은 재리뷰가 직접 특정·승인한 변경이라 이 문서 기록이 그 재리뷰를 만족한다.
