@@ -314,9 +314,20 @@ export interface IXPData {
   xpMultiplier: number;
 }
 
+/** 지형 구역 — 물(소프트 해저드). 폴리곤 좌표는 `IMapData.size`와 같은 원점(0,0) 중심 px 공간. */
+export interface IWaterRegion {
+  type: 'water';
+  /** 폴리곤 정점 [x,y] 배열. 오목 허용. 원점 중심 좌표계, `size`와 같은 단위(둘을 함께 맞춘다). */
+  poly: [number, number][];
+  /** 물속 플레이어 이동 속도 배율. 누락 시 MapManager가 1.0(무감속)으로 폴백 + 경고. */
+  playerSpeedMul?: number;
+  /** 물속 적 이동 속도 배율. 이번 슬라이스는 항상 1.0(미사용 레버 — 적 하이웨이가 불공평하면 낮춘다). */
+  enemySpeedMul?: number;
+}
+
 /**
  * 맵 데이터 (resources/data/maps/<id>.json) — 언어 중립. 원점(0,0) 중심 경계형 아레나.
- * 장애물·지형(obstacles/regions) 필드는 장애물 슬라이스에서 추가한다(현재 미포함).
+ * 건물 장애물(obstacles) 필드는 건물 충돌 슬라이스(F38)에서 추가한다(현재 미포함).
  */
 export interface IMapData {
   id: string;
@@ -324,6 +335,8 @@ export interface IMapData {
   size: [number, number];
   /** 배경 스프라이트 리소스 경로 (resources 기준, 확장자 없음) */
   backdrop: string;
+  /** 지형 구역(물 등). 없으면 무해저드. */
+  regions?: IWaterRegion[];
 }
 
 /** 씬 간 결과 데이터 전달용 전역 객체 */
