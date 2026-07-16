@@ -1,6 +1,7 @@
 import { _decorator, Component, type EventKeyboard, Input, input, KeyCode, Vec3 } from 'cc';
 import { GameState, type IPlayerBaseData } from '../data/GameTypes';
 import { clampToArena } from '../logic/ArenaLogic';
+import { playerSpeedMulAt } from '../logic/RegionLogic';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
@@ -100,8 +101,11 @@ export class PlayerController extends Component {
     // "보너스 없음"이라는 옳은 중립값이라 폴백이 안전하다 — 기본 속도는 그대로 유지된다.
     const base = this._base;
     if (!base) return;
-    const speed = base.speed * (1 + (DeckManager.instance?.moveSpeedBonus ?? 0));
     const pos = this.node.position;
+    // 물속에선 플레이어만 감속한다(적 무영향). 현재 위치로 판정 — 이번 프레임 속도는 지금 물에
+    // 있느냐로 정한다. 물 밖이거나 맵 로드 전이면 배율 1.0이라 기존 이동이 그대로 유지된다.
+    const waterMul = playerSpeedMulAt(pos, MapManager.instance?.regions ?? []);
+    const speed = base.speed * (1 + (DeckManager.instance?.moveSpeedBonus ?? 0)) * waterMul;
     const nextX = pos.x + this._moveDir.x * speed * dt;
     const nextY = pos.y + this._moveDir.y * speed * dt;
     // 아레나 경계 안으로 클램프 — 플레이어가 벽을 넘지 못하게 한다(아레나 로드 전엔 무클램프).

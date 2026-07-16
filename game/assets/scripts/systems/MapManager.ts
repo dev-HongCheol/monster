@@ -1,5 +1,7 @@
 import { _decorator, Component, resources, Sprite, SpriteFrame, UITransform } from 'cc';
+import type { IMapData } from '../data/GameTypes';
 import type { Arena } from '../logic/ArenaLogic';
+import type { WaterRegion } from '../logic/RegionLogic';
 import { DataManager } from './DataManager';
 
 const { ccclass, property } = _decorator;
@@ -14,10 +16,16 @@ export class MapManager extends Component {
   @property(Sprite) backdropSprite: Sprite | null = null;
 
   private _arena: Arena = { width: 0, height: 0 };
+  private _regions: WaterRegion[] = [];
 
   /** 원점(0,0) 중심 아레나 크기. 데이터 로드 전에는 {0,0}이라 소비처가 가드한다. */
   get arena(): Arena {
     return this._arena;
+  }
+
+  /** 원점 중심 물 구역(소프트 해저드). 데이터에 없으면 빈 배열 — 소비처가 무해저드가 된다. */
+  get regions(): readonly WaterRegion[] {
+    return this._regions;
   }
 
   onLoad() {
@@ -57,8 +65,60 @@ export class MapManager extends Component {
       return;
     }
     this._arena = { width: map.size[0], height: map.size[1] };
+    this._applyRegions(map);
     this._sizeBackdrop(map.size[0], map.size[1]);
     this._loadBackdrop(map.backdrop);
+  }
+
+  /**
+   * 맵 데이터의 물 구역을 검증해 런타임 형태(WaterRegion)로 보관한다. 없거나 전부 무효면 빈 배열이라
+   * 소비처(PlayerController·RegionRenderer)가 자연히 무해저드가 된다. 검증은 맵 로드 시 1회만 돈다.
+   */
+  private _applyRegions(map: IMapData): void {
+    const out: WaterRegion[] = [];
+    const src = map.regions;
+    if (src) {
+      const halfW = map.size[0] / 2;
+      const halfH = map.size[1] / 2;
+      for (let i = 0; i < src.length; i++) {
+        const r = src[i];
+        // 정점 3개 미만은 면적이 없어 판정이 무의미하다 — 건너뛰고 알린다.
+        if (r.poly.length < 3) {
+          console.warn(`[MapManager] 물 구역 #${i} 정점 ${r.poly.length}개(<3) — 건너뜁니다.`);
+          continue;
+        }
+        // 누락된 배율을 조용히 감속으로 적용하지 않는다 — 의도적 0.5와 누락(무효과)을 구분해 크게 알린다.
+        let mul = r.playerSpeedMul;
+        if (mul === undefined) {
+          console.warn(
+            `[MapManager] 물 구역 #${i} playerSpeedMul 누락 — 1.0(무감속)으로 폴백합니다.`,
+          );
+          mul = 1;
+        }
+        // 폴리곤 좌표는 size와 같은 원점 중심 공간이라 둘을 함께 맞춰야 한다. 정점이 경계 밖이면
+        // size만 키우고 폴리곤을 안 고친 것 — 강이 좌우 강안에 못 닿고 맵 가운데로 뜬다.
+        if (this._hasVertexOutside(r.poly, halfW, halfH)) {
+          console.warn(
+            `[MapManager] 물 구역 #${i} 정점이 아레나 경계 밖입니다(size ${map.size[0]}×${map.size[1]}). ` +
+              '폴리곤과 size를 함께 맞추세요 — 강이 맵 가운데로 뜹니다.',
+          );
+        }
+        out.push({ poly: r.poly, playerSpeedMul: mul });
+      }
+    }
+    this._regions = out;
+  }
+
+  /** 폴리곤 정점 중 하나라도 아레나 경계(±halfW/±halfH) 밖이면 true. */
+  private _hasVertexOutside(
+    poly: readonly (readonly [number, number])[],
+    halfW: number,
+    halfH: number,
+  ): boolean {
+    for (let i = 0; i < poly.length; i++) {
+      if (Math.abs(poly[i][0]) > halfW || Math.abs(poly[i][1]) > halfH) return true;
+    }
+    return false;
   }
 
   /** 배경 노드를 아레나 크기에 맞춘다(placeholder도 아레나 전체를 덮도록). */
