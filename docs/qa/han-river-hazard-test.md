@@ -41,13 +41,15 @@ MapManager의 검증(정점<3 스킵·`playerSpeedMul` 폴백·정점 아레나 
 
 ## 3. 씬 변경 사항 (`main.scene`) — (확정)
 
-물 구역은 정적이라 런타임에 1회 그린다. 게임 `Camera`(DEFAULT)가 그려야 카메라를 따라가므로, 렌더 노드는 반드시 **게임 Canvas 아래 DEFAULT 레이어**여야 한다(F47 — `UI_2D`로 새면 고정 `UICamera`가 다른 배율로 그려 강이 엉뚱한 곳에 찍힌다).
+물 구역은 정적이라 런타임에 1회 그린다. 게임 `Camera`(DEFAULT)가 그려야 카메라를 따라가므로, 렌더 노드는 반드시 **게임 `Canvas`(DEFAULT 레이어) 아래**여야 한다(F47 — `UI_2D`로 새면 고정 `UICamera`가 다른 배율로 그려 강이 카메라를 안 따라가고 엉뚱한 곳에 찍힌다).
+
+**실제 씬 구조(2026-07-16 확인):** 게임 월드는 `Canvas`(DEFAULT, lpos 640×360) 아래에 `Camera`·`Player`(둘 다 DEFAULT)·`BulletParent`·매니저들이 있다. **맵 배경 노드는 현재 없다** — `MapManager.backdropSprite`가 씬에서 `null`이라 서울 배경 스프라이트가 연결돼 있지 않다(map-arena에서 미연결로 남음). 씬에 있는 유일한 `Backdrop` 노드는 `PauseRoot ↳ PausePanel`의 딤 배경(UI_2D)이며 이 슬라이스와 무관하다. 따라서 RegionOverlay는 "Backdrop 뒤"가 아니라 **게임 `Canvas`의 첫 자식**으로 두어 물이 가장 뒤에 깔리게 한다.
 
 | 노드 | 변경 | 값 |
 |------|------|-----------|
-| `RegionOverlay` (신규) | 게임 Canvas 자식, Layer=**DEFAULT**, `Graphics`+`RegionRenderer` 부착 | Position (0,0), UITransform 2400×2400, Anchor (0.5,0.5) |
+| `RegionOverlay` (신규) | 게임 `Canvas`의 **첫 자식**, Layer=**DEFAULT**(Player·Canvas와 동일), `Graphics`+`RegionRenderer` 부착 | Position (0,0), UITransform 2400×2400, Anchor (0.5,0.5) |
 
-**렌더 순서(z-order):** `RegionOverlay`는 형제 순서상 `Backdrop` **뒤(위)**, `Player`·엔티티 **앞(아래)** 에 둔다(2D는 형제 인덱스가 클수록 위에 그려진다). 그래야 물이 배경을 덮고 적·플레이어가 물 위로 보인다.
+**렌더 순서(z-order):** 2D는 형제 배열 순서가 뒤일수록 위에 그려진다. `RegionOverlay`를 `Canvas`의 **맨 위 형제(첫 자식)**로 두면 `Player`·`BulletParent`·런타임 적/발사체(뒤 형제이거나 런타임 append)가 전부 물 위에 그려진다. 게임 카메라 ClearFlags가 SOLID_COLOR라, 맵 배경이 없는 지금은 물이 그 단색 배경 위에 깔린다(F41/배경 스프라이트가 생기면 그 아래로 넣는다).
 
 ---
 
@@ -59,23 +61,24 @@ MapManager의 검증(정점<3 스킵·`playerSpeedMul` 폴백·정점 아레나 
 
 ```
 main (Scene)
- ↳ Camera            (게임 카메라 — 기존)
- ↳ Canvas            (게임 — 기존)
-    ↳ Backdrop       (서울 배경 placeholder, 2400×2400 — 기존)
-    ↳ RegionOverlay  (신규 — 물 폴리곤 렌더, DEFAULT 레이어)   ← Backdrop 바로 뒤(위)
-    ↳ Player         (기존)   ← RegionOverlay 뒤(위)
-    ↳ BulletParent · … (기존 게임 오브젝트)
- ↳ MapManager · DataManager · … (기존 매니저)
- ↳ UICanvas          (HUD — 영향 없음)
+ ↳ Canvas            (게임, DEFAULT, lpos 640×360)
+    ↳ RegionOverlay  (신규 — 물 폴리곤 렌더)   ← Canvas의 첫 자식(맨 위)로 두어 물이 뒤에 깔림
+    ↳ Camera         (게임 카메라 — 기존)
+    ↳ Player         (기존, DEFAULT)
+    ↳ BulletParent   (기존)
+    ↳ DataManager · GameManager · EnemySpawner · … (기존 매니저 — Canvas 자식)
+ ↳ MapManager        (별도 노드, DEFAULT — Canvas 형제)
+ ↳ UICanvas          (HUD·CardSelectPanel·PauseRoot — UI_2D)
+    ↳ … ↳ PausePanel ↳ Backdrop   (일시정지 딤 배경 — 우리 물과 무관, 헷갈리지 말 것)
 ```
 
 **만드는 순서:**
 
 1. **빈 노드 생성** — 게임 `Canvas`를 우클릭 → `Create → Empty Node`. 이름 `RegionOverlay`. (`Create → 2D Object`로 만들지 말 것 — 그 경로는 Layer를 `UI_2D`로 붙여 F47을 재발시킨다.)
-2. **Layer 확인/교정** — Inspector 상단 `Layer`를 **`DEFAULT`** 로. `Backdrop`과 같은 레이어여야 한다.
+2. **Layer 확인/교정** — Inspector 상단 `Layer`를 **`DEFAULT`** 로. `Player`·`Canvas`와 같은 레이어여야 한다(값 `1073741824`).
 3. **UITransform 세팅** — `Graphics`는 UI 렌더 컴포넌트라 UITransform이 필요하다(Context7 확인: Graphics는 ui-system 컴포넌트). Content Size `2400 × 2400`, Anchor `(0.5, 0.5)`, Position `(0, 0)`. (Graphics는 노드 로컬 좌표로 그리는데 노드가 원점이라 로컬=월드가 되어 `seoul.json` 정점이 그대로 찍힌다.)
 4. **컴포넌트 부착** — `Add Component → Graphics`, 이어서 `Add Component → RegionRenderer`. (채움 색·알파는 `RegionRenderer`가 코드로 지정하므로 Graphics `fillColor`는 손대지 않아도 된다.)
-5. **형제 순서 조정** — `RegionOverlay`를 `Backdrop` **바로 아래(뒤 형제)** 로 드래그해, `Backdrop < RegionOverlay < Player` 순서를 만든다(§3 z-order).
+5. **형제 순서 조정** — Hierarchy에서 `RegionOverlay`를 게임 `Canvas`의 **맨 위 형제(첫 자식)**로 드래그한다. 2D는 뒤 형제일수록 위에 그려지므로, 맨 위에 두면 `Player`·`BulletParent`·런타임 적/발사체가 전부 물 위로 그려진다(§3 z-order).
 6. **`@property` 연결** — 아래 5절 표대로(현재 추가 연결 없음이 예상 — 구현 후 확정).
 
 > Cocos `Graphics` 동작(`moveTo`/`lineTo`/`close`/`fill`/`fillColor`, UI 노드는 UITransform 필요)은 계획 §4.6에서 Context7 공식 문서로 확인했다. 앵커가 Graphics 드로잉 원점에 미치는 영향은 구현 시 실제 렌더로 재확인한다.
