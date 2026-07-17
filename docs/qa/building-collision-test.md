@@ -11,7 +11,7 @@
 | 파일 | 변경 | 회귀 확인 범위 |
 |------|------|----------------|
 | `logic/ObstacleLogic.ts` (신규·순수) | `ObstacleRect` + `resolveCircleMove` (밀어내기·미끄러짐·코너·스텝 분할) | 자동 테스트로 전량 검증 |
-| `systems/MapManager.ts` (수정·Cocos) | `obstaclesRoot` `@property` + `_applyMap` 색인 + `obstacles` 게터 + 검증 경고(미연결·크기 0·scale·300px 초과·경계 밖) | 기존 `arena`·`regions`·배경 로드 회귀 없음 |
+| `systems/MapManager.ts` (수정·Cocos) | `obstaclesRoot` `@property` + `_applyMap` 색인(비활성 노드 스킵) + `obstacles` 게터 + 검증 경고(미연결·크기 0·scale·angle·루트 변형·300px 초과·경계 밖·간격 200px 미만) | 기존 `arena`·`regions`·배경 로드 회귀 없음 |
 | `components/PlayerController.ts` (수정·Cocos) | `_move`에서 장애물 해소 1곳(아레나 클램프 **앞**에 삽입) | 이동감·물 감속·아레나 클램프 회귀 없음 |
 | `components/EnemyController.ts` (수정·Cocos) | `setPosition` 4곳(추격·지그재그·유격·돌진) 직전 해소 | 4개 이동 알고리즘의 방향 계산 무변경, CC·공격 FSM·텔레그래프 회귀 없음 |
 | `scenes/main.scene` (수정·사용자 배치) | `Obstacles` 루트 + 박스 자식들 (시각이자 충돌 출처) | 렌더 순서, 레이어 누수(F47) 없음 |
