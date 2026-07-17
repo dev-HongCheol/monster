@@ -21,6 +21,7 @@ import {
   windupBlend,
   zigzagDirection,
 } from '../logic/MovementLogic';
+import { resolveCircleMove } from '../logic/ObstacleLogic';
 import {
   appliedStrength,
   ControlStrength,
@@ -35,6 +36,7 @@ import {
 import { DataManager } from '../systems/DataManager';
 import { ExperienceManager } from '../systems/ExperienceManager';
 import { GameManager } from '../systems/GameManager';
+import { MapManager } from '../systems/MapManager';
 
 const { ccclass, property } = _decorator;
 
@@ -412,6 +414,24 @@ export class EnemyController extends Component {
   }
 
   /**
+   * 이동 결과 위치를 장애물에 대해 해소해 돌려준다 — setPosition 직전의 후처리 한 단계(계획 §4.4).
+   * 방향 계산(MovementLogic 순수 함수들)은 손대지 않아 스티어링(어디로 갈지)과 충돌 해소(갈 수
+   * 있는지)가 분리되고, 기존 이동 테스트가 전부 그대로 산다. 맵 로드 전이나 MapManager 부재
+   * 프레임에는 빈 배열이라 무보정 통과다(풀링 노드라 끄지 않고 그 프레임만 폴백 — 싱글톤 컨벤션).
+   * @param from 현재 위치 (node.position)
+   * @param toX 이동 후보 x
+   * @param toY 이동 후보 y
+   */
+  private _resolveObstacles(from: Readonly<Vec3>, toX: number, toY: number): Vec2 {
+    return resolveCircleMove(
+      from,
+      { x: toX, y: toY },
+      this.collisionRadius,
+      MapManager.instance?.obstacles ?? [],
+    );
+  }
+
+  /**
    * 지그재그 이동 — 플레이어로 다가오되 진행 방향에 좌우 사인파 오프셋을 더해 흔든다(어둑시니).
    * @param dt 프레임 경과 시간 (sec)
    * @param applied 이번 프레임 적용 강도
@@ -432,7 +452,8 @@ export class EnemyController extends Component {
     );
     if (dir.x === 0 && dir.y === 0) return; // 겹침·period 가드(영벡터)
     const step = this._data.speed * speedFactor * dt;
-    this.node.setPosition(myPos.x + dir.x * step, myPos.y + dir.y * step, myPos.z);
+    const resolved = this._resolveObstacles(myPos, myPos.x + dir.x * step, myPos.y + dir.y * step);
+    this.node.setPosition(resolved.x, resolved.y, myPos.z);
   }
 
   /**
@@ -455,7 +476,8 @@ export class EnemyController extends Component {
     );
     if (dir.x === 0 && dir.y === 0) return; // 데드존·겹침(영벡터)
     const step = this._data.speed * speedFactor * dt;
-    this.node.setPosition(myPos.x + dir.x * step, myPos.y + dir.y * step, myPos.z);
+    const resolved = this._resolveObstacles(myPos, myPos.x + dir.x * step, myPos.y + dir.y * step);
+    this.node.setPosition(resolved.x, resolved.y, myPos.z);
   }
 
   /**
@@ -488,7 +510,12 @@ export class EnemyController extends Component {
       const moveSpeed =
         this._lungeState === LungeState.Lunge ? params.lungeSpeed : this._data.speed;
       const step = moveSpeed * speedFactor * dt;
-      this.node.setPosition(myPos.x + dir.x * step, myPos.y + dir.y * step, myPos.z);
+      const resolved = this._resolveObstacles(
+        myPos,
+        myPos.x + dir.x * step,
+        myPos.y + dir.y * step,
+      );
+      this.node.setPosition(resolved.x, resolved.y, myPos.z);
     }
     this._updateLungeTelegraph(params);
   }
@@ -712,7 +739,8 @@ export class EnemyController extends Component {
     if (dir.lengthSqr() < 1) return;
     dir.normalize();
     dir.multiplyScalar(this._data.speed * speedFactor * dt);
-    this.node.setPosition(myPos.x + dir.x, myPos.y + dir.y, myPos.z);
+    const resolved = this._resolveObstacles(myPos, myPos.x + dir.x, myPos.y + dir.y);
+    this.node.setPosition(resolved.x, resolved.y, myPos.z);
   }
 
   /**
