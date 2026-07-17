@@ -128,6 +128,19 @@ export function resolveCircleMove(
   radius: number,
   obstacles: readonly ObstacleRect[],
 ): Vec2;
+
+/**
+ * 목표까지의 직선이 막혔으면 우회 최단 경로의 첫 경유점을 겨누는 방향으로 바꿔 돌려준다.
+ * 막히지 않으면 desiredDir을 그 참조 그대로(무할당). 적 전용 — 플레이어는 사람이 재조향한다.
+ * (2026-07-17 리워크 추가 — §2.3 ①)
+ */
+export function steerAroundObstacles(
+  from: Vec2,
+  target: Vec2,
+  desiredDir: Vec2,
+  radius: number,
+  obstacles: readonly ObstacleRect[],
+): Vec2;
 ```
 
 해소 알고리즘: 각 스텝 위치에서 모든 장애물에 대해 "사각형에 원 중심을 클램프한 최근접점 → 거리 < radius면 침투"를 판정하고, 침투 시 x·y 중 침투가 얕은 축으로 밀어낸다. 코너에서는 최근접점 방향(대각)으로 밀어내 축 진동 없이 모서리를 돌게 한다. 밀어낸 뒤 남은 스텝을 이어가므로 비스듬한 진입은 막힌 축만 잃고 벽면을 따라 미끄러진다.
