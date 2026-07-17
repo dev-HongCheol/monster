@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Vec2 } from '../../game/assets/scripts/logic/ArenaLogic';
 import {
   type ObstacleRect,
   resolveCircleMove,
@@ -346,5 +347,99 @@ describe('스티어링 + 해소 통합 — 적이 장애물을 돌아 플레이�
   it('우회 지연이 직선 대비 2배를 넘지 않는다 (교전 반경 근사 유지 — 계획 §2.1 크기 제약)', () => {
     // 한 변 ≤ 300px 제약이 우회 지연을 짧게 묶는다는 계획의 전제를 고정한다
     expect(framesToReach(0)).toBeLessThan(600);
+  });
+});
+
+/**
+ * 도달 스윕 — 실 반지름 × 접근각 전수로 "적은 반드시 플레이어에게 닿는다"를 고정한다.
+ *
+ * 위 통합 테스트들은 반지름을 20 하나로 고정하고 목표를 장애물 바깥 먼 곳에 뒀다. 그 조합은
+ * 목표 클램프 분기(목표가 확장 사각형 안)를 **한 번도 타지 않는다** — 그래서 반지름 25 초과인
+ * 적(12종 중 9종)이 벽에 붙은 플레이어를 못 잡고 코너를 맴도는 버그를 통과시켰다(코드리뷰 C-1).
+ * 고른 한 점에서 "방향이 꺾였다"를 보는 대신, 실제로 닿는지를 전수로 본다.
+ */
+describe('도달 스윕 — 실 반지름 × 접근각 (C-1 회귀)', () => {
+  /** enemies.json의 실 충돌 반지름 전종. 25 초과가 9종 — 그쪽이 목표 클램프 분기를 탄다. */
+  const ENEMY_RADII = [18, 25, 26, 27, 28, 32, 38, 40];
+  /** player.json의 충돌 반지름. 적이 이보다 크면 벽에 붙은 플레이어가 적의 확장 사각형에 잠긴다. */
+  const PLAYER_R = 25;
+  /** 계획 §2.1 상한(한 변 ≤ 300px)의 장애물. */
+  const WALL: ObstacleRect = { cx: 0, cy: 0, halfW: 150, halfH: 150 };
+
+  /**
+   * 적 하나를 접근각 `angle`에서 출발시켜 플레이어에 닿을 때까지 굴린다.
+   * @returns 접촉(두 반지름 합)까지 걸린 프레임. 60초 안에 못 닿으면 -1
+   */
+  function reach(radius: number, angle: number, player: Vec2): number {
+    const dt = 1 / 60;
+    const speed = 120;
+    let pos: Vec2 = { x: Math.cos(angle) * 400, y: Math.sin(angle) * 400 };
+    for (let f = 1; f <= 3600; f++) {
+      const dx = player.x - pos.x;
+      const dy = player.y - pos.y;
+      const len = Math.hypot(dx, dy);
+      if (len <= radius + PLAYER_R) return f;
+      const dir = { x: dx / len, y: dy / len };
+      const steer = steerAroundObstacles(pos, player, dir, radius, [WALL]);
+      const step = speed * dt;
+      pos = resolveCircleMove(
+        pos,
+        { x: pos.x + steer.x * step, y: pos.y + steer.y * step },
+        radius,
+        [WALL],
+      );
+    }
+    return -1;
+  }
+
+  /** 접근각 전수에서 갇힌 각도 목록. 비어 있어야 한다. */
+  function stuckAngles(radius: number, player: Vec2): number[] {
+    const stuck: number[] = [];
+    const total = 72; // 5° 간격
+    for (let i = 0; i < total; i++) {
+      if (reach(radius, (i / total) * Math.PI * 2, player) < 0)
+        stuck.push(Math.round((i / total) * 360));
+    }
+    return stuck;
+  }
+
+  for (const radius of ENEMY_RADII) {
+    it(`반지름 ${radius} — 벽에 붙은 플레이어를 모든 접근각에서 잡는다 (엄폐 대치)`, () => {
+      // 플레이어가 왼면에 자기 반지름만큼 붙어 선다 — 적 반지름이 25를 넘으면 이 지점이 적의
+      // 확장 사각형 안이라 목표 클램프가 발동한다(9종). 클램프 경로가 깨지면 여기서 갇힌다.
+      expect(stuckAngles(radius, { x: -(WALL.halfW + PLAYER_R), y: -140 })).toEqual([]);
+    });
+
+    it(`반지름 ${radius} — 장애물 반대편 플레이어를 모든 접근각에서 잡는다`, () => {
+      expect(stuckAngles(radius, { x: -400, y: 0 })).toEqual([]);
+    });
+  }
+
+  it('코너에 정확히 선 적과 0.01px 지난 적의 방향이 뒤집히지 않는다 (2프레임 극한 순환)', () => {
+    // C-1의 씨앗: 코너 위에서는 자기 자신을 건너뛰어 다음 코너를 겨누는데, 0.01px 지나면 방금
+    // 지난 코너가 첫 다리 0.01로 제일 싸 보여 되돌아간다 — 두 프레임이 서로를 되돌려 영영 맴돈다.
+    // 첫 다리가 0에 수렴해도 정규화되면 방향은 full 크기라, 미세한 차이가 180° 반전으로 증폭된다.
+    const radius = 32;
+    const player = { x: -(WALL.halfW + PLAYER_R), y: -140 };
+    const ex = WALL.halfW + radius; // 확장 사각형 좌상단 코너 = (-182, 182)
+    const onCorner = { x: -ex, y: ex };
+    const pastCorner = { x: -ex, y: ex - 0.01 };
+    const dirOn = steerAroundObstacles(onCorner, player, chaseDir(onCorner, player), radius, [
+      WALL,
+    ]);
+    const dirPast = steerAroundObstacles(pastCorner, player, chaseDir(pastCorner, player), radius, [
+      WALL,
+    ]);
+    expect(dirOn.x * dirPast.x + dirOn.y * dirPast.y).toBeGreaterThan(0);
+  });
+
+  it('막을 것이 없으면 우회하지 않는다 — 플레이어와 같은 편에 서 있을 때', () => {
+    // 목표가 확장 사각형 안이면 목표까지의 선분이 그 안에서 끝나 어느 위치에서도 "막혔다"가
+    // 나온다 — 바로 앞에 플레이어가 있어도 우회해 옆으로 샌다.
+    const radius = 32;
+    const player = { x: -(WALL.halfW + PLAYER_R), y: -140 };
+    const from = { x: player.x - 21, y: player.y }; // 21px 앞, 사이에 아무것도 없다
+    const dir = chaseDir(from, player);
+    expect(steerAroundObstacles(from, player, dir, radius, [WALL])).toBe(dir);
   });
 });
