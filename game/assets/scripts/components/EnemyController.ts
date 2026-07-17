@@ -21,7 +21,7 @@ import {
   windupBlend,
   zigzagDirection,
 } from '../logic/MovementLogic';
-import { resolveCircleMove } from '../logic/ObstacleLogic';
+import { NO_OBSTACLES, resolveCircleMove } from '../logic/ObstacleLogic';
 import {
   appliedStrength,
   ControlStrength,
@@ -427,7 +427,7 @@ export class EnemyController extends Component {
       from,
       { x: toX, y: toY },
       this.collisionRadius,
-      MapManager.instance?.obstacles ?? [],
+      MapManager.instance?.obstacles ?? NO_OBSTACLES,
     );
   }
 

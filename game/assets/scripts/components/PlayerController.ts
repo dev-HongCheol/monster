@@ -1,7 +1,7 @@
 import { _decorator, Component, type EventKeyboard, Input, input, KeyCode, Vec3 } from 'cc';
 import { GameState, type IPlayerBaseData } from '../data/GameTypes';
 import { clampToArena } from '../logic/ArenaLogic';
-import { resolveCircleMove } from '../logic/ObstacleLogic';
+import { NO_OBSTACLES, resolveCircleMove } from '../logic/ObstacleLogic';
 import { playerSpeedMulAt } from '../logic/RegionLogic';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
@@ -115,7 +115,12 @@ export class PlayerController extends Component {
     // 장애물 해소를 먼저, 아레나 클램프를 마지막에 — 배치 제약(§2.1)이 장애물을 벽에서 떼어 놓아
     // 두 제약이 같은 프레임에 동시에 걸리지 않고, 마지막이 클램프라 "플레이어는 아레나 밖으로
     // 절대 안 나간다"는 기존 불변식이 그대로 유지된다(맵 로드 전엔 빈 배열이라 무보정 통과).
-    const resolved = resolveCircleMove(pos, { x: nextX, y: nextY }, radius, mm?.obstacles ?? []);
+    const resolved = resolveCircleMove(
+      pos,
+      { x: nextX, y: nextY },
+      radius,
+      mm?.obstacles ?? NO_OBSTACLES,
+    );
     // 아레나 경계 안으로 클램프 — 플레이어가 벽을 넘지 못하게 한다(아레나 로드 전엔 무클램프).
     const arena = mm?.arena;
     if (arena && arena.width > 0) {

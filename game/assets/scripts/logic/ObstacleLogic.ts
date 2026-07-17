@@ -25,6 +25,15 @@ export interface ObstacleRect {
 // 무한 루프를 원천 차단한다(계획 §7 판단 5).
 const MAX_RESOLVE_PASSES = 2;
 
+// 서브스텝 수 상한 — steps = ceil(이동거리/radius)라 병리적 입력(radius 0.001에 이동 수백 px 등)이면
+// 한 호출이 수십억 서브스텝을 돌아 프레임이 멎는다. 상한이 실제로 무는 입력은 한 프레임에 아레나
+// (2400px)를 넘게 움직이는 순간이동뿐이고, 그때조차 실제 장애물의 확장 두께(최소 변 120px + 2×radius)가
+// 상한 적용 후 서브스텝 길이보다 두꺼워 관통이 나지 않는다 — 프레임 정지 대신 극단 입력의 관통을 감수한다.
+const MAX_SUBSTEPS = 64;
+
+/** 장애물 없음 폴백(공유 불변 빈 배열) — 소비처가 매 호출 새 배열을 할당하지 않게 한다(F36). */
+export const NO_OBSTACLES: readonly ObstacleRect[] = [];
+
 /**
  * from → to 이동을 장애물에 대해 해소한 최종 위치를 돌려준다.
  * 원(반지름 radius)이 사각형과 겹치면 사각형에 원 중심을 클램프한 최근접점 방향으로 겹친 만큼만
@@ -58,7 +67,7 @@ export function resolveCircleMove(
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const dist = Math.hypot(dx, dy);
-  const steps = dist > radius ? Math.ceil(dist / radius) : 1;
+  const steps = dist > radius ? Math.min(Math.ceil(dist / radius), MAX_SUBSTEPS) : 1;
   const stepX = dx / steps;
   const stepY = dy / steps;
   const r2 = radius * radius;

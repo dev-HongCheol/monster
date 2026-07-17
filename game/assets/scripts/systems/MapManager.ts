@@ -108,6 +108,14 @@ export class MapManager extends Component {
       this._obstacles = out;
       return;
     }
+    // 루트 자체의 scale/angle은 색인에 반영되지 않는다 — 루트를 변형하면 그림 전체가 옮겨지는데
+    // 충돌은 원래 자리라 전 장애물이 한꺼번에 어긋난다. 기본값이 아니면 소리를 낸다.
+    if (root.scale.x !== 1 || root.scale.y !== 1 || root.angle !== 0) {
+      console.warn(
+        `[MapManager] 장애물 루트 '${root.name}'의 scale/angle이 기본값이 아닙니다 — ` +
+          '색인이 무시하므로 그림과 충돌이 어긋납니다. 루트는 scale (1,1)·angle 0으로 두세요.',
+      );
+    }
     const arenaHalfW = this._arena.width / 2;
     const arenaHalfH = this._arena.height / 2;
     const rootPos = root.position;
@@ -115,6 +123,9 @@ export class MapManager extends Component {
     const names: string[] = [];
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
+      // 비활성 노드는 렌더가 꺼져 있으므로 충돌도 함께 꺼야 시각=충돌 일치가 유지된다 — 색인하면
+      // 그림 없는 자리에서 막히는 투명 벽이 된다(F47과 같은 증상). 의도적 끄기라 경고는 내지 않는다.
+      if (!child.activeInHierarchy) continue;
       const tr = child.getComponent(UITransform);
       if (!tr || tr.width <= 0 || tr.height <= 0) {
         console.warn(`[MapManager] 장애물 '${child.name}' UITransform 없음/크기 0 — 건너뜁니다.`);
@@ -128,6 +139,13 @@ export class MapManager extends Component {
         console.warn(
           `[MapManager] 장애물 '${child.name}' scale (${scale.x}, ${scale.y}) ≠ (1, 1) — ` +
             '색인은 ContentSize 기준입니다. 크기는 ContentSize로만 조절하세요.',
+        );
+      }
+      // 회전도 scale과 같은 부류다 — 그림은 돌아가는데 충돌은 축정렬(AABB)로 남아
+      // 모서리 근처에서 보이는 벽과 막히는 벽이 어긋난다.
+      if (child.angle !== 0) {
+        console.warn(
+          `[MapManager] 장애물 '${child.name}' angle ${child.angle}° — 충돌은 축정렬이라 회전이 반영되지 않습니다. angle 0으로 두세요.`,
         );
       }
       // 루트가 원점(권장 배치)이 아니어도 자식 중심이 아레나 좌표가 되도록 루트 오프셋을 더하고,
@@ -162,7 +180,9 @@ export class MapManager extends Component {
 
   /**
    * 장애물끼리의 통행 간격이 MIN_OBSTACLE_GAP 미만인 쌍을 경고한다(색인은 유지 — 배치 실수를
-   * 눈에 띄게). 간격은 축별 분리 거리의 최대값으로 잰다 — 두 사각형 사이를 지나는 통로의 폭이다.
+   * 눈에 띄게). 간격은 축별 분리 거리의 최대값 max(sepX, sepY)로 잰다 — 통로 폭의 **보수적
+   * 하한**이다. 대각으로 어긋난 배치에선 실제 최단 간격(√(sepX²+sepY²))이 이보다 넓어 경고가
+   * 과하게 울릴 수 있다 — 놓치는 쪽보다 과경고 쪽으로 기울인 선택이다.
    * @param rects 색인된 장애물 AABB 목록
    * @param names rects와 같은 순서의 노드 이름 (경고 메시지용)
    */

@@ -95,6 +95,35 @@ describe('resolveCircleMove — 터널링·통행·안정성', () => {
     expect(again.x).toBe(settled.x);
     expect(again.y).toBe(settled.y);
   });
+
+  it('겹치게 배치된 장애물 2개(배치 제약 위반)에서도 2패스로 비침투 위치에 도달한다', () => {
+    // A에서 밀려난 위치가 B 내부로 들어가는 배치 — 방어용 2패스가 없으면 침투가 남는다.
+    // 정확한 최종 좌표 대신 "어느 장애물에도 침투하지 않음" 속성을 검증한다(특성화 테스트).
+    const a: ObstacleRect = { cx: 0, cy: 0, halfW: 50, halfH: 50 };
+    const b: ObstacleRect = { cx: 90, cy: 60, halfW: 50, halfH: 50 };
+    const out = resolveCircleMove({ x: 45, y: 45 }, { x: 45, y: 45 }, R, [a, b]);
+    for (const ob of [a, b]) {
+      const nx = Math.max(ob.cx - ob.halfW, Math.min(ob.cx + ob.halfW, out.x));
+      const ny = Math.max(ob.cy - ob.halfH, Math.min(ob.cy + ob.halfH, out.y));
+      expect(Math.hypot(out.x - nx, out.y - ny)).toBeGreaterThanOrEqual(R - 1e-9);
+    }
+  });
+
+  it('내부 겹침 상태에서 이동해도(to ≠ from) 최근접 면 밖으로 탈출한다', () => {
+    // (95,0)은 여전히 내부 — 오른면 탈출이 이동보다 우선 적용돼 x = 100 + radius
+    const out = resolveCircleMove({ x: 90, y: 0 }, { x: 95, y: 0 }, R, [BOX]);
+    expect(out.x).toBeCloseTo(100 + R);
+    expect(out.y).toBeCloseTo(0);
+  });
+
+  it('병리적 입력(거대 이동 × 극소 radius)도 서브스텝 상한으로 즉시 완주한다', () => {
+    // 상한이 없으면 steps = ceil(거리/radius) ≈ 40억이라 이 테스트 자체가 사실상 멎는다(행).
+    // 상한이 무는 입력은 한 프레임에 아레나를 넘는 순간이동뿐이라 관통을 감수한다(계획 §4.3 방어).
+    const far: ObstacleRect = { cx: 1e9, cy: 1e9, halfW: 10, halfH: 10 };
+    const out = resolveCircleMove({ x: 0, y: 0 }, { x: 0, y: -2_000_000_000 }, 0.5, [far]);
+    expect(out.x).toBe(0);
+    expect(out.y).toBe(-2_000_000_000);
+  });
 });
 
 describe('resolveCircleMove — 입력 방어·불변', () => {
