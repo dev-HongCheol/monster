@@ -35,6 +35,265 @@ const MAX_SUBSTEPS = 64;
 /** 장애물 없음 폴백(공유 불변 빈 배열) — 소비처가 매 호출 새 배열을 할당하지 않게 한다(F36). */
 export const NO_OBSTACLES: readonly ObstacleRect[] = [];
 
+// 우회 스티어링의 경계 허용오차(px). 두 판정에 서로 반대 방향으로 쓴다.
+// ① 막힘 판정 — 확장 사각형을 이만큼 **줄여서** 본다. 벽에 붙어 선 적은 확장 사각형 경계에
+//    정확히 안착해 있어, 거기서 목표로 긋는 직선이 경계를 스친다. 그 스침을 막힘으로 세면
+//    코너를 다 돌고도 우회가 안 풀려 적이 코너에 붙어 맴돈다.
+// ② 경유점 가시성 — 이만큼 **늘려서** 본다. 밀어내기가 안착시킨 좌표는 나눗셈·제곱근을 거쳐
+//    경계를 부동소수 오차만큼 넘나든다(±1e-13 규모). 엄격 비교면 그 순간 네 코너가 통째로
+//    안 보이는 것으로 판정돼 우회를 포기하고, 적이 다시 벽 앞에 굳는다.
+// 게임 좌표는 px 단위 수백~수천이라 1e-3은 눈에 보이지 않으면서 부동소수 잡음보다 10자리 크다.
+const STEER_EPS = 1e-3;
+
+/**
+ * 선분이 축정렬 사각형에 처음 들어가는 지점의 파라미터 t(0~1)를 돌려준다. 만나지 않으면 -1.
+ * 슬랩(slab) 판정 — 축마다 선분이 사각형 범위 안에 있는 t 구간을 구해 교집합을 낸다. 교집합이
+ * 비면 못 만나고, 비지 않으면 그 시작점이 진입 지점이다. 선분이 사각형 안에서 시작하면 0.
+ */
+function segmentRectEntry(
+  px: number,
+  py: number,
+  qx: number,
+  qy: number,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+): number {
+  const dx = qx - px;
+  const dy = qy - py;
+  let tmin = 0;
+  let tmax = 1;
+  // 축에 평행한 성분(d≈0)은 나눗셈이 ±Infinity로 새므로 "그 축 범위 안에 있나"만 본다.
+  if (Math.abs(dx) < 1e-12) {
+    if (px < minX || px > maxX) return -1;
+  } else {
+    let t1 = (minX - px) / dx;
+    let t2 = (maxX - px) / dx;
+    if (t1 > t2) {
+      const t = t1;
+      t1 = t2;
+      t2 = t;
+    }
+    if (t1 > tmin) tmin = t1;
+    if (t2 < tmax) tmax = t2;
+    if (tmin > tmax) return -1;
+  }
+  if (Math.abs(dy) < 1e-12) {
+    if (py < minY || py > maxY) return -1;
+  } else {
+    let t1 = (minY - py) / dy;
+    let t2 = (maxY - py) / dy;
+    if (t1 > t2) {
+      const t = t1;
+      t1 = t2;
+      t2 = t;
+    }
+    if (t1 > tmin) tmin = t1;
+    if (t2 < tmax) tmax = t2;
+    if (tmin > tmax) return -1;
+  }
+  return tmin;
+}
+
+// 확장 사각형의 코너 색인은 반시계(CCW) 순서다 — 0:좌하 1:우하 2:우상 3:좌상.
+// 이 순서 덕에 인접 코너가 (i±1) mod 4로 나온다(사슬 탐색이 쓰는 성질).
+
+/** 코너 i의 x 좌표. */
+function cornerX(i: number, minX: number, maxX: number): number {
+  return i === 1 || i === 2 ? maxX : minX;
+}
+
+/** 코너 i의 y 좌표. */
+function cornerY(i: number, minY: number, maxY: number): number {
+  return i >= 2 ? maxY : minY;
+}
+
+/**
+ * 점 (px,py)에서 확장 사각형의 코너 i가 보이는지 — 그 점에서 코너로 그은 선분이 사각형 내부를
+ * 지나지 않는지. 축정렬 사각형에서는 "점이 그 코너를 이루는 두 변 중 **하나라도** 바깥쪽
+ * 반평면에 있으면 보인다"가 정확한 판정이다. 예컨대 점이 왼면 바깥(px ≤ minX)이면 좌상·좌하
+ * 코너로 가는 선분은 x가 minX를 넘지 않은 채 유지되므로 내부(x > minX)에 못 들어간다.
+ * 경계 허용오차는 STEER_EPS ①②의 ② — 안착 좌표의 부동소수 오차를 흡수한다.
+ */
+function cornerVisible(
+  i: number,
+  px: number,
+  py: number,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+): boolean {
+  switch (i) {
+    case 0:
+      return px <= minX + STEER_EPS || py <= minY + STEER_EPS;
+    case 1:
+      return px >= maxX - STEER_EPS || py <= minY + STEER_EPS;
+    case 2:
+      return px >= maxX - STEER_EPS || py >= maxY - STEER_EPS;
+    default:
+      return px <= minX + STEER_EPS || py >= maxY - STEER_EPS;
+  }
+}
+
+/**
+ * 목표로 가는 직선이 장애물에 막혀 있으면, 그 장애물을 우회하는 최단 경로의 **첫 경유점**을
+ * 겨누는 방향으로 바꿔 돌려준다. 막히지 않으면 `desiredDir`을 그대로 돌려준다.
+ *
+ * **왜 필요한가.** `resolveCircleMove`는 밀어내기라 속도의 법선 성분만 지우고 접선 성분은 남긴다.
+ * 즉 실제 변위가 `speed·sin(θ)`(θ=진행 방향과 벽면 법선의 각)로 줄고, 정면 진입(θ=0)이면 정확히
+ * 0이 된다. 스티어링이 장애물을 모르면 다음 프레임도 같은 정면 방향이라 적이 영영 멈춘다. 게다가
+ * 남는 접선 성분은 적을 **정면 지점 쪽으로** 미끄러뜨리므로 θ가 계속 작아진다 — 비스듬히 들어온
+ * 적까지 정지점으로 빨려든다(정지점이 끌개). 해소만으로는 못 푸는 이유이고, 스티어링을 바꿔야
+ * 하는 이유다. 어긋나면 증상은 "건물 뒤 플레이어를 향해 적이 벽에 붙은 채 굳음"이다.
+ *
+ * **경로 척도.** 볼록 사각형을 피하는 최단 경로는 확장 사각형의 코너를 경유하는 둘레 사슬이고,
+ * 짧은 쪽 사슬은 코너를 2개 넘게 지나지 않는다(3개를 도는 것은 반대로 1개를 도는 것보다 언제나
+ * 길다). 그래서 "보이는 첫 코너 + 필요하면 이웃 코너 하나"만 훑으면 최단이 나온다. 이 척도는
+ * 위치의 함수라 상태(잠금)가 없어도 안정적이다 — 코너를 지나친 뒤 방금 지난 코너를 다시 겨눠
+ * 되돌아가는 진동이 생기지 않는다("현재 위치에서 가장 가까운 코너"로 고르면 그 진동이 난다).
+ *
+ * @param from 현재 위치
+ * @param target 가려는 목표 위치(적 → 플레이어)
+ * @param desiredDir 장애물을 모르는 원래 진행 방향(단위 벡터, `MovementLogic` 산출)
+ * @param radius 이동 주체 충돌 반지름(px). 0 이하·비유한이면 우회 없음
+ * @param obstacles 장애물 목록 (MapManager.obstacles)
+ * @returns 우회가 필요하면 새 단위 방향, 아니면 `desiredDir` **그 참조 그대로**(무할당 — F36)
+ */
+export function steerAroundObstacles(
+  from: Vec2,
+  target: Vec2,
+  desiredDir: Vec2,
+  radius: number,
+  obstacles: readonly ObstacleRect[],
+): Vec2 {
+  if (obstacles.length === 0) return desiredDir;
+  if (!Number.isFinite(radius) || radius <= 0) return desiredDir;
+  if (!Number.isFinite(from.x) || !Number.isFinite(from.y)) return desiredDir;
+  if (!Number.isFinite(target.x) || !Number.isFinite(target.y)) return desiredDir;
+  if (!Number.isFinite(desiredDir.x) || !Number.isFinite(desiredDir.y)) return desiredDir;
+  // 영벡터는 상위 스티어링의 "이동 안 함" 신호다(겹침·유격 데드존) — 방향을 만들어 주면 안 된다.
+  if (desiredDir.x === 0 && desiredDir.y === 0) return desiredDir;
+  // 목표에서 멀어지는 이동(유격 후퇴)은 도착점이 목표가 아니라 코너 우회의 거리 척도가 성립하지
+  // 않는다 — 손대지 않고, 후퇴가 벽에 막히는 것은 밀어내기 해소에 맡긴다.
+  const toTargetX = target.x - from.x;
+  const toTargetY = target.y - from.y;
+  if (desiredDir.x * toTargetX + desiredDir.y * toTargetY <= 0) return desiredDir;
+
+  // 목표까지의 직선을 가장 먼저 막는 장애물을 고른다 — 가까운 것부터 풀어야 우회가 국소적으로 맞는다.
+  let blocker: ObstacleRect | null = null;
+  let bestEntry = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < obstacles.length; i++) {
+    const ob = obstacles[i];
+    const hw = ob.halfW + radius - STEER_EPS;
+    const hh = ob.halfH + radius - STEER_EPS;
+    if (hw <= 0 || hh <= 0) continue; // 확장해도 두께가 없다 — 막을 수 없다
+    const t = segmentRectEntry(
+      from.x,
+      from.y,
+      target.x,
+      target.y,
+      ob.cx - hw,
+      ob.cy - hh,
+      ob.cx + hw,
+      ob.cy + hh,
+    );
+    if (t >= 0 && t < bestEntry) {
+      bestEntry = t;
+      blocker = ob;
+    }
+  }
+  if (!blocker) return desiredDir;
+
+  const minX = blocker.cx - blocker.halfW - radius;
+  const maxX = blocker.cx + blocker.halfW + radius;
+  const minY = blocker.cy - blocker.halfH - radius;
+  const maxY = blocker.cy + blocker.halfH + radius;
+
+  // 목표가 확장 사각형 **안**이면(적 반지름 > 플레이어 반지름이라, 벽에 붙은 플레이어를 적의 확장
+  // 사각형이 삼킨 경우 — 12종 중 8종이 플레이어의 25를 넘는다) 어느 코너에서도 목표가 안 보여
+  // 사슬이 전멸한다. 그러면 우회를 포기해 엄폐 중인 플레이어 반대편에서 적이 굳는다. 목표를 확장
+  // 사각형 경계의 최근접점으로 끌어내 "어느 쪽으로 돌지"만 얻는다 — 근사지만 방향은 옳다.
+  let gx = target.x;
+  let gy = target.y;
+  if (gx > minX && gx < maxX && gy > minY && gy < maxY) {
+    const dLeft = gx - minX;
+    const dRight = maxX - gx;
+    const dDown = gy - minY;
+    const dUp = maxY - gy;
+    let best = dLeft;
+    let side = 0; // 0:왼면, 1:오른면, 2:아랫면, 3:윗면
+    if (dRight < best) {
+      best = dRight;
+      side = 1;
+    }
+    if (dDown < best) {
+      best = dDown;
+      side = 2;
+    }
+    if (dUp < best) {
+      side = 3;
+    }
+    if (side === 0) gx = minX;
+    else if (side === 1) gx = maxX;
+    else if (side === 2) gy = minY;
+    else gy = maxY;
+  }
+
+  // 좌우 동률(정면 일직선)에서 부호가 뜬다 — 고정하지 않으면 매 프레임 뒤집혀 적이 제자리에서
+  // 떤다. 진행 방향의 90° CCW를 기준으로 고정한다(zigzagDirection의 perp 규약과 같은 chirality).
+  const perpX = -desiredDir.y;
+  const perpY = desiredDir.x;
+
+  let bestCost = Number.POSITIVE_INFINITY;
+  let bestSide = Number.NEGATIVE_INFINITY;
+  let bestLegX = 0;
+  let bestLegY = 0;
+  let found = false;
+  for (let i = 0; i < 4; i++) {
+    if (!cornerVisible(i, from.x, from.y, minX, minY, maxX, maxY)) continue;
+    const cix = cornerX(i, minX, maxX);
+    const ciy = cornerY(i, minY, maxY);
+    const legX = cix - from.x;
+    const legY = ciy - from.y;
+    const leg1 = Math.hypot(legX, legY);
+    // 이미 그 코너 위면 겨눌 방향이 없다(영벡터). 건너뛰어도 경로를 잃지 않는다 — 이웃 코너를
+    // 첫 경유점으로 삼는 사슬이 같은 경로를 같은 비용으로 이미 담고 있다.
+    if (leg1 <= STEER_EPS) continue;
+    // 이 코너를 첫 경유점으로 하는 최단 사슬의 비용: 목표가 곧장 보이면 코너 하나로 끝나고,
+    // 아니면 이웃 코너(둘레를 따라 좌·우) 하나를 더 거친다.
+    let cost = Number.POSITIVE_INFINITY;
+    if (cornerVisible(i, gx, gy, minX, minY, maxX, maxY)) {
+      cost = leg1 + Math.hypot(gx - cix, gy - ciy);
+    }
+    for (let k = 0; k < 2; k++) {
+      const j = k === 0 ? (i + 1) % 4 : (i + 3) % 4;
+      if (!cornerVisible(j, gx, gy, minX, minY, maxX, maxY)) continue;
+      const cjx = cornerX(j, minX, maxX);
+      const cjy = cornerY(j, minY, maxY);
+      const c = leg1 + Math.hypot(cjx - cix, cjy - ciy) + Math.hypot(gx - cjx, gy - cjy);
+      if (c < cost) cost = c;
+    }
+    if (cost === Number.POSITIVE_INFINITY) continue;
+    const side = legX * perpX + legY * perpY;
+    // 비용이 뚜렷이 낮으면 교체, 사실상 동률이면 CCW 쪽(side가 큰 쪽)으로 교체한다.
+    if (cost < bestCost - STEER_EPS || (cost <= bestCost + STEER_EPS && side > bestSide)) {
+      if (cost < bestCost) bestCost = cost;
+      bestSide = side;
+      bestLegX = legX;
+      bestLegY = legY;
+      found = true;
+    }
+  }
+  // 보이는 코너가 하나도 없다 = 적이 확장 사각형 안에 있다(스폰 겹침 등). 억지 우회 대신
+  // resolveCircleMove의 최근접 면 탈출에 맡긴다.
+  if (!found) return desiredDir;
+  const len = Math.hypot(bestLegX, bestLegY);
+  if (len === 0) return desiredDir;
+  return { x: bestLegX / len, y: bestLegY / len };
+}
+
 /**
  * from → to 이동을 장애물에 대해 해소한 최종 위치를 돌려준다.
  * 원(반지름 radius)이 사각형과 겹치면 사각형에 원 중심을 클램프한 최근접점 방향으로 겹친 만큼만

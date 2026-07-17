@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type ObstacleRect,
   resolveCircleMove,
+  steerAroundObstacles,
 } from '../../game/assets/scripts/logic/ObstacleLogic';
 
 /**
@@ -156,5 +157,194 @@ describe('resolveCircleMove — 입력 방어·불변', () => {
     expect(from).toEqual(fromSnap);
     expect(to).toEqual(toSnap);
     expect(obstacles).toEqual(obstaclesSnap);
+  });
+});
+
+/**
+ * `steerAroundObstacles` — 장애물 인지 스티어링(코너 우회).
+ *
+ * BOX(200×100)를 반지름 20으로 확장한 사각형은 x∈[-120,120], y∈[-70,70]이고, 그 네 꼭짓점이
+ * 우회 경유점이다. 아래 테스트가 쓰는 좌표는 전부 이 확장 사각형 기준이다.
+ */
+
+/** 플레이어를 향하는 단위 방향 — 우회 없는 순수 추격 스티어링(현재 `_followPlayer`의 계산). */
+function chaseDir(from: { x: number; y: number }, target: { x: number; y: number }) {
+  const dx = target.x - from.x;
+  const dy = target.y - from.y;
+  const len = Math.hypot(dx, dy);
+  return len === 0 ? { x: 0, y: 0 } : { x: dx / len, y: dy / len };
+}
+
+describe('steerAroundObstacles — 우회 발동 조건', () => {
+  it('장애물이 없으면 원하는 방향을 그대로 돌려준다 (기존 이동 회귀 없음)', () => {
+    const dir = { x: 1, y: 0 };
+    const out = steerAroundObstacles({ x: -300, y: 0 }, { x: 300, y: 0 }, dir, R, []);
+    expect(out).toBe(dir); // 같은 참조 — 막히지 않으면 할당하지 않는다(F36)
+  });
+
+  it('장애물이 직선 경로를 막지 않으면 원하는 방향을 그대로 돌려준다', () => {
+    // 적·플레이어 모두 장애물 위쪽(y=200)을 지난다 — 우회할 이유가 없다
+    const dir = { x: 1, y: 0 };
+    const out = steerAroundObstacles({ x: -300, y: 200 }, { x: 300, y: 200 }, dir, R, [BOX]);
+    expect(out).toBe(dir);
+  });
+
+  it('목표에서 멀어지는 이동(유격 후퇴)은 우회하지 않는다', () => {
+    // kiteDirection의 후퇴는 -toward라 도착점이 플레이어가 아니다 — 코너 우회의 척도가 성립하지 않는다
+    const dir = { x: -1, y: 0 };
+    const out = steerAroundObstacles({ x: -300, y: 0 }, { x: 300, y: 0 }, dir, R, [BOX]);
+    expect(out).toBe(dir);
+  });
+
+  it('우회를 마쳐 직선이 뚫리면 원하는 방향으로 되돌아온다 (코너에 붙어 맴돌지 않는다)', () => {
+    // 우상단 코너(120,70)에 서면 플레이어(300,0)까지 직선이 확장 사각형을 스치기만 한다 —
+    // 스침을 막힘으로 세면 적이 코너에 붙어 영영 우회만 하게 된다
+    const from = { x: 120, y: 70 };
+    const target = { x: 300, y: 0 };
+    const dir = chaseDir(from, target);
+    const out = steerAroundObstacles(from, target, dir, R, [BOX]);
+    expect(out).toBe(dir);
+  });
+});
+
+describe('steerAroundObstacles — 코너 우회 경로', () => {
+  it('정면 일직선(적-장애물-플레이어)에서 코너 쪽으로 방향을 튼다 — 제자리 정지 회귀', () => {
+    // 이 슬라이스의 회귀 버그: 순수 밀어내기는 정면 진입에서 변위가 정확히 0이라 적이 영영 멈춘다.
+    // 스티어링이 코너를 겨눠야 접선 성분이 생긴다.
+    const from = { x: -300, y: 0 };
+    const target = { x: 300, y: 0 };
+    const out = steerAroundObstacles(from, target, chaseDir(from, target), R, [BOX]);
+    expect(Math.abs(out.y)).toBeGreaterThan(0.1); // 정면 그대로(y=0)면 갇힌다
+    expect(out.x).toBeGreaterThan(0); // 전진은 유지 — 뒤로 물러나지 않는다
+    expect(Math.hypot(out.x, out.y)).toBeCloseTo(1); // 단위 벡터 계약
+  });
+
+  it('정면 일직선의 좌우 동률은 진행 방향 90° CCW 쪽으로 고정한다 (zigzag와 같은 chirality)', () => {
+    // 위·아래 우회 거리가 정확히 같아 부호가 뜬다 — 고정하지 않으면 매 프레임 좌우가 뒤집혀 떨린다.
+    // +x 진행의 90° CCW는 +y(zigzagDirection의 perp 규약과 동일).
+    const from = { x: -300, y: 0 };
+    const target = { x: 300, y: 0 };
+    const out = steerAroundObstacles(from, target, chaseDir(from, target), R, [BOX]);
+    expect(out.y).toBeGreaterThan(0);
+  });
+
+  it('동률이 아니면 가까운 쪽 코너로 우회한다 (위/아래 대칭)', () => {
+    const target = { x: 300, y: 0 };
+    // 적이 위쪽에 치우쳐 있으면 윗 코너가 짧다
+    const upper = { x: -300, y: 40 };
+    const outUp = steerAroundObstacles(upper, target, chaseDir(upper, target), R, [BOX]);
+    expect(outUp.y).toBeGreaterThan(0);
+    // 아래쪽에 치우쳐 있으면 아랫 코너 — CCW 타이브레이크가 동률이 아닌 경우까지 먹으면 깨진다
+    const lower = { x: -300, y: -40 };
+    const outDown = steerAroundObstacles(lower, target, chaseDir(lower, target), R, [BOX]);
+    expect(outDown.y).toBeLessThan(0);
+  });
+
+  it('코너에 도달하면 다음 코너로 이어간다 (경유점 갱신)', () => {
+    // 좌상단 코너(-120,70)에 도착해도 플레이어(300,0)까지는 아직 막혀 있다 — 윗변을 따라
+    // 우상단 코너(120,70)로 이어가야 한다. 자기 자신을 겨누면 영벡터라 다시 멈춘다.
+    const from = { x: -120, y: 70 };
+    const target = { x: 300, y: 0 };
+    const out = steerAroundObstacles(from, target, chaseDir(from, target), R, [BOX]);
+    expect(out.x).toBeGreaterThan(0.9); // 윗변을 따라 +x
+    expect(Math.abs(out.y)).toBeLessThan(0.1);
+  });
+
+  it('코너를 지나쳐도 되돌아가지 않는다 (경유점 진동 없음)', () => {
+    // 좌상단 코너를 1px 넘어선 위치. "가장 가까운 코너"로 고르면 방금 지난 코너(-120,70)가
+    // 붙어 있어 되돌아가고, 다음 프레임엔 다시 앞으로 — 코너에 끼여 진동한다.
+    const from = { x: -120, y: 71 };
+    const target = { x: 300, y: 0 };
+    const out = steerAroundObstacles(from, target, chaseDir(from, target), R, [BOX]);
+    expect(out.x).toBeGreaterThan(0.9);
+  });
+
+  it('플레이어가 벽에 붙어 확장 사각형 안에 들어가도 우회한다 (엄폐 대치)', () => {
+    // 적 반지름(40) > 플레이어 반지름(25)이면 벽에 붙은 플레이어가 적의 확장 사각형 내부에 들어간다
+    // (12종 중 8종이 25 초과). 경유점 후보가 전멸해 우회를 포기하면 엄폐 시 적이 반대편에서 굳는다.
+    const bigR = 40;
+    const from = { x: 300, y: 0 };
+    const target = { x: -125, y: 0 }; // 왼면(x=-100)에 반지름 25로 붙은 플레이어
+    const out = steerAroundObstacles(from, target, chaseDir(from, target), bigR, [BOX]);
+    expect(Math.abs(out.y)).toBeGreaterThan(0.1); // 정면 그대로면 갇힌다
+    expect(Math.hypot(out.x, out.y)).toBeCloseTo(1);
+  });
+});
+
+describe('steerAroundObstacles — 입력 방어·불변', () => {
+  it('radius가 0 이하면 원하는 방향을 그대로 돌려준다', () => {
+    const dir = { x: 1, y: 0 };
+    expect(steerAroundObstacles({ x: -300, y: 0 }, { x: 300, y: 0 }, dir, 0, [BOX])).toBe(dir);
+  });
+
+  it('좌표가 NaN이면 원하는 방향을 그대로 돌려준다 (방향 오염 차단)', () => {
+    const dir = { x: 1, y: 0 };
+    const nan = Number.NaN;
+    expect(steerAroundObstacles({ x: nan, y: 0 }, { x: 300, y: 0 }, dir, R, [BOX])).toBe(dir);
+    expect(steerAroundObstacles({ x: -300, y: 0 }, { x: nan, y: 0 }, dir, R, [BOX])).toBe(dir);
+  });
+
+  it('원하는 방향이 영벡터면 그대로 돌려준다 (겹침·데드존 가드 보존)', () => {
+    const dir = { x: 0, y: 0 };
+    expect(steerAroundObstacles({ x: -300, y: 0 }, { x: 300, y: 0 }, dir, R, [BOX])).toBe(dir);
+  });
+
+  it('적이 장애물 내부(스폰 겹침)면 우회하지 않는다 — 탈출은 밀어내기 해소가 맡는다', () => {
+    // 내부에서는 경유점이 보이지 않는다. 억지 우회 대신 resolveCircleMove의 최근접 면 탈출에 맡긴다.
+    const dir = { x: 1, y: 0 };
+    const out = steerAroundObstacles({ x: 0, y: 0 }, { x: 300, y: 0 }, dir, R, [BOX]);
+    expect(out).toBe(dir);
+  });
+
+  it('입력(from·target·desiredDir·obstacles)을 변형하지 않는다(F36 할당 위생 계약)', () => {
+    const from = { x: -300, y: 0 };
+    const target = { x: 300, y: 0 };
+    const dir = chaseDir(from, target);
+    const obstacles: ObstacleRect[] = [{ ...BOX }];
+    const snaps = [snapshot(from), snapshot(target), snapshot(dir), snapshot(obstacles)];
+    steerAroundObstacles(from, target, dir, R, obstacles);
+    expect([from, target, dir, obstacles]).toEqual(snaps);
+  });
+});
+
+describe('스티어링 + 해소 통합 — 적이 장애물을 돌아 플레이어에 도달한다', () => {
+  /**
+   * 적 한 마리를 프레임 단위로 굴린다 — 매 프레임 추격 방향을 구하고, 우회 스티어링으로 꺾은 뒤,
+   * 밀어내기로 해소해 위치를 갱신한다(EnemyController._followPlayer의 배선과 같은 순서).
+   * @param startY 적 시작 y (플레이어는 (300,0) 고정)
+   * @returns 플레이어에 도달하기까지 걸린 프레임 수. 제한 안에 못 닿으면 -1
+   */
+  function framesToReach(startY: number): number {
+    const target = { x: 300, y: 0 };
+    const speed = 120;
+    const dt = 1 / 60;
+    let pos = { x: -300, y: startY };
+    for (let f = 1; f <= 1800; f++) {
+      // 30초 상한
+      const dir = steerAroundObstacles(pos, target, chaseDir(pos, target), R, [BOX]);
+      const step = speed * dt;
+      pos = resolveCircleMove(pos, { x: pos.x + dir.x * step, y: pos.y + dir.y * step }, R, [BOX]);
+      if (Math.hypot(target.x - pos.x, target.y - pos.y) <= R) return f;
+    }
+    return -1;
+  }
+
+  // 우회 없는 직선 거리는 600px = 5초(300프레임). 우회로는 그보다 길지만, 갇히면 -1이 나온다.
+  it('정면 일직선(startY=0)에서 갇히지 않고 도달한다', () => {
+    expect(framesToReach(0)).toBeGreaterThan(0);
+  });
+
+  it('준정면(startY=40)에서 정지점으로 빨려들지 않고 도달한다', () => {
+    // 밀어내기만 있으면 y가 0으로 수렴하면서 접선 성분이 함께 죽어 정지점에 갇힌다
+    expect(framesToReach(40)).toBeGreaterThan(0);
+  });
+
+  it('면 밖(startY=200)에서 출발해도 정지점으로 빨려들지 않고 도달한다', () => {
+    expect(framesToReach(200)).toBeGreaterThan(0);
+  });
+
+  it('우회 지연이 직선 대비 2배를 넘지 않는다 (교전 반경 근사 유지 — 계획 §2.1 크기 제약)', () => {
+    // 한 변 ≤ 300px 제약이 우회 지연을 짧게 묶는다는 계획의 전제를 고정한다
+    expect(framesToReach(0)).toBeLessThan(600);
   });
 });
