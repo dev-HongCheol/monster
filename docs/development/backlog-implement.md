@@ -26,7 +26,7 @@
 | D1 | 열림 | 낮음 | 🔧 `IEnemyData.name` → `enemy.<id>.name` 키화 | i18n 1차는 spells·cards만 키화했다. 현재 `enemy.name`을 표시하는 소비처가 없어 미룬 상태 — **result-stats가 결과 화면 킬 목록에 적 이름을 쓰기 시작했으니** 콘텐츠 단계에 마이그레이션한다. | `../qa/i18n-foundation-review-issues.md` #3 |
 | D2 | 열림 | 중 | 🔧 DataManager JSON `as T` 캐스팅 → 스키마 검증 | 필드가 빠지면 런타임에 `undefined`가 조용히 유입된다. `xpDrop: 0` 같은 의도적 0과 누락을 구분하는 것도 포함. **함께:** 마법 단위 테스트가 실 `spells.json`이 아닌 픽스처를 써서 데이터 드리프트를 못 잡는다 → 실데이터를 로드해 마법별 필드를 단언하는 sanity 테스트 도입. **F12·F15의 불변식을 강제할 자리이기도 하다.** | `../qa/xp-drop-per-enemy-review-issues.md`, `../qa/frost-nova-review-issues.md` M-2 |
 | D3 | 열림 | 낮음 | ♻️ `en.json`/`ko.json` 포맷 비대칭 정리 | en은 flat string, ko는 `{message, desc}` 객체다. 각 파일 내부 컨벤션은 일관돼서 신규 결함은 아니다. | `../qa/passive-effects-review-issues.md` #4 |
-| F48 | 열림 | 낮음 | ♻️📐 물 구역 표현 마스크/그리드 재검토 (F39 대안) | 한강 소프트 해저드(F39)를 폴리곤으로 구현했다. 대안인 **물 마스크**(강을 이미지로 칠해 저해상도 불리언 그리드로 굽고, 런타임은 그리드 룩업)는 정점 손 authoring을 없애고, 그리드가 아레나 전체를 덮도록 정규화돼 `size` 결합도 함께 풀며, **F41 최종 아트의 강 레이어에서 마스크를 자동으로 구우면 authoring 자체가 사라진다.** 폴리곤→마스크 전환은 데이터 스키마·순수 함수(`pointInPolygon`→`isWaterAt`)·렌더를 갈아끼우므로 **최종 아트가 들어오는 F41과 함께** 재검토하는 게 총 공수가 작다. F41 아트 발주에 "강을 별도 레이어/마스크로 내보내 달라"를 함께 넣을 것. | `sessions/2026-07-15-han-river-hazard-plan.md` §7(4)·§2.2 |
+| F52 | 열림 | 낮음 | ♻️📐 물 구역 표현 마스크/그리드 재검토 (F39 대안) *(구 F48 — ID 충돌로 2026-07-17 재번호)* | 한강 소프트 해저드(F39)를 폴리곤으로 구현했다. 대안인 **물 마스크**(강을 이미지로 칠해 저해상도 불리언 그리드로 굽고, 런타임은 그리드 룩업)는 정점 손 authoring을 없애고, 그리드가 아레나 전체를 덮도록 정규화돼 `size` 결합도 함께 풀며, **F41 최종 아트의 강 레이어에서 마스크를 자동으로 구우면 authoring 자체가 사라진다.** 폴리곤→마스크 전환은 데이터 스키마·순수 함수(`pointInPolygon`→`isWaterAt`)·렌더를 갈아끼우므로 **최종 아트가 들어오는 F41과 함께** 재검토하는 게 총 공수가 작다. F41 아트 발주에 "강을 별도 레이어/마스크로 내보내 달라"를 함께 넣을 것. | `sessions/2026-07-15-han-river-hazard-plan.md` §7(4)·§2.2 |
 
 ---
 
@@ -84,7 +84,7 @@
 |---|------|------|------|-----------|------|
 | F9 | 열림(부분 완료) | 낮음 | 🔧 씬 **UICamera** 크로스머신 churn | MacBook 작업 / Windows 테스트 시 `main.scene` Camera 노드의 `_lpos.y`·`_orthoHeight`가 재계산돼 무관한 diff가 난다(장비별 해상도 차이로 에디터가 카메라를 재fit·재직렬화). 매 PR 테스트마다 반복된다. **2026-07-13 map-arena에서 게임 `Camera`는 해결** — `CameraController`가 `orthoHeight=360`을 못박고 `Canvas.alignCanvasWithScreen=false`로 꺼서 더는 튀지 않는다. **잔존 범위는 `UICamera` 하나** — `UICanvas.alignCanvasWithScreen=true`라 Cocos가 화면 크기에 맞춰 재fit하며, map-arena 7단계 테스트에서도 `1175.2965…` → `871.6564…`로 churn이 재발했다. 해소하려면 UICanvas 정렬 정책을 바꿔야 하는데 **HUD 스케일링 회귀 검증이 따라붙으므로** 별도 슬라이스로 남긴다. | projectile-count 테스트 (2026-06-11), `../qa/map-arena-test.md` §6 (2026-07-13) |
 | F10 | 열림 | 중 | 🔧 `workflow-state.json` 크로스머신 동기화 정책 결정 | 전이를 커밋 안 하면 타 장비가 stale해지고(실제로 겪음), 커밋하면 main 오염·머지 충돌·락 상속이 생긴다. "추적 유지 + 핸드오프 시점만 커밋"(권장) vs `.gitignore` 제외 중 택해 ADR 004에 반영. | `troubleshooting/workflow-state-cross-machine.md`, ADR 004 |
-| F47 | 열림 | 낮음 | 📐 "인과를 복원할 수 있게 쓴다" 규칙이 3중 복사본 | 같은 3원칙이 `CLAUDE.md`(요약)·`conventions.md`(코드 예시)·`writing-style.md`(문서 예시)에 축자적으로 들어가 있다. 도입한 슬라이스 안에서 **한 곳만 고치는 사고가 두 번** 났다(규칙 ①의 CLAUDE.md 미갱신, 리뷰 문서 헤더 미갱신). 규칙 자신이 "복사본은 함께 고친다"고 적어 놓고 어긴 셈이다. `conventions.md` 쪽을 원칙 나열 없이 예시 + `writing-style.md` 링크로 줄이는 안이 리뷰에서 제시됐다. | `../qa/spawn-geometry-review-issues.md` R3-6·R4-1·R5-1 |
+| F51 | 열림 | 낮음 | 📐 "인과를 복원할 수 있게 쓴다" 규칙이 3중 복사본 | 같은 3원칙이 `CLAUDE.md`(요약)·`conventions.md`(코드 예시)·`writing-style.md`(문서 예시)에 축자적으로 들어가 있다. 도입한 슬라이스 안에서 **한 곳만 고치는 사고가 두 번** 났다(규칙 ①의 CLAUDE.md 미갱신, 리뷰 문서 헤더 미갱신). 규칙 자신이 "복사본은 함께 고친다"고 적어 놓고 어긴 셈이다. `conventions.md` 쪽을 원칙 나열 없이 예시 + `writing-style.md` 링크로 줄이는 안이 리뷰에서 제시됐다. | `../qa/spawn-geometry-review-issues.md` R3-6·R4-1·R5-1 |
 
 ---
 
