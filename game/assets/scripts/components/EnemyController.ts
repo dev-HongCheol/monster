@@ -21,6 +21,7 @@ import {
   windupBlend,
   zigzagDirection,
 } from '../logic/MovementLogic';
+import { NO_OBSTACLES, resolveCircleMove, steerAroundObstacles } from '../logic/ObstacleLogic';
 import {
   appliedStrength,
   ControlStrength,
@@ -35,6 +36,7 @@ import {
 import { DataManager } from '../systems/DataManager';
 import { ExperienceManager } from '../systems/ExperienceManager';
 import { GameManager } from '../systems/GameManager';
+import { MapManager } from '../systems/MapManager';
 
 const { ccclass, property } = _decorator;
 
@@ -412,6 +414,46 @@ export class EnemyController extends Component {
   }
 
   /**
+   * 이동 결과 위치를 장애물에 대해 해소해 돌려준다 — setPosition 직전의 후처리 한 단계(계획 §4.4).
+   * 방향을 이미 `_steerAround`가 우회로 꺾어 놨으므로 여기서는 남은 침투만 밀어낸다(안전망).
+   * 맵 로드 전이나 MapManager 부재 프레임에는 빈 배열이라 무보정 통과다(풀링 노드라 끄지 않고
+   * 그 프레임만 폴백 — 싱글톤 컨벤션).
+   * @param from 현재 위치 (node.position)
+   * @param toX 이동 후보 x
+   * @param toY 이동 후보 y
+   */
+  private _resolveObstacles(from: Readonly<Vec3>, toX: number, toY: number): Vec2 {
+    return resolveCircleMove(
+      from,
+      { x: toX, y: toY },
+      this.collisionRadius,
+      MapManager.instance?.obstacles ?? NO_OBSTACLES,
+    );
+  }
+
+  /**
+   * 원래 진행 방향을 장애물 우회 방향으로 바꿔 돌려준다 — 방향 계산 직후, 이동 적용 직전 한 단계.
+   * 막히지 않았으면 `desiredDir`이 그대로 나오므로 장애물 없는 곳의 이동은 기존 그대로다.
+   *
+   * 두 단계(우회 스티어링 → 밀어내기 해소)가 다 필요하다. 해소만 있으면 속도의 법선 성분만
+   * 지워지는데, 정면 진입에서는 그게 속도 전부라 변위가 0이 되고 방향은 다음 프레임도 같아서
+   * 적이 벽 앞에 영영 굳는다. 스티어링만 있으면 우회 대상으로 고르지 않은 장애물(사슬 경로 위의
+   * 다른 건물, 스폰 겹침)에 그대로 파고든다. (계획 §4.4 재검토 — 2026-07-17 리워크)
+   * @param from 현재 위치 (node.position)
+   * @param target 목표 위치 (플레이어)
+   * @param desiredDir 장애물을 모르는 원래 진행 방향 (단위 벡터)
+   */
+  private _steerAround(from: Readonly<Vec3>, target: Readonly<Vec3>, desiredDir: Vec2): Vec2 {
+    return steerAroundObstacles(
+      from,
+      target,
+      desiredDir,
+      this.collisionRadius,
+      MapManager.instance?.obstacles ?? NO_OBSTACLES,
+    );
+  }
+
+  /**
    * 지그재그 이동 — 플레이어로 다가오되 진행 방향에 좌우 사인파 오프셋을 더해 흔든다(어둑시니).
    * @param dt 프레임 경과 시간 (sec)
    * @param applied 이번 프레임 적용 강도
@@ -431,8 +473,17 @@ export class EnemyController extends Component {
       mp?.zigzagPeriod ?? 0,
     );
     if (dir.x === 0 && dir.y === 0) return; // 겹침·period 가드(영벡터)
+    // 우회 중에는 좌우 흔들림이 사라진다 — 코너를 겨눈 방향으로 대체되기 때문. 벽을 타는 동안
+    // 지그재그가 멎는 편이 흔들다 벽에 처박히는 것보다 낫다(위상 시계는 계속 흘러 우회가 끝나면
+    // 원래 위상으로 복귀한다).
+    const steer = this._steerAround(myPos, targetPos, dir);
     const step = this._data.speed * speedFactor * dt;
-    this.node.setPosition(myPos.x + dir.x * step, myPos.y + dir.y * step, myPos.z);
+    const resolved = this._resolveObstacles(
+      myPos,
+      myPos.x + steer.x * step,
+      myPos.y + steer.y * step,
+    );
+    this.node.setPosition(resolved.x, resolved.y, myPos.z);
   }
 
   /**
@@ -454,8 +505,17 @@ export class EnemyController extends Component {
       KITE_DEADZONE_BAND,
     );
     if (dir.x === 0 && dir.y === 0) return; // 데드존·겹침(영벡터)
+    // 접근할 때만 우회한다 — 후퇴(-toward)는 도착점이 플레이어가 아니라 우회 척도가 성립하지
+    // 않으므로 steerAroundObstacles가 방향을 그대로 돌려준다. 후퇴가 벽에 막히면 그 자리에
+    // 멈춰 서서 계속 쏜다(플레이어가 움직이면 데드존이 풀린다).
+    const steer = this._steerAround(myPos, targetPos, dir);
     const step = this._data.speed * speedFactor * dt;
-    this.node.setPosition(myPos.x + dir.x * step, myPos.y + dir.y * step, myPos.z);
+    const resolved = this._resolveObstacles(
+      myPos,
+      myPos.x + steer.x * step,
+      myPos.y + steer.y * step,
+    );
+    this.node.setPosition(resolved.x, resolved.y, myPos.z);
   }
 
   /**
@@ -485,10 +545,19 @@ export class EnemyController extends Component {
     const dir = lungeMovement(this._lungeState, this._lockDir, toPlayer);
     if (dir.x !== 0 || dir.y !== 0) {
       // 돌진 중에는 lungeSpeed, 그 외(추격·쿨다운)는 기본 속도. 슬로우(배율)는 둘 다에 적용.
-      const moveSpeed =
-        this._lungeState === LungeState.Lunge ? params.lungeSpeed : this._data.speed;
+      const inLunge = this._lungeState === LungeState.Lunge;
+      const moveSpeed = inLunge ? params.lungeSpeed : this._data.speed;
+      // 돌진 중에는 우회하지 않는다 — 윈드업에 잠근 방향으로 간다는 텔레그래프 약속을 지켜야
+      // 한다(플레이어는 마커를 보고 피한다). 잠근 방향에 건물이 끼면 그 돌진은 벽에 처박혀
+      // 버려지고, 만료 후 Chase로 돌아가면서 우회로 풀린다(계획 §12 관찰 항목 ①).
+      const steer = inLunge ? dir : this._steerAround(myPos, targetPos, dir);
       const step = moveSpeed * speedFactor * dt;
-      this.node.setPosition(myPos.x + dir.x * step, myPos.y + dir.y * step, myPos.z);
+      const resolved = this._resolveObstacles(
+        myPos,
+        myPos.x + steer.x * step,
+        myPos.y + steer.y * step,
+      );
+      this.node.setPosition(resolved.x, resolved.y, myPos.z);
     }
     this._updateLungeTelegraph(params);
   }
@@ -711,8 +780,14 @@ export class EnemyController extends Component {
     Vec3.subtract(dir, targetPos, myPos);
     if (dir.lengthSqr() < 1) return;
     dir.normalize();
-    dir.multiplyScalar(this._data.speed * speedFactor * dt);
-    this.node.setPosition(myPos.x + dir.x, myPos.y + dir.y, myPos.z);
+    const steer = this._steerAround(myPos, targetPos, dir);
+    const step = this._data.speed * speedFactor * dt;
+    const resolved = this._resolveObstacles(
+      myPos,
+      myPos.x + steer.x * step,
+      myPos.y + steer.y * step,
+    );
+    this.node.setPosition(resolved.x, resolved.y, myPos.z);
   }
 
   /**
