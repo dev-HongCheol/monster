@@ -186,6 +186,28 @@ describe('steerAroundObstacles — 원 접선 경로', () => {
     expect(Math.abs(out.y)).toBeGreaterThan(0.1); // 정면 그대로면 갇힌다
     expect(Math.hypot(out.x, out.y)).toBeCloseTo(1);
   });
+
+  it('정면 대칭선을 0.01px 지나도 방향이 뒤집히지 않는다 (접선 선택 극한 순환 — C-1 원 판)', () => {
+    // 사각형 C-1의 원 판: 정면 일직선은 좌우 접선이 동률이라 chirality 타이브레이크가 결정한다.
+    // 그 대칭선을 미세하게 지날 때 선택이 180° 뒤집히면 두 프레임이 서로를 되돌리는 극한 순환이
+    // 된다. 도달 스윕이 이 병을 전수로 잡지만(느린 통합 신호), 여기서 불연속을 국소로 못박는다.
+    const target = { x: 300, y: 0 };
+    const onLine = { x: -300, y: 0 };
+    const past = { x: -300, y: 0.01 };
+    const dirOn = steerAroundObstacles(onLine, target, chaseDir(onLine, target), R, [DOME]);
+    const dirPast = steerAroundObstacles(past, target, chaseDir(past, target), R, [DOME]);
+    expect(dirOn.x * dirPast.x + dirOn.y * dirPast.y).toBeGreaterThan(0);
+  });
+
+  it('막을 것이 없으면(플레이어와 같은 편) 우회하지 않는다 — 목표가 확장원 안이어도', () => {
+    // 목표가 확장원 안이면 목표까지 선분이 그 안에서 끝나 어느 위치에서도 "막혔다"가 나온다. 바로
+    // 뒤에 붙어 선 적이 사이에 아무것도 없는데 옆으로 새면 안 된다 — 목표 클램프 뒤 재판정이 막는다.
+    const bigR = 40;
+    const player = { x: -125, y: 0 }; // 확장원(반지름 140) 안
+    const from = { x: -146, y: 0 }; // 같은 편 바로 뒤(확장원 밖), 사이에 아무것도 없음
+    const dir = chaseDir(from, player);
+    expect(steerAroundObstacles(from, player, dir, bigR, [DOME])).toBe(dir);
+  });
 });
 
 describe('steerAroundObstacles — 원 입력 방어·불변', () => {

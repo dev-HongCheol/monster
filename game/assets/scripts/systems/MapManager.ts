@@ -190,7 +190,8 @@ export class MapManager extends Component {
             `${MAX_OBSTACLE_SIDE}px 초과(D4). 우회 지연이 길어져 교전 반경 근사가 깨집니다.`,
         );
       }
-      // 하한 미달(F55) — 얇은 장애물은 고속 dt에서 서브스텝이 건너뛸 수 있다(원은 지름 = width 기준).
+      // 하한 미달(F55) — 얇은 장애물은 고속 dt에서 서브스텝이 건너뛸 수 있다. 두 축을 다 보는
+      // 바운딩 박스 검사다(정사각 원이면 곧 지름이고, 비정사각 원은 이미 위에서 경고된다).
       if (tr.width < MIN_OBSTACLE_SIDE || tr.height < MIN_OBSTACLE_SIDE) {
         console.warn(
           `[MapManager] 장애물 '${child.name}' 크기 ${tr.width}×${tr.height} — 한 변(원은 지름) ` +
