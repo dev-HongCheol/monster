@@ -20,7 +20,7 @@
 
 ## 2. 자동 테스트 — 스킵 (`pnpm wf skip-test`)
 
-> **회귀 확인 근거:** 신규 피처 테스트는 없다(스킵). 데이터·주석 변경이 기존 테스트를 깨지 않는지 `pnpm wf start-verification`이 전체 스위트를 돌려 확인했다 — **550/550 (36 파일) GREEN**(`HanRiverHazard` 15/15·`BuildingCollision` 52/52 포함). 통과 커밋 SHA는 커밋(11단계) 후 기재한다.
+> **회귀 확인 근거:** 신규 피처 테스트는 없다(스킵). 데이터·주석 변경이 기존 테스트를 깨지 않는지 `pnpm wf start-verification`이 전체 스위트를 돌려 확인했다 — **550/550 (36 파일) GREEN**(`HanRiverHazard` 15/15·`BuildingCollision` 52/52 포함). 통과 커밋 `24cb8ea`(feat — seoul.json + ObstacleLogic.ts 주석).
 
 **신규 순수 로직 파일이 없다.** 이 슬라이스의 변경은 데이터(JSON)와 주석뿐이고 새로 작성하는 로직이 한 줄도 없다. 기존 `tests/logic/HanRiverHazard.test.ts`는 합성 픽스처(SQUARE·NOTCHED·DIAMOND)로 `pointInPolygon`·`playerSpeedMulAt`을 검증하므로 `seoul.json` 폴리곤이 ×2로 스케일돼도 그대로 통과한다(seoul.json에 의존하지 않는다). `ObstacleLogic`의 서브스텝 분할 로직도 상수·코드가 불변이라 `BuildingCollision.test.ts`가 계속 통과한다.
 
