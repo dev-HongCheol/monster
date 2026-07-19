@@ -187,16 +187,20 @@ describe('steerAroundObstacles — 원 접선 경로', () => {
     expect(Math.hypot(out.x, out.y)).toBeCloseTo(1);
   });
 
-  it('정면 대칭선을 0.01px 지나도 방향이 뒤집히지 않는다 (접선 선택 극한 순환 — C-1 원 판)', () => {
+  it('정면 대칭선을 0.01px 지나도 접선 선택이 뒤집히지 않는다 (C-1 원 판 국소)', () => {
     // 사각형 C-1의 원 판: 정면 일직선은 좌우 접선이 동률이라 chirality 타이브레이크가 결정한다.
-    // 그 대칭선을 미세하게 지날 때 선택이 180° 뒤집히면 두 프레임이 서로를 되돌리는 극한 순환이
-    // 된다. 도달 스윕이 이 병을 전수로 잡지만(느린 통합 신호), 여기서 불연속을 국소로 못박는다.
+    // 그 대칭선을 미세하게 지날 때 타이브레이크가 반대 접선으로 뒤집히면 두 프레임이 서로를
+    // 되돌리는 극한 순환이 된다. 원의 두 접선은 2α(여기선 약 47°)만큼만 벌어져, 뒤집혀도 두 방향
+    // 사이 dot이 양수(약 0.68)라 dot>0 검사로는 못 잡는다 — 그래서 "둘 다 CCW(+y) 쪽"을 직접
+    // 본다(뒤집히면 한쪽 y가 −0.4로 떨어진다). 도달 스윕이 이 병을 전수로 잡지만(느린 통합
+    // 신호), 여기서 불연속을 국소로 못박는다.
     const target = { x: 300, y: 0 };
     const onLine = { x: -300, y: 0 };
     const past = { x: -300, y: 0.01 };
     const dirOn = steerAroundObstacles(onLine, target, chaseDir(onLine, target), R, [DOME]);
     const dirPast = steerAroundObstacles(past, target, chaseDir(past, target), R, [DOME]);
-    expect(dirOn.x * dirPast.x + dirOn.y * dirPast.y).toBeGreaterThan(0);
+    expect(dirOn.y).toBeGreaterThan(0);
+    expect(dirPast.y).toBeGreaterThan(0);
   });
 
   it('막을 것이 없으면(플레이어와 같은 편) 우회하지 않는다 — 목표가 확장원 안이어도', () => {
