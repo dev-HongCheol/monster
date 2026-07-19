@@ -1,8 +1,8 @@
 {
-  "feature": "building-collision",
-  "phase": "user-verification",
-  "test_skipped": false,
-  "test_skip_reason": null,
+  "feature": "map-size-2x",
+  "phase": "pr-ready",
+  "test_skipped": true,
+  "test_skip_reason": "맵 크기 2배는 데이터(seoul.json size·한강 폴리곤)와 주석만 변경 — 신규 순수 로직 파일 없음. 기존 로직·상수 불변으로 HanRiverHazard·BuildingCollision 테스트가 회귀 없이 통과. 폴리곤 스케일·크기 반영은 7단계 인게임 수동으로 검증.",
   "ts_check_scope": "full",
   "verification": {
     "cso_done": true,
