@@ -34,7 +34,7 @@
   - **AI 생성 일관성** — 사진 같은 디테일이 많을수록 AI가 컷마다 흔들린다. 제한된 톤·굵은 윤곽은 스타일 레퍼런스로 묶기 쉽다(§8).
 - **분위기:** 야간·저채도 배경 위에 **채도 높은 귀신·마법**이 뜨는 대비. 배경이 조용해야 액션이 읽힌다.
 
-> **여기가 이 문서의 핵심 취향 결정이다.** "한국 민속 아트북 셀셰이딩" 방향이 맞는지, 아니면 더 어둡고 사실적인 공포 톤이나 더 만화 같은 톤을 원하는지 반응을 주면 확정한다. 확정 후 1차 생성 테스트(§8)로 실제 룩을 본다.
+> **핵심 취향 결정.** "한국 민속 아트북 셀셰이딩"을 **시작 방향으로 채택**(2026-07-20 사용자). 최종은 1차 생성 테스트(§8-4 · 부록 B)의 실제 이미지를 보고 확정한다 — 이미지가 더 어둡고 사실적인 공포나 더 만화 같은 톤으로 당길 여지는 열어 둔다.
 
 ---
 
@@ -160,3 +160,32 @@
 - **건물 충돌**: 볼록 박스 ≤300px, 방·복도 금지(맵 로드맵 D4). "막히는 벽"을 그리지 않는다.
 - **텔레그래프**: `telegraphTime` 동안의 윈드업 발광을 아트가 제공.
 - **DragonBones**: `ArmatureDisplay`는 Canvas/RenderRoot2D 자식이어야 하고 Anchor·Size가 무효(Cocos 3.8 공식). 씬 배선 시 반영.
+
+---
+
+## 부록 B. 1차 생성 테스트 프롬프트 (스타일 확정용)
+
+**목적:** 대비 큰 3종(처녀귀신·구미호·마법사)을 **같은 스타일로** 뽑아 한 화면에 놓고 일관성·톤을 눈으로 보고 스타일을 확정한다. 마음에 드는 배치의 한 컷을 **스타일 레퍼런스(Sref)로 고정**해 이후 전체 생성에 재사용한다(§8).
+
+**공통 스타일 접두 (도구 무관):**
+
+```
+high-resolution stylized 2D game character, Korean folklore art style,
+bold clean black outline, soft cel shading with 2-3 flat tones,
+muted dark background so the subject pops, front-facing 3/4 top-down view,
+full body, centered, plain flat background, no text, no watermark
+```
+
+**대상별 접미 (원전 도상 근거):**
+
+- **처녀귀신:** `a Korean cheonyeo virgin ghost: a young woman in a white traditional mourning hanbok, long straight black hair partly covering a pale sorrowful face, barefoot and slightly floating, pale grey-lavender tones (#C9C9D2), eerie`
+- **구미호:** `a Korean kumiho nine-tailed fox spirit: a woman with fox ears and nine flowing fox tails, wearing a hanbok, cunning fox-like eyes, warm orange fur tones (#FF8C2A), agile and dangerous`
+- **마법사(판타지 영웅):** `a summoned fantasy wizard hero: hooded robe, wooden staff with a glowing fire ember, Western high-fantasy look that contrasts the Korean ghosts, confident stance, warm firelight`
+
+**도구별 참고:**
+- **Midjourney:** 첫 배치는 `--ar 1:1 --style raw`. 마음에 드는 컷을 고른 뒤 그 이미지를 `--sref`(스타일 레퍼런스)로 지정해 **나머지 전부에 같은 앵커를 건다** — 이 Sref 고정이 §8의 일관성 리스크 해법이다.
+- **기타 도구:** "style reference / image prompt" 기능으로 같은 앵커 이미지를 건다.
+
+**주의:** 이 테스트는 **스타일 판별용**이라 평면 단일 이미지 1장씩이면 충분하다. DragonBones 리깅용 파츠 분리(머리·몸·팔·지팡이)는 플레이어 실제 제작 단계에서 하며 지금은 하지 않는다.
+
+**합격 기준:** 3장을 나란히 놓았을 때 (a) 하나의 게임처럼 보이고, (b) 처녀귀신·구미호·마법사가 실루엣과 색으로 즉시 구분되며, (c) 소형(20px급)으로 줄여도 무엇인지 읽히면 통과. 통과 못 하면 접두를 조정해 재생성.
