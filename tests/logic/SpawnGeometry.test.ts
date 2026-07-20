@@ -33,7 +33,7 @@ const VIEW_HALF_W = 640;
 const VIEW_HALF_H = 360;
 /** 스폰 여유(px) — "화면 밖"의 계약. 적 최대 반경(40)보다 커야 몸통이 화면에서 태어나지 않는다. */
 const MARGIN = 100;
-/** 표준 서울 아레나 — halfW = halfH = 1200. */
+/** 합성 아레나(크기 불가지 — 로직은 값에 무관) — halfW = halfH = 1200. 실제 서울 맵은 4800이다(F54). */
 const ARENA = { width: 2400, height: 2400 };
 /** 표준 적 충돌 반경(처녀귀신). */
 const RADIUS = 25;

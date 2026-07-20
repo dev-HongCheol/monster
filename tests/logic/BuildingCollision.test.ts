@@ -20,7 +20,7 @@ import {
  */
 
 /** 원점 중심 200×100 장애물 — x∈[-100,100], y∈[-50,50]. */
-const BOX: ObstacleRect = { cx: 0, cy: 0, halfW: 100, halfH: 50 };
+const BOX: ObstacleRect = { kind: 'rect', cx: 0, cy: 0, halfW: 100, halfH: 50 };
 
 /** 이동 주체 반지름(px) — 플레이어·적 충돌 반지름(25 근방)과 같은 자릿수. */
 const R = 20;
@@ -75,7 +75,7 @@ describe('resolveCircleMove — 터널링·통행·안정성', () => {
   it('고속 이동(step ≫ radius)이 얇은 장애물을 관통하지 않는다(터널링 방지)', () => {
     // 폭 20px 세로 벽을 한 프레임에 400px 이동으로 가로지르려 하면, 스텝 분할이 없을 때
     // 목적지(x=200)가 벽 밖이라 그대로 통과해 버린다. 분할이 있으면 왼면(x=-10-radius)에 막힌다.
-    const thin: ObstacleRect = { cx: 0, cy: 0, halfW: 10, halfH: 100 };
+    const thin: ObstacleRect = { kind: 'rect', cx: 0, cy: 0, halfW: 10, halfH: 100 };
     const out = resolveCircleMove({ x: -200, y: 0 }, { x: 200, y: 0 }, R, [thin]);
     expect(out.x).toBeCloseTo(-10 - R);
     expect(out.y).toBeCloseTo(0);
@@ -83,8 +83,8 @@ describe('resolveCircleMove — 터널링·통행·안정성', () => {
 
   it('붙지 않은 장애물 2개 사이 통행 폭(200px)을 곧게 통과한다', () => {
     // 배치 제약 최소 간격(200px) 복도의 한가운데 — 어느 쪽에도 침투하지 않으므로 무보정 통과
-    const left: ObstacleRect = { cx: -150, cy: 0, halfW: 50, halfH: 50 };
-    const right: ObstacleRect = { cx: 150, cy: 0, halfW: 50, halfH: 50 };
+    const left: ObstacleRect = { kind: 'rect', cx: -150, cy: 0, halfW: 50, halfH: 50 };
+    const right: ObstacleRect = { kind: 'rect', cx: 150, cy: 0, halfW: 50, halfH: 50 };
     const out = resolveCircleMove({ x: 0, y: 200 }, { x: 0, y: -200 }, R, [left, right]);
     expect(out.x).toBeCloseTo(0);
     expect(out.y).toBeCloseTo(-200);
@@ -101,8 +101,8 @@ describe('resolveCircleMove — 터널링·통행·안정성', () => {
   it('겹치게 배치된 장애물 2개(배치 제약 위반)에서도 2패스로 비침투 위치에 도달한다', () => {
     // A에서 밀려난 위치가 B 내부로 들어가는 배치 — 방어용 2패스가 없으면 침투가 남는다.
     // 정확한 최종 좌표 대신 "어느 장애물에도 침투하지 않음" 속성을 검증한다(특성화 테스트).
-    const a: ObstacleRect = { cx: 0, cy: 0, halfW: 50, halfH: 50 };
-    const b: ObstacleRect = { cx: 90, cy: 60, halfW: 50, halfH: 50 };
+    const a: ObstacleRect = { kind: 'rect', cx: 0, cy: 0, halfW: 50, halfH: 50 };
+    const b: ObstacleRect = { kind: 'rect', cx: 90, cy: 60, halfW: 50, halfH: 50 };
     const out = resolveCircleMove({ x: 45, y: 45 }, { x: 45, y: 45 }, R, [a, b]);
     for (const ob of [a, b]) {
       const nx = Math.max(ob.cx - ob.halfW, Math.min(ob.cx + ob.halfW, out.x));
@@ -121,7 +121,7 @@ describe('resolveCircleMove — 터널링·통행·안정성', () => {
   it('병리적 입력(거대 이동 × 극소 radius)도 서브스텝 상한으로 즉시 완주한다', () => {
     // 상한이 없으면 steps = ceil(거리/radius) ≈ 40억이라 이 테스트 자체가 사실상 멎는다(행).
     // 상한이 무는 입력은 한 프레임에 아레나를 넘는 순간이동뿐이라 관통을 감수한다(계획 §4.3 방어).
-    const far: ObstacleRect = { cx: 1e9, cy: 1e9, halfW: 10, halfH: 10 };
+    const far: ObstacleRect = { kind: 'rect', cx: 1e9, cy: 1e9, halfW: 10, halfH: 10 };
     const out = resolveCircleMove({ x: 0, y: 0 }, { x: 0, y: -2_000_000_000 }, 0.5, [far]);
     expect(out.x).toBe(0);
     expect(out.y).toBe(-2_000_000_000);
@@ -364,7 +364,7 @@ describe('도달 스윕 — 실 반지름 × 접근각 (C-1 회귀)', () => {
   /** player.json의 충돌 반지름. 적이 이보다 크면 벽에 붙은 플레이어가 적의 확장 사각형에 잠긴다. */
   const PLAYER_R = 25;
   /** 계획 §2.1 상한(한 변 ≤ 300px)의 장애물. */
-  const WALL: ObstacleRect = { cx: 0, cy: 0, halfW: 150, halfH: 150 };
+  const WALL: ObstacleRect = { kind: 'rect', cx: 0, cy: 0, halfW: 150, halfH: 150 };
 
   /**
    * 적 하나를 접근각 `angle`에서 출발시켜 플레이어에 닿을 때까지 굴린다.

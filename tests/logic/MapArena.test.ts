@@ -17,7 +17,7 @@ import {
  * 카메라·씬·배경 배선은 cc 프레임워크 의존이라 여기서 다루지 않는다(7단계 수동 QA).
  */
 
-/** 표준 서울 아레나(placeholder 크기) — halfW=halfH=1200. */
+/** 합성 아레나(크기 불가지 — 로직은 값에 무관) — halfW=halfH=1200. 실제 서울 맵은 4800이다(F54). */
 const ARENA = { width: 2400, height: 2400 };
 
 describe('clampToArena — 엔티티를 반경만큼 벽 안에 가둔다', () => {
