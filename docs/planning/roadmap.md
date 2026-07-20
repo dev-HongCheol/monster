@@ -61,7 +61,7 @@
 
 **장르 클러스터:** Vampire Survivors / Brotato / Hell Maiden / Magic Survival
 **시점:** 탑다운 2D
-**그래픽:** 픽셀 아트 (AI 생성, 방식 1주차 데모 후 확정)
+**그래픽:** 고해상도 스타일라이즈드 2D (AI 생성) + DragonBones 스켈레탈(플레이어·캐릭터 — 스킨·4K 지원). ~~픽셀 아트~~ → **픽셀 폐기(2026-07-20)**: 스킨 적용·4K 지원 요구가 픽셀아트와 맞지 않아 전환. 아트 디렉션 정본: [`docs/design/art-direction.md`](../design/art-direction.md)
 **플랫폼:** v1 = itch.io 웹, v2 = Steam PC. 모바일 비목표.
 
 ---
