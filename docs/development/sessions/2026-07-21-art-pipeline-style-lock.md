@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-07-21
 - **브랜치:** design/art-pipeline-style-lock
-- **상태:** 진행중 — 환경 구축 완료, 1·2차 생성으로 **스타일 방향 검증**. **최종 잠금은 3차 재생성 후로 보류**(사용자 결정 2026-07-21, 토큰 사유로 3차는 추후 진행).
+- **상태:** 화풍 **확정** — 애니 셀 + 주인공은 젊은 여성 불 마법사(2026-07-21). 아트북 셀셰이딩(v1~v3)은 취향이 아니라 폐기, 6화풍 비교 후 애니 선택. 스타일 LoRA 학습은 다음 슬라이스.
 - **정본:** [`../../design/art-direction.md`](../../design/art-direction.md) §8·§9·부록 B. 이 문서는 그 1차 실행 기록이다.
 - **셋업 절차:** [`../comfyui-setup.md`](../comfyui-setup.md) — 이 문서만으로 환경을 다시 구축할 수 있게 유지한다.
 - **백로그:** [`../backlog.md`](../backlog.md) F58.
@@ -108,27 +108,45 @@ extra fingers, missing fingers, photorealistic, 3d render, realistic photo
 
 ---
 
-## 5. 현재 판정 상태
+## 5. 3차(v3) — 잔여 이슈 정리
 
-- **스타일 방향(한국 민속 아트북 셀셰이딩)은 검증됨.** 일관성(합격 기준 a)이 base 체크포인트만으로 확인됐고, v2가 마법사 대비·공포감까지 잡았다.
-- **최종 잠금은 보류.** 사용자가 3차 재생성을 원하며(잔여 이슈 정리), 토큰 사유로 3차는 추후 진행한다. 따라서 이 슬라이스는 **환경 구축 + 방향 검증까지 확정**, LoRA 씨앗 확정·학습은 3차 뒤로 넘어간다.
-- 유력 씨앗 후보(잠정): 귀신 v2 seed 2·3, 구미호 v1 seed 1·3, 마법사 v2 seed 1. **3차 결과를 보고 확정.**
+v2 약점을 프롬프트·네거티브로 마저 잡았다(출력 `F:\ai\ComfyUI\output\F58_v3\`, 시드 4·5·6). 드라이버 `gen_style_test_v3.py`.
+- **프레임 제거** `(frame:1.4)(border:1.4)` 가중 → 원형 프레임 사라짐.
+- **색 이탈 방지** `full color` + `grayscale, monochrome` 네거티브 → 마법사 흑백 드리프트 해결.
+- **구미호 회귀** 수인 전사 드리프트를 `(한복:1.3)`·여인+여우 강조 + `armor, beast warrior` 네거티브로 되돌림. seed 6은 아홉 꼬리 부챗살까지.
+- **마법사 서구 대비** 세 시드 모두 일관된 서구 마법사, 풀컬러.
 
----
-
-## 6. 3차 계획 (추후)
-
-서버 재기동(comfyui-setup §5) 후 아래를 조정해 재생성한다.
-1. **프레임 강력 제거** — seed 2 계열의 프레임 잔재를 네거티브 강화(가중치 상향) 또는 해당 시드 회피로 정리.
-2. **구미호 회귀** — 수인 전사 드리프트를 되돌려 "한복 입은 여우 정령"으로. `fox ears + hanbok` 강조, `warrior armor, furry, beast warrior` 네거티브.
-3. **마법사 s1 방향 유지** — v2 마법사 seed 1이 목표. 그 프롬프트를 고정하고 시드만 넓혀 변주.
-4. 통과 컷 확정 → 재현 기록 완성 → LoRA 학습(별 슬라이스, 8GB면 클라우드 검토).
+여기까지 **아트북 셀셰이딩 방향 자체는 기술적으로 완성**됐으나, 사용자가 **그 화풍이 취향이 아니라고 판정**했다(2026-07-21). → 방향 재검토.
 
 ---
 
-## 7. 재현성 기록
+## 6. 화풍 재검토 → 애니 확정
+
+취향이 아닌 건 개별 캐릭터가 아니라 **그리는 방식(화풍)**이므로, 같은 캐릭터(처녀귀신)를 **확 다른 6개 화풍**으로 뽑아 비교했다(`gen_style_compare.py`, 출력 `F58_styles\`, seed 7): ① 아트북 셀 ② 사실적 공포 ③ 페인팅 ④ 애니 ⑤ 만화 ⑥ 먹선 민화.
+
+- **사용자 선택: ④ 애니 셀.** 사실적(②③)·먹선(⑥)은 예뻐도 게임 제약 3개(호드 가독성·AI 일관성·스켈레탈 리깅, art-direction §2)와 상충해 제외. 애니는 취향에 맞으면서 그 제약을 아트북과 똑같이 만족.
+- **애니로 대비 3종 재생성**(`gen_anime.py`, 출력 `F58_anime\`, 시드 7·8·9): 귀신·구미호·마법사가 애니 셀로 **일관성 재확인**(합격 a). 귀신은 빛나는 눈으로 공포감, 구미호는 한복 여우, 마법사는 서구 대비 유지.
+- **마법사(주인공) = 젊은 여성 불 마법사(사용자 결정).** 색감은 애니 마법사 seed 8 기준(따뜻한 적·갈·주황 + 불빛). 여성판(`gen_wizard_female.py`, `F58_wizard_f\`) → 사용자가 seed 13 선호 + **지팡이 한 손만** 요청 → 확정판(`gen_wizard_final.py`, `F58_wizard_final\`, 시드 13·14·15·16, 한 손 지팡이 + 다른 손 불꽃). **확정 레퍼런스: `F58_wizard_final` seed 13.**
+  - 단발 생성의 손목·손 글리치는 이 단계에서 무시(방향 판정 무관). 최종 주인공 에셋 제작 때 수작업 클린업·리깅에서 보정(art-direction §8-2).
+
+---
+
+## 7. 확정 상태 (2026-07-21)
+
+- **화풍 확정: 애니 셀.** (아트북 셀셰이딩 폐기.)
+- **주인공 확정: 젊은 여성 불 마법사** — 뾰족 모자·긴 로브·한 손 지팡이, 따뜻한 불 팔레트. 레퍼런스 `F58_wizard_final` seed 13.
+- **귀신·구미호:** 애니 방향으로 `F58_anime`가 기준(귀신=빛나는 눈·흰/보라 한복, 구미호=주황 여우·한복).
+- **LoRA 씨앗 세트(잠정):** 귀신 `F58_anime` s8·s7, 구미호 `F58_anime` s7·s9, 마법사 `F58_wizard_final` s13. 최종 씨앗은 LoRA 슬라이스 착수 때 다시 추린다.
+- **다음 슬라이스:** 위 씨앗으로 **스타일 LoRA 학습**(8GB라 로컬 kohya 극단 최적화 vs 클라우드 GPU 판단) → 이후 로스터 12종·플레이어 스켈레탈·마법 이펙트·맵 아트를 애니 LoRA로 잠가 생성(art-direction §9).
+
+---
+
+## 8. 재현성 기록
 
 - **ComfyUI:** 0.28.0 · Python 3.12.10 · torch 2.6.0+cu124 · torchaudio 2.6.0+cu124.
 - **체크포인트:** `sd_xl_base_1.0.safetensors` (stabilityai/stable-diffusion-xl-base-1.0, 약 6.5GB). SHA256 `31E35C80FC4829D14F90153F4C74CD59C90B779F6AFE05A74CD6120B893F7E5B` (공식 해시와 일치 — 무결성 확인).
-- **워크플로:** 3절·4절의 프롬프트 + 샘플러 설정이 곧 워크플로다(드라이버 골격은 comfyui-setup 부록). 같은 프롬프트·시드·체크포인트면 같은 이미지가 나온다.
-- **출력 경로:** v1 `F:\ai\ComfyUI\output\F58\`, v2 `F:\ai\ComfyUI\output\F58_v2\`(레포 밖, 커밋하지 않음).
+- **샘플러(전 배치 공통):** 1024×1024 · steps 30(확정판 32) · cfg 7.0 · sampler `dpmpp_2m` · scheduler `karras` · denoise 1.0.
+- **애니 공통 스타일 접두:** `clean anime illustration, crisp clean anime lineart, vibrant cel shaded anime style, detailed anime art, full body, centered, single character isolated on a plain muted dark background, front-facing 3/4 top-down view, no scenery, no frame, no border, no text`
+- **마법사(여성 확정) positive:** `(a young beautiful woman wizard:1.3), Western high-fantasy sorceress hero, long wavy hair, tall pointed wizard hat, long flowing European mage robe, (holding a single wooden staff in one hand:1.3), the other hand raised casting a small fire ember, warm firelight glow, (warm red brown and orange color palette:1.2), dramatic ember fire, dark muted background, confident heroic stance, clearly Western medieval fantasy style` / **핵심 네거티브:** `(two staffs:1.4), (both hands on staff:1.3), (old man:1.4), (beard:1.4), (male:1.2), kimono, hanbok, (frame:1.4), grayscale`
+- **드라이버 스크립트(레포 밖 `F:\ai`):** `gen_style_test.py`(v1) · `_v2` · `_v3` · `gen_style_compare.py`(6화풍) · `gen_anime.py` · `gen_wizard_female.py` · `gen_wizard_final.py` · `montage.py`. 같은 프롬프트·시드·체크포인트면 같은 이미지가 나온다. 골격은 comfyui-setup 부록 A.
+- **출력 경로(레포 밖, 커밋 안 함):** `F:\ai\ComfyUI\output\` 아래 `F58`(v1)·`F58_v2`·`F58_v3`·`F58_styles`·`F58_anime`·`F58_wizard_f`·`F58_wizard_final`.
