@@ -65,9 +65,11 @@ git clone https://github.com/comfyanonymous/ComfyUI F:\ai\ComfyUI
 # 2) 가상환경 (시스템 Python 3.12.10 기준)
 python -m venv F:\ai\ComfyUI\venv
 
-# 3) CUDA용 torch — 3070 Ti(Ampere)는 cu124 휠로 충분
+# 3) CUDA용 torch — 3070 Ti(Ampere)는 cu124 휠로 충분.
+#    torchaudio까지 셋을 한 번에 cu124로 깐다(뒤 requirements가 torchaudio를
+#    PyPI 기본 빌드로 덮어써 ABI가 어긋나는 걸 예방 — 3.1 참조).
 F:\ai\ComfyUI\venv\Scripts\python.exe -m pip install --upgrade pip
-F:\ai\ComfyUI\venv\Scripts\python.exe -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+F:\ai\ComfyUI\venv\Scripts\python.exe -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # 4) ComfyUI 의존성
 F:\ai\ComfyUI\venv\Scripts\python.exe -m pip install -r F:\ai\ComfyUI\requirements.txt
@@ -79,6 +81,21 @@ F:\ai\ComfyUI\venv\Scripts\python.exe -m pip install -r F:\ai\ComfyUI\requiremen
 F:\ai\ComfyUI\venv\Scripts\python.exe -c "import torch; print(torch.cuda.is_available(), torch.version.cuda, torch.cuda.get_device_name(0))"
 # 기대: True 12.4 NVIDIA GeForce RTX 3070 Ti
 ```
+
+### 3.1 알려진 함정 — torchaudio 버전 불일치 (겪음 2026-07-21)
+
+3번에서 torch·torchvision만 cu124 인덱스로 깔고, 4번의 `requirements.txt`가 **torchaudio를 PyPI 기본 인덱스에서** 끌어오면 버전이 어긋난다. 실제로 torch가 `2.6.0+cu124`인데 torchaudio가 `2.11.0`(최신·CPU 빌드)으로 깔려, 서버 기동 때 torchaudio 네이티브 확장 로드가 `OSError: [WinError 127] 지정된 프로시저를 찾을 수 없습니다`로 죽는다. torchaudio가 자기 C++ 확장을 torch의 ABI에 맞춰 링크하는데 torch 버전이 다르면 심볼을 못 찾기 때문이다. ComfyUI는 `comfy/ldm/lightricks/vae/audio_vae.py`가 torchaudio를 임포트해서 이 실패가 서버 전체를 멈춘다.
+
+**복구:** torchaudio를 torch와 **같은 버전·같은 cu124 인덱스**로 다시 깐다.
+
+```powershell
+F:\ai\ComfyUI\venv\Scripts\python.exe -m pip install "torchaudio==2.6.0" --index-url https://download.pytorch.org/whl/cu124
+F:\ai\ComfyUI\venv\Scripts\python.exe -c "import torchaudio; print(torchaudio.__version__)"  # 기대: 2.6.0+cu124
+```
+
+> 아예 예방하려면 3번에서 `torch torchvision torchaudio` 셋을 **한 번에** cu124 인덱스로 깔아 두면 이후 requirements가 이미 만족된 torchaudio를 건드리지 않는다.
+
+**확인된 동작 조합(2026-07-21):** ComfyUI 0.28.0 · Python 3.12.10 · torch 2.6.0+cu124 · torchvision 0.21.0+cu124 · torchaudio 2.6.0+cu124.
 
 ---
 
