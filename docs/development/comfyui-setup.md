@@ -159,3 +159,55 @@ art-direction §8·부록 B가 말하는 "규약으로 박는다"의 실체가 �
 - **스타일 LoRA 학습** — 8GB에서 빡빡해 다음 슬라이스로 미뤘다. 로컬 kohya 극단 최적화 vs 클라우드 GPU(RunPod 등) 판단을 그때 한다.
 - **로스터 12종·플레이어 스켈레탈·마법 이펙트·맵 아트 생성** — 스타일 확정(이번 슬라이스)이 선행 게이트다. 통과 후 art-direction §9 순서대로 별 슬라이스에서 진행한다.
 - **DragonBones 리깅** — 툴 리스크(에디터 정체)는 art-direction §3.2·F59 참조. 스켈레탈 대상 제작 단계에서 다룬다.
+
+---
+
+## 부록 A. 생성 드라이버 (API 구동)
+
+5절의 API를 감싼 순수 stdlib 드라이버다. GUI 없이 프롬프트를 시드별로 밀어 넣고, 완료를 폴링해 저장 파일 경로를 돌려준다. **아래는 재사용 골격이고, 슬라이스별 실제 프롬프트(공통 접두·대상별 접미·네거티브)는 그 슬라이스의 세션 문서에 남긴다**(예: `sessions/2026-07-21-art-pipeline-style-lock.md` §3·§4). 프롬프트를 여기 박아 두면 슬라이스마다 낡으므로, 골격만 여기 두고 값은 세션 문서를 정본으로 한다.
+
+```python
+import json, sys, time, urllib.request
+
+SERVER = "http://127.0.0.1:8188"
+CKPT = "sd_xl_base_1.0.safetensors"
+
+def build_workflow(positive: str, negative: str, seed: int, prefix: str) -> dict:
+    """SDXL text2img 워크플로(API 포맷). VAE는 체크포인트 내장분(노드 4의 슬롯 2)."""
+    return {
+        "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": CKPT}},
+        "6": {"class_type": "CLIPTextEncode", "inputs": {"text": positive, "clip": ["4", 1]}},
+        "7": {"class_type": "CLIPTextEncode", "inputs": {"text": negative, "clip": ["4", 1]}},
+        "5": {"class_type": "EmptyLatentImage", "inputs": {"width": 1024, "height": 1024, "batch_size": 1}},
+        "3": {"class_type": "KSampler", "inputs": {
+            "seed": seed, "steps": 30, "cfg": 7.0,
+            "sampler_name": "dpmpp_2m", "scheduler": "karras", "denoise": 1.0,
+            "model": ["4", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["5", 0]}},
+        "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["4", 2]}},
+        "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": prefix, "images": ["8", 0]}},
+    }
+
+def post_prompt(workflow: dict) -> str:
+    data = json.dumps({"prompt": workflow}).encode()
+    req = urllib.request.Request(f"{SERVER}/prompt", data=data, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.load(r)["prompt_id"]
+
+def wait_result(prompt_id: str, timeout_s: int = 600):
+    """/history/{id}가 outputs를 담을 때까지 폴링 → 저장 파일 경로 목록."""
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        with urllib.request.urlopen(f"{SERVER}/history/{prompt_id}", timeout=30) as r:
+            entry = json.load(r).get(prompt_id)
+        if entry and entry.get("outputs"):
+            return [f"{SERVER}/view?filename={i['filename']}&subfolder={i.get('subfolder','')}&type=output"
+                    for n in entry["outputs"].values() for i in n.get("images", [])]
+        time.sleep(2)
+    raise TimeoutError(prompt_id)
+```
+
+**쓰는 법:** 대상마다 `positive`(공통 접두 + 대상 접미)·`negative`를 만들어 `post_prompt(build_workflow(...))`로 큐에 넣고, 반환된 `prompt_id`들을 `wait_result`로 회수한다. 저장 이미지는 `F:\ai\ComfyUI\output\<prefix>`에 떨어진다.
+
+## 부록 B. 대조 시트(검수용)
+
+여러 컷을 한 장에 모아 "나란히" 보는 board는 Pillow로 만든다(부록 B 합격 기준이 나란히 비교를 요구). 행=대상, 열=시드로 배치하고 라벨을 얹는다. 스크립트는 슬라이스 작업 산출물로 `F:\ai`에 두되, 재구축이 필요하면 `output/<batch>/<subject>_<seed>_*.png`를 3열 그리드로 붙이는 짧은 Pillow 스크립트면 충분하다(한글 라벨은 기본 폰트에 글리프가 없어 네모로 뜨니 영문 키를 함께 쓴다).

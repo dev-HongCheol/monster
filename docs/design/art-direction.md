@@ -4,6 +4,7 @@
 - **브랜치:** design/art-direction-plan
 - **성격:** 게임 전체의 시각 언어를 관통하는 아트 디렉션. 캐릭터·적·마법·맵이 하나의 정체성으로 읽히게 하는 정본. 개별 에셋 제작은 이 문서에서 파생한다.
 - **상태:** DRAFT — 파이프라인(DragonBones 스켈레탈, AI 생성은 ComfyUI + LoRA)·해상도 방향은 확정. 구체 비주얼 스타일(§2)은 제안이며 사용자 반응 후 확정. 최종 팔레트·프롬프트와 ComfyUI 세부 노드 그래프는 1차 생성 테스트 후 조정.
+- **1차 실행(2026-07-21):** ComfyUI+SDXL 1.0 base 환경을 세우고 1·2차 생성 테스트를 돌려 **스타일 방향(§2 아트북 셀셰이딩)이 실측 검증**됐다(일관성 통과). **최종 잠금은 3차 재생성 후로 보류.** 실행 기록·프롬프트·재현 정보는 [`../development/sessions/2026-07-21-art-pipeline-style-lock.md`](../development/sessions/2026-07-21-art-pipeline-style-lock.md), 환경 재구축은 [`../development/comfyui-setup.md`](../development/comfyui-setup.md).
 - **선행 결정:** 픽셀아트 폐기(스킨·4K 요구), DragonBones 스켈레탈 채택 → `sessions/2026-07-20-j-completeness-sequencing.md` 후속 논의(2026-07-20)
 - **근거 문서:** `docs/planning/roadmap.md`(컨셉·세계관), `game/assets/resources/data/enemies.json`(적 로스터·색), `docs/planning/enemy-system.md`·`magic-system-mage.md`
 
@@ -35,6 +36,8 @@
 - **분위기:** 야간·저채도 배경 위에 **채도 높은 귀신·마법**이 뜨는 대비. 배경이 조용해야 액션이 읽힌다.
 
 > **핵심 취향 결정.** "한국 민속 아트북 셀셰이딩"을 **시작 방향으로 채택**(2026-07-20 사용자). 최종은 1차 생성 테스트(§8-4 · 부록 B)의 실제 이미지를 보고 확정한다 — 이미지가 더 어둡고 사실적인 공포나 더 만화 같은 톤으로 당길 여지는 열어 둔다.
+>
+> **1·2차 실측(2026-07-21).** 이 방향으로 3종을 뽑아 본 결과 **일관성은 통과**했다 — LoRA 없이 SDXL base만으로 세 대비 캐릭터가 같은 룩으로 읽혔다. 2차에서 마법사의 서구 판타지 대비·귀신의 공포감까지 확인. 남은 손질(한복의 한국 특정성 강화, 구미호 드리프트, seed 2 프레임 잔재)은 방향 실패가 아니라 프롬프트·네거티브로 잡을 문제다. **최종 잠금은 3차 뒤.** 상세: [`../development/sessions/2026-07-21-art-pipeline-style-lock.md`](../development/sessions/2026-07-21-art-pipeline-style-lock.md).
 
 ---
 
