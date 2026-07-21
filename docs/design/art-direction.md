@@ -3,8 +3,9 @@
 - **작성일:** 2026-07-20
 - **브랜치:** design/art-direction-plan
 - **성격:** 게임 전체의 시각 언어를 관통하는 아트 디렉션. 캐릭터·적·마법·맵이 하나의 정체성으로 읽히게 하는 정본. 개별 에셋 제작은 이 문서에서 파생한다.
-- **상태:** 파이프라인(DragonBones 스켈레탈, AI 생성은 ComfyUI + LoRA)·해상도·**화풍(§2 애니 셀) 확정**. 남은 것은 스타일 LoRA 학습(다음 슬라이스)과 카테고리별 실제 에셋 제작(§9).
+- **상태:** 파이프라인(DragonBones 스켈레탈, AI 생성은 ComfyUI + LoRA)·해상도·**화풍(§2 애니 셀) 확정** + **스타일 LoRA 학습·검증 완료**(2026-07-21). 남은 것은 이 LoRA를 얹은 카테고리별 실제 에셋 제작(§9).
 - **스타일 확정(2026-07-21):** ComfyUI+SDXL 1.0 base 환경을 세우고 생성 테스트(v1~v3)를 거쳐 처음의 "아트북 셀셰이딩"이 취향이 아님을 확인, 6개 화풍 비교 후 **애니 셀로 확정**. 마법사(주인공)는 **젊은 여성 불 마법사**로 확정(§6). 실행 기록·프롬프트·재현 정보는 [`../development/sessions/2026-07-21-art-pipeline-style-lock.md`](../development/sessions/2026-07-21-art-pipeline-style-lock.md), 환경 재구축은 [`../development/comfyui-setup.md`](../development/comfyui-setup.md).
+- **스타일 LoRA 학습(2026-07-21, F58b):** 확정 씨앗(`F58_anime` 9장 + `F58_wizard_final` s13)으로 애니 셀 스타일 LoRA를 로컬 8GB에서 학습(§8-1). 짧은 프롬프트로 대비 3종의 룩이 잠기는 것을 검증해 합격. 산출물 `f58_anime_style.safetensors`(트리거 `f58anime`). 학습 환경 재구축은 [`../development/kohya-setup.md`](../development/kohya-setup.md), 실행 기록은 [`../development/sessions/2026-07-21-art-pipeline-lora.md`](../development/sessions/2026-07-21-art-pipeline-lora.md).
 - **선행 결정:** 픽셀아트 폐기(스킨·4K 요구), DragonBones 스켈레탈 채택 → `sessions/2026-07-20-j-completeness-sequencing.md` 후속 논의(2026-07-20)
 - **근거 문서:** `docs/planning/roadmap.md`(컨셉·세계관), `game/assets/resources/data/enemies.json`(적 로스터·색), `docs/planning/enemy-system.md`·`magic-system-mage.md`
 
@@ -158,7 +159,7 @@
 
 ## 9. 카테고리별 작업 순서
 
-1. **스타일 확정 + 1차 테스트(§8-4)** — 대비 큰 3종으로 스타일 룩을 잡고 검수(이 결과물이 스타일 LoRA 학습 씨앗). 여기 통과가 나머지 전부의 전제.
+1. **스타일 확정 + 1차 테스트(§8-4) → 스타일 LoRA 학습(§8-1)** — 대비 큰 3종으로 스타일 룩을 잡고 검수(이 결과물이 스타일 LoRA 학습 씨앗), 그 씨앗으로 스타일 LoRA를 학습·검증. 여기 통과가 나머지 전부의 전제. **완료(2026-07-21, F58b)** — 이후 2~5는 `f58_anime_style` LoRA를 얹어 생성한다.
 2. **플레이어(마법사) 스켈레탈** — 슬롯 분해 규약(§6)대로 리깅. 스킨 파이프라인의 기준 구현체.
 3. **적 로스터 12종** — 고해상도 스프라이트 프레임. role별 실루엣·명도 규약(§5) 적용.
 4. **마법 이펙트** — 4분류 색(§4.2). 발사·명중·폭발·CC 시각.
