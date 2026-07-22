@@ -3,7 +3,7 @@
 
 - **작성일:** 2026-07-22
 - **브랜치:** feat/player-mage-art
-- **상태:** autoplan 리뷰 반영 (계획 승인 대기)
+- **상태:** 완료 (PR #66 squash merge)
 - **정본:** [`../../design/art-direction.md`](../../design/art-direction.md) §6(플레이어 슬롯 설계)·§8(AI 생성 파이프라인)·§9(작업 순서)
 - **선행 완료:** F58/F58b — 애니 셀 스타일 확정 + 스타일 LoRA(`f58_anime_style`, 트리거 `f58anime`, 강도 0.8) 학습·검증
 - **닫는 백로그:** [`../backlog.md`](../backlog.md) **F60**(마법사 생성분). 리깅 툴 확인 [`../backlog-implement.md`](../backlog-implement.md) **F59**는 다음 슬라이스 선행 게이트이나, 이번 슬라이스가 **병행으로 구동 확인만** 먼저 한다(아래 §5).
