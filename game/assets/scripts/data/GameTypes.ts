@@ -20,6 +20,10 @@ export interface IPlayerBaseData {
   collisionRadius: number;
   /** XP 자동 흡수 반경 (units) — 픽업범위 패시브의 베이스값 */
   pickupRadius: number;
+  /** 피해 히트박스 반너비 (px) — 적·적 발사체(원) 대 플레이어(박스) 판정(ADR 006). 이동 충돌은 collisionRadius(원) 유지. */
+  hurtboxHalfWidth: number;
+  /** 피해 히트박스 반높이 (px) — ADR 006. */
+  hurtboxHalfHeight: number;
 }
 
 /** 마법 분류 (기획 § 1) — JSON 문자열과 일치 */

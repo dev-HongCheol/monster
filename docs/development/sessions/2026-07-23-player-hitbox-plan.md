@@ -34,7 +34,7 @@ ADR 006대로 주인공을 4방향으로 세로 크게 그리려면 세로로 �
 | 파일 | 변경 |
 |------|------|
 | `logic/HitboxLogic.ts` (신규) | `circleIntersectsBox(cx, cy, r, bx, by, halfW, halfH): boolean` — 원 중심을 박스 범위로 clamp한 최근접점과 원 중심 거리로 겹침 판정. 순수·cc 무관. |
-| `data/GameTypes.ts` `IPlayerData` | 피해 박스 필드 추가(`hurtboxHalfWidth`·`hurtboxHalfHeight`, 가칭). `collisionRadius`는 유지(이동). |
+| `data/GameTypes.ts` `IPlayerBaseData` | 피해 박스 필드 추가(`hurtboxHalfWidth`·`hurtboxHalfHeight`). `collisionRadius`는 유지(이동). |
 | `resources/data/player.json` | 위 박스 값. 몸통+머리 세로 실루엣 기준(§5). |
 | `EnemyController._checkContactDamage` | 반지름 합 → `circleIntersectsBox`(적 원 중심·반지름 vs 플레이어 박스). |
 | `EnemyProjectile` (`init`·플레이어 명중 판정) | 반지름 합 → 같은 원-대-박스 판정. |
