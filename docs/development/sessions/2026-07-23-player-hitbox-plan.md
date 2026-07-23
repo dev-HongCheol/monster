@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-07-23
 - **브랜치:** feat/player-hitbox
-- **상태:** 계획
+- **상태:** 완료 (PR #67 — 구현·검증·리뷰 통과, squash merge)
 - **정본:** [`../../decisions/006-collision-hitbox.md`](../../decisions/006-collision-hitbox.md) (ADR 006), [`../../design/art-direction.md`](../../design/art-direction.md) §3.1·§3.3
 - **선행 검토(방향·스코프):** 이 대화(2026-07-23) — 캐릭터 방향성 **4방향**, 충돌 **플레이어 박스 / 적·보스 원**, 마법 VFX **파티클 척추**를 확정하고, 그중 코드로 옮기는 첫 조각을 이 슬라이스로 잘랐다. 방향의 정본은 art-direction·ADR 006.
 - **백로그 관계:** 신규 방향(ADR 006)이라 닫는 항목은 없다. **G1**(스웜 성능, [`../backlog-implement.md`](../backlog-implement.md))은 적을 원으로 묶어 핫패스를 지켰으므로 **불변**(앞당기지 않음). **A2**(facing 방향 발사)의 facing 인프라는 4방향 슬라이스가 얹는다(이 슬라이스 아님). 아트 후속은 **F60**([`../backlog.md`](../backlog.md)).
