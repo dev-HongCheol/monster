@@ -1,5 +1,5 @@
 {
-  "feature": "circle-obstacle",
+  "feature": "player-hitbox",
   "phase": "pr-ready",
   "test_skipped": false,
   "test_skip_reason": null,

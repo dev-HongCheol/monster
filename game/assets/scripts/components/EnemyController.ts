@@ -9,6 +9,7 @@ import {
 } from '../logic/EnemyAttackLogic';
 import { deathAlpha, deathScale, hitFlashBlend, isDeathDone } from '../logic/EnemyVisualLogic';
 import { fanDirections, radialDirections } from '../logic/FireGeometry';
+import { circleIntersectsBox } from '../logic/HitboxLogic';
 import {
   kiteDirection,
   type LungeParams,
@@ -99,7 +100,10 @@ export class EnemyController extends Component {
 
   private _data: IEnemyData | null = null;
   private _hp: number = 0;
-  private _playerCollisionRadius: number = 0;
+  /** 플레이어 피해 히트박스 반너비 (px) — init에서 DataManager로부터 캐시. 이동 충돌(collisionRadius, 원)과 별개 축(ADR 006). */
+  private _playerHurtboxHalfW: number = 0;
+  /** 플레이어 피해 히트박스 반높이 (px) */
+  private _playerHurtboxHalfH: number = 0;
   /** Sprite 참조 (색·페이드 적용 대상). onLoad에서 캐시 */
   private _sprite: Sprite | null = null;
   /** 데이터에서 읽은 기준 색(tint) — 플래시/페이드의 기준값 */
@@ -221,7 +225,9 @@ export class EnemyController extends Component {
       this._applyVisualBaseline(this._data);
     }
     // _data가 없으면 update()가 첫 줄에서 빠지므로(적이 아무것도 하지 않는다) 이 값은 쓰이지 않는다.
-    this._playerCollisionRadius = dm?.playerData?.collisionRadius ?? 0;
+    const pd = dm?.playerData;
+    this._playerHurtboxHalfW = pd?.hurtboxHalfWidth ?? 0;
+    this._playerHurtboxHalfH = pd?.hurtboxHalfHeight ?? 0;
   }
 
   // 데이터 준비 시 update 분기: 사망 연출 중이면 그것만, 아니면 플래시 갱신 + (Playing일 때) 추적·접촉
@@ -799,9 +805,20 @@ export class EnemyController extends Component {
     if (!this.playerNode || !this._data) return;
     // 빙결만 접촉 피해를 막는다(완전 무력화). 정지·슬로우는 닿아 있으면 그대로 아프다.
     if (!dealsContactDamage(applied)) return;
-    const dist = Vec3.distance(this.node.position, this.playerNode.position);
-    const touchRadius = this.collisionRadius + this._playerCollisionRadius;
-    if (dist < touchRadius) {
+    const ep = this.node.position;
+    const pp = this.playerNode.position;
+    // 적(원, collisionRadius) 대 플레이어(피해 박스) 겹침 — 이동 충돌과 별개 축이다(ADR 006).
+    if (
+      circleIntersectsBox(
+        ep.x,
+        ep.y,
+        this.collisionRadius,
+        pp.x,
+        pp.y,
+        this._playerHurtboxHalfW,
+        this._playerHurtboxHalfH,
+      )
+    ) {
       // 반환값을 쓰지 않는 호출이라 옵셔널 체이닝이 안전하다.
       GameManager.instance?.damagePlayerContact(this._data.contactDamagePerSec);
     }

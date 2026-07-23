@@ -1,6 +1,7 @@
 import { _decorator, Component, type Node, Vec3, view } from 'cc';
 import { GameState } from '../data/GameTypes';
 import { isOutsideArena } from '../logic/ArenaLogic';
+import { circleIntersectsBox } from '../logic/HitboxLogic';
 import { DataManager } from '../systems/DataManager';
 import { GameManager } from '../systems/GameManager';
 import { MapManager } from '../systems/MapManager';
@@ -25,8 +26,9 @@ export class EnemyProjectile extends Component {
   private _radius: number = 12;
   /** 충돌 판정 대상 플레이어 노드 */
   private _playerNode: Node | null = null;
-  /** 플레이어 충돌 반경 (init에서 DataManager로부터 캐시) */
-  private _playerCollisionRadius: number = 0;
+  /** 플레이어 피해 히트박스 반너비·반높이 (px) — init에서 DataManager로부터 캐시(ADR 006). */
+  private _playerHurtboxHalfW: number = 0;
+  private _playerHurtboxHalfH: number = 0;
   /** 화면 밖 제거 기준 거리 */
   private _outOfBoundsLimit: number = 800;
   /** 풀 반환 콜백 (init에서 주입). null이면 destroy로 폴백. */
@@ -58,8 +60,11 @@ export class EnemyProjectile extends Component {
     this._playerNode = playerNode;
     // 조기 return을 두지 않는다 — 여기서 빠져나가면 아래 _despawned = false가 실행되지 않아
     // 풀에서 되살아난 발사체가 영영 반환되지 않는(그리고 계속 피해를 주는) 노드가 된다.
-    // 데이터가 없으면 명중 반경만 살짝 줄어들 뿐이고, 그 상황은 다른 곳에서 이미 시끄럽게 신고된다.
-    this._playerCollisionRadius = DataManager.instance?.playerData?.collisionRadius ?? 0;
+    // 데이터가 없으면 플레이어 피해 박스가 0이 되어 명중 범위가 발사체 반지름만 남을 뿐이고,
+    // 그 상황은 다른 곳에서 이미 시끄럽게 신고된다.
+    const pd = DataManager.instance?.playerData;
+    this._playerHurtboxHalfW = pd?.hurtboxHalfWidth ?? 0;
+    this._playerHurtboxHalfH = pd?.hurtboxHalfHeight ?? 0;
     this._onDespawn = onDespawn;
     this._despawned = false;
   }
@@ -100,11 +105,18 @@ export class EnemyProjectile extends Component {
     if (!this._playerNode?.isValid) return;
     const pos = this.node.position;
     const pp = this._playerNode.position;
-    // 2D 평면 가정(z=0) — 제곱거리 비교로 sqrt 제거.
-    const dx = pos.x - pp.x;
-    const dy = pos.y - pp.y;
-    const reach = this._radius + this._playerCollisionRadius;
-    if (dx * dx + dy * dy < reach * reach) {
+    // 발사체(원) 대 플레이어(피해 박스) 겹침 — 이동 충돌과 별개 축이다(ADR 006).
+    if (
+      circleIntersectsBox(
+        pos.x,
+        pos.y,
+        this._radius,
+        pp.x,
+        pp.y,
+        this._playerHurtboxHalfW,
+        this._playerHurtboxHalfH,
+      )
+    ) {
       gm.damagePlayer(this._damage);
       this._despawn();
     }
