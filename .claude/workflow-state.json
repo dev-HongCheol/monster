@@ -1,6 +1,6 @@
 {
   "feature": "player-4dir",
-  "phase": "planning",
+  "phase": "qa-setup",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": null,

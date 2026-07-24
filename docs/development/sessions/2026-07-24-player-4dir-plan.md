@@ -44,7 +44,9 @@ office-hours에서 세 갈래(A 스프라이트만 / B 풀 스켈레탈 리깅 /
   - `export type Facing = 'front' | 'back' | 'left' | 'right'`
   - `export function facingFromMoveDir(x: number, y: number, prev: Facing): Facing` — 입력 0이면 `prev`, 아니면 우세 축(동률 시 가로) 기준으로 방향을 반환. 화면 좌표 기준으로 아래(`y<0`)가 정면(front, 카메라를 향함), 위(`y>0`)가 후면(back).
 - **`game/assets/scripts/components/PlayerController.ts`** — 배선을 더한다.
-  - 방향별 그림을 물릴 `@property(Sprite)` 몸통 스프라이트 참조 1개 + `@property(SpriteFrame)` 네 방향 프레임 4개(또는 `@property([SpriteFrame])` 배열 1개).
+  - `@property(SpriteFrame)` 네 방향 프레임 **4개를 이름별로** 둔다. 배열 하나(`@property([SpriteFrame])`)로 받으면 에디터에서 순서를 잘못 끼워도 조용히 통과해, 위로 걸을 때 왼쪽 그림이 뜨는 식으로 어긋난다.
+  - **`Sprite`는 `@property`로 받지 않고 `getComponent(Sprite)`로 집는다(qa-setup에서 씬 확인 후 확정).** `main.scene`의 `Player`는 자식이 없고 `Sprite`가 그 노드 자신에 붙어 있어, 같은 노드에서 집으면 된다 — `EnemyController.onLoad`가 쓰는 방식과 같다. 연결을 잊어 방향 전환이 조용히 죽는 실패 모드가 하나 줄어든다.
+  - 초기 표시 프레임은 `start()`에서 `_facing`(초기값 `'front'`) 기준으로 한 번 적용한다. 씬의 `Sprite.SpriteFrame` 값에 런타임 표시를 맡기면 그 값이 에디터에서 드리프트했을 때 첫 프레임만 다른 방향으로 보인다.
   - `_facing: Facing` 필드(초기값 `'front'`)를 두고, `update()`의 Playing 분기에서 `_updateMoveDir()` 직후 `facingFromMoveDir(this._moveDir.x, this._moveDir.y, this._facing)`을 호출한다.
   - **방향이 바뀔 때만** `spriteFrame`을 교체한다(매 프레임 대입은 렌더러 dirty 플래그를 불필요하게 흔든다). 결과가 `_facing`과 다를 때만 스왑하고 `_facing`을 갱신.
   - 일시정지·레벨업 중에는 `update()`가 이미 `state !== Playing`에서 조기 반환하므로 방향도 얼어붙는다(소프트 일시정지 컨벤션과 일치).
@@ -89,7 +91,7 @@ codex 미설치 + 슬라이스 규모(순수 함수 1개 + 에셋 + 배선)를 �
 | 3 | Eng | 정지 시 직전 방향 유지(`prev`) | 자동(P1) | 완성도 | 안 하면 멈출 때마다 정면 스냅 |
 | 4 | Eng | 대각선 동률 → 가로 우선 | 자동(P5) | 명시성 | 결정적 규칙 없으면 흔들림, 측면 실루엣이 잘 읽힘 |
 | 5 | Eng | 4장 개별 프레임, 스케일 뒤집기 없음 | 자동(P3·P5) | 실용·명시성 | "노드 스케일 금지"(리깅 이월) 준수, 미러 복잡도 제거 |
-| 6 | Eng | 기존 `Player>Sprite` 재사용(새 노드 안 만듦) | 자동(P4) | DRY | F47 레이어 누출 회피 + 최소 구조 |
+| 6 | Eng | `Player` 노드의 기존 `Sprite` 재사용(새 노드 안 만듦) | 자동(P4) | DRY | F47 레이어 누출 회피 + 최소 구조. qa-setup에서 씬 확인 — `Sprite`는 자식 노드가 아니라 `Player` 노드 자신의 컴포넌트다 |
 | 7 | CEO | 정당화를 "브릿지 + durable 로직"으로 | 자동(P1) | 완성도 | 그림은 리깅 때 대체되나 FacingLogic은 이월 |
 | 8 | 크기 | 세로 90~96px 권장, 렌더링 후 최종 확정 | 사용자 판단 | — | 2026-07-25. 이동 원 지름 50px의 2배 미만이라 발치 오프셋을 스코프에서 뺄 수 있다(§6·§8) |
 | 9 | 스코프 | 발치 오프셋·y-정렬 제외 | 사용자 판단 | — | 2026-07-25. 오프셋은 물 판정·아레나 클램프가 공유하는 "지면 기준점" 도입이라 별개 슬라이스, y-정렬은 적 렌더 순서·G1과 결합 |
