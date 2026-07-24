@@ -12,7 +12,7 @@
 
 > **후속 정정(2026-07-24) — 이 문서의 리깅 도구·크기 서술은 낡았다. 본문은 당시 판단의 시점 기록으로 그대로 보존한다.**
 >
-> - **리깅 도구:** 본문(§2·§5·§9)은 리깅을 DragonBones로 잡고 "DesignPanel이 Windows 11에서 도는가(F59)"를 이 트랙의 첫째 리스크로 놓았다. 그 뒤 최종 확인에서 DragonBones 공식 사이트가 loongbones.app(SaaS)으로 전환돼 정상 사용에 월 구독료가 붙고 에디터도 2021년 이후 정체인 것이 드러나 **폐기**했다. **프로덕션 리깅은 Spine 확정**(기본 요금제 결제 예정, Cocos는 `sp.Skeleton`으로 재생)이고, 그 앞에 리깅이 어떻게 이뤄지는지 손으로 겪어 보는 **Cocos 내장 노드 컷아웃 실습 1회**만 둔다 — 도구를 고르는 프로토타입이 아니라 학습이라 결과가 어떻든 Spine으로 간다. 따라서 §5의 "DragonBones 구동 확인" 항목과 그것에 매달린 "브릿지 수명 판단"은 소멸했다. 본문의 `ArmatureDisplay`(DragonBones API)는 Spine의 `sp.Skeleton`으로 읽는다.
+> - **리깅 도구:** 본문(§2·§5·§9)은 리깅을 DragonBones로 잡고 "DesignPanel이 Windows 11에서 도는가(F59)"를 이 트랙의 첫째 리스크로 놓았다. 그 뒤 최종 확인에서 DragonBones 공식 사이트가 loongbones.app(SaaS)으로 전환돼 정상 사용에 월 구독료가 붙고 에디터도 2021년 이후 정체인 것이 드러나 **폐기**했다. **리깅은 Spine 확정**(기본 요금제 결제 예정, Cocos는 `sp.Skeleton`으로 재생)이고 **학습도 Spine에서 한다** — Cocos 내장 노드 컷아웃으로 먼저 실습하는 안을 검토했으나 Cocos엔 뼈대 에디터가 없어 배우는 것의 절반이 Cocos 전용이라 폐기했다. 따라서 §5의 "DragonBones 구동 확인" 항목과 그것에 매달린 "브릿지 수명 판단"은 소멸했다. 본문의 `ArmatureDisplay`(DragonBones API)는 Spine의 `sp.Skeleton`으로 읽는다.
 > - **브릿지 크기:** §7·§9의 `50×64`는 당시 **중앙 원 히트박스**에 실루엣을 맞추려 작게 잡은 값이다. [ADR 006](../../decisions/006-collision-hitbox.md)이 플레이어를 **AABB 피해 박스 + 세로 자연 비율로 크게**로 반전했으므로 이 수치는 더 이상 기준이 아니다 — 4방향 아트는 이보다 눈에 띄게 크게 뽑는다.
 > - **현행 정본:** [`../../design/art-direction.md`](../../design/art-direction.md) §3.2(리깅 도구)·§3.3(온스크린 크기), [4방향 계획](2026-07-24-player-4dir-plan.md).
 

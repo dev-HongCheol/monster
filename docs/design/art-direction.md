@@ -6,7 +6,7 @@
 - **상태:** 파이프라인(스켈레탈 리깅 — **Spine 확정**, AI 생성은 ComfyUI + LoRA)·해상도·**화풍(§2 애니 셀) 확정** + **스타일 LoRA 학습·검증 완료**(2026-07-21). 남은 것은 이 LoRA를 얹은 카테고리별 실제 에셋 제작(§9).
 - **스타일 확정(2026-07-21):** ComfyUI+SDXL 1.0 base 환경을 세우고 생성 테스트(v1~v3)를 거쳐 처음의 "아트북 셀셰이딩"이 취향이 아님을 확인, 6개 화풍 비교 후 **애니 셀로 확정**. 마법사(주인공)는 **젊은 여성 불 마법사**로 확정(§6). 실행 기록·프롬프트·재현 정보는 [`../development/sessions/2026-07-21-art-pipeline-style-lock.md`](../development/sessions/2026-07-21-art-pipeline-style-lock.md), 환경 재구축은 [`../development/comfyui-setup.md`](../development/comfyui-setup.md).
 - **스타일 LoRA 학습(2026-07-21, F58b):** 확정 씨앗(`F58_anime` 9장 + `F58_wizard_final` s13)으로 애니 셀 스타일 LoRA를 로컬 8GB에서 학습(§8-1). 짧은 프롬프트로 대비 3종의 룩이 잠기는 것을 검증해 합격. 산출물 `f58_anime_style.safetensors`(트리거 `f58anime`). 학습 환경 재구축은 [`../development/kohya-setup.md`](../development/kohya-setup.md), 실행 기록은 [`../development/sessions/2026-07-21-art-pipeline-lora.md`](../development/sessions/2026-07-21-art-pipeline-lora.md).
-- **선행 결정:** 픽셀아트 폐기(스킨·4K 요구), 스켈레탈 리깅 채택 → `sessions/2026-07-20-j-completeness-sequencing.md` 후속 논의(2026-07-20). **리깅 도구는 DragonBones 폐기(2026-07-24) → Spine 확정**(Cocos 내장 리깅은 프로덕션 후보가 아니라 리깅을 손으로 이해하는 **학습용 1회 실습** — §3.2).
+- **선행 결정:** 픽셀아트 폐기(스킨·4K 요구), 스켈레탈 리깅 채택 → `sessions/2026-07-20-j-completeness-sequencing.md` 후속 논의(2026-07-20). **리깅 도구는 DragonBones 폐기(2026-07-24) → Spine 확정**(리깅 학습도 Spine에서 하며, Cocos 내장 컷아웃 실습은 넣지 않는다 — §3.2).
 - **근거 문서:** `docs/planning/roadmap.md`(컨셉·세계관), `game/assets/resources/data/enemies.json`(적 로스터·색), `docs/planning/enemy-system.md`·`magic-system-mage.md`
 
 ---
@@ -63,7 +63,9 @@
 
 > **리깅 도구 결정(2026-07-24) — DragonBones 폐기, 프로덕션은 Spine 확정.** DragonBones는 최종 확인 결과 공식 사이트가 loongbones.app(SaaS)으로 전환돼 정상 사용에 월 구독료가 들고, 에디터(DesignPanel)도 2021년 이후 정체라 폐기한다. **대체는 Spine(기본 요금제 결제 예정)이며, 마법사·해금 캐릭터의 실제 리깅은 전부 Spine으로 한다** — 업계 표준이고 Cocos가 `sp.Skeleton`으로 공식 지원하며 슬롯/스킨이 네이티브라 v2 스킨 판매 토대가 그대로 선다.
 >
-> **Cocos 내장 리깅은 프로덕션 후보가 아니라 학습용 1회 실습이다(사용자 결정).** 리깅이 실제로 어떻게 이뤄지는지(뼈대·파츠·키프레임의 관계) 손으로 한 번 겪어 보기 위해, 캐릭터를 자식 노드로 분해하고 `Animation` 컴포넌트로 트랜스폼(위치·회전)을 키프레임하는 노드 컷아웃을 딱 한 번 만들어 본다. **이 실습의 결과가 도구 선택을 되돌리지 않는다** — 잘 되든 답답하든 프로덕션은 Spine이다. 그래서 실습 산출물은 버릴 것으로 취급하고, 여기에 코드·에셋 규약을 맞추지 않는다(맞추면 Spine 전환 때 그대로 재작업이 된다). 착수 판단·자동화는 백로그 F59.
+> **리깅 학습도 Spine에서 한다 — Cocos 내장 컷아웃 실습은 넣지 않는다(2026-07-24 검토 후 폐기).** 리깅이 어떻게 이뤄지는지 손으로 겪어 보는 실습을 Cocos 내장 노드 컷아웃(캐릭터를 자식 노드로 분해 + `Animation` 컴포넌트로 트랜스폼 키프레임)으로 먼저 하는 안을 검토했으나, **배우는 것의 절반이 Cocos 전용**이라 폐기했다. Cocos 3.8엔 뼈대 에디터가 없어(내장 애니메이션은 노드 트랜스폼 키프레임이고 Spine·DragonBones는 런타임만 지원) 노드 계층이 뼈를 대신하는데, 그러면 뼈·바인드 포즈·웨이트·IK·스킨을 1급 개념으로 다루는 감각은 얻지 못하고 앵커·Size처럼 `sp.Skeleton`에선 무효인 습관까지 함께 익힌다. 어차피 프로덕션 도구를 결제하므로 리깅 학습은 Spine에서 직접 하는 것이 100% 이월된다. 착수 판단·자동화는 백로그 F59.
+>
+> 단 **Cocos 내장 `Animation` 컴포넌트를 안 쓴다는 뜻은 아니다.** 리깅 도구로 쓰지 않을 뿐, 노드 트랜스폼 애니메이션(숨쉬기 bob·피격 흔들림)과 잡몹 프레임 재생은 계속 내장으로 한다(§3.1·§8-9).
 
 ### 3.3 4K / 해상도
 
@@ -188,7 +190,7 @@
 - **적 tint**: `enemies.json`의 `tint`가 주조색. 아트가 크게 벗어나면 데이터-시각 불일치.
 - **건물 충돌**: 볼록 박스 ≤300px, 방·복도 금지(맵 로드맵 D4). "막히는 벽"을 그리지 않는다.
 - **텔레그래프**: `telegraphTime` 동안의 윈드업 발광을 아트가 제공.
-- **스켈레탈 디스플레이**: Spine `sp.Skeleton`은 Canvas/RenderRoot2D 자식이어야 하고 Anchor·Size가 무효(Cocos 3.8 공식). 프로덕션 리깅이 Spine이므로 씬 배선이 이 제약을 받는다 — 스켈레탈 노드를 Canvas 밖(예: 순수 월드 노드) 자식으로 달아 두면 렌더되지 않는다. 학습용 노드 컷아웃 실습(§3.2)은 일반 노드라 이 제약이 없어, 실습에서 잘 붙던 배선이 Spine에서 그대로 통하지 않는다.
+- **스켈레탈 디스플레이**: Spine `sp.Skeleton`은 Canvas/RenderRoot2D 자식이어야 하고 Anchor·Size가 무효(Cocos 3.8 공식). 리깅이 Spine이므로 씬 배선이 이 제약을 받는다 — 스켈레탈 노드를 Canvas 밖(예: 순수 월드 노드) 자식으로 달아 두면 렌더되지 않는다. 일반 Sprite 노드의 배선 감각(부모 자유·Anchor 유효)이 여기서 그대로 통하지 않으므로, 리깅 슬라이스에서 Player 노드 구조를 다시 확인한다.
 
 ---
 
@@ -269,7 +271,7 @@ full body, centered, plain flat background, no text, no watermark
 | **베이스 모델(체크포인트)** | 엔진 | 실제로 그림을 생성하는 수 GB짜리 두뇌 파일. SDXL·FLUX 등이 종류. **라이선스가 여기 붙는다.** |
 | **ComfyUI** | 운전석·작업대 | 엔진을 불러다 돌리는 곳. 자체론 그림을 못 그리고, 모델·LoRA·ControlNet을 연결해 굴린다. |
 | **LoRA** | 엔진에 끼우는 튜닝 칩 | 우리 룩으로 방향을 고정하는 작은 부품. 내가 1차 생성물로 직접 학습해 만든다. |
-| **Spine** | 인형극 뼈대 | 잘라낸 부위를 뼈에 붙여 움직이는 스켈레탈 도구. 프로덕션 리깅은 전부 여기서 한다(기본 요금제). DragonBones는 폐기, Cocos 내장 리깅은 학습용 1회 실습(§3.2). |
+| **Spine** | 인형극 뼈대 | 잘라낸 부위를 뼈에 붙여 움직이는 스켈레탈 도구. 리깅은 학습부터 실제 작업까지 전부 여기서 한다(기본 요금제). DragonBones는 폐기(§3.2). |
 | **Cocos Creator** | 게임 무대 | 완성된 캐릭터가 실제로 뛰어다니는 게임 엔진. |
 
 쌓이는 모양:
@@ -296,4 +298,4 @@ ComfyUI (작업대)
 - **Civitai** (civitai.com/models) — 베이스 모델·LoRA 공유 허브. 모델 페이지마다 그 모델로 뽑은 예시 이미지가 잔뜩 있고, 상단 **Base Model 필터**로 SDXL/FLUX 등을 걸러 비교할 수 있다. **"베이스 모델·LoRA별로 그림이 어떻게 다른가"를 눈으로 보기에 가장 빠르다.** (성인 콘텐츠도 섞여 있어 필터 확인 필요.)
 - **Hugging Face** (huggingface.co/models?pipeline_tag=text-to-image) — 모델 원본·카드·라이선스 확인처. 부록 C 라이선스도 여기서 확인했다.
 - **ComfyUI 공식 예제** (comfyanonymous.github.io/ComfyUI_examples) — 워크플로 예제 + 결과 이미지. ComfyUI가 무엇을 하는지 감을 잡기 좋다.
-- **영상** — 링크가 자주 바뀌어 유튜브 검색어로 남긴다: "ComfyUI 입문 / ComfyUI beginner tutorial", "LoRA 학습 / kohya LoRA training", "Spine 입문 / Spine 2D animation tutorial", "Cocos Spine skeletal"(프로덕션 도구), "Cocos cutout animation"(학습용 실습). Civitai의 Articles 탭에도 스타일 LoRA 학습 튜토리얼이 많다.
+- **영상** — 링크가 자주 바뀌어 유튜브 검색어로 남긴다: "ComfyUI 입문 / ComfyUI beginner tutorial", "LoRA 학습 / kohya LoRA training", "Spine 입문 / Spine 2D animation tutorial", "Cocos Spine skeletal". Civitai의 Articles 탭에도 스타일 LoRA 학습 튜토리얼이 많다.
