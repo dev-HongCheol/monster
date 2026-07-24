@@ -14,7 +14,10 @@ import { circleIntersectsBox } from '../../game/assets/scripts/logic/HitboxLogic
  * player.json 데이터 로드는 cc 의존이라 여기서 다루지 않는다(7단계 수동 QA).
  */
 
-// 플레이어 피해 박스 실측값(player.json): 36×60 → 반너비 18·반높이 30.
+// 기하 검증용 고정 픽스처다 — player.json의 라이브 값이 아니다. 아래 테스트의 경계 기대값
+// (예: y=28이 ±30 박스 안)이 이 30에 맞춰 계산돼 있으므로 이 상수는 바꾸지 않는다.
+// player.json의 실제 값은 player-4dir(2026-07-25)에서 반너비 18·반높이 44(박스 36×88)로
+// 커졌다 — 스프라이트가 64→96px로 커져 반높이를 함께 올린 것이며, 이 픽스처와는 독립이다.
 const PW = 18;
 const PH = 30;
 
