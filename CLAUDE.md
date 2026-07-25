@@ -73,6 +73,8 @@ docs/
 - `docs/development/backlog.md` + `docs/development/backlog-implement.md` — **개발 백로그(2분할). 슬라이스를 가로지르는 차기 TODO의 정본. 구현·테스트 중 떠오른 후속/이월/밸런싱 항목을 여기 모은다(흩뿌리지 않는다).** `backlog.md`=게임(콘텐츠·밸런스·게임필·UI/UX·메타), `backlog-implement.md`=코드(아키텍처·리팩터·타입·툴체인·성능·로버스트니스). **항목 ID(`F27`·`G1`·`B2`)는 영구하며 파일이 갈려도 따라간다 — 재번호 금지.** 운영 규칙·상태 어휘의 정본은 `backlog.md` 머리말. **두 파일 하단의 「완료 아카이브」가 세션 문서로 가는 실질 인덱스다** — 항목별 한 줄 요약 + 출처 링크라, "그 결정이 어느 슬라이스에서 났나"는 세션 폴더를 뒤지기 전에 여기서 먼저 찾는다
 - `docs/development/troubleshooting/` — 워크플로우·도구·환경 운영 이슈와 복구 절차 (에러·이상 동작 발생 시 참조)
 
+**검색 라우팅 (gbrain 설치 시).** 찾을 대상의 **단어를 이미 아는** 검색은 Grep이 빠르고 정확하다. 반대로 **단어를 모르는** 검색(개념·증상·"예전에 왜 이렇게 했더라")은 gbrain 의미 검색을 먼저 쓴다 — 그 경우 Grep은 무관한 문서를 주거나 0건을 낸다. 심볼의 정의·참조 위치는 `code-def`·`code-refs`가 파일과 줄 범위를 바로 준다. **색인은 특정 커밋 기준이라 낡을 수 있다** — 검색 결과는 단서로만 쓰고 최종 판단은 현재 코드로 확인한다(위 정본 규칙). 미설치 환경이면 그냥 Grep으로 진행한다. 설치·색인 갱신은 `docs/development/gbrain-setup.md`.
+
 지식 추가 기준:
 - 주요 기술/설계 결정 → `docs/decisions/NNN-title.md` ADR로 작성
 - 개발 세션 기록 → `docs/development/sessions/YYYY-MM-DD-topic.md`
