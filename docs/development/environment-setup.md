@@ -12,6 +12,7 @@
 3. superpowers 플러그인 활성화
 4. Context7 MCP → ~/.claude.json에 추가
 5. Claude Code 재시작
+6. (선택) gbrain → 레포 의미 검색. 별도 문서 참고
 ```
 
 ---
@@ -142,6 +143,16 @@ context7로 cocos canvas hierarchy 조회해줘
 ### .claude/settings.json (프로젝트, git 관리)
 
 이미 레포에 포함되어 있으므로 별도 설정 불필요.
+
+---
+
+## 6. gbrain — 레포 의미 검색 (선택)
+
+문서와 코드를 의미 기반으로 검색한다. 찾으려는 대상의 정확한 단어를 모를 때 `grep`이 못 찾는 것을 찾는 용도이고, 임베딩을 로컬에서 돌리므로 비용도 외부 전송도 없다.
+
+필수는 아니다. 설치하지 않아도 이 프로젝트의 모든 작업이 그대로 굴러간다.
+
+설치·색인·MCP 연결 절차와 윈도우에서 겪는 함정은 [`gbrain-setup.md`](gbrain-setup.md)가 정본이다.
 
 ---
 
