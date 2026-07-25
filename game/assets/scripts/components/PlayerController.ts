@@ -7,11 +7,13 @@ import {
   KeyCode,
   Sprite,
   SpriteFrame,
+  UITransform,
   Vec3,
 } from 'cc';
 import { GameState, type IPlayerBaseData } from '../data/GameTypes';
 import { clampToArena } from '../logic/ArenaLogic';
 import { type Facing, facingFromMoveDir } from '../logic/FacingLogic';
+import { footprintOffsetY } from '../logic/FootprintLogic';
 import { NO_OBSTACLES, resolveCircleMove } from '../logic/ObstacleLogic';
 import { playerSpeedMulAt } from '../logic/RegionLogic';
 import { DataManager } from '../systems/DataManager';
@@ -42,13 +44,15 @@ export class PlayerController extends Component {
   private _dataReady = false;
   /** 데이터 준비 시 잡아 두는 플레이어 기본 스탯 — 매 프레임 싱글톤을 역참조하지 않게 한다. */
   private _base: IPlayerBaseData | null = null;
+  /** 그림의 반높이(px) — 이동 충돌 원을 발밑으로 내릴 거리의 입력(FootprintLogic). 0이면 오프셋 없음. */
+  private _halfHeight = 0;
 
   private _keyUp: boolean = false;
   private _keyDown: boolean = false;
   private _keyLeft: boolean = false;
   private _keyRight: boolean = false;
 
-  // 키 입력 구독 + 같은 노드의 Sprite 캐시 → 초기 방향(front) 프레임 1회 적용.
+  // 키 입력 구독 + 같은 노드의 Sprite·그림 크기 캐시 → 초기 방향(front) 프레임 1회 적용.
   // 초기 프레임을 코드가 정하는 이유는, 씬에 물려 둔 `Sprite.spriteFrame`이 에디터 작업 중
   // 다른 방향으로 바뀌어 있으면 `_facing`은 front인데 화면엔 옆모습이 뜨는 불일치가 나기
   // 때문이다. 그 상태에서 처음 좌우로 걸으면 방향이 안 바뀐 것처럼 보인다.
@@ -56,6 +60,10 @@ export class PlayerController extends Component {
     input.on(Input.EventType.KEY_DOWN, this._onKeyDown, this);
     input.on(Input.EventType.KEY_UP, this._onKeyUp, this);
     this._sprite = this.getComponent(Sprite);
+    // 반높이는 여기서 한 번만 잡는다 — 네 방향 프레임이 Size Mode CUSTOM인 같은 상자에 그려지므로
+    // 방향이 바뀌어도 값이 변하지 않는다. UITransform이 없으면 0이 남아 오프셋도 0이 되고,
+    // 이동은 리워크 이전과 똑같이 노드 원점 기준으로 굴러간다.
+    this._halfHeight = (this.getComponent(UITransform)?.height ?? 0) / 2;
     this._applyFacingFrame();
   }
 
@@ -180,22 +188,30 @@ export class PlayerController extends Component {
     const nextX = pos.x + this._moveDir.x * speed * dt;
     const nextY = pos.y + this._moveDir.y * speed * dt;
     const radius = base.collisionRadius;
+    // 장애물 해소만 발밑 접지점에서 푼다 — 앵커가 (0.5, 0.5)라 노드 원점이 캐릭터 한가운데에 있어,
+    // 충돌 원을 원점에 두면 원의 아래 끝이 발바닥보다 `반높이 - 반지름`만큼 위에 떠 그만큼 다리가
+    // 장애물에 잠긴 채 멈춘다(72×96·반지름 25에서 23px). 아레나 클램프는 원점 기준을 유지한다 —
+    // 아레나 경계는 눈에 보이는 면이 아니라 발을 맞출 대상이 없고, 기존 불변식을 건드리지 않는다.
+    const footY = footprintOffsetY(this._halfHeight, radius);
     // 장애물 해소를 먼저, 아레나 클램프를 마지막에 — 배치 제약(§2.1)이 장애물을 벽에서 떼어 놓아
     // 두 제약이 같은 프레임에 동시에 걸리지 않고, 마지막이 클램프라 "플레이어는 아레나 밖으로
     // 절대 안 나간다"는 기존 불변식이 그대로 유지된다(맵 로드 전엔 빈 배열이라 무보정 통과).
     const resolved = resolveCircleMove(
-      pos,
-      { x: nextX, y: nextY },
+      { x: pos.x, y: pos.y + footY },
+      { x: nextX, y: nextY + footY },
       radius,
       mm?.obstacles ?? NO_OBSTACLES,
     );
+    // 접지점에서 푼 결과를 노드 원점 좌표로 되돌린다 — 되돌리지 않으면 캐릭터가 매 프레임
+    // 오프셋만큼 아래로 내려앉아 화면 밖으로 가라앉는다.
+    const originY = resolved.y - footY;
     // 아레나 경계 안으로 클램프 — 플레이어가 벽을 넘지 못하게 한다(아레나 로드 전엔 무클램프).
     const arena = mm?.arena;
     if (arena && arena.width > 0) {
-      const clamped = clampToArena(resolved, radius, arena);
+      const clamped = clampToArena({ x: resolved.x, y: originY }, radius, arena);
       this.node.setPosition(clamped.x, clamped.y, pos.z);
       return;
     }
-    this.node.setPosition(resolved.x, resolved.y, pos.z);
+    this.node.setPosition(resolved.x, originY, pos.z);
   }
 }
