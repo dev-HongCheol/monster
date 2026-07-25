@@ -164,4 +164,4 @@ accelerate launch --num_cpu_threads_per_process 4 --config_file F:\ai\train\acce
 
 - **로스터 12종·플레이어 스켈레탈·마법 이펙트·맵 아트 생성** — 스타일 LoRA가 준비됐으니 이제 이 LoRA를 얹어 생성하는 단계다. art-direction §9 순서대로 별 슬라이스에서 진행한다.
 - **캐릭터 LoRA(주인공)** — 여러 파츠·미래 스킨에서 같은 인물을 유지하려면 스타일 LoRA 위에 캐릭터 LoRA를 하나 더 학습한다(art-direction §8-1). 이 문서의 스타일 LoRA와 별개 학습이며, 데이터셋·트리거를 따로 잡는다.
-- **DragonBones 리깅** — art-direction §3.2·F59. 스켈레탈 대상 제작 단계에서 다룬다.
+- **스켈레탈 리깅(Spine)** — art-direction §3.2·F59. 스켈레탈 대상 제작 단계에서 다룬다. DragonBones 폐기(2026-07-24), 프로덕션은 Spine.

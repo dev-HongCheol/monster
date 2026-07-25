@@ -4,5 +4,5 @@
   "collisionRadius": 25,
   "pickupRadius": 50,
   "hurtboxHalfWidth": 18,
-  "hurtboxHalfHeight": 30
+  "hurtboxHalfHeight": 44
 }
