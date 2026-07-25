@@ -48,7 +48,7 @@ docs/
 - 현재 작업과 무관한 파일 수정 금지
 - 발견한 무관 이슈 → 즉시 수정하지 말고 언급만
 - **기존 JSDoc/인라인 주석 삭제 금지** — 기존 코드에 이미 있는 주석은 수정·기능 추가 시에도 유지한다. 파라미터가 변경된 경우 `@param` 내용을 업데이트한다.
-- **설명 주석·문서는 읽는 사람이 인과를 복원할 수 있게 쓴다** — ① 지시어("반대편"·"이때" 등)는 그 대상이 같은 문단 안에 적혀 있을 때만 쓴다(단어 금지가 아니라, 대상 없이 쓰는 것을 금한다) ② 인과 고리를 건너뛰지 않는다 ③ 어긋났을 때의 실패 증상을 남긴다. 같은 설명이 코드·테스트·문서에 복사돼 있으면 **함께 고친다**(한 곳만 고치면 나머지가 낡은 채로 남는다). 상세·예시: `docs/development/conventions.md` § 주석 기준, `docs/development/writing-style.md`
+- **설명 주석·문서는 읽는 사람이 인과를 복원할 수 있게 쓴다** — 원칙 세 가지와 예시는 `docs/development/writing-style.md`가 정본이고, 코드 주석에 적용한 판은 `docs/development/conventions.md` § 주석 기준에 있다. **주석·문서를 쓰기 전에 그쪽을 읽는다.** 같은 설명이 코드·테스트·문서에 복사돼 있으면 **함께 고친다**(한 곳만 고치면 나머지가 낡은 채로 남는다)
 
 ### 루프 방지
 같은 파일을 5번 이상 수정해도 진전 없으면 → STOP하고 방향 재확인 요청
@@ -57,14 +57,20 @@ docs/
 
 모든 최신 정보는 아래에 있다. `docs/etc/`는 초안 폴더이므로 참조하지 않는다.
 
+**정본은 질문 종류마다 다르다.** 문서끼리, 또는 문서와 코드가 어긋나면 **코드가 이긴다** — 구현이 실제로 무엇을 하는지는 코드와 그 JSDoc이 쥐고 있고 QA 문서는 그 거울이다. 검색으로 얻은 발췌도 같은 기준으로 판단한다(지나간 세션 기록이 현재 코드보다 위에 뜰 수 있다 — 유사도는 최신성을 걸러 주지 않는다).
+
+- `game/assets/scripts/**/*.ts` + JSDoc — **구현 동작·설계 근거의 정본.** 좌표계 순서·불변식처럼 화면에 안 드러나는 결정은 해당 순수 함수의 JSDoc이 들고 있다
+- `tests/logic/*.test.ts` — 실행 가능한 명세. "이 동작이 맞는가"는 여기서 확인한다
 - `docs/development/conventions.md` — **코드 컨벤션. 코드 작성 전 항상 읽는다**
 - `docs/development/writing-style.md` — **문서 작성 스타일(한국어). 계획·설계·QA·PR 등 문서 작성 전 항상 읽는다**
+- `docs/development/glossary.md` — 프로젝트 용어 정본
 - `docs/planning/` — 게임 디자인, 컨셉, 로드맵 (기획 관련 작업 시 참조)
-- `docs/design/` — 아트 디렉션, UI/UX (디자인 관련 작업 시 참조)
-- `docs/development/sessions/` — 개발 세션 및 의사결정 기록 (맥락 파악 필요 시 참조)
-- `docs/decisions/` — ADR (설계 결정 확인 시 참조)
-- `docs/qa/` — QA 체크리스트 (구현·검증 단계에서 참조)
-- `docs/development/backlog.md` + `docs/development/backlog-implement.md` — **개발 백로그(2분할). 슬라이스를 가로지르는 차기 TODO의 정본. 구현·테스트 중 떠오른 후속/이월/밸런싱 항목을 여기 모은다(흩뿌리지 않는다).** `backlog.md`=게임(콘텐츠·밸런스·게임필·UI/UX·메타), `backlog-implement.md`=코드(아키텍처·리팩터·타입·툴체인·성능·로버스트니스). **항목 ID(`F27`·`G1`·`B2`)는 영구하며 파일이 갈려도 따라간다 — 재번호 금지.** 운영 규칙·상태 어휘의 정본은 `backlog.md` 머리말
+- `docs/design/` — 아트 디렉션, UI/UX (디자인 관련 작업 시 참조). **아트 방향의 정본은 `docs/design/art-direction.md`**
+- `docs/development/sessions/` — 개발 세션 및 의사결정 기록 (맥락 파악 필요 시 참조). 시스템별 설계 근거는 ADR이 아니라 대개 여기 `*-plan.md`에 있다
+- `docs/decisions/` — ADR (설계 결정 확인 시 참조). 횡단 규칙·플랫폼·프로세스 결정 위주
+- `docs/qa/` — QA 체크리스트 (구현·검증 단계에서 참조). 슬라이스별 시점 기록이라 코드와 어긋나면 코드 기준
+- `docs/development/environment-setup.md` — 새 장비 도구 설치 순서. 레포 의미 검색은 `docs/development/gbrain-setup.md`
+- `docs/development/backlog.md` + `docs/development/backlog-implement.md` — **개발 백로그(2분할). 슬라이스를 가로지르는 차기 TODO의 정본. 구현·테스트 중 떠오른 후속/이월/밸런싱 항목을 여기 모은다(흩뿌리지 않는다).** `backlog.md`=게임(콘텐츠·밸런스·게임필·UI/UX·메타), `backlog-implement.md`=코드(아키텍처·리팩터·타입·툴체인·성능·로버스트니스). **항목 ID(`F27`·`G1`·`B2`)는 영구하며 파일이 갈려도 따라간다 — 재번호 금지.** 운영 규칙·상태 어휘의 정본은 `backlog.md` 머리말. **두 파일 하단의 「완료 아카이브」가 세션 문서로 가는 실질 인덱스다** — 항목별 한 줄 요약 + 출처 링크라, "그 결정이 어느 슬라이스에서 났나"는 세션 폴더를 뒤지기 전에 여기서 먼저 찾는다
 - `docs/development/troubleshooting/` — 워크플로우·도구·환경 운영 이슈와 복구 절차 (에러·이상 동작 발생 시 참조)
 
 지식 추가 기준:
