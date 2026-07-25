@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import type { Arena } from '../../game/assets/scripts/logic/ArenaLogic';
 import { type Facing, facingFromMoveDir } from '../../game/assets/scripts/logic/FacingLogic';
-import { footprintOffsetY } from '../../game/assets/scripts/logic/FootprintLogic';
+import {
+  footprintOffsetY,
+  resolveMoveAtFootprint,
+} from '../../game/assets/scripts/logic/FootprintLogic';
+import type { Obstacle } from '../../game/assets/scripts/logic/ObstacleLogic';
 
 /**
  * 플레이어가 바라보는 4방향 판정 순수 로직 (2026-07-24-player-4dir-plan.md §4).
@@ -113,10 +118,11 @@ describe('footprintOffsetY — 이동 충돌 원을 발밑으로 내리는 오�
   });
 
   it('그림 크기가 다른 캐릭터는 반높이만으로 오프셋이 따라온다', () => {
-    // 기사(120px 그림, 반높이 60)와 마법사(96px)가 같은 반지름을 써도 각자 발이 맞는다.
-    // 캐릭터별 튜닝 필드 없이 Content Size 하나로 끝난다는 것이 이 함수의 존재 이유다.
+    // 기사(120px 그림, 반높이 60)와 브릿지 시절 마법사(50×64, 반높이 32)가 같은 반지름을
+    // 써도 각자 발이 맞는다. 캐릭터별 튜닝 필드 없이 Content Size 하나로 끝난다는 것이
+    // 이 함수의 존재 이유다. 96px 마법사(반높이 48)는 위 첫 케이스가 덮는다.
     expect(footprintOffsetY(60, 25)).toBe(-35);
-    expect(footprintOffsetY(32, 25)).toBe(-7); // 브릿지 시절 50×64 — 예전 겹침이 7px였던 근거
+    expect(footprintOffsetY(32, 25)).toBe(-7); // 브릿지 시절 겹침이 7px였던 근거
   });
 
   it('반지름이 반높이 이상이면 0을 돌려준다', () => {
@@ -124,6 +130,12 @@ describe('footprintOffsetY — 이동 충돌 원을 발밑으로 내리는 오�
     // 캐릭터가 장애물 앞에서 허공을 두고 멈춘다.
     expect(footprintOffsetY(25, 25)).toBe(0);
     expect(footprintOffsetY(20, 25)).toBe(0);
+  });
+
+  it('반높이 0(UITransform 없음)이면 0을 돌려준다', () => {
+    // `PlayerController.onLoad`가 UITransform을 못 찾으면 반높이에 0이 남는다. 그때 이
+    // 함수가 0을 돌려주는 것이 "오프셋 없음 = 리워크 이전 동작"이라는 폴백의 근거다.
+    expect(footprintOffsetY(0, 25)).toBe(0);
   });
 
   it('비정상 입력에서는 0을 돌려준다', () => {
@@ -134,5 +146,100 @@ describe('footprintOffsetY — 이동 충돌 원을 발밑으로 내리는 오�
     expect(footprintOffsetY(-48, 25)).toBe(0);
     expect(footprintOffsetY(48, -25)).toBe(0);
     expect(footprintOffsetY(Number.POSITIVE_INFINITY, 25)).toBe(0);
+  });
+});
+
+/**
+ * 발밑 기준 이동 해소의 합성 (리워크 2026-07-25).
+ *
+ * `footprintOffsetY`가 "얼마나 내릴지"만 답한다면, 이 함수는 그 값을 실제 이동에 적용하는
+ * 순서를 고정한다 — 발밑 좌표로 내려서 장애물을 풀고, **노드 원점 좌표로 되돌린 뒤**,
+ * 아레나를 클램프한다. 순서가 이 셋 중 하나라도 어긋나면 증상이 다 다르다.
+ *
+ * 되돌리기를 빼먹으면 캐릭터가 매 프레임 오프셋만큼 가라앉고(눈에 띄는 실패), 오프셋을 목적지
+ * 에만 걸면 첫 프레임에 한 번 튀며, **클램프까지 발밑 좌표에서 하면 아레나 경계가 통째로
+ * 오프셋만큼 밀린다.** 마지막 것은 경계에 그려진 벽이 없어 화면에 아무 표시도 나지 않는다 —
+ * 사람이 눈으로 잡을 수 없는 실패라, 여기 테스트가 유일한 그물이다.
+ */
+describe('resolveMoveAtFootprint — 발밑에서 풀고 원점으로 되돌리는 이동 해소', () => {
+  const RADIUS = 25;
+  const HALF_HEIGHT = 48; // 72×96 그림 → 오프셋 -23
+  const NO_ARENA = null;
+  const NONE: readonly Obstacle[] = [];
+
+  it('장애물도 아레나도 없으면 목적지를 그대로 돌려준다', () => {
+    // 내렸다가 되돌리는 왕복이 정확히 상쇄된다는 것 — 상쇄가 깨지면 아무것도 막지 않는
+    // 빈 벌판에서조차 캐릭터가 매 프레임 조금씩 가라앉는다.
+    const out = resolveMoveAtFootprint(
+      { x: 100, y: 200 },
+      { x: 130, y: 180 },
+      RADIUS,
+      HALF_HEIGHT,
+      NONE,
+      NO_ARENA,
+    );
+    expect(out.x).toBe(130);
+    expect(out.y).toBe(180);
+  });
+
+  it('장애물 윗변으로 내려가면 발바닥이 윗변에 닿는 위치에서 멈춘다', () => {
+    // 상자 윗변 y=100. 발밑 원의 아래 끝이 윗변에 닿을 때 원점은 윗변 + 반높이다.
+    // 리워크 전에는 원점이 윗변 + 반지름(=125)에서 멈춰, 발이 23px 잠긴 채로 보였다.
+    const box: Obstacle = { kind: 'rect', cx: 0, cy: 0, halfW: 200, halfH: 100 };
+    const out = resolveMoveAtFootprint(
+      { x: 0, y: 260 },
+      { x: 0, y: 120 },
+      RADIUS,
+      HALF_HEIGHT,
+      [box],
+      NO_ARENA,
+    );
+    expect(out.y).toBe(100 + HALF_HEIGHT);
+  });
+
+  it('아레나 클램프는 노드 원점 기준을 유지한다', () => {
+    // 위쪽 경계에서 원점이 `절반 - 반지름`에 멈춘다. 클램프까지 발밑 좌표에서 하면 여기서
+    // 오프셋만큼(23px) 더 올라가 아레나가 통째로 밀리는데, 경계에 벽 그림이 없어
+    // 화면으로는 드러나지 않는다.
+    const arena: Arena = { width: 1000, height: 1000 };
+    const out = resolveMoveAtFootprint(
+      { x: 0, y: 400 },
+      { x: 0, y: 900 },
+      RADIUS,
+      HALF_HEIGHT,
+      NONE,
+      arena,
+    );
+    expect(out.y).toBe(500 - RADIUS);
+  });
+
+  it('오프셋이 0인 캐릭터는 리워크 이전과 완전히 같게 움직인다', () => {
+    // 반지름이 반높이 이상이면 오프셋이 0이라 좌표를 건드리지 않는다. 원점 기준으로 상자
+    // 윗변에서 반지름만큼 떨어져 멈추는 예전 동작이 그대로 나와야 한다.
+    const box: Obstacle = { kind: 'rect', cx: 0, cy: 0, halfW: 200, halfH: 100 };
+    const out = resolveMoveAtFootprint(
+      { x: 0, y: 200 },
+      { x: 0, y: 110 },
+      RADIUS,
+      20,
+      [box],
+      NO_ARENA,
+    );
+    expect(out.y).toBe(100 + RADIUS);
+  });
+
+  it('아레나 크기가 0이면 클램프하지 않는다', () => {
+    // 맵 로드 전 상태다. 여기서 클램프하면 허용 범위가 뒤집혀 캐릭터가 원점(0,0)으로
+    // 순간이동한다 — 로딩 직후 플레이어가 맵 한가운데로 빨려 들어가는 증상이 된다.
+    const out = resolveMoveAtFootprint(
+      { x: 700, y: 700 },
+      { x: 720, y: 700 },
+      RADIUS,
+      HALF_HEIGHT,
+      NONE,
+      { width: 0, height: 0 },
+    );
+    expect(out.x).toBe(720);
+    expect(out.y).toBe(700);
   });
 });

@@ -11,10 +11,9 @@ import {
   Vec3,
 } from 'cc';
 import { GameState, type IPlayerBaseData } from '../data/GameTypes';
-import { clampToArena } from '../logic/ArenaLogic';
 import { type Facing, facingFromMoveDir } from '../logic/FacingLogic';
-import { footprintOffsetY } from '../logic/FootprintLogic';
-import { NO_OBSTACLES, resolveCircleMove } from '../logic/ObstacleLogic';
+import { resolveMoveAtFootprint } from '../logic/FootprintLogic';
+import { NO_OBSTACLES } from '../logic/ObstacleLogic';
 import { playerSpeedMulAt } from '../logic/RegionLogic';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
@@ -188,30 +187,23 @@ export class PlayerController extends Component {
     const nextX = pos.x + this._moveDir.x * speed * dt;
     const nextY = pos.y + this._moveDir.y * speed * dt;
     const radius = base.collisionRadius;
-    // 장애물 해소만 발밑 접지점에서 푼다 — 앵커가 (0.5, 0.5)라 노드 원점이 캐릭터 한가운데에 있어,
-    // 충돌 원을 원점에 두면 원의 아래 끝이 발바닥보다 `반높이 - 반지름`만큼 위에 떠 그만큼 다리가
-    // 장애물에 잠긴 채 멈춘다(72×96·반지름 25에서 23px). 아레나 클램프는 원점 기준을 유지한다 —
-    // 아레나 경계는 눈에 보이는 면이 아니라 발을 맞출 대상이 없고, 기존 불변식을 건드리지 않는다.
-    const footY = footprintOffsetY(this._halfHeight, radius);
+    // 이동 제약은 발밑 접지점에서 풀고 원점 좌표로 되돌려 받는다(FootprintLogic) — 앵커가
+    // (0.5, 0.5)라 노드 원점이 캐릭터 한가운데에 있어, 충돌 원을 원점에 두면 원의 아래 끝이
+    // 발바닥보다 `반높이 - 반지름`만큼 위에 떠 그만큼 다리가 장애물에 잠긴 채 멈춘다
+    // (72×96·반지름 25에서 23px). 좌표계를 오가는 순서와 아레나 클램프를 원점 기준으로 두는
+    // 결정은 그 순수 함수가 들고 있다 — 여기서 풀어 쓰면 화면에 안 드러나는 실패(아레나 경계가
+    // 통째로 밀리는 것)를 자동 테스트가 못 잡는다.
     // 장애물 해소를 먼저, 아레나 클램프를 마지막에 — 배치 제약(§2.1)이 장애물을 벽에서 떼어 놓아
     // 두 제약이 같은 프레임에 동시에 걸리지 않고, 마지막이 클램프라 "플레이어는 아레나 밖으로
     // 절대 안 나간다"는 기존 불변식이 그대로 유지된다(맵 로드 전엔 빈 배열이라 무보정 통과).
-    const resolved = resolveCircleMove(
-      { x: pos.x, y: pos.y + footY },
-      { x: nextX, y: nextY + footY },
+    const resolved = resolveMoveAtFootprint(
+      pos,
+      { x: nextX, y: nextY },
       radius,
+      this._halfHeight,
       mm?.obstacles ?? NO_OBSTACLES,
+      mm?.arena ?? null,
     );
-    // 접지점에서 푼 결과를 노드 원점 좌표로 되돌린다 — 되돌리지 않으면 캐릭터가 매 프레임
-    // 오프셋만큼 아래로 내려앉아 화면 밖으로 가라앉는다.
-    const originY = resolved.y - footY;
-    // 아레나 경계 안으로 클램프 — 플레이어가 벽을 넘지 못하게 한다(아레나 로드 전엔 무클램프).
-    const arena = mm?.arena;
-    if (arena && arena.width > 0) {
-      const clamped = clampToArena({ x: resolved.x, y: originY }, radius, arena);
-      this.node.setPosition(clamped.x, clamped.y, pos.z);
-      return;
-    }
-    this.node.setPosition(resolved.x, originY, pos.z);
+    this.node.setPosition(resolved.x, resolved.y, pos.z);
   }
 }
