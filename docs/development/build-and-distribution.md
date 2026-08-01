@@ -92,7 +92,8 @@ itch 프로젝트 페이지에는 댓글창·링크·버튼이 있고, itch가 �
 | 사용자 행동 | 포커스를 잃는 대상 | 발화하는 이벤트 |
 |------------|------------------|----------------|
 | itch 페이지의 댓글·링크 클릭(iframe 바깥) | iframe의 창 | `window`의 `blur` |
-| itch 전체화면 버튼 클릭, iframe 안 캔버스 여백 클릭 | 캔버스만 | `game.canvas`의 `blur` |
+| itch가 겹쳐 그리는 전체화면 버튼 클릭 | iframe의 창 (그 버튼은 **부모 페이지**에 있다) | `window`의 `blur` |
+| iframe 안에서 캔버스 여백 클릭 | 캔버스만 | `game.canvas`의 `blur` |
 | 다른 앱으로 전환(Alt+Tab·Cmd+Tab) | 창 | `window`의 `blur` |
 | 탭 전환·창 최소화 | 창 + 문서 | `window`의 `blur`, `Game.EVENT_HIDE` |
 

@@ -67,10 +67,10 @@ export class PlayerController extends Component {
   onLoad() {
     input.on(Input.EventType.KEY_DOWN, this._onKeyDown, this);
     input.on(Input.EventType.KEY_UP, this._onKeyUp, this);
-    // 포커스를 잃는 사건이 둘로 갈리므로 신호도 둘을 듣는다. `window`의 blur는 **창 전체**가
-    // 포커스를 잃을 때만 뜨는데, 캔버스는 `tabindex`가 붙어 독립적으로 포커스를 갖기 때문에
-    // 페이지 안에서 캔버스 바깥을 클릭하면 창은 포커스를 유지한 채 캔버스만 잃는다. 그때도
-    // keyup은 오지 않으므로 창 신호만 들으면 그 경로가 통째로 새 나간다.
+    // 브라우저에서 포커스를 잃는 사건이 둘로 갈리므로 신호도 둘을 듣는다. `window`의 blur는
+    // **창 전체**가 포커스를 잃을 때만 뜨는데, 캔버스는 `tabindex`가 붙어 독립적으로 포커스를
+    // 갖기 때문에 페이지 안에서 캔버스 바깥을 클릭하면 창은 포커스를 유지한 채 캔버스만 잃는다.
+    // 그때도 keyup은 오지 않으므로 창 신호만 들으면 그 경로가 통째로 새 나간다.
     if (sys.isBrowser) window.addEventListener('blur', this._onFocusLost);
     game.canvas?.addEventListener('blur', this._onFocusLost);
     // 브라우저가 아닌 플랫폼에는 위 둘이 없다. v1(웹)에서는 창 blur와 겹쳐 실행되지 않는
@@ -132,13 +132,13 @@ export class PlayerController extends Component {
 
   /** 키 입력으로 이동 방향 플래그를 활성화한다. */
   private _onKeyDown(e: EventKeyboard): void {
-    const key = this._moveKeyOf(e.keyCode);
+    const key = PlayerController._moveKeyOf(e.keyCode);
     if (key) setMoveKey(this._moveInput, key, true);
   }
 
   /** 키 해제로 이동 방향 플래그를 비활성화한다. */
   private _onKeyUp(e: EventKeyboard): void {
-    const key = this._moveKeyOf(e.keyCode);
+    const key = PlayerController._moveKeyOf(e.keyCode);
     if (key) setMoveKey(this._moveInput, key, false);
   }
 
@@ -154,8 +154,8 @@ export class PlayerController extends Component {
     releaseAllMoveKeys(this._moveInput);
   };
 
-  /** 이동에 쓰는 키를 축 이름으로 옮긴다. 이동과 무관한 키는 null. */
-  private _moveKeyOf(keyCode: number): MoveKey | null {
+  /** 이동에 쓰는 키를 축 이름으로 옮긴다. 이동과 무관한 키는 null. 상태가 아니라 조회 표다. */
+  private static _moveKeyOf(keyCode: number): MoveKey | null {
     switch (keyCode) {
       case KeyCode.KEY_W:
       case KeyCode.ARROW_UP:
