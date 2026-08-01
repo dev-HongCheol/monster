@@ -70,6 +70,7 @@ docs/
 - `docs/decisions/` — ADR (설계 결정 확인 시 참조). 횡단 규칙·플랫폼·프로세스 결정 위주
 - `docs/qa/` — QA 체크리스트 (구현·검증 단계에서 참조). 슬라이스별 시점 기록이라 코드와 어긋나면 코드 기준
 - `docs/development/environment-setup.md` — 새 장비 도구 설치 순서. 레포 의미 검색은 `docs/development/gbrain-setup.md`
+- `docs/development/build-and-distribution.md` — **빌드 산출물과 배포 경로의 정본.** 웹 빌드가 무엇을 내놓는지, itch.io 업로드 방식과 한도, 임베드가 만드는 런타임 조건(iframe·캔버스 포커스), v2 Steam 네이티브 선택지. 배포·산출물·플랫폼 질문은 여기부터 본다(플랫폼 **계획**의 정본은 `docs/planning/roadmap.md` §2)
 - `docs/development/backlog.md` + `docs/development/backlog-implement.md` — **개발 백로그(2분할). 슬라이스를 가로지르는 차기 TODO의 정본. 구현·테스트 중 떠오른 후속/이월/밸런싱 항목을 여기 모은다(흩뿌리지 않는다).** `backlog.md`=게임(콘텐츠·밸런스·게임필·UI/UX·메타), `backlog-implement.md`=코드(아키텍처·리팩터·타입·툴체인·성능·로버스트니스). **항목 ID(`F27`·`G1`·`B2`)는 영구하며 파일이 갈려도 따라간다 — 재번호 금지.** 운영 규칙·상태 어휘의 정본은 `backlog.md` 머리말. **두 파일 하단의 「완료 아카이브」가 세션 문서로 가는 실질 인덱스다** — 항목별 한 줄 요약 + 출처 링크라, "그 결정이 어느 슬라이스에서 났나"는 세션 폴더를 뒤지기 전에 여기서 먼저 찾는다
 - `docs/development/troubleshooting/` — 워크플로우·도구·환경 운영 이슈와 복구 절차 (에러·이상 동작 발생 시 참조)
 
