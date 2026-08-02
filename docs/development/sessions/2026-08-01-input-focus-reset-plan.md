@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-08-01
 - **브랜치:** feat/input-focus-reset
-- **상태:** 구현·검증·코드리뷰 통과 (2026-08-01). 7단계 사용자 검증 대기
+- **상태:** **완료** (PR #72, 2026-08-03). 7단계 사용자 검증에서 수동 체크리스트 30항목을 모두 통과했다 — 이동 회귀 7건, 포커스 유실 6건(창 전환·캔버스만 유실·탭 전환 세 경로 각각), 리스너 정리 3건, 디버그 뷰어 2건 등. 테스트 중 콘솔에 뜬 `Unchecked runtime.lastError`는 React DevTools·Redux DevTools 확장이 미리보기 페이지에 주입돼 낸 것으로 확인됐고 게임과 무관하다(레포에 `chrome.runtime`·`sendMessage` 사용처 0건).
 - **닫는 백로그:** [`../backlog-implement.md`](../backlog-implement.md) **F65**(창 포커스를 잃으면 눌린 이동키가 고착된다), **F63**(`hitbox-viewer.html` biome 에러 4건)
 - **근거:** Cocos Creator 3.8.8 번들 엔진 소스 직접 확인(`pal/input/web/keyboard-input.ts`, `pal/system-info/web/system-info.ts`), `game/assets/scripts/components/PlayerController.ts`
 
