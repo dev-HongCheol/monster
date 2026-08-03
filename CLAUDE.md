@@ -31,6 +31,8 @@ docs/
 - [ADR 003: 테스트 전략](docs/decisions/003-testing-strategy.md)
 - [ADR 004: 워크플로우 상태 머신](docs/decisions/004-workflow-state-machine.md)
 - [ADR 005: i18n 방식 — 자체 경량 t()](docs/decisions/005-i18n-approach.md)
+- [ADR 006: 충돌 히트박스 — 플레이어 사각형 / 적 원](docs/decisions/006-collision-hitbox.md)
+- [ADR 007: 스킨은 판정에 영향을 주지 않는다](docs/decisions/007-skin-hitbox-independence.md)
 
 > 세션 작업 문서(design doc, plan 등)는 `docs/development/sessions/`에 보관되며 CLAUDE.md에서 별도 관리하지 않는다.
 
