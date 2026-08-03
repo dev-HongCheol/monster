@@ -1,6 +1,6 @@
 {
-  "feature": "player-4dir",
-  "phase": "user-verification",
+  "feature": "input-focus-reset",
+  "phase": "pr-ready",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": "full",

@@ -156,8 +156,8 @@
     <div class="label">이미지</div>
     <div class="card">
       <div class="filebtns">
-        <button class="btn primary" id="pick">파일 선택…</button>
-        <button class="btn" id="loadPlayer">기본 플레이어 이미지</button>
+        <button type="button" class="btn primary" id="pick">파일 선택…</button>
+        <button type="button" class="btn" id="loadPlayer">기본 플레이어 이미지</button>
       </div>
       <input type="file" id="file" accept="image/*" />
       <div class="hint" id="imgname">현재: 기본 플레이어 이미지</div>
@@ -204,7 +204,7 @@
   <div class="group">
     <div class="label">data JSON 매핑</div>
     <pre class="json" id="json"></pre>
-    <button class="btn" id="copy">값 복사</button>
+    <button type="button" class="btn" id="copy">값 복사</button>
   </div>
 </aside>
 
@@ -275,8 +275,9 @@ function setMode(mode) {
   $("csW").value = state.csW; $("csH").value = state.csH;
   render();
 }
-document.querySelectorAll('input[name=mode]').forEach(r =>
-  r.addEventListener("change", () => setMode(r.value)));
+document.querySelectorAll('input[name=mode]').forEach((r) => {
+  r.addEventListener("change", () => setMode(r.value));
+});
 
 // ---- 슬라이더 바인딩 ----
 const bind = (id, key, fmt = (v)=>v) => {

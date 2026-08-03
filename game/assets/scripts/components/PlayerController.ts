@@ -2,17 +2,28 @@ import {
   _decorator,
   Component,
   type EventKeyboard,
+  Game,
+  game,
   Input,
   input,
   KeyCode,
   Sprite,
   SpriteFrame,
+  sys,
   UITransform,
   Vec3,
 } from 'cc';
 import { GameState, type IPlayerBaseData } from '../data/GameTypes';
 import { type Facing, facingFromMoveDir } from '../logic/FacingLogic';
 import { resolveMoveAtFootprint } from '../logic/FootprintLogic';
+import {
+  createMoveInputState,
+  type IMoveInputState,
+  type MoveKey,
+  moveInputToVector,
+  releaseAllMoveKeys,
+  setMoveKey,
+} from '../logic/MoveInputLogic';
 import { NO_OBSTACLES } from '../logic/ObstacleLogic';
 import { playerSpeedMulAt } from '../logic/RegionLogic';
 import { DataManager } from '../systems/DataManager';
@@ -46,18 +57,25 @@ export class PlayerController extends Component {
   /** 그림의 반높이(px) — 이동 충돌 원을 발밑으로 내릴 거리의 입력(FootprintLogic). 0이면 오프셋 없음. */
   private _halfHeight = 0;
 
-  private _keyUp: boolean = false;
-  private _keyDown: boolean = false;
-  private _keyLeft: boolean = false;
-  private _keyRight: boolean = false;
+  /** 지금 눌려 있는 이동키. 포커스를 잃으면 통째로 해제된다(`_onFocusLost`). */
+  private _moveInput: IMoveInputState = createMoveInputState();
 
-  // 키 입력 구독 + 같은 노드의 Sprite·그림 크기 캐시 → 초기 방향(front) 프레임 1회 적용.
-  // 초기 프레임을 코드가 정하는 이유는, 씬에 물려 둔 `Sprite.spriteFrame`이 에디터 작업 중
-  // 다른 방향으로 바뀌어 있으면 `_facing`은 front인데 화면엔 옆모습이 뜨는 불일치가 나기
-  // 때문이다. 그 상태에서 처음 좌우로 걸으면 방향이 안 바뀐 것처럼 보인다.
+  // 키 입력·포커스 유실 구독 + 같은 노드의 Sprite·그림 크기 캐시 → 초기 방향(front) 프레임
+  // 1회 적용. 초기 프레임을 코드가 정하는 이유는, 씬에 물려 둔 `Sprite.spriteFrame`이 에디터
+  // 작업 중 다른 방향으로 바뀌어 있으면 `_facing`은 front인데 화면엔 옆모습이 뜨는 불일치가
+  // 나기 때문이다. 그 상태에서 처음 좌우로 걸으면 방향이 안 바뀐 것처럼 보인다.
   onLoad() {
     input.on(Input.EventType.KEY_DOWN, this._onKeyDown, this);
     input.on(Input.EventType.KEY_UP, this._onKeyUp, this);
+    // 브라우저에서 포커스를 잃는 사건이 둘로 갈리므로 신호도 둘을 듣는다. `window`의 blur는
+    // **창 전체**가 포커스를 잃을 때만 뜨는데, 캔버스는 `tabindex`가 붙어 독립적으로 포커스를
+    // 갖기 때문에 페이지 안에서 캔버스 바깥을 클릭하면 창은 포커스를 유지한 채 캔버스만 잃는다.
+    // 그때도 keyup은 오지 않으므로 창 신호만 들으면 그 경로가 통째로 새 나간다.
+    if (sys.isBrowser) window.addEventListener('blur', this._onFocusLost);
+    game.canvas?.addEventListener('blur', this._onFocusLost);
+    // 브라우저가 아닌 플랫폼에는 위 둘이 없다. v1(웹)에서는 창 blur와 겹쳐 실행되지 않는
+    // 방어이고, 네이티브 빌드에서 백그라운드로 들어갈 때가 이 신호의 유일한 무대다.
+    game.on(Game.EVENT_HIDE, this._onFocusLost, this);
     this._sprite = this.getComponent(Sprite);
     // 반높이는 여기서 한 번만 잡는다 — 네 방향 프레임이 Size Mode CUSTOM인 같은 상자에 그려지므로
     // 방향이 바뀌어도 값이 변하지 않는다. UITransform이 없으면 0이 남아 오프셋도 0이 되고,
@@ -89,9 +107,14 @@ export class PlayerController extends Component {
     });
   }
 
+  // 등록과 해제의 가드 모양을 똑같이 맞춘다. `sys.isBrowser`가 실행 중에 바뀌지는 않지만,
+  // 두 곳의 조건이 눈으로 봐서 같아야 한쪽만 걸려 리스너가 남는 실수를 리뷰에서 잡을 수 있다.
   onDestroy() {
     input.off(Input.EventType.KEY_DOWN, this._onKeyDown, this);
     input.off(Input.EventType.KEY_UP, this._onKeyUp, this);
+    if (sys.isBrowser) window.removeEventListener('blur', this._onFocusLost);
+    game.canvas?.removeEventListener('blur', this._onFocusLost);
+    game.off(Game.EVENT_HIDE, this._onFocusLost, this);
   }
 
   // 데이터 준비 + Playing 상태일 때만 키 입력으로 이동 방향을 계산해, 바라보는 방향을 갱신하고
@@ -109,31 +132,53 @@ export class PlayerController extends Component {
 
   /** 키 입력으로 이동 방향 플래그를 활성화한다. */
   private _onKeyDown(e: EventKeyboard): void {
-    if (e.keyCode === KeyCode.KEY_W || e.keyCode === KeyCode.ARROW_UP) this._keyUp = true;
-    if (e.keyCode === KeyCode.KEY_S || e.keyCode === KeyCode.ARROW_DOWN) this._keyDown = true;
-    if (e.keyCode === KeyCode.KEY_A || e.keyCode === KeyCode.ARROW_LEFT) this._keyLeft = true;
-    if (e.keyCode === KeyCode.KEY_D || e.keyCode === KeyCode.ARROW_RIGHT) this._keyRight = true;
+    const key = PlayerController._moveKeyOf(e.keyCode);
+    if (key) setMoveKey(this._moveInput, key, true);
   }
 
   /** 키 해제로 이동 방향 플래그를 비활성화한다. */
   private _onKeyUp(e: EventKeyboard): void {
-    if (e.keyCode === KeyCode.KEY_W || e.keyCode === KeyCode.ARROW_UP) this._keyUp = false;
-    if (e.keyCode === KeyCode.KEY_S || e.keyCode === KeyCode.ARROW_DOWN) this._keyDown = false;
-    if (e.keyCode === KeyCode.KEY_A || e.keyCode === KeyCode.ARROW_LEFT) this._keyLeft = false;
-    if (e.keyCode === KeyCode.KEY_D || e.keyCode === KeyCode.ARROW_RIGHT) this._keyRight = false;
+    const key = PlayerController._moveKeyOf(e.keyCode);
+    if (key) setMoveKey(this._moveInput, key, false);
+  }
+
+  /**
+   * 포커스를 잃으면 눌린 것으로 기록된 이동키를 전부 해제한다.
+   *
+   * 메서드가 아니라 화살표 프로퍼티인 이유는 `removeEventListener`가 **등록할 때와 같은 함수
+   * 참조**를 받아야 리스너를 지우기 때문이다. 등록 시점에 `bind`로 만들면 매번 새 함수가 나와
+   * `onDestroy`가 아무것도 못 지우고, 씬을 다시 로드할 때마다 죽은 컴포넌트를 붙든 리스너가
+   * 쌓인다.
+   */
+  private _onFocusLost = (): void => {
+    releaseAllMoveKeys(this._moveInput);
+  };
+
+  /** 이동에 쓰는 키를 축 이름으로 옮긴다. 이동과 무관한 키는 null. 상태가 아니라 조회 표다. */
+  private static _moveKeyOf(keyCode: number): MoveKey | null {
+    switch (keyCode) {
+      case KeyCode.KEY_W:
+      case KeyCode.ARROW_UP:
+        return 'up';
+      case KeyCode.KEY_S:
+      case KeyCode.ARROW_DOWN:
+        return 'down';
+      case KeyCode.KEY_A:
+      case KeyCode.ARROW_LEFT:
+        return 'left';
+      case KeyCode.KEY_D:
+      case KeyCode.ARROW_RIGHT:
+        return 'right';
+      default:
+        return null;
+    }
   }
 
   /** 키 플래그 상태로 이동 방향 벡터를 계산한다. */
   private _updateMoveDir(): void {
-    this._moveDir.set(
-      (this._keyRight ? 1 : 0) - (this._keyLeft ? 1 : 0),
-      (this._keyUp ? 1 : 0) - (this._keyDown ? 1 : 0),
-      0,
-    );
-    // 대각선 이동 시 속도가 √2배 되는 것 방지
-    if (this._moveDir.lengthSqr() > 1) {
-      this._moveDir.normalize();
-    }
+    // 대각선 정규화도 이 함수 안에서 끝난다(MoveInputLogic). `_moveDir.z`는 건드리지 않는데,
+    // 생성 시 0이고 이동이 평면에서만 일어나 그 값을 바꾸는 코드가 없기 때문이다.
+    moveInputToVector(this._moveInput, this._moveDir);
   }
 
   /** 이동 입력에서 바라볼 방향을 판정하고, 방향이 바뀐 프레임에만 그림을 갈아끼운다. */
