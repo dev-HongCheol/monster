@@ -1,6 +1,6 @@
 {
   "feature": "input-focus-reset",
-  "phase": "pr-ready",
+  "phase": "done",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": "full",
