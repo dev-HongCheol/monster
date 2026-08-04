@@ -61,7 +61,7 @@
 
 **장르 클러스터:** Vampire Survivors / Brotato / Hell Maiden / Magic Survival
 **시점:** 탑다운 2D
-**그래픽:** 고해상도 스타일라이즈드 2D (AI 생성) + 스켈레탈 리깅(플레이어·캐릭터 — 스킨·4K 지원; 도구는 **Spine** 확정, DragonBones 폐기 2026-07-24). ~~픽셀 아트~~ → **픽셀 폐기(2026-07-20)**: 스킨 적용·4K 지원 요구가 픽셀아트와 맞지 않아 전환. 아트 디렉션 정본: [`docs/design/art-direction.md`](../design/art-direction.md)
+**그래픽:** 고해상도 스타일라이즈드 2D (AI 생성) + 스켈레탈 리깅(플레이어·캐릭터 — 스킨·4K 지원; 도구는 **Spine** 확정, DragonBones 폐기 2026-07-24). ~~픽셀 아트~~ → **픽셀 폐기(2026-07-20, 근거 정정 2026-08-04)**: 폐기 자체는 유지하되 이유를 바로잡는다. 처음 적어 둔 "스킨 적용·4K 지원과 맞지 않아서"는 근거로 약하다 — 픽셀아트도 정수배 스케일로 4K를 지원하고, 스킨도 픽셀에서 흔하다(같은 장르의 Vampire Survivors·Brotato가 실제로 판다). **실제 이유는 파이프라인이다** — AI 생성이 쓸 만한 픽셀아트를 못 만들고, 도트를 손으로 찍는 노동이 아트 디렉션 §8의 "손그림·미감 최소화" 원칙과 정면으로 어긋난다. 근거 재조사: [`docs/development/sessions/2026-08-04-art-decision-audit.md`](../development/sessions/2026-08-04-art-decision-audit.md) D1. 아트 디렉션 정본: [`docs/design/art-direction.md`](../design/art-direction.md)
 **플랫폼:** v1 = itch.io 웹, v2 = Steam PC. 모바일 비목표.
 
 ---

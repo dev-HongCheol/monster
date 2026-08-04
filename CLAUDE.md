@@ -67,7 +67,7 @@ docs/
 - `docs/development/writing-style.md` — **문서 작성 스타일(한국어). 계획·설계·QA·PR 등 문서 작성 전 항상 읽는다**
 - `docs/development/glossary.md` — 프로젝트 용어 정본
 - `docs/planning/` — 게임 디자인, 컨셉, 로드맵 (기획 관련 작업 시 참조)
-- `docs/design/` — 아트 디렉션, UI/UX (디자인 관련 작업 시 참조). **아트 방향의 정본은 `docs/design/art-direction.md`**
+- `docs/design/` — 아트 디렉션, UI/UX (디자인 관련 작업 시 참조). **아트 방향(무엇을 왜 그렇게 그리는가)의 정본은 `docs/design/art-direction.md`**, **제작 규격(그래서 몇 px·어떤 피벗·어떤 파일명인가)의 정본은 `docs/design/asset-production-spec.md`**. 에셋을 실제로 만들 때는 사양서를, 방향을 판단할 때는 아트 디렉션을 본다
 - `docs/development/sessions/` — 개발 세션 및 의사결정 기록 (맥락 파악 필요 시 참조). 시스템별 설계 근거는 ADR이 아니라 대개 여기 `*-plan.md`에 있다
 - `docs/decisions/` — ADR (설계 결정 확인 시 참조). 횡단 규칙·플랫폼·프로세스 결정 위주
 - `docs/qa/` — QA 체크리스트 (구현·검증 단계에서 참조). 슬라이스별 시점 기록이라 코드와 어긋나면 코드 기준
