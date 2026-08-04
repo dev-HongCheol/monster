@@ -8,6 +8,8 @@
 - **정본:** 파이프라인 설계·프롬프트·라이선스 판단은 [`../design/art-direction.md`](../design/art-direction.md) §8·§9·부록 B~D가 정본이고, 이 문서는 그 실행 절차만 다룬다.
 - **관련 백로그:** [`backlog.md`](backlog.md) F58(아트 파이프라인 실행), [`backlog-implement.md`](backlog-implement.md) F59(툴체인 리스크·자동화).
 
+> **이 환경의 존폐가 걸린 판정이 진행 중이다(2026-08-04).** 아트 생성을 유료 서비스로 옮기는 것을 검토 중이며, 전환이 확정되면 여기서 세운 환경(체크포인트 6.5GB · venv 5.8GB 포함)을 지운다 — 대상·순서·남길 것은 [`sessions/2026-08-04-paid-art-pipeline-plan.md`](sessions/2026-08-04-paid-art-pipeline-plan.md) §12. **이 문서는 그때도 지우지 않는다** — 판정에 실패하면 로컬로 돌아오고, 그 복구가 아래 절차 그대로이기 때문이다. 특히 §4의 체크포인트 URL과 §3의 venv 구성이 복구의 전부다.
+
 ---
 
 ## 1. 이 장비 실측 (2026-07-21)
