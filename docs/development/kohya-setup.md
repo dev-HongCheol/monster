@@ -8,7 +8,9 @@
 - **정본:** 파이프라인 설계·라이선스 판단은 [`../design/art-direction.md`](../design/art-direction.md) §8(특히 §8-1 스타일 LoRA)·부록 C가 정본이고, 이 문서는 그 실행 절차만 다룬다. 확정 씨앗·화풍 결정의 배경은 세션 기록 [`sessions/2026-07-21-art-pipeline-style-lock.md`](sessions/2026-07-21-art-pipeline-style-lock.md), 학습 실행 기록은 [`sessions/2026-07-21-art-pipeline-lora.md`](sessions/2026-07-21-art-pipeline-lora.md).
 - **관련 백로그:** [`backlog.md`](backlog.md) F58(아트 파이프라인 실행)의 잔여였던 F58b.
 
-> **이 학습 환경은 철거 후보다(2026-08-04).** 감사 D4가 이 LoRA의 합격 판정을 철회했고, 아트 생성을 유료 서비스로 옮기는 검토가 진행 중이다. 전환이 확정되면 `F:\ai\sd-scripts`(5.1GB)와 중간 에폭 체크포인트를 지운다([`sessions/2026-08-04-paid-art-pipeline-plan.md`](sessions/2026-08-04-paid-art-pipeline-plan.md) §12). **재학습하게 되더라도 씨앗은 기존 로컬 생성분 10장만 쓴다** — 유료 출력을 학습 씨앗으로 넣는 것이 라이선스로 금지돼 있다(같은 문서 §4). 이 문서와 §5의 학습 인자는 복구 절차라 남긴다.
+> **철거 대상으로 확정됐다(2026-08-06).** 감사 D4가 이 LoRA의 합격 판정을 철회했고, 이어서 아트 생성 자체가 유료 서비스로 옮겨 가 **재학습 없이 폐기**됐다 — LoRA를 얹을 자리가 없어졌기 때문이다. `F:\ai\sd-scripts`(5.1GB)와 중간 에폭 체크포인트를 지운다([`sessions/2026-08-04-paid-art-pipeline-plan.md`](sessions/2026-08-04-paid-art-pipeline-plan.md) §12). **LoRA 최종본 하나(81.5MB)와 씨앗 10장은 남긴다** — 로컬로 되돌아올 때의 보험이다.
+>
+> **다시 굽게 되더라도 씨앗은 기존 로컬 생성분 10장만 쓴다.** 유료 출력을 학습 씨앗으로 넣는 것은 라이선스로 막혀 있다(같은 문서 §4). 이 문서와 §5의 학습 인자는 복구 절차라 남기며, 아래 본문은 **당시 절차 그대로 보존**한다.
 
 ---
 
