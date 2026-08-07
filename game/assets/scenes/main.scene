@@ -5127,7 +5127,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 72,
+      "width": 48,
       "height": 96
     },
     "_anchorPoint": {
@@ -5158,7 +5158,7 @@
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "a92ee894-3fc6-4fe9-b0fb-000a8b9fb808@f9941",
+      "__uuid__": "c90a728c-72b8-42cb-8356-a8e0b9b2b4e6@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,
@@ -5171,7 +5171,7 @@
     },
     "_fillStart": 0,
     "_fillRange": 0,
-    "_isTrimmedMode": true,
+    "_isTrimmedMode": false,
     "_useGrayscale": false,
     "_atlas": null,
     "_id": "30WFeuHMJEhJkfXqIrCPo6"
