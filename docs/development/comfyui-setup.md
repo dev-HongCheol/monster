@@ -5,8 +5,12 @@
 - **작성일:** 2026-07-21
 - **브랜치:** design/art-pipeline-style-lock
 - **성격:** 재사용 셋업 레퍼런스. 다음에 LoRA 학습·로스터 생성 때 다시 이 문서를 본다.
-- **정본:** 파이프라인 설계·프롬프트·라이선스 판단은 [`../design/art-direction.md`](../design/art-direction.md) §8·§9·부록 B~D가 정본이고, 이 문서는 그 실행 절차만 다룬다.
+- **정본:** 파이프라인 설계는 [`../design/art-direction.md`](../design/art-direction.md) §8·§9가 정본이고, 이 문서는 그 실행 절차만 다룬다. **로컬 베이스 모델의 라이선스 표는 2026-08-07에 이 문서 부록 C로 옮겨 왔다** — 로컬로 되돌아갈 때만 쓰는 표라 복구 매뉴얼이 드는 것이 맞다.
 - **관련 백로그:** [`backlog.md`](backlog.md) F58(아트 파이프라인 실행), [`backlog-implement.md`](backlog-implement.md) F59(툴체인 리스크·자동화).
+
+> **판정이 끝났다 — 이 환경은 철거 대상이다(2026-08-06 확정).** 아트 생성이 유료 서비스(fal.ai, `openai/gpt-image-2`)로 옮겨 갔고 플레이어 4방향 후처리까지 끝났으므로(2026-08-07), 여기서 세운 환경(체크포인트 6.5GB · venv 5.8GB 포함 약 12.7GB)을 지울 수 있다. **대상·순서·남길 것은 [`sessions/2026-08-04-paid-art-pipeline-plan.md`](sessions/2026-08-04-paid-art-pipeline-plan.md) §12를 그대로 따른다** — 특히 남길 것(생성 결과 PNG·씨앗·LoRA 최종본·스크립트)을 `F:\ai\archive\`로 **먼저 옮긴 뒤에** 지운다. 순서를 뒤집으면 문서가 근거로 인용하는 이미지가 함께 날아간다. **`rembg`가 이 venv 안에 산다는 함정**(§12.4)도 그 절에 있다.
+>
+> **이 문서는 지우지 않는다.** 로컬로 돌아올 일이 생기면 복구가 아래 절차 그대로이고, §4의 체크포인트 URL과 §3의 venv 구성이 복구의 전부다. 아래 본문은 **당시 절차 그대로 보존**한다 — 현재형으로 읽지 말고 복구 매뉴얼로 읽는다.
 
 ---
 
@@ -101,7 +105,7 @@ F:\ai\ComfyUI\venv\Scripts\python.exe -c "import torchaudio; print(torchaudio.__
 
 ## 4. 모델 다운로드 (SDXL 1.0 base)
 
-부록 C의 라이선스 판단대로 **SDXL 1.0 base(openrail++)** 를 기본 체크포인트로 쓴다. FLUX dev·NAI 유출 파생은 회피한다.
+아래 **부록 C**의 라이선스 판단대로 **SDXL 1.0 base(openrail++)** 를 기본 체크포인트로 쓴다. FLUX dev·NAI 유출 파생은 회피한다.
 
 ```powershell
 # 체크포인트 (약 6.9GB)
@@ -144,7 +148,7 @@ F:\ai\ComfyUI\venv\Scripts\python.exe F:\ai\ComfyUI\main.py --listen 127.0.0.1 -
 
 ## 6. 재현성 기록 (규약)
 
-art-direction §8·부록 B가 말하는 "규약으로 박는다"의 실체가 이 기록이다. 스타일 확정 때 통과한 컷마다 아래를 남겨야, 나중에 같은 이미지를 다시 뽑고 스타일 LoRA 학습 씨앗으로 쓸 수 있다. 이 셋이 없으면 "그때 그 룩"을 재현할 수 없다.
+로컬 시절 art-direction §8이 말한 "규약으로 박는다"의 실체가 이 기록이다(유료로 옮기며 그 규약은 "뽑은 것을 잃지 않게 보관한다"로 바뀌었다 — art-direction §8-5). 스타일 확정 때 통과한 컷마다 아래를 남겨야, 나중에 같은 이미지를 다시 뽑고 스타일 LoRA 학습 씨앗으로 쓸 수 있다. 이 셋이 없으면 "그때 그 룩"을 재현할 수 없다.
 
 - **워크플로 JSON** (API 포맷 그대로) — 프롬프트·샘플러·스텝·CFG·해상도가 전부 들어 있다.
 - **시드(seed)** — 같은 워크플로라도 시드가 다르면 다른 그림이다.
@@ -211,3 +215,33 @@ def wait_result(prompt_id: str, timeout_s: int = 600):
 ## 부록 B. 대조 시트(검수용)
 
 여러 컷을 한 장에 모아 "나란히" 보는 board는 Pillow로 만든다(부록 B 합격 기준이 나란히 비교를 요구). 행=대상, 열=시드로 배치하고 라벨을 얹는다. 스크립트는 슬라이스 작업 산출물로 `F:\ai`에 두되, 재구축이 필요하면 `output/<batch>/<subject>_<seed>_*.png`를 3열 그리드로 붙이는 짧은 Pillow 스크립트면 충분하다(한글 라벨은 기본 폰트에 글리프가 없어 네모로 뜨니 영문 키를 함께 쓴다).
+
+## 부록 C. 로컬 베이스 모델 라이선스 (상업 게임 기준)
+
+> **이 표는 2026-08-07에 [`../design/art-direction.md`](../design/art-direction.md) 부록 C에서 옮겨 왔다.** 생성이 유료 서비스로 옮긴 뒤 이 표가 다루는 것은 **로컬로 되돌아갈 때의 판단 근거**뿐이라, 복구 매뉴얼인 이 문서가 드는 것이 맞다. 지금 쓰는 서비스·모델의 상업 이용 조건은 별개의 열린 숙제이고(백로그 F68) 그쪽은 art-direction 부록 C가 든다.
+
+아래는 각 로컬 베이스 모델의 라이선스 원문을 확인한 결과다(2026-07-21 확인). §4가 SDXL 1.0 base를 고른 근거가 이 표다.
+
+| 베이스 모델 | 라이선스 (확인) | 상업 게임 | 판단 |
+|---|---|---|---|
+| **SDXL 1.0 base** | `openrail++` | 안전 | 사용 제한은 불법·유해 용도 금지뿐, 상업·매출 제한이 없다. 가장 무난한 기본값 |
+| **Animagine XL 4.0** | `openrail++` | 안전 | SDXL 파생, 라이선스 깨끗 |
+| **Illustrious XL** | `fair-ai-public-license-1.0-sd` | 조건부 | 원문에 "출력물은 라이선스 대상이 아니며 어떤 기여자도 권리를 주장하지 않는다" — 생성 이미지는 내가 소유. 카피레프트는 **모델/LoRA를 공개 배포하거나 네트워크로 노출할 때만** 발동 |
+| **Pony Diffusion V6 XL** | `fair-ai-public-license-1.0-sd` | 조건부 | Illustrious와 같은 조건 |
+| **SD 3.5** | Stability Community License | 조건부 | 원문: 연매출 100만 달러 미만이면 상업 무료, 초과 시 Enterprise 라이선스 필요 |
+| **FLUX.1 [dev]** | `flux-1-dev-non-commercial-license` | **불가** | 인기 있는 고품질 모델이지만 **비상업**. 상업엔 BFL 유료 라이선스가 별도로 필요하다 — 흔한 함정 |
+| **FLUX.1 [schnell]** | `apache-2.0` | 안전 | 상업 가능하나 dev보다 품질이 낮다 |
+| NAI 유출 파생 커뮤니티 모델 | (업로더 태그 무의미) | **회피** | 2022 NovelAI 유출 가중치에서 파생된 계열. 태그가 무엇이든 출처가 오염돼 상업에 얹지 않는다 |
+
+**`fair-ai-public-license-1.0-sd`가 게임에 걸리지 않는 이유:** 게임은 **렌더링된 이미지만 배포**하지 모델을 배포하지 않는다. 이 라이선스의 카피레프트는 모델·파생 모델(=학습한 LoRA)을 남에게 배포하거나 네트워크로 노출할 때만 소스(가중치) 공개 의무를 만든다. **학습한 스타일 LoRA를 비공개로(로컬 생성 전용) 두면 의무가 없다.**
+
+**로컬 기준 결론:** SDXL 1.0 base(`openrail++`) + 자체 스타일 LoRA 조합이 상업 라이선스·학습 데이터·저작권 세 축에서 가장 깨끗하다. 애니 톤이 필요하면 Animagine 4.0도 무난하고, Illustrious·Pony는 "LoRA 비공개" 조건만 지키면 된다. FLUX dev와 NAI 유출 파생만 확실히 피한다.
+
+### 참고처 (로컬 모델 지형 — 2026-08-07 art-direction 부록 D-4에서 옮겨 옴)
+
+- **Civitai** (civitai.com/models) — 베이스 모델·LoRA 공유 허브. 모델 페이지마다 그 모델로 뽑은 예시 이미지가 있고 상단 **Base Model 필터**로 SDXL/FLUX를 걸러 비교할 수 있어, "모델별로 그림이 어떻게 다른가"를 눈으로 보기에 가장 빠르다(성인 콘텐츠가 섞여 있어 필터 확인 필요).
+- **Hugging Face** (huggingface.co/models?pipeline_tag=text-to-image) — 모델 원본·카드·라이선스 확인처. 위 부록 C의 라이선스도 여기서 확인했다.
+- **ComfyUI 공식 예제** (comfyanonymous.github.io/ComfyUI_examples) — 워크플로 예제 + 결과 이미지.
+- **영상 검색어** — "ComfyUI 입문 / ComfyUI beginner tutorial", "LoRA 학습 / kohya LoRA training". Civitai의 Articles 탭에도 스타일 LoRA 학습 튜토리얼이 많다.
+
+**모델이 많아 보이는 이유는 두 층이 겹쳐서다.** ① 만든 회사가 다른 원조 엔진(Stability AI의 SD1.5 → SDXL → SD3.5, Black Forest Labs의 FLUX)과 ② 그 원조 하나를 취향대로 재학습한 것(Animagine·Pony·Illustrious는 속이 전부 SDXL이고 겉 튜닝만 다르다). 이름은 수십 개라도 뿌리는 몇 개를 공유하므로, 실제로 고르는 것은 하나다.
