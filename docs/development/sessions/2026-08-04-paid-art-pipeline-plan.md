@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-08-04
 - **브랜치:** design/art-decision-audit
-- **성격:** 로컬 생성(ComfyUI + SDXL + 스타일 LoRA)에서 유료 서비스로 옮기는 것을 검토한 기록과, 그 판단을 닫기 위한 시험 절차. **아직 확정이 아니다** — 아래 §8의 판정을 통과하면 그때 확정하고 ADR로 승격한다.
+- **성격:** 로컬 생성(ComfyUI + SDXL + 스타일 LoRA)에서 유료 서비스로 옮기는 것을 검토한 기록과, 그 판단을 닫기 위한 시험 절차. 여기서 설계한 §8 판정을 통과해 전환이 확정됐고(2026-08-06·08-07), **결정은 [ADR 008](../../decisions/008-paid-art-generation.md)이 든다.** 이 문서는 그 결정에 이른 검토와, §12의 철거 절차를 남긴다.
 - **관련:** [`2026-08-04-art-decision-audit.md`](2026-08-04-art-decision-audit.md) D2·D3·D4·D10, 백로그 [F62](../backlog.md), [`../comfyui-setup.md`](../comfyui-setup.md), [`../kohya-setup.md`](../kohya-setup.md), [`../../design/art-direction.md`](../../design/art-direction.md) §6·§8
 
 ---
@@ -237,4 +237,4 @@ visible. Same scale and same ground line across all four views. Plain gray backg
 - 레포에 **텍스트 재현 기록이 커밋돼 있는지**(워크플로 JSON·시드·체크포인트 해시·학습 인자). comfyui-setup §6과 kohya-setup §5가 정한 규약대로면 모델 바이너리를 지워도 절차는 레포에 남는다 — 이 규약이 지켜졌기 때문에 21GB를 지울 수 있는 것이다.
 - 셋업 문서 두 개(comfyui-setup·kohya-setup)를 지우지 않는다. 환경은 사라져도 **절차 기록은 남긴다** — 폴백으로 돌아올 때 그대로 다시 세운다.
 
-전환이 확정돼 이 문서가 ADR로 승격될 때, 이 절은 결정의 후속 조치로 함께 옮긴다.
+**결정은 [ADR 008](../../decisions/008-paid-art-generation.md)로 갔고 이 절은 여기 남는다** — ADR이 드는 것은 왜 옮겼는가이고, 21GB를 어떤 순서로 정리하는가는 절차라서 성격이 다르다. 실행은 백로그 **F70**이 잡고 있으며 그 항목이 이 절을 가리킨다.
