@@ -58,8 +58,10 @@ export function parsePhases(source: string): string[] {
  * phase 어휘와 디스크의 파일 목록을 대조해 이슈를 찾는다. 0건이면 정합.
  *
  * - **missing**: 면제되지 않은 phase에 `<phase>.md`가 없다 — 그 전이에서 절차가 배달되지 않는다.
- * - **unexpected**: `.md`인데 배달 대상 phase 이름도 `README.md`도 아니다 — 아무도 읽지 않는 채로
- *   낡는 문서가 생긴다. 면제 phase의 문서(`done.md`)도 여기 걸린다.
+ *   `README.md`도 기대 대상이다. 계획부터 머지까지를 한 번에 읽을 경로가 그것뿐이라, 없으면
+ *   분할이 없앤 통독 가능성을 되살릴 방법이 사라진다.
+ * - **unexpected**: `.md`인데 기대 목록에 없다 — 아무도 읽지 않는 채로 낡는 문서가 생긴다.
+ *   면제 phase의 문서(`done.md`)도 여기 걸린다.
  *
  * 판정은 **정확한 문자열 비교**다. `fs.existsSync`로 하면 대소문자를 무시하는 Windows에서 `Verification.md`
  * 오타가 통과하고 Linux에서만 깨진다. 반환 순서는 종류별 → 이름 사전순으로 고정한다.
@@ -71,9 +73,10 @@ export function findStepDocIssues(
   phases: readonly string[],
   filesOnDisk: readonly string[],
 ): StepDocIssue[] {
-  const expected = phases
-    .filter((phase) => !DOC_EXEMPT_PHASES.includes(phase))
-    .map((phase) => `${phase}.md`);
+  const expected = [
+    STEP_DOC_INDEX,
+    ...phases.filter((phase) => !DOC_EXEMPT_PHASES.includes(phase)).map((phase) => `${phase}.md`),
+  ];
   const expectedSet = new Set(expected);
   const markdown = filesOnDisk.filter((name) => name.endsWith('.md'));
   const present = new Set(markdown);
@@ -89,7 +92,7 @@ export function findStepDocIssues(
   );
   push(
     'unexpected',
-    markdown.filter((name) => name !== STEP_DOC_INDEX && !expectedSet.has(name)),
+    markdown.filter((name) => !expectedSet.has(name)),
   );
 
   return issues;

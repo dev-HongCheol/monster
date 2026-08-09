@@ -70,6 +70,12 @@ describe('findStepDocIssues — fixture', () => {
     expect(findStepDocIssues(allPhases, files)).toEqual([{ type: 'unexpected', name: 'notes.md' }]);
   });
 
+  it('missing: README.md가 없으면 플래그(통독 경로가 그것뿐이다)', () => {
+    // 분할이 없앤 것은 계획→머지를 위에서 아래로 한 번에 읽는 경험이고, README가 그걸 되살린다.
+    const files = cleanFiles().filter((f) => f !== 'README.md');
+    expect(findStepDocIssues(allPhases, files)).toEqual([{ type: 'missing', name: 'README.md' }]);
+  });
+
   it('.md가 아닌 파일은 무시한다', () => {
     const files = [...cleanFiles(), '.gitkeep', 'diagram.png'];
     expect(findStepDocIssues(allPhases, files)).toEqual([]);
@@ -161,6 +167,8 @@ interface SandboxOptions {
   qaProvisional?: boolean;
   /** 이 phase 문서만 만들지 않는다 */
   omitDoc?: string;
+  /** 이 phase 문서를 읽을 수 없게 만든다 (파일 자리에 디렉터리를 둔다) */
+  unreadableDoc?: string;
   /** 절차 문서 디렉터리 자체를 만들지 않는다 */
   omitDir?: boolean;
 }
@@ -233,6 +241,12 @@ function makeSandbox(opts: SandboxOptions): string {
     for (const phase of DELIVERED_PHASES) {
       if (phase === opts.omitDoc) continue;
       write(`docs/development/workflow/${phase}.md`, stubDoc(phase));
+    }
+    if (opts.unreadableDoc !== undefined) {
+      // 이름은 readdir에 남되 readFileSync가 EISDIR로 던지게 만든다. 권한 조작보다 이식성이 좋다.
+      const target = path.join(dir, 'docs/development/workflow', `${opts.unreadableDoc}.md`);
+      fs.rmSync(target, { force: true });
+      fs.mkdirSync(target);
     }
   }
 
@@ -467,6 +481,39 @@ describe('배달 — 누락 처리', () => {
 
     const noDir = makeSandbox({ phase: 'planning', omitDir: true });
     expect(runWf(noDir, ['approve-plan']).stderr).toContain('절차 문서 디렉터리 자체가 없음');
+  });
+
+  it('문서를 읽을 수 없어도 전이는 진행하고 원인을 말한다', () => {
+    // 이름은 readdir에 있는데 읽기가 실패하는 경우. 예외를 그대로 올리면 배달 쪽 catch가 진단까지
+    // 삼켜 아무 말 없이 절차가 안 나간다 — 이 기구가 막으려는 단 하나의 결과다.
+    const box = makeSandbox({ phase: 'planning', unreadableDoc: 'qa-setup' });
+    const { status, stdout, stderr } = runWf(box, ['approve-plan']);
+
+    expect(status).toBe(0);
+    expect(readState(box).phase).toBe('qa-setup');
+    expect(stdout).not.toContain('BODY-qa-setup');
+    expect(stderr).toContain('⚠ [배달]');
+    expect(stderr).toContain('파일은 있으나 읽을 수 없음');
+  });
+
+  it('문서를 읽을 수 없어도 steps는 죽지 않는다', () => {
+    // steps는 압축 이후의 복구 커맨드라, 여기서 원시 스택으로 죽으면 복구 경로 자체가 사라진다.
+    const box = makeSandbox({ phase: 'verification', unreadableDoc: 'verification' });
+    const { status, stderr } = runWf(box, ['steps']);
+
+    expect(status).toBe(0);
+    expect(stderr).toContain('⚠ [배달]');
+    expect(stderr).not.toContain('EISDIR');
+  });
+
+  it('steps <phase>는 상태 파일이 없어도 돈다', () => {
+    // 절차를 잃어버렸을 때 치는 커맨드다. 상태까지 잃은 상황에서 안 돌면 쓸모가 없다.
+    const box = makeSandbox({ phase: 'planning' });
+    fs.rmSync(path.join(box, '.claude/workflow-state.json'));
+    const { status, stdout } = runWf(box, ['steps', 'verification']);
+
+    expect(status).toBe(0);
+    expect(stdout).toContain('BODY-verification');
   });
 
   it('check-docs가 단독으로 돈다 — 정합하면 0, 누락이면 1', () => {

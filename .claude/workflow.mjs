@@ -136,13 +136,24 @@ function stepDocDirFiles() {
   return fs.existsSync(dir) ? fs.readdirSync(dir) : null;
 }
 
-// 절차 문서 본문. 없으면 null. 존재 판정은 readdir 결과에 대한 **정확한 문자열 비교**다 —
-// existsSync는 대소문자를 무시하는 Windows에서 `Verification.md` 오타를 통과시키고 Linux에서만 깨진다.
+// 절차 문서 본문. 없거나 읽을 수 없으면 null. 존재 판정은 readdir 결과에 대한 **정확한 문자열
+// 비교**다 — existsSync는 대소문자를 무시하는 Windows에서 `Verification.md` 오타를 통과시키고
+// Linux에서만 깨진다.
+//
+// 읽기 실패도 부재와 같이 다룬다. 이름이 readdir에 있는데 읽을 수 없는 경우(권한, 그 자리가
+// 디렉터리, I/O 오류)에 예외를 그대로 올리면 두 군데가 깨진다 — 배달 쪽은 상위 catch가 예외와
+// 함께 진단까지 삼켜 **아무 말 없이** 절차가 안 나가고(이 기구가 막으려는 단 하나의 결과다),
+// `steps`는 try/catch 밖이라 원시 스택으로 죽어 압축 후 복구 경로 자체가 사라진다. null로
+// 내려보내면 두 경우 모두 아래 누락 경고가 이유를 말한다.
 function readStepDoc(phase) {
   const files = stepDocDirFiles();
   const name = `${phase}.md`;
   if (!files || !files.includes(name)) return null;
-  return fs.readFileSync(path.join(ROOT, ...STEP_DOC_DIR, name), "utf8");
+  try {
+    return fs.readFileSync(path.join(ROOT, ...STEP_DOC_DIR, name), "utf8");
+  } catch {
+    return null;
+  }
 }
 
 // 누락 경고. 파일만 없는 경우와 디렉터리가 없는 경우는 고치는 법이 다르므로 구분해 말한다.
@@ -151,7 +162,9 @@ function warnMissingStepDoc(phase) {
   const cause =
     files === null
       ? "절차 문서 디렉터리 자체가 없음"
-      : `디렉터리는 있으나 이 파일만 없음 (형제 ${files.filter((f) => f.endsWith(".md")).length}개는 존재)`;
+      : files.includes(`${phase}.md`)
+        ? "파일은 있으나 읽을 수 없음 (권한, 또는 그 자리가 디렉터리)"
+        : `디렉터리는 있으나 이 파일만 없음 (형제 ${files.filter((f) => f.endsWith(".md")).length}개는 존재)`;
   const rel = stepDocRel(phase);
   process.stderr.write(
     `⚠ [배달] ${phase} 절차 문서를 찾지 못했습니다.\n` +
@@ -170,11 +183,12 @@ function warnMissingStepDoc(phase) {
  * 말처럼 읽히기 때문이다. 상태·경로·본문은 전부 stdout이다 — 두 스트림은 리다이렉트 시 순서가
  * 보장되지 않아, 나누면 이 순서가 깨진다.
  * @param phase 배달할 phase
- * @param cmd 상태 줄에 쓸 커맨드 이름 (읽기 전용 재출력이면 생략)
+ * @param cmd 상태 줄에 쓸 커맨드 표기 — 인자까지 포함한 원본(`pass review`). 읽기 전용 재출력이면 생략
  * @param summary true면 본문 대신 제목 줄만 (같은 phase 두 번째부터)
- * @returns 배달했으면 true, 문서가 없어 경고만 했으면 false
+ * @param transitioned false면 phase가 그대로인 재배달이라 상태 줄이 전이를 함의하지 않게 쓴다
+ * @returns 배달했으면 true, 문서를 못 읽어 경고만 했으면 false
  */
-function emitStepDoc(phase, { cmd = null, summary = false } = {}) {
+function emitStepDoc(phase, { cmd = null, summary = false, transitioned = true } = {}) {
   const body = readStepDoc(phase);
   if (body === null) {
     warnMissingStepDoc(phase);
@@ -196,7 +210,12 @@ function emitStepDoc(phase, { cmd = null, summary = false } = {}) {
     }
     console.log(SEP);
   }
-  if (cmd) console.log(`✓ ${cmd} → phase=${phase}`);
+  // 전이가 없었는데 `→ phase=`를 쓰면 그 화살표가 전이를 함의해 오독된다.
+  if (cmd) {
+    console.log(
+      transitioned ? `✓ ${cmd} → phase=${phase}` : `✓ ${cmd} — phase=${phase} 절차 재배달`
+    );
+  }
   return true;
 }
 
@@ -581,8 +600,9 @@ const commands = {
   // 현재(또는 인자로 받은) phase의 절차 문서를 다시 출력한다. 상태를 바꾸지 않는 읽기 전용이라
   // 차등 배달 규칙을 타지 않는다 — 다시 보려고 친 명령이므로 항상 전문이다.
   steps(args) {
-    const s = load();
-    const phase = args[0] ?? s.phase;
+    // phase를 명시했으면 상태 파일을 읽지 않는다. steps는 "절차를 잃어버렸을 때" 치는 커맨드라,
+    // 상태까지 잃은 상황에서 `먼저 start를 실행하세요`로 죽으면 복구 경로가 사라진다.
+    const phase = args[0] ?? load().phase;
     if (!PHASES.includes(phase)) {
       fail(`알 수 없는 phase: "${phase}" (가능: ${PHASES.join(", ")})`);
     }
@@ -599,10 +619,11 @@ const commands = {
   "check-docs"() {
     const files = stepDocDirFiles();
     if (files === null) fail(`절차 문서 디렉터리 없음: ${STEP_DOC_DIR.join("/")}/`);
-    const expected = PHASES.filter((p) => !DOC_EXEMPT_PHASES.has(p)).map((p) => `${p}.md`);
+    const phaseDocs = PHASES.filter((p) => !DOC_EXEMPT_PHASES.has(p)).map((p) => `${p}.md`);
+    const expected = [STEP_DOC_INDEX, ...phaseDocs]; // 인덱스도 있어야 한다 — 통독 경로가 그것뿐이다
     const markdown = files.filter((f) => f.endsWith(".md"));
     const missing = expected.filter((n) => !markdown.includes(n));
-    const unexpected = markdown.filter((n) => n !== STEP_DOC_INDEX && !expected.includes(n));
+    const unexpected = markdown.filter((n) => !expected.includes(n));
     if (missing.length > 0 || unexpected.length > 0) {
       process.stderr.write("✗ 절차 문서 정합 실패:\n");
       for (const n of missing) process.stderr.write(`    - 누락: ${n}\n`);
@@ -611,7 +632,7 @@ const commands = {
       }
       process.exit(1);
     }
-    console.log(`✓ 절차 문서 정합 (phase ${expected.length}개 + ${STEP_DOC_INDEX})`);
+    console.log(`✓ 절차 문서 정합 (phase ${phaseDocs.length}개 + ${STEP_DOC_INDEX})`);
   },
 
   status() {
@@ -622,7 +643,9 @@ const commands = {
     // 경로 한 줄만 — 본문은 안 낸다. status는 "나 어디 있지"의 정본 커맨드라 일상적으로 돌아가고,
     // 그러면 절차 문서의 **존재**로 신호가 온다. 압축 이후 "절차를 모르면 문서를 읽어라"는 지시가
     // 안 듣는 이유가 여기에 있다 — 부재는 스스로를 알리지 않으므로 방아쇠가 될 수 없다.
-    if (!DOC_EXEMPT_PHASES.has(s.phase)) {
+    // PHASES 검사를 한 번 태운다 — 상태가 어떤 이유로든 어휘 밖 값을 들고 있을 때
+    // 진단 커맨드가 그럴듯한 가짜 경로를 말하지 않게 한다.
+    if (PHASES.includes(s.phase) && !DOC_EXEMPT_PHASES.has(s.phase)) {
       console.log(`\n▶ ${s.phase} 절차: ${stepDocRel(s.phase)}`);
       console.log("   (전문: `pnpm wf steps`)");
     }
@@ -643,9 +666,10 @@ function phaseBeforeDispatch() {
  * 디스패치가 성공으로 끝난 뒤 절차 문서를 배달한다. 여기까지 실행이 왔다는 것 자체가 전이 성공의
  * 증거다(모든 실패 경로는 process.exit(1)로 끝난다). 어떤 이유로도 throw하지 않는다.
  * @param cmd 방금 실행한 커맨드 이름
+ * @param args 그 커맨드의 인자 — 상태 줄을 원본 그대로(`pass review`) 찍기 위해 받는다
  * @param phaseBefore 디스패치 직전의 phase (null이면 상태 파일이 없었다)
  */
-function deliverAfterDispatch(cmd, phaseBefore) {
+function deliverAfterDispatch(cmd, args, phaseBefore) {
   try {
     const state = JSON.parse(fs.readFileSync(STATE_PATH, "utf8"));
     const phase = state.phase;
@@ -655,16 +679,23 @@ function deliverAfterDispatch(cmd, phaseBefore) {
     if (!phaseChanged && !REDELIVERING_COMMANDS.has(cmd)) return;
 
     // 기존 상태 파일에는 이 필드가 없어 첫 실행 시 undefined다.
+    // phase가 바뀔 때마다 비우므로 실제로는 항상 [] 아니면 [현재 phase] 하나다 —
+    // 여러 phase의 이력이 쌓이지 않는다.
     let delivered = Array.isArray(state.docs_delivered) ? state.docs_delivered : [];
     if (phaseChanged) delivered = []; // 새 phase = 새 회차. rework도 여기 걸린다
 
     const summary = delivered.includes(phase);
-    if (emitStepDoc(phase, { cmd, summary }) && !summary) delivered = [...delivered, phase];
+    const label = [cmd, ...args].join(" ");
+    if (emitStepDoc(phase, { cmd: label, summary, transitioned: phaseChanged }) && !summary) {
+      delivered = [...delivered, phase];
+    }
 
     state.docs_delivered = delivered;
     save(state);
-  } catch {
+  } catch (e) {
     // 배달은 곁가지다. 여기서 죽으면 이미 전이된 상태와 실패한 종료코드가 어긋난다.
+    // 다만 조용히 삼키지는 않는다 — 절차가 안 나갔다는 사실 자체가 이 기구의 실패다.
+    process.stderr.write(`⚠ [배달] 절차 문서 배달에 실패했습니다: ${e.message}\n`);
   }
 }
 
@@ -675,4 +706,4 @@ if (!cmd || !commands[cmd]) {
 }
 const phaseBefore = DELIVERING_COMMANDS.has(cmd) ? phaseBeforeDispatch() : null;
 commands[cmd](args);
-if (DELIVERING_COMMANDS.has(cmd)) deliverAfterDispatch(cmd, phaseBefore);
+if (DELIVERING_COMMANDS.has(cmd)) deliverAfterDispatch(cmd, args, phaseBefore);
