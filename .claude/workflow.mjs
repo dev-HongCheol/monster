@@ -695,7 +695,9 @@ function deliverAfterDispatch(cmd, args, phaseBefore) {
   } catch (e) {
     // 배달은 곁가지다. 여기서 죽으면 이미 전이된 상태와 실패한 종료코드가 어긋난다.
     // 다만 조용히 삼키지는 않는다 — 절차가 안 나갔다는 사실 자체가 이 기구의 실패다.
-    process.stderr.write(`⚠ [배달] 절차 문서 배달에 실패했습니다: ${e.message}\n`);
+    // String(e)로 받는다. `e.message`는 e가 null로 던져지면 catch **안에서** 다시 던져
+    // 이 catch가 지키려는 불변식을 스스로 깬다(도달 가능성은 사실상 0이지만 비용도 0이다).
+    process.stderr.write(`⚠ [배달] 절차 문서 배달에 실패했습니다: ${String(e)}\n`);
   }
 }
 

@@ -169,6 +169,8 @@ interface SandboxOptions {
   omitDoc?: string;
   /** 이 phase 문서를 읽을 수 없게 만든다 (파일 자리에 디렉터리를 둔다) */
   unreadableDoc?: string;
+  /** 인덱스(README.md)를 만들지 않는다 */
+  omitIndex?: boolean;
   /** 절차 문서 디렉터리 자체를 만들지 않는다 */
   omitDir?: boolean;
 }
@@ -237,7 +239,7 @@ function makeSandbox(opts: SandboxOptions): string {
 
   if (opts.omitDir !== true) {
     fs.mkdirSync(path.join(dir, 'docs', 'development', 'workflow'), { recursive: true });
-    write('docs/development/workflow/README.md', '# 인덱스\n');
+    if (opts.omitIndex !== true) write('docs/development/workflow/README.md', '# 인덱스\n');
     for (const phase of DELIVERED_PHASES) {
       if (phase === opts.omitDoc) continue;
       write(`docs/development/workflow/${phase}.md`, stubDoc(phase));
@@ -524,6 +526,17 @@ describe('배달 — 누락 처리', () => {
     const r = runWf(broken, ['check-docs']);
     expect(r.status).toBe(1);
     expect(r.stderr).toContain('verification.md');
+  });
+
+  it('check-docs가 README.md 누락도 잡는다 (CLI와 순수 함수가 같은 규칙이어야 한다)', () => {
+    // 판정 로직이 workflow.mjs와 tests/helpers/WorkflowSteps.ts 두 곳에 복사돼 있다(CLI가 그
+    // 모듈을 import할 수 없다). 헬퍼 쪽만 fixture로 덮으면 CLI 쪽을 되돌려도 초록불이 뜨므로,
+    // "두 곳을 함께 고친다"는 규율에 이빨이 없다. 이 단언이 그 이빨이다.
+    const box = makeSandbox({ phase: 'planning', omitIndex: true });
+    const r = runWf(box, ['check-docs']);
+
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('README.md');
   });
 
   it('커맨드 목록에 steps와 check-docs가 있다', () => {
