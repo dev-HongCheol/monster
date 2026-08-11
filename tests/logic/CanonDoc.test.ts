@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  assertOneLineField,
   DESIGN_PREFIXES,
   DEV_PREFIXES,
   insertCanonRow,
@@ -63,6 +64,30 @@ describe('parseCanonSlug', () => {
     for (const bad of ['../evil', 'code-a/b', 'code-a\\b', '..', 'code-..']) {
       expect(() => parseCanonSlug(bad, DEV_PREFIXES), bad).toThrow();
     }
+  });
+});
+
+describe('assertOneLineField', () => {
+  it('평범한 한 줄은 통과한다', () => {
+    expect(() => assertOneLineField('무엇이 무엇에 맞나', '질문')).not.toThrow();
+  });
+
+  it('줄바꿈을 거부한다 — 인덱스 표에 가짜 행이 삽입된다', () => {
+    // /cso가 잡은 결함이다. `Q |\n| [\`fake.md\`](fake.md) | 가짜 |`를 넣으면 목록에
+    // 등재된 적 없는 정본이 한 줄 앉는다.
+    expect(() => assertOneLineField('Q\n| [`fake.md`](fake.md) | 가짜 |', '질문')).toThrow(
+      /줄바꿈/,
+    );
+    expect(() => assertOneLineField('Q\r\nX', '질문')).toThrow(/줄바꿈/);
+  });
+
+  it('파이프를 거부한다 — 그 자리에서 열이 갈린다', () => {
+    expect(() => assertOneLineField('a | b', '질문')).toThrow(/\|/);
+  });
+
+  it('빈 값과 공백만 있는 값을 거부한다', () => {
+    expect(() => assertOneLineField('', '제목')).toThrow();
+    expect(() => assertOneLineField('   ', '제목')).toThrow();
   });
 });
 

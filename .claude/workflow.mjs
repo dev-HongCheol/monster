@@ -130,6 +130,12 @@ function parseCanonSlug(slug, allowed) {
   return { prefix: m[1], topic: m[2] };
 }
 
+function assertOneLineField(value, label) {
+  if (value.trim() === "") throw new Error(`${label}이(가) 비었습니다.`);
+  if (/[\r\n]/.test(value)) throw new Error(`${label}에 줄바꿈을 넣을 수 없습니다.`);
+  if (value.includes("|")) throw new Error(`${label}에 \`|\`를 넣을 수 없습니다(표의 열 구분자).`);
+}
+
 function renderCanonDoc(o) {
   return [
     `# ${o.title}`,
@@ -620,6 +626,8 @@ const commands = {
     const allowed = design ? DESIGN_PREFIXES : DEV_PREFIXES;
     try {
       parseCanonSlug(slug, allowed);
+      assertOneLineField(title, "제목");
+      assertOneLineField(question, "답하는 질문");
     } catch (e) {
       fail(e.message);
     }
@@ -662,8 +670,14 @@ const commands = {
     const rels = [];
     for (const a of args) {
       const full = path.resolve(ROOT, a);
+      // 레포 밖을 막는다. 파일을 쓰지는 않지만, 밖을 가리키는 경로는 타 머신에서 의미가 없고
+      // 존재 검사를 넣은 목적(아무 경로로 게이트만 통과시키는 것을 막는다)이 그대로 샌다.
+      const rel = toRel(full);
+      if (rel === "" || rel.startsWith("../")) {
+        fail(`레포 밖 경로입니다: ${a}\n  정본은 이 레포 안의 파일이어야 합니다.`);
+      }
       if (!fs.existsSync(full)) fail(`그런 파일이 없습니다: ${a}`);
-      rels.push(toRel(full));
+      rels.push(rel);
     }
     const s = recordCanon(...rels);
     console.log(`✓ canon-done: ${s.canon_updated.join(", ")}`);

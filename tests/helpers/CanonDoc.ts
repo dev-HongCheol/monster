@@ -56,6 +56,22 @@ export function parseCanonSlug(slug: string, allowed: readonly string[]): CanonS
 }
 
 /**
+ * 제목·질문처럼 **한 줄로 들어가는 값**을 검증한다.
+ *
+ * 개행이 들어가면 인덱스 표에 행이 통째로 더 생긴다(가짜 정본이 목록에 앉는다). 파이프는
+ * 그 자리에서 열이 갈려 표가 어긋난다. 둘 다 조용히 깨지므로 값을 받는 자리에서 막는다.
+ *
+ * @param value 검사할 값
+ * @param label 오류 메시지에 쓸 필드 이름
+ * @throws 비었거나 개행·파이프를 포함하면
+ */
+export function assertOneLineField(value: string, label: string): void {
+  if (value.trim() === '') throw new Error(`${label}이(가) 비었습니다.`);
+  if (/[\r\n]/.test(value)) throw new Error(`${label}에 줄바꿈을 넣을 수 없습니다.`);
+  if (value.includes('|')) throw new Error(`${label}에 \`|\`를 넣을 수 없습니다(표의 열 구분자).`);
+}
+
+/**
  * 정본 문서 본문을 만든다. 머리말 모양은 기존 정본(`writing-style.md`)에 맞춘다.
  *
  * 템플릿에 **결정 기록으로 가는 링크를 넣지 않는다** — 정본이 세션 문서·ADR을 가리키면

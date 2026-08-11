@@ -716,6 +716,34 @@ describe('정본 선언 게이트', () => {
     expect(readState(box).canon_updated).toEqual(['docs/development/spec/game-combat.md']);
   });
 
+  it('canon-done은 레포 밖 경로를 거부한다', () => {
+    // /cso가 잡은 결함이다. 파일을 쓰지는 않지만 밖을 가리키는 경로는 타 머신에서 의미가 없고,
+    // 존재 검사를 넣은 목적(아무 경로로 게이트만 통과시키는 것을 막는다)이 그대로 샜다.
+    const box = makeSandbox({ phase: 'verification', allChecksClean: true });
+    const outside = path.join(box, '..', `outside-${path.basename(box)}.txt`);
+    fs.writeFileSync(outside, 'x');
+    try {
+      const { status, stderr } = runWf(box, ['canon-done', `../${path.basename(outside)}`]);
+      expect(status).toBe(1);
+      expect(stderr).toContain('레포 밖 경로');
+      expect(readState(box).canon_updated).toEqual([]);
+    } finally {
+      fs.rmSync(outside, { force: true });
+    }
+  });
+
+  it('canon은 질문의 줄바꿈을 거부한다 — 인덱스에 가짜 행이 앉는다', () => {
+    const box = makeSandbox({ phase: 'implementation' });
+    fs.mkdirSync(path.join(box, 'docs/development/spec'), { recursive: true });
+    fs.writeFileSync(path.join(box, 'docs/development/spec/README.md'), SPEC_README);
+
+    const injected = 'Q |\n| [`fake.md`](fake.md) | 가짜 행 |';
+    expect(runWf(box, ['canon', 'code-x', '제목', injected]).status).toBe(1);
+
+    const readme = fs.readFileSync(path.join(box, 'docs/development/spec/README.md'), 'utf8');
+    expect(readme).not.toContain('fake.md');
+  });
+
   it('canon은 이미 있는 문서를 덮어쓰지 않는다', () => {
     const box = makeSandbox({ phase: 'implementation' });
     fs.mkdirSync(path.join(box, 'docs/development/spec'), { recursive: true });
