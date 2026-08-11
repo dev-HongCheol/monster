@@ -1,6 +1,6 @@
 {
   "feature": "claude-md-split",
-  "phase": "verification",
+  "phase": "user-verification",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": "full",
@@ -8,11 +8,25 @@
     "cso_done": true,
     "ts_check_clean": true,
     "lint_clean": true,
-    "code_review_clean": false
+    "code_review_clean": true
   },
   "docs_delivered": [
-    "verification"
+    "user-verification"
   ],
-  "canon_updated": [],
+  "canon_updated": [
+    "CLAUDE.md",
+    "docs/design/spec/README.md",
+    "docs/development/conventions.md",
+    "docs/development/spec/README.md",
+    "docs/development/spec/ops-skill-routing.md",
+    "docs/development/workflow/README.md",
+    "docs/development/workflow/implementation.md",
+    "docs/development/workflow/planning.md",
+    "docs/development/workflow/pr-ready.md",
+    "docs/development/workflow/qa-setup.md",
+    "docs/development/workflow/user-verification.md",
+    "docs/development/workflow/verification.md",
+    "docs/development/writing-style.md"
+  ],
   "canon_skip_reason": null
 }
