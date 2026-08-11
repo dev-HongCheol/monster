@@ -50,7 +50,7 @@ docs/
 - 패키지/플러그인 설치 전 반드시 확인
 - 현재 작업과 무관한 파일 수정 금지
 - 발견한 무관 이슈 → 즉시 수정하지 말고 언급만 (슬라이스 밖 항목은 백로그로)
-- **기존 JSDoc/인라인 주석 삭제 금지** — 기존 코드에 이미 있는 주석은 수정·기능 추가 시에도 유지한다. 파라미터가 변경된 경우 `@param` 내용을 업데이트한다.
+- **기존 JSDoc/인라인 주석을 노이즈로 지우지 않는다** — 다만 **틀렸으면 고치고**(파라미터가 바뀌었으면 `@param` 포함), **설명하던 코드가 사라졌으면 함께 지운다.** 남겨 두면 없는 동작을 설명하는 거짓말이 된다.
 - **설명 주석·문서는 읽는 사람이 인과를 복원할 수 있게 쓴다** — 원칙 세 가지와 예시는 `docs/development/writing-style.md`가 정본이고, 코드 주석에 적용한 판은 `docs/development/conventions.md` § 주석 기준에 있다. **주석·문서를 쓰기 전에 그쪽을 읽는다.** 같은 설명이 코드·테스트·문서에 복사돼 있으면 **함께 고친다**(한 곳만 고치면 나머지가 낡은 채로 남는다)
 
 ### 루프 방지
@@ -89,6 +89,7 @@ docs/
 **검색 라우팅 (gbrain 설치 시).** 찾을 대상의 **단어를 이미 아는** 검색은 Grep이 빠르고 정확하다. 반대로 **단어를 모르는** 검색(개념·증상·"예전에 왜 이렇게 했더라")은 gbrain 의미 검색을 먼저 쓴다 — 그 경우 Grep은 무관한 문서를 주거나 0건을 낸다. 심볼의 정의·참조 위치는 `code-def`·`code-refs`가 파일과 줄 범위를 바로 준다. **색인은 특정 커밋 기준이라 낡을 수 있다** — 검색 결과는 단서로만 쓰고 최종 판단은 현재 코드로 확인한다. **결과가 비었거나 엉뚱하면 없다고 결론짓기 전에 `gbrain sources status`로 마지막 동기화 시점을 본다** — 낡은 색인은 침묵하지 않고 가장 비슷한 것을 그럴듯한 점수로 돌려주므로, 지연을 모르면 조용히 틀린 답을 믿게 된다. 미설치 환경이면 그냥 Grep으로 진행한다.
 
 지식 추가 기준:
+- **이번 슬라이스가 바꾼 명세** → 위 표의 해당 정본을 고친다(없으면 만든다). 세션·ADR에만 적으면 다음 사람이 시점 기록을 명세로 읽는다
 - 주요 기술/설계 결정 → `docs/decisions/NNN-title.md` ADR로 작성
 - 개발 세션 기록 → `docs/development/sessions/YYYY-MM-DD-topic.md`
 - 재발하는 운영/도구 이슈 + 복구 절차 → `docs/development/troubleshooting/<topic>.md` (세션 기록 아님 — 에러 발생 시 찾아보는 레퍼런스)
@@ -152,7 +153,7 @@ planning → qa-setup → implementation → verification → user-verification 
 6   AI 검증    QA 문서 확정(잠정→확정) → /cso → pass cso → pnpm typecheck → pass ts
                → pnpm check --write → pass lint → 기능 단위 커밋 → 코드리뷰 → pass review
                코드 수정이 끼면 invalidate로 cso부터 다시
-7   사용자 검증 문서 정리 → gh pr create --draft → 사용자 에디터 세팅·인게임 테스트
+7   사용자 검증 정본 갱신·문서 정리 → gh pr create --draft → 사용자 에디터 세팅·인게임 테스트
                버그 발견 시 사용자 `리워크`
 8   PR 승인    신규 .meta 커밋·push → 사용자 `PR 승인` → wf approve-pr
 9   머지       상태 표시 확정 → gh pr ready → squash merge → wf pr-done → gbrain 색인 갱신
