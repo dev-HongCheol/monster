@@ -50,6 +50,12 @@ function freshState(feature) {
     // 우회하는 것을 막는다). verification 안이 아니라 밖에 두는 이유: pass()의
     // `Object.values(verification).every(Boolean)` 판정에 문자열이 섞이면 안 된다.
     ts_check_scope: null,
+    // 이번 슬라이스가 갱신·신설한 정본 경로. 비어 있고 canon_skip_reason도 없으면 pass가
+    // user-verification 진입을 막는다 — 바꾼 명세가 정본에 안 실린 채 끝나는 것을 막는 게이트다.
+    // ts_check_scope와 같은 이유로 verification 밖에 둔다: pass()의
+    // `Object.values(verification).every(Boolean)` 판정에 배열·문자열이 섞이면 안 된다.
+    canon_updated: [],
+    canon_skip_reason: null,
     verification: {
       cso_done: false,
       ts_check_clean: false,
@@ -90,8 +96,89 @@ function requirePhase(state, expected) {
 function resetVerification(state) {
   for (const f of Object.values(CHECK_FLAG)) state.verification[f] = false;
   state.ts_check_scope = null; // 검사 범위도 함께 무효화 — 재검증 없이 남으면 안 된다
+  // 정본 판단도 함께 무효화한다. 이 함수를 부르는 두 경로(invalidate·rework)는 둘 다 "코드가
+  // 바뀌었다"는 뜻이고, 코드가 바뀌면 "명세도 바뀌었나"라는 판단이 낡는다. 남겨 두면 초기 구현
+  // 기준으로 한 번 declare한 뒤 그 뒤의 모든 변경이 게이트를 그냥 통과한다.
+  state.canon_updated = [];
+  state.canon_skip_reason = null;
   // docs_delivered는 여기서 건드리지 않는다. invalidate가 이 함수를 부르므로 초기화를 넣으면
   // 매번 전문이 나가 차등 배달이 통째로 무력해진다. 초기화는 phase가 바뀌는 지점에서 한다.
+}
+
+// ── 정본(canon) 문서 ────────────────────────────────────────────────────────
+// 같은 판정이 tests/helpers/CanonDoc.ts에도 있다(그쪽이 fixture로 검증된다). CLI에서 그 모듈을
+// import할 수 없어 생긴 복사본이므로, 규칙을 바꾸면 두 곳을 함께 고친다.
+const DEV_PREFIXES = ["code", "game", "docs", "ops"];
+const DESIGN_PREFIXES = ["art", "ui"];
+const CANON_ROW_START = "| [`";
+
+function parseCanonSlug(slug, allowed) {
+  const m = /^([a-z]+)-([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(slug);
+  if (!m) {
+    throw new Error(
+      `정본 슬러그 형식이 아닙니다: "${slug}"\n` +
+        "  <분류>-<주제> 꼴이어야 하고 소문자·숫자·하이픈만 씁니다(확장자는 붙이지 않습니다)."
+    );
+  }
+  if (!allowed.includes(m[1])) {
+    throw new Error(
+      `허용되지 않은 분류 접두사입니다: "${m[1]}"\n` +
+        `  이 폴더가 받는 접두사: ${allowed.join(", ")}\n` +
+        "  늘리려면 해당 spec/README.md를 먼저 고치세요."
+    );
+  }
+  return { prefix: m[1], topic: m[2] };
+}
+
+function renderCanonDoc(o) {
+  return [
+    `# ${o.title}`,
+    "",
+    `> ${o.question}`,
+    "",
+    `- **최초 작성:** ${o.date}`,
+    "- **상태:** CONFIRMED",
+    `- **이력:** ${o.date} — 신설`,
+    "",
+    "---",
+    "",
+    "이 문서는 **정본**이다. 내용이 낡으면 새로 만들지 않고 이 문서를 고친다. 이력 절에는",
+    "날짜와 무엇이 바뀌었는지만 한 줄 남기고, 그렇게 정한 경위는 그 슬라이스의 세션 문서가 든다.",
+    "",
+    "## (본문)",
+    "",
+  ].join("\n");
+}
+
+function insertCanonRow(readme, slug, question) {
+  const lines = readme.split("\n");
+  const rowIdxs = lines.map((l, i) => (l.startsWith(CANON_ROW_START) ? i : -1)).filter((i) => i >= 0);
+  const headerIdx = lines.findIndex((l) => /^\|\s*-+\s*\|/.test(l.replace(/\s/g, " ")));
+  if (headerIdx < 0 && rowIdxs.length === 0) {
+    throw new Error("README에서 「목록」 표를 찾지 못했습니다 — 표가 있어야 등재할 수 있습니다.");
+  }
+  if (lines.some((l) => l.startsWith(`${CANON_ROW_START}${slug}.md\`]`))) return readme;
+  const row = `| [\`${slug}.md\`](${slug}.md) | ${question} |`;
+  const at = rowIdxs.find((i) => lines[i] > row);
+  const insertAt = at ?? (rowIdxs.length > 0 ? rowIdxs[rowIdxs.length - 1] + 1 : headerIdx + 1);
+  lines.splice(insertAt, 0, row);
+  return lines.join("\n");
+}
+
+/** 레포 루트 기준 상대 경로 — 항상 슬래시. Windows 구분자가 상태 파일에 들어가면 머신마다 갈린다. */
+function toRel(full) {
+  return path.relative(ROOT, full).split(path.sep).join("/");
+}
+
+/** 정본 갱신을 상태에 기록한다. 상태 파일이 없으면 조용히 넘어간다(슬라이스 밖 사용). */
+function recordCanon(...rels) {
+  if (!fs.existsSync(STATE_PATH)) return null;
+  const s = load();
+  const merged = new Set([...(s.canon_updated ?? []), ...rels]);
+  s.canon_updated = [...merged].sort();
+  s.canon_skip_reason = null; // 갱신을 선언했으므로 "바꾼 것 없음"과 공존할 수 없다
+  save(s);
+  return s;
 }
 
 // ── 절차 문서 배달 ──────────────────────────────────────────────────────────
@@ -495,6 +582,22 @@ const commands = {
             `\`pnpm wf pass ${check}\`를 다시 실행하면 user-verification으로 전이됩니다.`
         );
       }
+      // 정본 게이트: 이번 슬라이스가 바꾼 명세가 정본에 실렸는지를 **선언하게** 한다.
+      // "정본을 고쳤는가"는 기계가 못 보지만 "판단했는가"는 볼 수 있다(skip-test와 같은 형태).
+      // 이 게이트가 없으면 새 규칙이 세션 문서와 ADR에만 쌓이고, 다음 사람이 시점 기록을
+      // 명세로 읽게 된다 — ADR 002·006·007이 그렇게 정본 자리에 섰다.
+      // 이 필드가 없던 시절의 상태 파일에서는 undefined다 — 없으면 "선언 안 함"으로 읽는다.
+      if ((s.canon_updated ?? []).length === 0 && !s.canon_skip_reason) {
+        save(s); // pass 플래그는 보존 — 선언 후 같은 pass를 다시 치면 곧장 전이한다
+        process.stderr.write(
+          "✗ 정본 갱신 여부가 선언되지 않았습니다 — 이번 슬라이스가 바꾼 명세는 정본에 실려야 합니다.\n" +
+            "    새로 만들기:  pnpm wf canon <분류>-<주제> \"<제목>\" \"<답하는 질문>\"\n" +
+            "    기존 것 고침: pnpm wf canon-done <경로...>\n" +
+            "    바꾼 명세 없음: pnpm wf canon-skip \"<사유>\"\n"
+        );
+        fail(`선언한 뒤 \`pnpm wf pass ${check}\`를 다시 실행하면 user-verification으로 전이됩니다.`);
+      }
+
       s.phase = "user-verification";
       save(s);
       console.log(`✓ pass ${check} → 전체 통과 → phase=user-verification (편집 잠금)`);
@@ -502,6 +605,80 @@ const commands = {
       save(s);
       console.log(`✓ pass ${check}`);
     }
+  },
+
+  // 새 정본 문서를 규칙에 맞게 만들고 인덱스에 등재한다. 만든 것 자체가 정본 갱신이므로
+  // canon_updated에도 바로 기록한다(상태 파일이 없으면 문서만 만든다 — 슬라이스 밖에서도 쓸 수 있게).
+  canon(args) {
+    const design = args.includes("--design");
+    const rest = args.filter((a) => a !== "--design");
+    const [slug, title, question] = rest;
+    if (!slug || !title || !question) {
+      fail('사용법: canon <분류>-<주제> "<제목>" "<답하는 질문>" [--design]');
+    }
+
+    const allowed = design ? DESIGN_PREFIXES : DEV_PREFIXES;
+    try {
+      parseCanonSlug(slug, allowed);
+    } catch (e) {
+      fail(e.message);
+    }
+
+    const dir = path.join(ROOT, "docs", design ? "design" : "development", "spec");
+    const docPath = path.join(dir, `${slug}.md`);
+    if (fs.existsSync(docPath)) {
+      fail(
+        `이미 있습니다: ${toRel(docPath)}\n` +
+          "  정본은 새로 만들지 않고 고칩니다. 고쳤다면 `pnpm wf canon-done`으로 기록하세요."
+      );
+    }
+
+    const readmePath = path.join(dir, STEP_DOC_INDEX);
+    if (!fs.existsSync(readmePath)) {
+      fail(`인덱스가 없습니다: ${toRel(readmePath)} — 정본 폴더가 아직 준비되지 않았습니다.`);
+    }
+
+    let readme;
+    try {
+      readme = insertCanonRow(fs.readFileSync(readmePath, "utf8"), slug, question);
+    } catch (e) {
+      fail(e.message);
+    }
+
+    // toISOString()은 UTC라 KST 저녁 이후에는 하루 이른 날짜가 찍힌다. 문서 날짜는 사람이
+    // 세션 파일을 날짜로 찾는 인덱스라 어긋나면 안 된다 — sv-SE 로캘이 로컬 YYYY-MM-DD를 준다.
+    const today = new Date().toLocaleDateString("sv-SE");
+    fs.writeFileSync(docPath, renderCanonDoc({ slug, title, question, date: today }));
+    fs.writeFileSync(readmePath, readme);
+    console.log(`✓ canon: ${toRel(docPath)} 생성 + ${toRel(readmePath)} 등재`);
+
+    recordCanon(toRel(docPath));
+  },
+
+  // 기존 정본을 고쳤을 때 기록한다. 경로가 실제로 있는지 확인한다 — 없는 경로를 적어
+  // 게이트만 통과시키는 것을 막는다.
+  "canon-done"(args) {
+    if (args.length === 0) fail("사용법: canon-done <경로...> (레포 루트 기준)");
+    const rels = [];
+    for (const a of args) {
+      const full = path.resolve(ROOT, a);
+      if (!fs.existsSync(full)) fail(`그런 파일이 없습니다: ${a}`);
+      rels.push(toRel(full));
+    }
+    const s = recordCanon(...rels);
+    console.log(`✓ canon-done: ${s.canon_updated.join(", ")}`);
+  },
+
+  // 이번 슬라이스가 바꾼 명세가 없을 때. 사유를 남기는 것이 요점이다 — skip-test와 같은 형태로,
+  // "생각해 보고 없다고 판단했다"와 "생각하지 않았다"를 구분한다.
+  "canon-skip"(args) {
+    const reason = args.join(" ").trim();
+    if (!reason) fail('사용법: canon-skip "<사유>"');
+    const s = load();
+    s.canon_updated = [];
+    s.canon_skip_reason = reason;
+    save(s);
+    console.log(`✓ canon-skip: ${reason}`);
   },
 
   // verification 중 코드 변경 → 모든 검증 무효화 (cso 포함, 비대칭 제거)

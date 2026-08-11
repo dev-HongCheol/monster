@@ -150,6 +150,8 @@ interface SandboxState {
     code_review_clean: boolean;
   };
   docs_delivered: string[];
+  canon_updated: string[];
+  canon_skip_reason: string | null;
 }
 
 interface SandboxOptions {
@@ -159,6 +161,10 @@ interface SandboxOptions {
   allChecksClean?: boolean;
   /** 이미 배달된 phase 목록 (차등 배달 테스트용) */
   docsDelivered?: string[];
+  /** 정본 갱신 선언 (pass의 정본 게이트) */
+  canonUpdated?: string[];
+  /** 정본 갱신 없음 사유 (pass의 정본 게이트) */
+  canonSkipReason?: string;
   /** 테스트 스킵 상태 — ready-impl이 vitest를 띄우지 않게 한다 */
   testSkipped?: boolean;
   /** 계획 문서를 만들지 (approve-plan 게이트) */
@@ -225,6 +231,8 @@ function makeSandbox(opts: SandboxOptions): string {
       code_review_clean: false,
     },
     docs_delivered: opts.docsDelivered ?? [],
+    canon_updated: opts.canonUpdated ?? [],
+    canon_skip_reason: opts.canonSkipReason ?? null,
   };
   write('.claude/workflow-state.json', `${JSON.stringify(state, null, 2)}\n`);
 
@@ -330,7 +338,12 @@ describe('배달 — 전이 시점', () => {
   });
 
   it('전체 pass는 user-verification 문서를 배달한다', () => {
-    const box = makeSandbox({ phase: 'verification', allChecksClean: true });
+    // 정본 게이트는 여기서 검증하지 않는다(아래 별도 describe) — 선언을 채워 배달만 본다.
+    const box = makeSandbox({
+      phase: 'verification',
+      allChecksClean: true,
+      canonSkipReason: '바꾼 명세 없음',
+    });
     const { status, stdout } = runWf(box, ['pass', 'review']);
 
     expect(status).toBe(0);
@@ -340,7 +353,12 @@ describe('배달 — 전이 시점', () => {
   it('QA 확정 게이트에서 죽으면 배달하지 않는다', () => {
     // pass는 allClean 이후에도 QA 잠정 태그 게이트에서 죽는다. 배달을 allClean 시점에
     // 붙이면 전이하지도 않은 pass에서 user-verification 절차가 샌다.
-    const box = makeSandbox({ phase: 'verification', allChecksClean: true, qaProvisional: true });
+    const box = makeSandbox({
+      phase: 'verification',
+      allChecksClean: true,
+      qaProvisional: true,
+      canonSkipReason: '바꾼 명세 없음',
+    });
     const { status, stdout } = runWf(box, ['pass', 'review']);
 
     expect(status).toBe(1);
@@ -587,5 +605,128 @@ describe('크기 예산 (재성장 차단)', () => {
       .filter((f) => f.endsWith('.md'))
       .reduce((sum, f) => sum + fs.readFileSync(path.join(STEP_DOC_DIR, f), 'utf8').length, 0);
     expect(total).toBeLessThanOrEqual(16_000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4.4 정본 선언 게이트 — 샌드박스 E2E
+// ---------------------------------------------------------------------------
+
+/** canon 테스트용 최소 인덱스 — `insertCanonRow`가 찾는 「목록」 표만 있으면 된다. */
+const SPEC_README = `# 정본
+
+## 목록
+
+| 문서 | 답하는 질문 |
+|---|---|
+`;
+
+describe('정본 선언 게이트', () => {
+  it('선언이 없으면 네 검증이 다 차도 전이를 막는다', () => {
+    const box = makeSandbox({ phase: 'verification', allChecksClean: true });
+    const { status, stderr } = runWf(box, ['pass', 'review']);
+
+    expect(status).toBe(1);
+    expect(stderr).toContain('정본 갱신 여부가 선언되지 않았습니다');
+    expect(readState(box).phase).toBe('verification');
+  });
+
+  it('막힌 뒤에도 pass 플래그는 보존된다 — 선언하고 다시 치면 곧장 전이', () => {
+    const box = makeSandbox({ phase: 'verification', allChecksClean: true });
+    runWf(box, ['pass', 'review']);
+    expect(readState(box).verification.code_review_clean).toBe(true);
+
+    runWf(box, ['canon-skip', '코드 동작만 바뀌어 JSDoc이 정본이다']);
+    expect(runWf(box, ['pass', 'review']).status).toBe(0);
+    expect(readState(box).phase).toBe('user-verification');
+  });
+
+  it('canon-done은 실재하는 경로만 받는다', () => {
+    const box = makeSandbox({ phase: 'verification', allChecksClean: true });
+    const missing = runWf(box, ['canon-done', 'docs/development/spec/없는문서.md']);
+
+    expect(missing.status).toBe(1);
+    expect(missing.stderr).toContain('그런 파일이 없습니다');
+    expect(readState(box).canon_updated).toEqual([]);
+  });
+
+  it('canon-done이 기록하면 전이가 열린다', () => {
+    const box = makeSandbox({ phase: 'verification', allChecksClean: true });
+    fs.mkdirSync(path.join(box, 'docs/development/spec'), { recursive: true });
+    fs.writeFileSync(path.join(box, 'docs/development/spec/code-foo.md'), '# foo');
+
+    expect(runWf(box, ['canon-done', 'docs/development/spec/code-foo.md']).status).toBe(0);
+    // 경로는 항상 슬래시로 저장된다 — Windows 구분자가 들어가면 머신마다 갈린다.
+    expect(readState(box).canon_updated).toEqual(['docs/development/spec/code-foo.md']);
+    expect(runWf(box, ['pass', 'review']).status).toBe(0);
+  });
+
+  it('canon-skip은 사유가 없으면 거부한다', () => {
+    const box = makeSandbox({ phase: 'verification', allChecksClean: true });
+    expect(runWf(box, ['canon-skip']).status).toBe(1);
+    expect(readState(box).canon_skip_reason).toBeNull();
+  });
+
+  it('invalidate가 정본 선언을 함께 지운다', () => {
+    // 코드가 바뀌면 "명세도 바뀌었나"라는 판단이 낡는다. 남겨 두면 초기 구현 기준으로
+    // 한 번 선언한 뒤의 모든 변경이 게이트를 그냥 통과한다.
+    const box = makeSandbox({
+      phase: 'verification',
+      allChecksClean: true,
+      canonSkipReason: '바꾼 명세 없음',
+    });
+    runWf(box, ['invalidate']);
+
+    const s = readState(box);
+    expect(s.canon_skip_reason).toBeNull();
+    expect(s.canon_updated).toEqual([]);
+  });
+
+  it('canon은 접두사 집합 밖의 슬러그를 거부한다', () => {
+    const box = makeSandbox({ phase: 'implementation' });
+    const { status, stderr } = runWf(box, ['canon', 'misc-foo', '제목', '질문']);
+
+    expect(status).toBe(1);
+    expect(stderr).toContain('허용되지 않은 분류 접두사');
+  });
+
+  it('canon은 인덱스가 없으면 문서를 만들지 않는다', () => {
+    // 등재 없이 문서만 생기면 폴더를 훑어 무엇이 있는지 보려는 목적이 깨진다.
+    const box = makeSandbox({ phase: 'implementation' });
+    const { status } = runWf(box, ['canon', 'code-foo', '제목', '질문']);
+
+    expect(status).toBe(1);
+    expect(fs.existsSync(path.join(box, 'docs/development/spec/code-foo.md'))).toBe(false);
+  });
+
+  it('canon이 문서를 만들고 인덱스에 등재하고 갱신을 기록한다', () => {
+    const box = makeSandbox({ phase: 'implementation' });
+    fs.mkdirSync(path.join(box, 'docs/development/spec'), { recursive: true });
+    fs.writeFileSync(path.join(box, 'docs/development/spec/README.md'), SPEC_README);
+
+    expect(runWf(box, ['canon', 'game-combat', '판정 규칙', '무엇이 무엇에 맞나']).status).toBe(0);
+
+    const doc = fs.readFileSync(path.join(box, 'docs/development/spec/game-combat.md'), 'utf8');
+    expect(doc).toContain('# 판정 규칙');
+    expect(doc).toContain('> 무엇이 무엇에 맞나');
+
+    const readme = fs.readFileSync(path.join(box, 'docs/development/spec/README.md'), 'utf8');
+    expect(readme).toContain('[`game-combat.md`](game-combat.md)');
+
+    expect(readState(box).canon_updated).toEqual(['docs/development/spec/game-combat.md']);
+  });
+
+  it('canon은 이미 있는 문서를 덮어쓰지 않는다', () => {
+    const box = makeSandbox({ phase: 'implementation' });
+    fs.mkdirSync(path.join(box, 'docs/development/spec'), { recursive: true });
+    fs.writeFileSync(path.join(box, 'docs/development/spec/README.md'), SPEC_README);
+    fs.writeFileSync(path.join(box, 'docs/development/spec/game-combat.md'), '기존 내용');
+
+    const { status, stderr } = runWf(box, ['canon', 'game-combat', '판정', '질문']);
+    expect(status).toBe(1);
+    expect(stderr).toContain('정본은 새로 만들지 않고 고칩니다');
+    expect(fs.readFileSync(path.join(box, 'docs/development/spec/game-combat.md'), 'utf8')).toBe(
+      '기존 내용',
+    );
   });
 });

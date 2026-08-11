@@ -113,11 +113,14 @@ planning → qa-setup → implementation → verification → user-verification 
 | `pnpm wf skip-test "<사유>"` | AI | 테스트 스킵 (순수 로직 없음, 사유 필수) |
 | `pnpm wf ready-impl` | AI | `qa-setup` → `implementation` (문서·테스트 파일 확인 + 피처 테스트 **RED** 검증) |
 | `pnpm wf start-verification` | AI | `implementation` → `verification` (전체 스위트 **GREEN** 검증 후 전환) |
-| `pnpm wf pass <cso\|ts\|lint\|review>` | AI | 개별 검증 통과 (4개 모두 통과 + **QA 확정 게이트** 통과 시 자동 `user-verification`). **`pass ts`는 타입체크를 직접 실행**해 실패하면 차단한다 |
+| `pnpm wf pass <cso\|ts\|lint\|review>` | AI | 개별 검증 통과 (4개 모두 통과 + **QA 확정 게이트** + **정본 선언 게이트** 통과 시 자동 `user-verification`). **`pass ts`는 타입체크를 직접 실행**해 실패하면 차단한다 |
 | `pnpm wf invalidate` | AI | `verification` 중 코드 변경 → 전체 검증 초기화 |
 | `pnpm wf rework` | 사용자 트리거(`리워크`)→AI | `user-verification` → `implementation` (버그 발견 복귀) |
 | `pnpm wf approve-pr` | 사용자 트리거(`PR 승인`)→AI | `user-verification` → `pr-ready` (**에셋 `.meta` 게이트** + **타입체크 범위 게이트**: `logic-only`면 차단) |
 | `pnpm wf pr-done` | AI | `pr-ready` → `done` |
+| `pnpm wf canon <분류>-<주제> "<제목>" "<질문>" [--design]` | AI | 새 정본 문서 생성 + `spec/README.md` 등재 + 갱신 기록 |
+| `pnpm wf canon-done <경로...>` | AI | 기존 정본을 고쳤음을 기록 (경로 존재 확인) |
+| `pnpm wf canon-skip "<사유>"` | AI | 이번 슬라이스가 바꾼 명세 없음 (사유 필수) |
 | `pnpm wf steps [phase]` | AI/사용자 | 절차 문서 재출력 (전이 없음, 상태 불변) |
 | `pnpm wf check-meta` | AI/사용자 | 에셋 `.meta` 누락 검사 (누락 시 종료코드 1) |
 | `pnpm wf check-qa` | AI/사용자 | QA 문서 미확정(잠정) 표시 검사 (남아 있으면 종료코드 1) |
@@ -150,9 +153,10 @@ planning → qa-setup → implementation → verification → user-verification 
 3~4 QA·테스트  docs/qa/<feature>-test.md + tests/logic/<Feature>.test.ts(RED)
                → wf ready-impl (RED 게이트)
 5   구현       GREEN → REFACTOR → wf start-verification (GREEN 게이트)
-6   AI 검증    QA 문서 확정(잠정→확정) → /cso → pass cso → pnpm typecheck → pass ts
-               → pnpm check --write → pass lint → 기능 단위 커밋 → 코드리뷰 → pass review
-               코드 수정이 끼면 invalidate로 cso부터 다시
+6   AI 검증    QA 문서 확정(잠정→확정) → 정본 갱신(wf canon/canon-done/canon-skip)
+               → /cso → pass cso → pnpm typecheck → pass ts → pnpm check --write
+               → pass lint → 기능 단위 커밋 → 코드리뷰 → pass review
+               코드 수정이 끼면 invalidate로 cso·정본 선언부터 다시
 7   사용자 검증 정본 갱신·문서 정리 → gh pr create --draft → 사용자 에디터 세팅·인게임 테스트
                버그 발견 시 사용자 `리워크`
 8   PR 승인    신규 .meta 커밋·push → 사용자 `PR 승인` → wf approve-pr
@@ -206,21 +210,6 @@ Cocos는 `game/assets/` 아래 **모든 파일·디렉터리에 `.meta`(UUID 보
 - **superpowers** — 구현 방법론 (TDD, bite-sized 태스크, subagent+worktree 병렬 개발). **코드 작성 시작 시점에 활성화.**
 - **Context7 MCP** — Cocos Creator 공식 문서를 실시간 조회.
 
-설치 방법은 `docs/development/environment-setup.md` § 3 (설치 후 Claude Code 재시작 필수).
-
 웹 브라우징은 항상 gstack의 `/browse` 사용. `mcp__claude-in-chrome__*` 도구는 사용 금지.
 
-## Skill routing
-
-스킬 전체 목록은 세션 시작 시 자동 로드된다. 이름만으로 용도가 분명하지 않은 스킬은 아래 매핑을 참고한다.
-
-- 제품 아이디어/브레인스토밍 → `/office-hours`
-- 전략/스코프 결정 → `/plan-ceo-review`
-- 아키텍처 설계 → `/plan-eng-review`
-- 디자인 리뷰 → `/design-consultation` 또는 `/plan-design-review`
-- 전체 리뷰 파이프라인 → `/autoplan`
-- 버그/에러 디버깅 → `/investigate`
-- 보안 점검 (OWASP + STRIDE) → `/cso`
-- UI 개선 (코드 리뷰 아님) → `/design-review`
-- 복잡한 기능 분해 → `superpowers:brainstorming`
-- 병렬 구현 (worktree) → `superpowers:dispatching-parallel-agents`
+**어떤 스킬을 쓰나** — 전체 목록은 세션 시작 시 자동 로드된다. 이름만으로 용도가 안 드러나는 것들의 매핑과 설치 방법은 `docs/development/spec/ops-skill-routing.md`.

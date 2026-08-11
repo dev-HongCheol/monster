@@ -1,16 +1,18 @@
 {
   "feature": "claude-md-split",
-  "phase": "user-verification",
+  "phase": "verification",
   "test_skipped": false,
   "test_skip_reason": null,
-  "ts_check_scope": "full",
+  "ts_check_scope": null,
   "verification": {
-    "cso_done": true,
-    "ts_check_clean": true,
-    "lint_clean": true,
-    "code_review_clean": true
+    "cso_done": false,
+    "ts_check_clean": false,
+    "lint_clean": false,
+    "code_review_clean": false
   },
   "docs_delivered": [
-    "user-verification"
-  ]
+    "verification"
+  ],
+  "canon_updated": [],
+  "canon_skip_reason": null
 }
