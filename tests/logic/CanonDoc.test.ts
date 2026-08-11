@@ -170,6 +170,31 @@ describe('insertCanonRow', () => {
     expect(insertCanonRow(readme, 'code-x', '질문')).toContain('[`code-x.md`](code-x.md)');
   });
 
+  it('목록 표가 끝나면 스캔을 멈춘다 — 뒤따르는 표를 먹지 않는다', () => {
+    const readme = [
+      '# 정본',
+      '',
+      '## 목록',
+      '',
+      '| 문서 | 답하는 질문 |',
+      '|---|---|',
+      '| [`code-a.md`](code-a.md) | A |',
+      '',
+      '## 부록',
+      '',
+      '| 문서 | 비고 |',
+      '|---|---|',
+      '| [`code-z.md`](code-z.md) | 목록 밖 |',
+      '',
+    ].join('\n');
+    const out = insertCanonRow(readme, 'code-b', 'B').split('\n');
+
+    // 부록의 code-z를 "이미 있는 뒷 행"으로 오인하면 code-b가 부록 쪽으로 밀려간다.
+    expect(out.findIndex((l) => l.includes('code-b.md'))).toBeLessThan(
+      out.findIndex((l) => l.trim() === '## 부록'),
+    );
+  });
+
   it('「목록」 절이 없으면 예외', () => {
     const readme = ['# 정본', '', '## 다른 절', '', '| a | b |', '|---|---|', ''].join('\n');
     expect(() => insertCanonRow(readme, 'code-x', '질문')).toThrow(/목록/);

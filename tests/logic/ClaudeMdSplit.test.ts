@@ -718,6 +718,9 @@ describe('정본 선언 게이트', () => {
     const doc = fs.readFileSync(path.join(box, 'docs/development/spec/game-combat.md'), 'utf8');
     expect(doc).toContain('# 판정 규칙');
     expect(doc).toContain('> 무엇이 무엇에 맞나');
+    // 머리말이 CLI 쪽에서도 나오는지 고정한다 — 이 표시가 "새로 만들지 말고 고쳐라"를
+    // 읽는 사람에게 알리는 자리다(코드리뷰 5차).
+    expect(doc).toContain('- **상태:** CONFIRMED');
 
     const readme = fs.readFileSync(path.join(box, 'docs/development/spec/README.md'), 'utf8');
     expect(readme).toContain('[`game-combat.md`](game-combat.md)');
@@ -772,10 +775,38 @@ describe('정본 선언 게이트', () => {
       const { status, stderr } = runWf(box, ['canon-done', `../${path.basename(outside)}`]);
       expect(status).toBe(1);
       expect(stderr).toContain('레포 밖 경로');
+
+      // **절대 경로도 막는다.** Windows에서 드라이브가 다르면 path.relative가 `../`가 아니라
+      // 절대 경로를 그대로 돌려주므로 위 상대 경로 케이스만으로는 그 절반이 비어 있다
+      // (샌드박스는 임시 드라이브, 이 레포는 F: — 코드리뷰 5차 NEW-1).
+      // POSIX는 루트가 하나라 `../`로 떨어지지만, 어느 쪽이든 거부되는 것이 계약이다.
+      expect(runWf(box, ['canon-done', path.join(ROOT, 'package.json')]).status).toBe(1);
+
+      // 디렉터리도 정본이 아니다.
+      expect(runWf(box, ['canon-done', 'docs']).status).toBe(1);
+
       expect(readState(box).canon_updated).toEqual([]);
     } finally {
       fs.rmSync(outside, { force: true });
     }
+  });
+
+  it('canon 재실행이 인덱스 행을 두 벌로 만들지 않는다', () => {
+    // M1로 쓰기 순서를 뒤집으면서 재실행이 **설계된 복구 경로**가 됐다. CLI 쪽 멱등 판정이
+    // 헬퍼와 갈라지면 그 복구가 중복 행을 낳는다(코드리뷰 5차 NEW-1).
+    const box = makeSandbox({ phase: 'implementation' });
+    const spec = path.join(box, 'docs/development/spec');
+    fs.mkdirSync(spec, { recursive: true });
+    fs.writeFileSync(path.join(spec, 'README.md'), SPEC_README);
+
+    expect(runWf(box, ['canon', 'code-x', '제목', '질문']).status).toBe(0);
+    // 인덱스만 쓰이고 문서 쓰기 직전에 죽은 상태를 만든다.
+    fs.rmSync(path.join(spec, 'code-x.md'));
+    expect(runWf(box, ['canon', 'code-x', '제목', '질문']).status).toBe(0);
+
+    const rows = fs.readFileSync(path.join(spec, 'README.md'), 'utf8').split('\n');
+    expect(rows.filter((l) => l.includes('code-x.md'))).toHaveLength(1);
+    expect(fs.existsSync(path.join(spec, 'code-x.md'))).toBe(true);
   });
 
   it('canon은 질문의 줄바꿈을 거부한다 — 인덱스에 가짜 행이 앉는다', () => {
