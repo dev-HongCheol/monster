@@ -122,16 +122,58 @@ describe('renderCanonDoc', () => {
 });
 
 describe('insertCanonRow', () => {
-  const README = [
-    '# 개발 정본 (spec)',
-    '',
-    '## 목록',
-    '',
-    '| 문서 | 답하는 질문 |',
-    '|---|---|',
+  /** 실물 README 모양 — 「분류 접두사」 표가 「목록」보다 **앞에** 온다. */
+  function twoTableReadme(rows: string[] = []): string {
+    return [
+      '# 개발 정본 (spec)',
+      '',
+      '## 분류 접두사 — 닫힌 집합',
+      '',
+      '| 접두사 | 범위 |',
+      '|---|---|',
+      '| `code-` | 코드 작성 규약 |',
+      '| `game-` | 게임 규칙 |',
+      '',
+      '## 목록',
+      '',
+      '| 문서 | 답하는 질문 |',
+      '|---|---|',
+      ...rows,
+      '',
+    ].join('\n');
+  }
+
+  const README = twoTableReadme([
     '| [`code-conventions.md`](code-conventions.md) | 코드를 어떻게 쓰나 |',
-    '',
-  ].join('\n');
+  ]);
+
+  it('목록이 비어 있어도 앞 표가 아니라 목록 표에 넣는다', () => {
+    // 코드리뷰 4차가 잡은 결함이다. 파일에서 처음 나오는 구분선을 기준으로 삼으면 행이
+    // 「분류 접두사」 표에 들어가 접두사 정의를 망가뜨리면서 정작 등재는 안 됐다.
+    const out = insertCanonRow(twoTableReadme(), 'ui-flow', '화면이 어떻게 이어지나');
+    const lines = out.split('\n');
+    const rowIdx = lines.findIndex((l) => l.includes('ui-flow.md'));
+    const listIdx = lines.findIndex((l) => l.trim() === '## 목록');
+
+    expect(rowIdx).toBeGreaterThan(listIdx);
+    // 접두사 표는 두 행 그대로다.
+    expect(lines.filter((l) => l.startsWith('| `'))).toHaveLength(2);
+  });
+
+  it('앞 표에 있는 슬러그와 이름이 겹쳐도 목록 기준으로만 멱등 판정한다', () => {
+    const out = insertCanonRow(twoTableReadme(), 'code-x', '질문');
+    expect(out).toContain('[`code-x.md`](code-x.md)');
+  });
+
+  it('정렬 지정자가 있는 구분선도 인식한다', () => {
+    const readme = ['# 정본', '', '## 목록', '', '| 문서 | 질문 |', '|:---|---:|', ''].join('\n');
+    expect(insertCanonRow(readme, 'code-x', '질문')).toContain('[`code-x.md`](code-x.md)');
+  });
+
+  it('「목록」 절이 없으면 예외', () => {
+    const readme = ['# 정본', '', '## 다른 절', '', '| a | b |', '|---|---|', ''].join('\n');
+    expect(() => insertCanonRow(readme, 'code-x', '질문')).toThrow(/목록/);
+  });
 
   it('목록 표에 행을 넣는다', () => {
     const out = insertCanonRow(README, 'game-combat', '무엇이 무엇에 맞나');
@@ -150,7 +192,7 @@ describe('insertCanonRow', () => {
     expect(insertCanonRow(once, 'game-combat', '다른 설명')).toBe(once);
   });
 
-  it('목록 표가 없으면 예외 — 조용히 통과하면 등재 안 된 정본이 생긴다', () => {
+  it('표가 아예 없으면 예외 — 조용히 통과하면 등재 안 된 정본이 생긴다', () => {
     expect(() => insertCanonRow('# 목록 없음\n', 'game-combat', '질문')).toThrow(/목록/);
   });
 });

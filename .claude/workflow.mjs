@@ -111,6 +111,28 @@ function resetVerification(state) {
 const DEV_PREFIXES = ["code", "game", "docs", "ops"];
 const DESIGN_PREFIXES = ["art", "ui"];
 const CANON_ROW_START = "| [`";
+const CANON_LIST_HEADING = "## 목록";
+const CANON_SEPARATOR = /^\|(?:\s*:?-+:?\s*\|)+$/;
+/** 정본 폴더의 인덱스 파일명. STEP_DOC_INDEX와 값은 같지만 다른 개념이라 따로 둔다. */
+const CANON_INDEX = "README.md";
+
+function locateCanonListTable(lines) {
+  const headingIdx = lines.findIndex((l) => l.trim() === CANON_LIST_HEADING);
+  if (headingIdx < 0) {
+    throw new Error(
+      `README에서 「${CANON_LIST_HEADING}」 절을 찾지 못했습니다 — 등재할 표가 없습니다.`
+    );
+  }
+  const sepIdx = lines.findIndex((l, i) => i > headingIdx && CANON_SEPARATOR.test(l.trim()));
+  if (sepIdx < 0) {
+    throw new Error(`「${CANON_LIST_HEADING}」 절에 표가 없습니다 — 헤더와 구분선이 있어야 합니다.`);
+  }
+  const rowIdxs = [];
+  for (let i = sepIdx + 1; i < lines.length && lines[i].startsWith("|"); i++) {
+    if (lines[i].startsWith(CANON_ROW_START)) rowIdxs.push(i);
+  }
+  return { sepIdx, rowIdxs };
+}
 
 function parseCanonSlug(slug, allowed) {
   const m = /^([a-z]+)-([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(slug);
@@ -158,15 +180,13 @@ function renderCanonDoc(o) {
 
 function insertCanonRow(readme, slug, question) {
   const lines = readme.split("\n");
-  const rowIdxs = lines.map((l, i) => (l.startsWith(CANON_ROW_START) ? i : -1)).filter((i) => i >= 0);
-  const headerIdx = lines.findIndex((l) => /^\|\s*-+\s*\|/.test(l.replace(/\s/g, " ")));
-  if (headerIdx < 0 && rowIdxs.length === 0) {
-    throw new Error("README에서 「목록」 표를 찾지 못했습니다 — 표가 있어야 등재할 수 있습니다.");
-  }
-  if (lines.some((l) => l.startsWith(`${CANON_ROW_START}${slug}.md\`]`))) return readme;
+  const { sepIdx, rowIdxs } = locateCanonListTable(lines);
+  const marker = `${CANON_ROW_START}${slug}.md\`]`;
+  if (rowIdxs.some((i) => lines[i].startsWith(marker))) return readme;
   const row = `| [\`${slug}.md\`](${slug}.md) | ${question} |`;
-  const at = rowIdxs.find((i) => lines[i] > row);
-  const insertAt = at ?? (rowIdxs.length > 0 ? rowIdxs[rowIdxs.length - 1] + 1 : headerIdx + 1);
+  const slugOf = (line) => line.slice(CANON_ROW_START.length).split("`")[0];
+  const at = rowIdxs.find((i) => slugOf(lines[i]) > `${slug}.md`);
+  const insertAt = at ?? (rowIdxs.length > 0 ? rowIdxs[rowIdxs.length - 1] + 1 : sepIdx + 1);
   lines.splice(insertAt, 0, row);
   return lines.join("\n");
 }
@@ -641,7 +661,7 @@ const commands = {
       );
     }
 
-    const readmePath = path.join(dir, STEP_DOC_INDEX);
+    const readmePath = path.join(dir, CANON_INDEX);
     if (!fs.existsSync(readmePath)) {
       fail(`인덱스가 없습니다: ${toRel(readmePath)} — 정본 폴더가 아직 준비되지 않았습니다.`);
     }
@@ -656,8 +676,12 @@ const commands = {
     // toISOString()은 UTC라 KST 저녁 이후에는 하루 이른 날짜가 찍힌다. 문서 날짜는 사람이
     // 세션 파일을 날짜로 찾는 인덱스라 어긋나면 안 된다 — sv-SE 로캘이 로컬 YYYY-MM-DD를 준다.
     const today = new Date().toLocaleDateString("sv-SE");
-    fs.writeFileSync(docPath, renderCanonDoc({ slug, title, question, date: today }));
+    // **인덱스를 먼저 쓴다.** 문서를 먼저 쓰고 인덱스에서 죽으면 등재 안 된 정본이 남는데,
+    // 재실행하면 `이미 있습니다`로 막혀 canon-done으로 밀려나고 등재는 영영 안 된다.
+    // 반대 순서의 최악은 가리키는 대상이 없는 인덱스 행 하나이고, 그건 눈에 보인다.
+    // insertCanonRow가 멱등이라 재실행도 안전하다.
     fs.writeFileSync(readmePath, readme);
+    fs.writeFileSync(docPath, renderCanonDoc({ slug, title, question, date: today }));
     console.log(`✓ canon: ${toRel(docPath)} 생성 + ${toRel(readmePath)} 등재`);
 
     recordCanon(toRel(docPath));
@@ -672,15 +696,22 @@ const commands = {
       const full = path.resolve(ROOT, a);
       // 레포 밖을 막는다. 파일을 쓰지는 않지만, 밖을 가리키는 경로는 타 머신에서 의미가 없고
       // 존재 검사를 넣은 목적(아무 경로로 게이트만 통과시키는 것을 막는다)이 그대로 샌다.
+      // path.isAbsolute도 본다. Windows에서 드라이브가 다르면 path.relative가 `../`가 아니라
+      // 절대 경로를 그대로 돌려주므로(ROOT가 C:, 인자가 F:\...), 앞 두 조건만으로는 샌다.
       const rel = toRel(full);
-      if (rel === "" || rel.startsWith("../")) {
+      if (rel === "" || rel.startsWith("../") || path.isAbsolute(rel)) {
         fail(`레포 밖 경로입니다: ${a}\n  정본은 이 레포 안의 파일이어야 합니다.`);
       }
-      if (!fs.existsSync(full)) fail(`그런 파일이 없습니다: ${a}`);
+      if (!fs.existsSync(full) || !fs.statSync(full).isFile()) {
+        fail(`그런 파일이 없습니다: ${a}`);
+      }
       rels.push(rel);
     }
     const s = recordCanon(...rels);
-    console.log(`✓ canon-done: ${s.canon_updated.join(", ")}`);
+    // recordCanon은 상태 파일이 없으면 null이다(슬라이스 밖 사용). 그 경우 기록만 건너뛴다.
+    console.log(
+      s ? `✓ canon-done: ${s.canon_updated.join(", ")}` : `✓ canon-done: ${rels.join(", ")} (상태 파일이 없어 기록은 생략)`
+    );
   },
 
   // 이번 슬라이스가 바꾼 명세가 없을 때. 사유를 남기는 것이 요점이다 — skip-test와 같은 형태로,

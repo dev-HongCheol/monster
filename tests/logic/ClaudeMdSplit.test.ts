@@ -612,8 +612,17 @@ describe('크기 예산 (재성장 차단)', () => {
 // 4.4 정본 선언 게이트 — 샌드박스 E2E
 // ---------------------------------------------------------------------------
 
-/** canon 테스트용 최소 인덱스 — `insertCanonRow`가 찾는 「목록」 표만 있으면 된다. */
+/**
+ * canon 테스트용 인덱스 — **실물과 같이 「분류 접두사」 표가 「목록」보다 앞에 온다.**
+ * 표가 하나뿐인 픽스처를 쓰면 "파일의 첫 구분선에 넣는" 버그가 초록불로 지나간다.
+ */
 const SPEC_README = `# 정본
+
+## 분류 접두사 — 닫힌 집합
+
+| 접두사 | 범위 |
+|---|---|
+| \`code-\` | 코드 작성 규약 |
 
 ## 목록
 
@@ -714,6 +723,43 @@ describe('정본 선언 게이트', () => {
     expect(readme).toContain('[`game-combat.md`](game-combat.md)');
 
     expect(readState(box).canon_updated).toEqual(['docs/development/spec/game-combat.md']);
+  });
+
+  it('--design은 디자인 폴더에 쓰고 목록 표에 등재한다', () => {
+    // 코드리뷰 4차 전까지 이 분기는 커버리지가 0이었고, 실물 두 표 README에서 행이
+    // 「분류 접두사」 표로 들어가는 결함이 여기 살아 있었다.
+    const box = makeSandbox({ phase: 'implementation' });
+    fs.mkdirSync(path.join(box, 'docs/design/spec'), { recursive: true });
+    // 뒤에 와야 할 행을 미리 넣어 CLI 쪽 정렬까지 여기서 고정한다.
+    fs.writeFileSync(
+      path.join(box, 'docs/design/spec/README.md'),
+      `${SPEC_README}| [\`ui-zzz.md\`](ui-zzz.md) | 나중 것 |\n`,
+    );
+
+    const r = runWf(box, ['canon', 'ui-flow', '화면 흐름', '화면이 어떻게 이어지나', '--design']);
+    expect(r.status).toBe(0);
+    expect(fs.existsSync(path.join(box, 'docs/design/spec/ui-flow.md'))).toBe(true);
+    expect(fs.existsSync(path.join(box, 'docs/development/spec/ui-flow.md'))).toBe(false);
+
+    const readme = fs.readFileSync(path.join(box, 'docs/design/spec/README.md'), 'utf8');
+    const lines = readme.split('\n');
+    expect(lines.findIndex((l) => l.includes('ui-flow.md'))).toBeGreaterThan(
+      lines.findIndex((l) => l.trim() === '## 목록'),
+    );
+    expect(lines.findIndex((l) => l.includes('ui-flow.md'))).toBeLessThan(
+      lines.findIndex((l) => l.includes('ui-zzz.md')),
+    );
+    expect(readState(box).canon_updated).toEqual(['docs/design/spec/ui-flow.md']);
+  });
+
+  it('--design은 개발 접두사를, 개발 쪽은 디자인 접두사를 거부한다', () => {
+    const box = makeSandbox({ phase: 'implementation' });
+    for (const dir of ['docs/design/spec', 'docs/development/spec']) {
+      fs.mkdirSync(path.join(box, dir), { recursive: true });
+      fs.writeFileSync(path.join(box, dir, 'README.md'), SPEC_README);
+    }
+    expect(runWf(box, ['canon', 'code-x', 'T', 'Q', '--design']).status).toBe(1);
+    expect(runWf(box, ['canon', 'art-x', 'T', 'Q']).status).toBe(1);
   });
 
   it('canon-done은 레포 밖 경로를 거부한다', () => {

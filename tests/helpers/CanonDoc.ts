@@ -107,8 +107,32 @@ export function renderCanonDoc(o: {
   ].join('\n');
 }
 
-/** 인덱스 표의 헤더 구분선 — 이 줄 다음부터가 데이터 행이다. */
+/** 인덱스 데이터 행의 시작 — `| [`slug.md`](slug.md) | 질문 |` 꼴이다. */
 const ROW_START = '| [`';
+
+/** 등재 대상 표를 여는 제목. 이 절 **뒤에 오는** 표에만 행을 넣는다. */
+const LIST_HEADING = '## 목록';
+
+/** 표 구분선. 정렬 지정자(`:---`·`---:`)도 받는다. */
+const SEPARATOR = /^\|(?:\s*:?-+:?\s*\|)+$/;
+
+/** 「목록」 표의 데이터 행 인덱스와 구분선 위치를 찾는다. */
+function locateListTable(lines: string[]): { sepIdx: number; rowIdxs: number[] } {
+  const headingIdx = lines.findIndex((l) => l.trim() === LIST_HEADING);
+  if (headingIdx < 0) {
+    throw new Error(`README에서 「${LIST_HEADING}」 절을 찾지 못했습니다 — 등재할 표가 없습니다.`);
+  }
+  const sepIdx = lines.findIndex((l, i) => i > headingIdx && SEPARATOR.test(l.trim()));
+  if (sepIdx < 0) {
+    throw new Error(`「${LIST_HEADING}」 절에 표가 없습니다 — 헤더와 구분선이 있어야 합니다.`);
+  }
+  // 표는 `|`로 시작하지 않는 줄에서 끝난다. 파일 전체를 훑으면 뒤따르는 다른 표까지 먹는다.
+  const rowIdxs: number[] = [];
+  for (let i = sepIdx + 1; i < lines.length && lines[i].startsWith('|'); i++) {
+    if (lines[i].startsWith(ROW_START)) rowIdxs.push(i);
+  }
+  return { sepIdx, rowIdxs };
+}
 
 /**
  * `spec/README.md`의 「목록」 표에 행을 슬러그 사전순으로 끼워 넣는다.
@@ -116,27 +140,29 @@ const ROW_START = '| [`';
  * **멱등하다** — 같은 슬러그가 이미 있으면 원본을 그대로 돌려준다. CLI가 실패 후 재실행돼도
  * 행이 두 벌 생기지 않는다.
  *
+ * **「목록」 제목을 기준으로 표를 찾는다.** 파일에서 처음 나오는 구분선을 쓰면 안 된다 —
+ * 두 README 모두 「분류 접두사」 표가 먼저 오므로, 목록이 비어 있을 때 행이 그 표에 들어가
+ * 접두사 정의를 망가뜨리면서 정작 등재는 안 된다(코드리뷰 4차에서 재현했다).
+ *
  * @param readme 현재 README 전문
  * @param slug 등재할 슬러그 (확장자 없이)
  * @param question 그 문서가 답하는 질문
- * @throws 「목록」 표를 찾지 못하면. 조용히 통과시키면 등재되지 않은 정본이 생겨,
+ * @throws 「목록」 절이나 그 표를 찾지 못하면. 조용히 통과시키면 등재되지 않은 정본이 생겨,
  *   폴더를 훑어 무엇이 있는지 보려는 목적이 깨진다
  */
 export function insertCanonRow(readme: string, slug: string, question: string): string {
   const lines = readme.split('\n');
-  const rowIdxs = lines.map((l, i) => (l.startsWith(ROW_START) ? i : -1)).filter((i) => i >= 0);
+  const { sepIdx, rowIdxs } = locateListTable(lines);
 
-  const headerIdx = lines.findIndex((l) => /^\|\s*-+\s*\|/.test(l.replace(/\s/g, ' ')));
-  if (headerIdx < 0 && rowIdxs.length === 0) {
-    throw new Error('README에서 「목록」 표를 찾지 못했습니다 — 표가 있어야 등재할 수 있습니다.');
-  }
-
-  if (lines.some((l) => l.startsWith(`${ROW_START}${slug}.md\`]`))) return readme;
+  const marker = `${ROW_START}${slug}.md\`]`;
+  if (rowIdxs.some((i) => lines[i].startsWith(marker))) return readme;
 
   const row = `| [\`${slug}.md\`](${slug}.md) | ${question} |`;
-  // 사전순 첫 자리를 찾는다. 없으면 마지막 행 뒤(표가 비었으면 구분선 뒤)에 붙인다.
-  const at = rowIdxs.find((i) => lines[i] > row);
-  const insertAt = at ?? (rowIdxs.length > 0 ? rowIdxs[rowIdxs.length - 1] + 1 : headerIdx + 1);
+  // 슬러그 사전순 첫 자리. 행 전체를 비교해도 접두사가 같아 결과는 같지만, 슬러그를 꺼내
+  // 비교해야 질문 텍스트가 순서 판정에 끼어들 여지가 없다.
+  const slugOf = (line: string): string => line.slice(ROW_START.length).split('`')[0];
+  const at = rowIdxs.find((i) => slugOf(lines[i]) > `${slug}.md`);
+  const insertAt = at ?? (rowIdxs.length > 0 ? rowIdxs[rowIdxs.length - 1] + 1 : sepIdx + 1);
   lines.splice(insertAt, 0, row);
   return lines.join('\n');
 }
