@@ -5,6 +5,9 @@
  * E2E는 `ClaudeMdSplit.test.ts`가 든다 — 샌드박스 하네스가 거기 있다.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   assertOneLineField,
@@ -14,6 +17,8 @@ import {
   parseCanonSlug,
   renderCanonDoc,
 } from '../helpers/CanonDoc';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 describe('parseCanonSlug', () => {
   it('접두사와 주제로 가른다', () => {
@@ -104,7 +109,7 @@ describe('renderCanonDoc', () => {
     expect(doc).toContain('> 무엇이 무엇에 맞나');
   });
 
-  it('기존 정본과 같은 머리말을 쓴다 (writing-style.md 모양)', () => {
+  it('기존 정본과 같은 머리말을 쓴다 (docs-writing-style.md 모양)', () => {
     expect(doc).toContain('- **최초 작성:** 2026-08-12');
     expect(doc).toContain('- **상태:** CONFIRMED');
     expect(doc).toContain('- **이력:** 2026-08-12 — 신설');
@@ -219,5 +224,50 @@ describe('insertCanonRow', () => {
 
   it('표가 아예 없으면 예외 — 조용히 통과하면 등재 안 된 정본이 생긴다', () => {
     expect(() => insertCanonRow('# 목록 없음\n', 'game-combat', '질문')).toThrow(/목록/);
+  });
+});
+
+/**
+ * 여기부터는 픽스처가 아니라 **디스크의 실제 정본 폴더**를 잰다.
+ *
+ * `insertCanonRow`가 옳게 도는 것과 인덱스가 실제로 맞는 것은 다른 문제다. `wf canon`을 거치지
+ * 않고 `git mv`로 문서를 밀어 넣으면 등재가 통째로 빠지는데, 그때 폴더에는 있고 인덱스에는 없는
+ * 정본이 생겨 폴더를 훑어 무엇이 있는지 보려던 목적이 깨진다.
+ */
+const CANON_DIRS = ['docs/development/spec', 'docs/design/spec'] as const;
+
+/** 「목록」 표에 등재된 파일명 집합. 행 꼴은 `| [`slug.md`](slug.md) | 질문 |`이다. */
+function listedDocs(readme: string): string[] {
+  return readme
+    .split('\n')
+    .filter((l) => l.startsWith('| [`'))
+    .map((l) => l.slice('| [`'.length).split('`')[0]);
+}
+
+describe.each(CANON_DIRS)('%s — 인덱스와 폴더가 일치한다', (dir) => {
+  const abs = path.join(ROOT, dir);
+  const readme = fs.readFileSync(path.join(abs, 'README.md'), 'utf8');
+  const onDisk = fs
+    .readdirSync(abs)
+    .filter((n) => n.endsWith('.md') && n !== 'README.md')
+    .sort();
+
+  it('폴더의 모든 정본이 「목록」에 슬러그 사전순으로 등재돼 있다', () => {
+    // 정렬하지 않은 채로 비교한다. `insertCanonRow`가 사전순 삽입을 보장하므로, 손으로 넣어
+    // 순서가 어긋난 것도 여기서 잡힌다 — 정렬해서 비교하면 그 어긋남이 통과한다.
+    expect(listedDocs(readme)).toEqual(onDisk);
+  });
+
+  it.each(onDisk)('%s에 정본 머리말이 있다', (name) => {
+    // 답하는 질문(인용구) · 최초 작성 · 상태 · 이력 넷이다. 이력 절이 특히 중요한데,
+    // 정본은 결정 기록을 링크하지 않으므로 **걷어낸 링크가 착지할 자리가 거기뿐**이다.
+    // 이력 절 없이 링크만 떼면 그 출처가 아무 데도 남지 않고 그냥 사라진다.
+    const body = fs.readFileSync(path.join(abs, name), 'utf8');
+    const head = body.split('\n---')[0];
+    expect(head).toMatch(/^# .+/m);
+    expect(head).toMatch(/^> .+/m);
+    expect(head).toContain('**최초 작성:**');
+    expect(head).toContain('**상태:**');
+    expect(head).toContain('**이력:**');
   });
 });

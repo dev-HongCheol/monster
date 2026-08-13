@@ -72,7 +72,7 @@ export function assertOneLineField(value: string, label: string): void {
 }
 
 /**
- * 정본 문서 본문을 만든다. 머리말 모양은 기존 정본(`writing-style.md`)에 맞춘다.
+ * 정본 문서 본문을 만든다. 머리말 모양은 기존 정본(`docs-writing-style.md`)에 맞춘다.
  *
  * 템플릿에 **결정 기록으로 가는 링크를 넣지 않는다** — 정본이 세션 문서·ADR을 가리키면
  * 링크를 타고 들어간 사람이 폐기된 내용을 현재 명세로 읽는다(「문서 정리 규칙」).
