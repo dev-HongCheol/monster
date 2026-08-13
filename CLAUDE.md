@@ -53,7 +53,7 @@ docs/
 - 현재 작업과 무관한 파일 수정 금지
 - 발견한 무관 이슈 → 즉시 수정하지 말고 언급만 (슬라이스 밖 항목은 백로그로)
 - **이번에 건드리지 않은 코드의 주석은 손대지 않는다** — 한 함수를 고치면서 같은 파일 다른 함수의 주석이 딸려 지워지는 사고를 막는 규칙이다. **바꾼 코드의 주석은 반드시 함께 갱신하고**(`@param` 포함), 지운 코드의 주석은 함께 지운다.
-- **설명 주석·문서는 읽는 사람이 인과를 복원할 수 있게 쓴다** — 원칙 세 가지와 예시는 `docs/development/writing-style.md`가 정본이고, 코드 주석에 적용한 판은 `docs/development/conventions.md` § 주석 기준에 있다. **주석·문서를 쓰기 전에 그쪽을 읽는다.** 같은 설명이 코드·테스트·문서에 복사돼 있으면 **함께 고친다**(한 곳만 고치면 나머지가 낡은 채로 남는다)
+- **설명 주석·문서는 읽는 사람이 인과를 복원할 수 있게 쓴다** — 원칙 세 가지와 예시는 `docs/development/spec/docs-writing-style.md`가 정본이고, 코드 주석에 적용한 판은 `docs/development/spec/code-conventions.md` § 주석 기준에 있다. **주석·문서를 쓰기 전에 그쪽을 읽는다.** 같은 설명이 코드·테스트·문서에 복사돼 있으면 **함께 고친다**(한 곳만 고치면 나머지가 낡은 채로 남는다)
 
 ### 루프 방지
 같은 파일을 5번 이상 수정해도 진전 없으면 → STOP하고 방향 재확인 요청
@@ -68,18 +68,17 @@ docs/
 |------|------|
 | 구현이 무엇을 하나, 왜 그렇게 짰나 | `game/assets/scripts/**/*.ts` + JSDoc. 좌표계 순서·불변식처럼 화면에 안 드러나는 결정은 해당 순수 함수의 JSDoc이 든다 |
 | 이 동작이 맞나 | `tests/logic/*.test.ts` — 실행 가능한 명세 |
-| 코드를 어떻게 쓰나 | `docs/development/conventions.md` — **코드 작성 전 항상 읽는다** |
-| 문서를 어떻게 쓰나 | `docs/development/writing-style.md` — **문서 작성 전 항상 읽는다** |
-| 이 용어가 뭔가 | `docs/development/glossary.md` |
+| 코드를 어떻게 쓰나 | `docs/development/spec/code-conventions.md` — **코드 작성 전 항상 읽는다** |
+| 문서를 어떻게 쓰나 | `docs/development/spec/docs-writing-style.md` — **문서 작성 전 항상 읽는다** |
+| 그 밖의 개발 정본 — 용어·판정·빌드·환경 | 목록은 `docs/development/spec/README.md`. 아직 안 옮긴 것은 `gbrain-setup.md`뿐 |
 | 지금 단계에서 뭘 하나 | `docs/development/workflow/<phase>.md` — **절차의 정본.** `pnpm wf` 전이가 배달하고 `pnpm wf steps`로 다시 본다 |
 | 게임을 어떻게 만드나 | `docs/planning/` — 게임 디자인·컨셉·로드맵 |
 | 무엇을 왜 그렇게 그리나 | `docs/design/art-direction.md` |
 | 몇 px·어떤 피벗·어떤 파일명인가 | `docs/design/asset-production-spec.md` |
 | 어떤 프롬프트·설정으로 뽑아 무엇으로 합격시키나 | `docs/design/art-generation-playbook.md` |
+| 디자인 정본 목록 | `docs/design/spec/README.md` — 아직 비었다(위 셋의 이동은 F69) |
 | 다음에 뭘 하나 | `docs/development/backlog.md`(게임) + `backlog-implement.md`(코드) |
 | 그 결정이 어느 슬라이스에서 났나 | `backlog-archive.md`·`backlog-implement-archive.md` — 세션 문서로 가는 실질 인덱스 |
-| 빌드가 뭘 내놓고 어디에 올리나 | `docs/development/build-and-distribution.md` (플랫폼 **계획**은 `docs/planning/roadmap.md` §2) |
-| 새 장비에 뭘 까나 | `docs/development/environment-setup.md`, `gbrain-setup.md` |
 | 이 에러를 어떻게 고치나 | `docs/development/troubleshooting/` |
 | 그때 왜 그렇게 정했나 | `docs/development/sessions/`, `docs/decisions/` — **시점 기록이지 현재 명세가 아니다** |
 

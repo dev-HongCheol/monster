@@ -1,65 +1,72 @@
 # 다국어(i18n) 시스템 기술 가이드 (Deep Dive)
 
-이 문서는 프로젝트 내 다국어 처리가 Cocos Creator의 라이프사이클과 어떻게 정밀하게 결합되어 작동하는지 상세히 설명합니다.
+> 화면 글자를 어떻게 번역하고, 새 글자는 어느 방식으로 만드나
+
+- **최초 작성:** 2026-06-11
+- **상태:** CONFIRMED
+- **이력:** 2026-08-13 — `spec/`으로 이전(`i18n-guide.md` → `code-i18n.md`). 두 방식 중 무엇을 고르는지를 답하는 §8을 신설하고, §1~§6의 문체를 나머지 문서와 맞췄다
+
+---
+
+다국어 처리가 Cocos Creator의 라이프사이클과 어떻게 맞물려 도는지를 적는다.
 
 ---
 
 ## 1. 초기화 프로세스 (Systems/Managers)
 
-시스템의 기점인 `I18n.ts`는 싱글톤 매니저로서 데이터 로드와 배포를 총괄합니다.
+시스템의 기점인 `I18n.ts`는 싱글톤 매니저로서 데이터 로드와 배포를 총괄한다.
 
 | 라이프사이클 | 동작 내용 | 비고 |
 | :--- | :--- | :--- |
-| **`onLoad()`** | `I18n.instance` 할당. 정적 접근성 확보. | 최우선 실행 |
-| **`start()`** | `resources.load`를 통한 JSON 파일 비동기 로드 개시. | 비동기 시작 |
-| **Callback** | 로드 완료 후 `I18nLogic`에 데이터 주입 및 `_isReady` 플래그 활성화. | 데이터 준비 완료 |
+| **`onLoad()`** | `I18n.instance`를 할당해 정적 접근을 연다. | 최우선 실행 |
+| **`start()`** | `resources.load`로 JSON 파일 비동기 로드를 시작한다. | 비동기 시작 |
+| **Callback** | 로드가 끝나면 `I18nLogic`에 데이터를 넣고 `_isReady`를 켠다. | 데이터 준비 완료 |
 
 ---
 
 ## 2. UI 컴포넌트 라이프사이클 연동 (`LocalizedLabel.ts`)
 
-씬의 각 라벨은 자신의 상태에 따라 매니저와 통신하며 텍스트를 유지합니다.
+씬의 각 라벨은 자기 상태에 따라 매니저와 주고받으며 텍스트를 유지한다.
 
 ### 2.1. 라이프사이클 상세
 1. **`onLoad()`**
-   - 현재 노드에서 `cc.Label` 컴포넌트를 미리 캐싱하여 `update` 시점의 성능을 확보합니다.
+   - 현재 노드의 `cc.Label` 컴포넌트를 미리 캐싱해 갱신 시점의 비용을 줄인다.
 2. **`onEnable()` (핵심)**
-   - **Registry 등록:** `I18n.instance.register(this)` 호출.
-   - **상태 체크:** 매니저가 준비(`_isReady`) 상태면 즉시 번역, 아니면 `onReady` 콜백 큐에 예약.
+   - **Registry 등록:** `I18n.instance.register(this)`를 부른다.
+   - **상태 확인:** 매니저가 준비(`_isReady`)됐으면 즉시 번역하고, 아니면 `onReady` 콜백 큐에 예약한다.
 3. **`onDisable()`**
-   - **Registry 해제:** `I18n.instance.unregister(this)` 호출.
-   - 화면에서 사라진 노드는 갱신 대상에서 제외하여 불필요한 연산 및 에러를 방지합니다.
+   - **Registry 해제:** `I18n.instance.unregister(this)`를 부른다.
+   - 화면에서 사라진 노드를 갱신 대상에서 빼서 헛된 연산과 에러를 막는다.
 4. **`onDestroy()`**
-   - 메모리 누수 방지를 위한 최종 참조 해제.
+   - 참조를 끊어 누수를 막는다.
 
 ---
 
 ## 3. 런타임 언어 전환 (Runtime Language Switch)
 
-게임을 재시작하지 않고 언어를 변경할 때의 내부 시퀀스입니다.
+게임을 재시작하지 않고 언어를 바꿀 때의 내부 순서다.
 
-1. **API 호출:** 사용자가 `I18n.instance.setLanguage('en')`을 호출합니다.
-2. **사전 교체:** 매니저 내부의 `I18nLogic` 사전을 영어 데이터로 교체합니다.
-3. **옵저버 패턴 실행:** 매니저가 `onEnable` 상태로 등록된 모든 `LocalizedLabel` 목록을 순회합니다.
-4. **동적 갱신:** 각 라벨의 `refresh()`를 호출하여 새로운 언어로 `label.string`을 즉시 업데이트합니다.
+1. **API 호출:** `I18n.instance.setLanguage('en')`을 부른다.
+2. **사전 교체:** 매니저 내부의 `I18nLogic` 사전을 영어 데이터로 갈아 끼운다.
+3. **명부 순회:** 매니저가 `onEnable` 상태로 등록된 모든 `LocalizedLabel`을 훑는다.
+4. **동적 갱신:** 각 라벨의 `refresh()`를 불러 `label.string`을 새 언어로 즉시 바꾼다.
 
 ---
 
 ## 4. 아키텍처 원칙: Logic과 UI의 철저한 분리
 
-- **Pure Logic (`logic/I18nLogic.ts`):** 
-  - Cocos 엔진(`cc`) 임포트 금지. 
-  - 오직 문자열 매칭, `{param}` 치환, 폴백(ko -> key) 로직만 담당.
-  - Vitest를 통한 고속 단위 테스트 지원.
-- **Cocos Wrapper (`systems/I18n.ts`):** 
-  - 리소스 로드, 싱글톤 관리, UI 컴포넌트 목록(Registry) 관리 담당.
+- **Pure Logic (`logic/I18nLogic.ts`)**
+  - Cocos 엔진(`cc`)을 import하지 않는다.
+  - 문자열 매칭, `{param}` 치환, 폴백(ko → 키)만 맡는다.
+  - 그래서 vitest가 엔진 없이 빠르게 돌릴 수 있다.
+- **Cocos Wrapper (`systems/I18n.ts`)**
+  - 리소스 로드, 싱글톤 관리, UI 컴포넌트 명부(Registry) 관리를 맡는다.
 
 ---
 
 ## 5. 레이스 컨디션 (Race Condition) 방어
 
-- **상황:** 씬 로딩은 끝났으나 네트워크/파일 로딩 지연으로 번역 파일이 아직 도착하지 않은 경우.
-- **대응:** `LocalizedLabel`은 즉시 실행 대신 `I18n.onReady` 콜백을 등록합니다. 매니저는 파일 로드가 끝나는 즉시 대기 중인 모든 라벨의 번역을 일괄 수행합니다.
+씬 로딩은 끝났는데 파일 로딩이 늦어 번역 데이터가 아직 도착하지 않는 경우가 있다. 그래서 `LocalizedLabel`은 즉시 번역하는 대신 `I18n.onReady` 콜백을 등록하고, 매니저는 로드가 끝나는 즉시 대기 중인 모든 라벨의 번역을 한 번에 수행한다.
 
 ---
 
@@ -127,3 +134,46 @@ sequenceDiagram
 
 - **씬 라벨 접두사 허용 목록** — `menu.`·`result.`·`gameover.` 키는 `.scene`에 박혀 있고 `.ts`에는 없다. 그대로 두면 orphan으로 오탐되므로 `sceneKeyPrefixes`로 시작하는 키는 orphan 검사에서 제외한다.
 - **소스 스캔의 어휘 견고화** — 호출 정규식을 영숫자 경계로 앵커해(`/(?<![A-Za-z0-9])_?t\(['"]([^'"]+)/g`) 번역 함수와 `_t` 래퍼만 잡고 `emit`/`assert`/`getComponent` 같은 `t`로 끝나는 식별자는 배제한다. 또 스캔 전에 주석·JSDoc을 제거해(`stripComments`) 주석 속 `t('x')`가 가짜 사용 리터럴이 되는 것을 막는다. (`SLICE_OPTIONS`는 `damage`·`cooldown`·`projectile_count` 3종만 배선돼 있어 `upgrade.range/duration`이 카탈로그에 없는 것은 갭이 아니라 정상 — 도메인을 `SLICE_OPTIONS`로 한정해 자동으로 이슈에서 빠진다.)
+
+---
+
+## 8. 새 글자를 만들 때 무엇을 고르나
+
+여기까지가 두 장치의 **작동 방식**이라면, 이 절은 **선택**을 정한다. 화면 글자를 새로 만들 때 씬 노드에 `LocalizedLabel`을 붙일지, 컨트롤러에서 `t()`를 부를지의 기준이다.
+
+### 8.1. 기준은 "그 글자를 누가 정하느냐"다
+
+| 그 라벨의 문자열은 | 방식 |
+|---|---|
+| 씬에 고정돼 있고 언어만 바뀐다 (버튼 이름, 화면 제목) | 씬 노드에 **`LocalizedLabel`** + `key` 프로퍼티 |
+| 런타임 값이 섞인다 (수치·진행도·조합) | 컨트롤러에서 **`t(key, params)`** |
+| 조건에 따라 다른 키가 된다 (승리/패배, 분류명) | 컨트롤러에서 **`t()`** — 키를 코드가 고른다 |
+
+가르는 이유는 갱신 주체다. `LocalizedLabel`은 언어가 바뀔 때 매니저가 명부를 돌며 스스로 갱신하므로 컨트롤러가 그 라벨을 몰라도 된다. 반대로 값이 섞이는 라벨은 값이 바뀔 때마다 어차피 컨트롤러가 문자열을 다시 만들어야 하고, 그때 `t()`를 함께 부르는 것이 자연스럽다. 여기에 `LocalizedLabel`을 붙이면 매니저가 넣은 번역문을 컨트롤러가 곧바로 덮어써서, 붙인 컴포넌트가 아무 일도 하지 않는 채로 남는다.
+
+### 8.2. 한 라벨에 둘을 겹치지 않는다
+
+**이것이 이 절이 생긴 이유다.** 지금 `main.scene`의 일시정지 패널이 정확히 그 상태다.
+
+| 노드 | 씬의 `LocalizedLabel` 키 | `PauseController`가 넣는 것 |
+|---|---|---|
+| `PausePanel/Title` | `pause.title` | `_t('pause.title')` |
+| `PausePanel/ResumeButton/ResumeButtonLabel` | `pause.resume` | `_t('pause.resume')` |
+| `PausePanel/RestartButton/RestartButtonLabel` | `pause.restart` | `_t('pause.restart')` |
+| `PausePanel/MenuButton/MenuButtonLabel` | `pause.menu` | `_t('pause.menu')` |
+
+같은 노드의 같은 키를 두 장치가 각각 쓰고 있다. 겹치면 두 가지가 잘못된다. 화면에 무엇이 뜨는지가 **어느 쪽이 나중에 도느냐**에 달리는데 그 순서는 매니저 준비 시점과 패널이 켜지는 시점에 좌우되어 코드만 봐서는 알 수 없고, 키를 고칠 때 한쪽만 고쳐도 나머지 한쪽이 화면을 맞게 채워 주므로 **틀린 것을 알아채지 못한다.**
+
+이 상태는 일시정지 메뉴 슬라이스에서 `LocalizedLabel`을 붙였다가 코드 구동으로 되돌리는 리워크가 났을 때, 컴포넌트만 씬에 남아 생겼다. 이 문서는 씬을 고치지 않으므로(이번 이전 슬라이스의 범위 밖이다) **네 개를 떼는 일은 백로그에 있다.**
+
+### 8.3. 지금 무엇이 어느 방식인가
+
+| 씬 | `LocalizedLabel` | 코드 `t()` |
+|---|---|---|
+| `menu.scene` | 2 — 제목, 시작 버튼 | 없음 |
+| `result.scene` | 2 — 다시하기·메뉴 버튼 | `ResultController` 6 — 생존 시간·레벨·처치 수·패시브 3종 (전부 수치가 섞인다) |
+| `main.scene` | 4 — 일시정지 패널 (**잔재**, §8.2) | `HudController` 4 · `PauseController` 4 |
+
+`result.scene`이 규칙이 뜻하는 모습이다. 값이 안 섞이는 버튼 둘은 `LocalizedLabel`이 들고, 수치가 붙는 여섯 줄은 컨트롤러가 든다. 두 장치가 같은 화면에 있어도 **맡는 라벨이 겹치지 않는다.**
+
+> 씬에 무엇이 붙었는지는 클래스 이름으로 셀 수 없다. `.scene`은 컴포넌트를 압축 UUID로 저장하므로 `LocalizedLabel`을 grep하면 0건이 나오고, `.ts.meta`의 원본 UUID 전문으로 찾아도 0건이다. `uuid` 앞 5자(`ab34b`)로 `__type__` 값을 맞춰야 잡힌다.

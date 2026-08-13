@@ -23,6 +23,11 @@
 
 | 문서 | 답하는 질문 |
 |---|---|
+| [`code-conventions.md`](code-conventions.md) | 코드를 어떻게 쓰나 |
+| [`code-i18n.md`](code-i18n.md) | 화면 글자를 어떻게 번역하고, 새 글자는 어느 방식으로 만드나 |
+| [`docs-glossary.md`](docs-glossary.md) | 이 용어가 뭔가 |
+| [`docs-writing-style.md`](docs-writing-style.md) | 문서를 어떻게 쓰나 |
+| [`game-combat.md`](game-combat.md) | 무엇이 무엇에 맞나 (히트박스 형태와 판정 수치의 출처) |
+| [`ops-build.md`](ops-build.md) | 빌드가 뭘 내놓고 어디에 올리나 |
+| [`ops-environment.md`](ops-environment.md) | 새 장비에 뭘 까나 |
 | [`ops-skill-routing.md`](ops-skill-routing.md) | 이 상황에 어떤 스킬을 쓰나 |
-
-> 기존 정본(`architecture.md`·`conventions.md`·`i18n-guide.md` 등)은 아직 `docs/development/` 바로 아래에 있다. 이 폴더로 옮기는 것은 백로그 **F73**이다.
