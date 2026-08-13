@@ -354,7 +354,7 @@ itch.io 출시 후 4주 데이터 수집:
 - `docs/design/art-direction.md` — 아트 방향(무엇을 왜 그렇게 그리는가)의 정본
 - `docs/design/asset-production-spec.md` — 제작 규격(몇 px·어떤 피벗·어떤 파일명)
 - `docs/design/art-generation-playbook.md` — 생성 실행(어떤 설정으로 뽑아 무엇으로 합격시키는가)
-- `docs/development/build-and-distribution.md` — 빌드 산출물과 itch.io 배포 경로의 정본. §7 「출시 준비」의 실행판
+- `docs/development/spec/ops-build.md` — 빌드 산출물과 itch.io 배포 경로의 정본. §7 「출시 준비」의 실행판
 - `docs/decisions/006-collision-hitbox.md` · `007-skin-hitbox-independence.md` — 판정 형태와 스킨 독립성
 
 **초기 기록 (시점 보존)**
@@ -366,7 +366,7 @@ itch.io 출시 후 4주 데이터 수집:
 - `docs/development/sessions/2026-05-16-cocos-setup-plan.md` — Cocos 부트스트랩
 - `docs/development/sessions/2026-05-19-scene-setup-guide.md` — 씬 설정 가이드
 - `docs/development/sessions/2026-05-23-office-hours-mvp-design.md` — 이 세션 인계 노트
-- `docs/development/glossary.md` — 게임 용어 사전
+- `docs/development/spec/docs-glossary.md` — 게임 용어 사전
 - `docs/decisions/001-cocos-version.md` — 엔진 버전 ADR
 
 ---

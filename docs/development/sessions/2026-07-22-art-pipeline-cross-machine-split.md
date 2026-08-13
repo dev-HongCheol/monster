@@ -3,7 +3,7 @@
 - **작성일:** 2026-07-22
 - **브랜치:** feat/player-mage-art (이 슬라이스 작업 중 파생된 검토 — 이 문서 자체는 슬라이스 스코프 밖)
 - **상태:** 검토(탐색) — **확정 아님.** 최종 문서화·구현은 후속으로 미룬다. 참고용 기록이다.
-- **정본 연결:** [`../../design/art-direction.md`](../../design/art-direction.md) §8(생성 파이프라인), [`../backlog-implement.md`](../backlog-implement.md) **F59**(툴체인 리스크·자동화), [`../comfyui-setup.md`](comfyui-setup.md)(추론 환경), [`../kohya-setup.md`](kohya-setup.md)(학습 환경)
+- **정본 연결:** [`../../design/art-direction.md`](../../design/art-direction.md) §8(생성 파이프라인), [`../backlog-implement.md`](../backlog-implement.md) **F59**(툴체인 리스크·자동화), [`../comfyui-setup.md`](../comfyui-setup.md)(추론 환경), [`../kohya-setup.md`](../kohya-setup.md)(학습 환경)
 - **성격:** 나중에 이 분리를 실제로 세팅할 때 다시 보는 레퍼런스. 결정은 확정하지 않고, 갈래와 근거만 남긴다.
 
 ---

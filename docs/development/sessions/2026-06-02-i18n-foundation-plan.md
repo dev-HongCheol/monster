@@ -39,7 +39,7 @@
    - `HudController`: HP/Wave/Lv/XP/timer 라벨 → 파라미터 메시지 템플릿(어순 데모)
    - `DeckLogic`: 합성 `description`과 `CATEGORY_LABEL`을 **로직에서 제거** → 키 + params 산출, 표시 해석은 `CardSelectPanel`(UI)에서 `t()`. **컨벤션의 대표 사례.**
 6. **마이그레이션 — 씬 정적 라벨**: `PLAY`, `RETRY`, `MENU`, `MONSTER`, `GAME OVER`, `0웨이브 도달` 등 → `LocalizedLabel` 컴포넌트(에디터 연결은 7단계 사용자).
-7. **컨벤션 문서화**: `docs/development/conventions.md`에 "logic/엔 표시 문자열 금지 — 키/구조화 데이터만 산출, 표시는 UI가 t()로 해석" 규칙 추가.
+7. **컨벤션 문서화**: `docs/development/spec/code-conventions.md`에 "logic/엔 표시 문자열 금지 — 키/구조화 데이터만 산출, 표시는 UI가 t()로 해석" 규칙 추가.
 
 ### 데이터(JSON) name/description 처리 — ✅ 확정: id 파생 키 (포함)
 `spells.json`/`cards.json`은 `id`+수치만 언어 중립으로 두고, name/description은 **id 파생 키**(`spell.fireball.name`, `spell.fireball.desc`)로 카탈로그 참조. DataManager/UI가 t()로 해석 → 데이터 파일은 언어 중립 유지. ISpellData/ICardData에서 표시 문자열 필드 제거(또는 키 필드화), DataManager·소비처 파급(~5파일) 포함. (승인 게이트 결정 2026-06-02)

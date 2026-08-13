@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-08-08
 - **브랜치:** `design/art-decision-audit` (PR #74)
-- **성격:** 문서 구조 결정. 정본(`docs/design/`·`docs/planning/`)과 결정 기록(`docs/development/sessions/`·`docs/decisions/`) 사이의 링크 방향을 정했다. 규칙 본문은 [`../../CLAUDE.md`](../../CLAUDE.md)의 「문서 정리 규칙」이 든다.
+- **성격:** 문서 구조 결정. 정본(`docs/design/`·`docs/planning/`)과 결정 기록(`docs/development/sessions/`·`docs/decisions/`) 사이의 링크 방향을 정했다. 규칙 본문은 [`../../CLAUDE.md`](../../../CLAUDE.md)의 「문서 정리 규칙」이 든다.
 - **관련:** [`backlog-implement.md`](../backlog-implement.md) **F69**(기존 링크 38곳 정리)
 
 ---

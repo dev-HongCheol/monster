@@ -5,7 +5,7 @@
 > **범위:** v1 — 마법사 단독. 성직자·드루이드는 v1 이후로 미룬다 (공용 시스템만 공유). 효과 메커니즘은 공격 마법 12종까지 확정, 보조 4종의 메타 효과는 별도 슬라이스.
 > **관련 문서:**
 > - [로드맵 v0.2](roadmap.md) — 출시 일정, MVP 정의
-> - [용어 사전 § 8 전투·마법](../development/glossary.md#8-전투--마법-시스템) — 호밍·노바·DOT·CC 등
+> - [용어 사전 § 8 전투·마법](../development/spec/docs-glossary.md#8-전투--마법-시스템) — 호밍·노바·DOT·CC 등
 > - [개발 백로그](../development/backlog.md) — A1(효과 레이어), A2(facing), A3(범위·지속 강화), B1(§7.6 곱연산)
 > - [ADR 002: scripts/logic 분리](../decisions/002-scripts-logic-pattern.md) — 순수 로직/컴포넌트 경계
 

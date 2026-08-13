@@ -91,7 +91,7 @@ if (hiddenPropName) {
 
 ### 3.2 배포 환경이 두 경로를 모두 밟는다
 
-**배포 경로의 정본은 [`../build-and-distribution.md`](../build-and-distribution.md)다.** 사용자 행동별로 어느 신호가 뜨는지의 대응표는 그 문서 §4에 있고, 여기서는 이 슬라이스의 판단에 필요한 결론만 적는다.
+**배포 경로의 정본은 [`../build-and-distribution.md`](../spec/ops-build.md)다.** 사용자 행동별로 어느 신호가 뜨는지의 대응표는 그 문서 §4에 있고, 여기서는 이 슬라이스의 판단에 필요한 결론만 적는다.
 
 세 가지가 확인됐다.
 
@@ -109,7 +109,7 @@ if (hiddenPropName) {
 
 ### 결정 2 — `KeyCode` 매핑은 컨트롤러에 남긴다
 
-`logic/`은 **cc를 import하지 않는 순수 TypeScript**가 규칙이다([conventions.md § 폴더 구조](../conventions.md#폴더-구조)). `KeyCode`는 cc의 enum이므로 모듈이 그것을 받으면 규칙이 깨진다.
+`logic/`은 **cc를 import하지 않는 순수 TypeScript**가 규칙이다([conventions.md § 폴더 구조](../spec/code-conventions.md#폴더-구조)). `KeyCode`는 cc의 enum이므로 모듈이 그것을 받으면 규칙이 깨진다.
 
 숫자 코드를 모듈이 자체 상수로 들고 있는 방법도 있지만, 그러면 cc의 `KeyCode` 값을 손으로 베껴 두는 셈이라 엔진이 값을 바꾸면 조용히 어긋난다. 그래서 **컨트롤러가 `KeyCode`를 `'up' | 'down' | 'left' | 'right'` 축 이름으로 옮기고**, 모듈은 그 축 이름만 받는다. 매핑은 `switch` 한 덩어리라 눈으로 검사된다.
 
@@ -132,7 +132,7 @@ if (hiddenPropName) {
 | `tests/logic/InputFocusReset.test.ts` | **신규.** 해제 후 반대 방향 즉시 반응, 대각선 정규화, 축 매핑 왕복 |
 | `docs/qa/input-focus-reset-test.md` | **신규.** 수동 재현·검증 체크리스트 |
 | `hitbox-viewer.html` | biome 에러 4건 수정(§7) |
-| `docs/development/build-and-distribution.md` | **신규(계획 이후 추가).** §3.2가 의존하는 배포 경로의 정본. 이 슬라이스 조사 중에 만들었고 CLAUDE.md 지식 베이스에 색인했다 |
+| `docs/development/spec/ops-build.md` | **신규(계획 이후 추가).** §3.2가 의존하는 배포 경로의 정본. 이 슬라이스 조사 중에 만들었고 CLAUDE.md 지식 베이스에 색인했다 |
 
 `MoveInputLogic`의 겉모습은 이렇다.
 
