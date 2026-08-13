@@ -27,6 +27,6 @@
 
 세 도구가 서로 다른 구간을 든다. **gstack**은 제품 워크플로(기획 리뷰·설계 검토·QA·보안·배포)라 기획부터 배포까지 전 구간에서 쓰고, **superpowers**는 구현 방법론(TDD·작은 태스크·subagent 병렬 개발)이라 코드를 쓰기 시작하는 시점에 켠다. **Context7 MCP**는 Cocos Creator 공식 문서를 실시간으로 조회한다.
 
-설치 방법은 [`../environment-setup.md`](ops-environment.md) § 3에 있다. 설치 후에는 Claude Code를 재시작해야 한다.
+설치 방법은 [`ops-environment.md`](ops-environment.md) § 3에 있다. 설치 후에는 Claude Code를 재시작해야 한다.
 
 웹 브라우징은 항상 gstack의 `/browse`를 쓴다. `mcp__claude-in-chrome__*` 도구는 쓰지 않는다.

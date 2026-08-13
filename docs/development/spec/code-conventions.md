@@ -403,10 +403,7 @@ scripts/
 
 ### 정적 라벨 vs 동적 라벨
 
-| 종류 | 방법 |
-|------|------|
-| 정적 씬 라벨(버튼/타이틀) | `ui/LocalizedLabel` 컴포넌트 부착 + `@property key` |
-| 코드 동적 라벨(HUD 수치 등) | Component에서 `I18n.instance.t(key, params)` 직접 호출 |
+씬의 `LocalizedLabel`과 코드의 `t()` 중 무엇을 고르는지는 [`code-i18n.md`](code-i18n.md) §8이 정본이다. **여기 옮겨 적지 않는다** — 같은 규칙이 두 곳에 있으면 한쪽만 고치는 사고가 나고, 이 레포는 그 사고를 이미 두 번 겪었다(백로그 `F51`).
 
 - **i18n 라벨은 TTF 폰트를 사용한다**(비트맵 `.fnt` 금지). 비트맵 폰트는 미리 구운 글자만 그려 다국어 글리프에 부적합. 폰트 글리프 커버리지는 언어 추가 단계에서 확인.
 - 언어 변경 갱신은 `I18n` 싱글톤의 **명시적 레지스트리**로 처리한다(LocalizedLabel가 onEnable 등록 / onDisable·onDestroy 해제, `setLanguage`·`onReady`가 순회 refresh). 이벤트 버스/매 프레임 폴링을 쓰지 않는다.

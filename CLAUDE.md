@@ -70,13 +70,13 @@ docs/
 | 이 동작이 맞나 | `tests/logic/*.test.ts` — 실행 가능한 명세 |
 | 코드를 어떻게 쓰나 | `docs/development/spec/code-conventions.md` — **코드 작성 전 항상 읽는다** |
 | 문서를 어떻게 쓰나 | `docs/development/spec/docs-writing-style.md` — **문서 작성 전 항상 읽는다** |
-| 그 밖의 개발 정본 — 용어·판정·빌드·환경 | 목록은 `docs/development/spec/README.md`. 아직 안 옮긴 것은 `gbrain-setup.md`뿐 |
+| 그 밖의 개발 정본 — 용어·판정·빌드·환경 | `docs/development/spec/README.md`가 목록. 안 옮긴 것은 `gbrain-setup.md`(F77 뒤)와 F70이 철거할 둘 |
 | 지금 단계에서 뭘 하나 | `docs/development/workflow/<phase>.md` — **절차의 정본.** `pnpm wf` 전이가 배달하고 `pnpm wf steps`로 다시 본다 |
 | 게임을 어떻게 만드나 | `docs/planning/` — 게임 디자인·컨셉·로드맵 |
 | 무엇을 왜 그렇게 그리나 | `docs/design/art-direction.md` |
 | 몇 px·어떤 피벗·어떤 파일명인가 | `docs/design/asset-production-spec.md` |
-| 어떤 프롬프트·설정으로 뽑아 무엇으로 합격시키나 | `docs/design/art-generation-playbook.md` |
-| 디자인 정본 목록 | `docs/design/spec/README.md` — 아직 비었다(위 셋의 이동은 F69) |
+| 어떤 프롬프트로 뽑아 무엇으로 합격시키나 | `docs/design/art-generation-playbook.md` |
+| 디자인 정본 목록 | `docs/design/spec/README.md` — 아직 비었다(위 셋은 F69가 옮긴다) |
 | 다음에 뭘 하나 | `docs/development/backlog.md`(게임) + `backlog-implement.md`(코드) |
 | 그 결정이 어느 슬라이스에서 났나 | `backlog-archive.md`·`backlog-implement-archive.md` — 세션 문서로 가는 실질 인덱스 |
 | 이 에러를 어떻게 고치나 | `docs/development/troubleshooting/` |
@@ -126,6 +126,7 @@ planning → qa-setup → implementation → verification → user-verification 
 | `pnpm wf check-meta` | AI/사용자 | 에셋 `.meta` 누락 검사 (누락 시 종료코드 1) |
 | `pnpm wf check-qa` | AI/사용자 | QA 문서 미확정(잠정) 표시 검사 (남아 있으면 종료코드 1) |
 | `pnpm wf check-docs` | AI/사용자 | 절차 문서 정합 검사 (누락·잉여 시 종료코드 1) |
+| `pnpm wf check-links` | AI/사용자 | 마크다운 링크·앵커 검사 (깨진 링크 시 종료코드 1) |
 | `pnpm wf status` | — | 현재 상태 + 편집 가능 여부 + 현재 phase 절차 문서 경로 |
 
 > **`pnpm typecheck`** (wf 커맨드가 아님) — 타입체크 단독 실행. `pass ts`가 내부적으로 **같은 코드**(`.claude/typecheck.mjs`)를 호출하므로, 여기서 통과하면 게이트도 통과한다.

@@ -58,8 +58,14 @@ const INLINE_LINK = /!?\[[^\]\n]*\]\(\s*<?([^)>\s]+)>?(?:\s+"[^"]*")?\s*\)/g;
 /** 슬러그에서 살아남는 문자 — 유니코드 글자·숫자와 밑줄·하이픈·공백뿐이다. */
 const SLUG_KEEP = /[^\p{L}\p{N}_\-\s]/gu;
 
-/** 제목 텍스트에서 벗겨 내는 인라인 표기 — 굵게·기울임·취소선의 기호들. */
-const EMPHASIS = /[*_~]{1,3}/g;
+/**
+ * 제목 텍스트에서 벗겨 내는 인라인 표기 — 굵게·취소선의 기호들.
+ *
+ * **밑줄(`_`)은 넣지 않는다.** 기울임으로도 쓰이지만 GitHub는 슬러그에 밑줄을 그대로 남기고,
+ * 이 레포 제목에는 `_move`·`SYMLINK_NOT_ALLOWED`처럼 식별자로 들어간 것이 서른 넘게 있다.
+ * 지우면 그 제목의 슬러그가 GitHub와 갈려 멀쩡한 앵커가 깨진 것으로 신고된다.
+ */
+const EMPHASIS = /[*~]{1,3}/g;
 
 /**
  * 코드 펜스 안쪽을 빈 줄로 만든다. **줄 수는 보존한다** — 줄 번호가 밀리면 보고가 쓸모없어진다.
@@ -96,7 +102,11 @@ function blankInlineCode(text: string): string {
     .split('\n')
     .map((line) => {
       const runs = [...line.matchAll(/`+/g)];
-      const chars = [...line];
+      // `split('')`이지 `[...line]`이 아니다. 스프레드는 코드포인트로 쪼개는데 정규식이 주는
+      // `index`는 UTF-16 단위라, 줄 앞쪽 이모지 하나마다 두 좌표계가 한 칸씩 어긋난다. 그러면
+      // 덮는 구간이 왼쪽으로 밀려 코드 스팬 바로 뒤의 `](`까지 지우고 링크가 통째로 사라진다.
+      // 서로게이트를 반쪽씩 나눠도 무해하다 — 여기서 하는 일은 공백으로 덮는 것뿐이다.
+      const chars = line.split('');
       for (let i = 0; i < runs.length - 1; i++) {
         const open = runs[i];
         const close = runs.find((r, j) => j > i && r[0].length === open[0].length);
@@ -114,11 +124,21 @@ function blankInlineCode(text: string): string {
 /**
  * 본문에서 마크다운 인라인 링크를 순서대로 뽑는다.
  *
- * 코드 펜스와 인라인 코드 스팬 안쪽은 먼저 덮으므로 걸리지 않는다. 참조 스타일(`[표시][라벨]`)은
- * 지원하지 않는데, 레포에 정의가 0건인 반면 `[number, number][]` 같은 타입 표기가 열 군데쯤
- * 있어서 지원하려 들면 얻는 것 없이 오탐만 는다.
+ * 코드 펜스와 인라인 코드 스팬 안쪽은 먼저 덮으므로 걸리지 않는다. 외부 주소(`https://` 등)도
+ * 일단 뽑는다 — 거르는 것은 `resolveTarget`의 일이다.
  *
- * 외부 주소(`https://` 등)도 일단 뽑는다 — 거르는 것은 `resolveTarget`의 일이다.
+ * **받지 않는 형태를 밝혀 둔다.** 아래는 전부 레포에 현재 0건이라 지금은 거짓말을 하지 않지만,
+ * 누가 쓰기 시작하면 그 링크는 **조용히** 검사 밖에 있게 된다. 쓰게 되면 정규식을 늘린다.
+ *
+ * | 형태 | 지금 결과 |
+ * |---|---|
+ * | 참조 스타일 `[표시][라벨]` | 무시. 정의가 0건인 반면 `[number, number][]` 같은 타입 표기가 열 군데쯤 있어 받으면 오탐만 는다 |
+ * | 링크 안의 이미지 `[![배지](img.png)](대상.md)` | 안쪽 `img.png`만 잡고 바깥 대상을 놓친다 |
+ * | 중첩 대괄호 `[텍스트 [강조] 더](대상.md)` | 통째로 놓친다 |
+ * | 작은따옴표 제목 `[x](대상.md 'title')` | 놓친다(큰따옴표는 받는다) |
+ * | 공백 든 각괄호 대상 `[x](<a b.md>)` | 놓친다 |
+ * | 대상 안의 괄호 `[x](file_(1).md)` | `file_(1)`로 잘려 **오탐**한다 |
+ * | 들여쓰기 코드블록(4칸) | 코드로 보지 않아 그 안의 링크를 잡는다 |
  *
  * @param markdown 문서 본문
  */
@@ -184,8 +204,13 @@ const EXTERNAL = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
  * 계산을 사람이 틀린 것이다 — `docs/development/sessions/`에서 `../decisions/`를 쓰면
  * `docs/development/decisions/`가 되지 `docs/decisions/`가 되지 않는다.
  *
- * 결과 구분자는 항상 슬래시다. Windows에서 역슬래시가 나가면 git 추적 목록과 영영 일치하지
- * 않아 멀쩡한 링크가 전부 깨진 것으로 잡힌다.
+ * 경로 계산은 `path.posix`만 쓴다. `path.join`을 쓰면 Windows에서 역슬래시가 섞인 결과가
+ * 나와 git 추적 목록과 영영 일치하지 않고, 멀쩡한 링크가 전부 깨진 것으로 잡힌다.
+ *
+ * **원문의 역슬래시와 앞 슬래시는 고쳐 주지 않는다.** 고쳐 주면 GitHub에서 404가 나는 링크를
+ * 검사기만 통과시키게 된다 — GitHub는 `spec\code-conventions.md`를 통째로 한 파일명으로 읽고,
+ * `/docs/b.md`는 레포 루트가 아니라 사이트 루트로 읽는다. 둘 다 원문 그대로 들고 나가 추적
+ * 목록과 안 맞는 것으로 끝낸다.
  *
  * @param fromPath 링크를 담은 문서의 레포 상대 경로
  * @param target 원문 그대로의 링크 대상
@@ -203,10 +228,11 @@ export function resolveTarget(
   if (rawPath === '') return { path: fromPath, anchor };
 
   const decoded = decodePart(rawPath);
-  const base = decoded.startsWith('/')
-    ? decoded.slice(1)
-    : path.posix.join(path.posix.dirname(fromPath), decoded);
-  return { path: path.posix.normalize(base).split(path.sep).join('/'), anchor };
+  if (decoded.startsWith('/')) return { path: decoded, anchor };
+  return {
+    path: path.posix.normalize(path.posix.join(path.posix.dirname(fromPath), decoded)),
+    anchor,
+  };
 }
 
 /** 퍼센트 인코딩을 되돌린다. 잘못 인코딩된 값은 원문 그대로 쓴다 — 그 자체가 깨진 링크다. */

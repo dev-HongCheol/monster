@@ -68,6 +68,15 @@ describe('extractLinks — 무엇을 링크로 세는가', () => {
       { line: 1, target: 'https://github.com/x/y' },
     ]);
   });
+
+  it('줄 앞쪽에 이모지가 있어도 코드 스팬 뒤의 링크를 찾는다', () => {
+    // 정규식이 주는 인덱스는 UTF-16 단위인데 문자열을 코드포인트로 쪼개면 서로게이트 쌍
+    // 하나마다 좌표가 한 칸씩 어긋난다. 그러면 코드 스팬을 덮는 구간이 왼쪽으로 밀려
+    // 바로 뒤의 `](`까지 지워지고, 링크가 통째로 검사 밖으로 사라진다. 두 백로그 파일의
+    // 링크 여섯 개가 실제로 그렇게 빠져 있었다 — 하필 가장 자주 고치는 파일이다.
+    const md = '| F1 | 🔧🎨 항목 | 상세는 [`backlog.md`](backlog.md) 참조 |';
+    expect(extractLinks(md)).toEqual([{ line: 1, target: 'backlog.md' }]);
+  });
 });
 
 describe('slugifyHeading — GitHub 앵커 규칙', () => {
@@ -91,6 +100,13 @@ describe('slugifyHeading — GitHub 앵커 규칙', () => {
 
   it('한글을 그대로 남긴다', () => {
     expect(slugifyHeading('폴더 구조')).toBe('폴더-구조');
+  });
+
+  it('밑줄은 남긴다 — GitHub가 슬러그에 그대로 두는 문자다', () => {
+    // 기울임 기호를 벗기면서 `_`까지 지우면 `_move`·`SYMLINK_NOT_ALLOWED`처럼 식별자가
+    // 든 제목의 슬러그가 GitHub와 갈린다. 레포에 그런 제목이 서른셋 있어서, 누가 그중
+    // 하나에 앵커를 걸면 멀쩡한 링크가 깨진 것으로 신고된다.
+    expect(slugifyHeading('snake_case 규칙')).toBe('snake_case-규칙');
   });
 });
 
@@ -164,6 +180,22 @@ describe('resolveTarget — 링크를 레포 상대 경로로 푼다', () => {
     expect(resolveTarget('docs/a.md', 'https://example.com')).toBeNull();
     expect(resolveTarget('docs/a.md', 'http://example.com')).toBeNull();
     expect(resolveTarget('docs/a.md', 'mailto:x@y.z')).toBeNull();
+  });
+
+  it('역슬래시를 슬래시로 고쳐 주지 않는다', () => {
+    // 고쳐 주면 Windows에서만 통과하고 GitHub에서는 404가 나는 링크가 생긴다. GitHub는
+    // `spec\code-conventions.md`를 통째로 한 파일명으로 읽는다. 검사기의 답이 도는 OS에
+    // 따라 갈리는 것이 이 가드가 막으려던 바로 그 형태이므로, 원문을 그대로 들고 가서
+    // 추적 목록과 안 맞는 것으로 끝낸다.
+    expect(resolveTarget('docs/a.md', 'spec\\code-conventions.md')?.path).toBe(
+      'docs/spec\\code-conventions.md',
+    );
+  });
+
+  it('슬래시로 시작하는 대상은 레포 루트로 풀지 않는다', () => {
+    // GitHub는 `/docs/b.md`를 사이트 루트로 읽어 404를 낸다. 레포 루트로 해석해 통과시키면
+    // 검사기만 초록이고 실제 문서에서는 깨진다.
+    expect(resolveTarget('docs/a.md', '/docs/b.md')?.path).toBe('/docs/b.md');
   });
 });
 
@@ -247,6 +279,36 @@ describe('레포 전체 회귀망', () => {
     // `…(21)`로 줄여 버려서 정작 어디가 깨졌는지 안 보인다 — 고칠 수 없는 실패 메시지다.
     const report = broken.map((b) => `${b.file}:${b.line} → ${b.target} (${b.reason})`).join('\n');
     expect(report).toBe('');
+  });
+
+  it('wf check-links가 이 파일을 가리킨다', () => {
+    // 이 커맨드의 실질 내용은 테스트 파일 경로 문자열 하나뿐이라, 이미 통과하는 다른 파일로
+    // 바꿔 놓아도 `✓ 깨진 링크 없음`을 찍고 0으로 끝난다 — 아무것도 검사하지 않으면서.
+    // 샌드박스로는 못 잡는다(그 안엔 node_modules가 없어 vitest가 무조건 실패한다). 그래서
+    // 소스에서 인자를 뽑아 그 파일이 실제로 회귀망을 드는지 확인한다.
+    const src = fs.readFileSync(path.join(ROOT, '.claude/workflow.mjs'), 'utf8');
+    const m = /"check-links"\(\)[\s\S]{0,800}?runVitest\(\[\s*"([^"]+)"\s*\]\)/.exec(src);
+    expect(m?.[1]).toBeDefined();
+    const target = fs.readFileSync(path.join(ROOT, m?.[1] ?? ''), 'utf8');
+    expect(target).toContain('findBrokenLinks');
+  });
+
+  it('표시 텍스트가 파일명이면 가리키는 파일과 같은 이름이다', () => {
+    // 대상만 고치고 표시 텍스트를 놔두면 화면에는 없는 경로가 보이는데 링크는 멀쩡히
+    // 동작해서, 존재 검사로는 영영 안 걸린다. 이번 이전에서 실제로 다섯 곳이 그렇게 됐다.
+    const { docs } = loadDocs();
+    const offenders: string[] = [];
+    for (const doc of docs) {
+      for (const raw of doc.content.split('\n').entries()) {
+        const [i, line] = raw;
+        for (const m of line.matchAll(/\[`?([^\]`]*\.md)`?\]\(([^)\s#]+)/g)) {
+          const shown = m[1].split('/').pop();
+          const linked = m[2].split('/').pop();
+          if (shown !== linked) offenders.push(`${doc.path}:${i + 1} 표시=${m[1]} 대상=${m[2]}`);
+        }
+      }
+    }
+    expect(offenders.join('\n')).toBe('');
   });
 
   it('정본은 결정 기록으로 나가는 링크를 걸지 않는다', () => {
