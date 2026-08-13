@@ -192,6 +192,59 @@ F73은 "기존 정본을 `spec/` 아래로 옮긴다"는 한 줄이었다. 그�
 | 4 | Eng | `foo.md` 예시를 코드 스팬으로 바꾼다(예외 목록 금지) | mechanical | P5 명시성 | 예외 목록은 한 번 생기면 자란다 |
 | 5 | Eng | `insertCanonRow` 이중 구현은 백로그로 | mechanical | 슬라이스 밖 | 이전 슬라이스 유산이고 이번 변경과 무관하다 |
 
+### 이 리뷰는 축소된 판이다 — 다시 돌려야 한다
+
+`/autoplan`은 각 단계마다 **독립 리뷰어 둘**(Codex와 서브에이전트)을 띄워 서로의 맹점을 잡는 것을 값어치로 친다. 이번 판은 그 부분이 통째로 빠졌다. Codex가 이 장비에 없고, 세션 시작 지침에 `Do not call the AgentTool unless the user requested it`이 들어 있어 서브에이전트도 못 띄웠기 때문이다. 그래서 전략적 맹점을 한 시각으로만 걸렀다.
+
+**사용자가 2026-08-13에 「리뷰는 무조건 서브에이전트로」를 지시했다.** 다음 세션은 CEO·엔지니어링 두 독립 리뷰어를 Agent 도구로 띄워 위 보고를 검증하고 보강한다. 이 장비에 Codex는 여전히 없으므로 `[subagent-only]`로 돌린다.
+
 ### 취향 결정 — 해소됨
 
 **E1 — 링크 검사기를 어디에 두나. → 공유 모듈.** `.claude/link-check.mjs` 하나를 `wf check-links`와 vitest가 함께 부른다. 이중 구현이 썩는다는 것이 방금 E4에서 발견한 문제인데 알면서 하나 더 만드는 것이 가장 나쁘다는 판단이다. 타입스크립트 테스트가 `.mjs`를 불러오는 배관이 꼬이면 테스트 전용(`tests/helpers/`)으로 물러나고, 그때는 게이트를 포기한다.
+
+---
+
+## 재개 지점 (2026-08-13)
+
+컨텍스트가 커져 세션을 새로 시작한다. 이 절만 읽으면 차가운 상태에서 이어갈 수 있다.
+
+### 지금 어디까지 왔나
+
+| | |
+|---|---|
+| 브랜치 | `feat/canon-spec-move` (origin에 push됨) |
+| phase | `planning` — 스크립트 편집은 잠겨 있다(정상) |
+| 커밋 | `47bf8fb` F77 등재 · `fa718e6` 이 계획 · `2ce53ee` 리뷰 반영 |
+| main | `4f93474` (PR #76 머지 완료) |
+| 아직 안 한 것 | 파일 이동·검사기·문서 수정 **전부**. 계획 단계라 코드와 문서를 아직 옮기지 않았다 |
+
+### 다음에 할 일 — 순서대로
+
+1. **계획 리뷰를 서브에이전트로 다시 돌린다.** 위 「이 리뷰는 축소된 판이다」 참조. CEO·엔지니어링 두 독립 리뷰어를 Agent로 띄워 `## GSTACK REVIEW REPORT`를 검증하고, 새 발견이 있으면 그 절에 덧붙인다. 기존 발견(C1~C3·E1~E4)은 지우지 않는다.
+2. 사용자가 **`계획 승인`** → `pnpm wf approve-plan`.
+3. **qa-setup** — `docs/qa/canon-spec-move-test.md`와 `tests/logic/CanonSpecMove.test.ts`를 쓰고 RED를 확인한 뒤 `pnpm wf ready-impl`. 파일명의 `CanonSpecMove`는 게이트가 슬러그에서 찾으므로 바꾸면 안 된다.
+4. **구현** — §6 실행 순서 그대로. GREEN 뒤 `pnpm wf start-verification`.
+5. 6단계 검증(`/cso` → `pass cso` → 타입체크 → lint → 커밋 → 코드리뷰)에서도 **코드리뷰는 서브에이전트로 돌린다.**
+
+### 이 슬라이스의 결정 다섯 (근거는 위 본문)
+
+| # | 결정 |
+|---|---|
+| D1 | 옮기며 깨지는 링크는 시점 기록 안의 것까지 **전부 치환**한다 |
+| D2 | `architecture.md`는 `docs/temp/`로 내보내 **레포에서 제거**한다(`.gitignore` 대상이라 `git rm`) |
+| D3 | 아트 정본 3개와 결정기록 링크 59개는 **F69 슬라이스로** 넘긴다 |
+| D4 | `i18n-guide`의 `LocalizedLabel` 대 `t()` 선택 규칙을 **이번에 채운다**(씬은 안 건드린다) |
+| E1 | 링크 검사기는 `.claude/link-check.mjs` **공유 모듈** — `wf check-links`와 vitest가 함께 부른다 |
+
+### 다시 재지 않아도 되는 숫자
+
+- 개발 정본 6개를 가리키는 **깨질 링크**: 총 75개(레포 밖 `docs/temp` 8개 제외 전 83개). 층별 분포는 §2.
+- **이미 깨져 있는 링크 6개** — 전부 세션 문서의 경로 깊이 실수. 일곱 번째로 잡히던 `gbrain-setup.md:218`의 `../qa/foo.md`는 산문 속 예시라 깨진 링크가 아니다.
+- `architecture.md`를 가리키는 **마크다운 링크 0개**, 평문 언급 5곳.
+- 씬의 `LocalizedLabel`: `main.scene` 4 · `menu.scene` 2 · `result.scene` 2. 코드 `t()` 호출: `HudController` 4 · `PauseController` 4 · `ResultController` 6.
+
+### 함정 셋
+
+- **`CLAUDE.md` 크기 예산에 여유가 64자뿐이다**(13,936 / 14,000자, 218 / 240줄). 라우팅 표를 접기 **전에** 여기에 무엇을 더하면 `ClaudeMdSplit.test.ts`가 깨진다.
+- **문서 크기는 `node -e`로 잰다.** PowerShell `Get-Content`는 한글 UTF-8을 시스템 코드페이지로 읽어 자수를 약 1.18배로 부풀린다.
+- **씬에 무엇이 붙었는지는 UUID로 센다.** `.scene`은 컴포넌트를 클래스명이 아니라 압축 UUID(`__type__` 값)로 저장하므로 클래스명 grep은 0건을 낸다. `.ts.meta`의 `uuid` 앞 5자로 매칭한다.
