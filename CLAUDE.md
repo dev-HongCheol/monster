@@ -8,7 +8,9 @@
 docs/
 ├── planning/               # 기획 (게임 디자인, 컨셉, 로드맵)
 ├── design/                 # 디자인 (아트 디렉션, UI/UX, 에셋 파이프라인)
+│   └── spec/               # 디자인 정본 (art-·ui- 접두사)
 ├── development/            # 개발 (아키텍처, 환경 설정)
+│   ├── spec/               # 개발 정본 (code-·game-·docs-·ops- 접두사)
 │   ├── workflow/           # phase별 절차 문서 (정본 — pnpm wf가 배달)
 │   ├── sessions/           # 개발 세션/의사결정 기록 (날짜-주제.md)
 │   └── troubleshooting/    # 운영/도구 이슈 + 복구 절차 (에러 발생 시 참조)
