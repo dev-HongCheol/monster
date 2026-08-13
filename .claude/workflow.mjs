@@ -50,12 +50,22 @@ function freshState(feature) {
     // 우회하는 것을 막는다). verification 안이 아니라 밖에 두는 이유: pass()의
     // `Object.values(verification).every(Boolean)` 판정에 문자열이 섞이면 안 된다.
     ts_check_scope: null,
+    // 이번 슬라이스가 갱신·신설한 정본 경로. 비어 있고 canon_skip_reason도 없으면 pass가
+    // user-verification 진입을 막는다 — 바꾼 명세가 정본에 안 실린 채 끝나는 것을 막는 게이트다.
+    // ts_check_scope와 같은 이유로 verification 밖에 둔다: pass()의
+    // `Object.values(verification).every(Boolean)` 판정에 배열·문자열이 섞이면 안 된다.
+    canon_updated: [],
+    canon_skip_reason: null,
     verification: {
       cso_done: false,
       ts_check_clean: false,
       lint_clean: false,
       code_review_clean: false,
     },
+    // 이번 phase에서 이미 전문을 배달한 절차 문서. 두 번째부터는 요약만 낸다.
+    // verification 안이 아니라 밖에 두는 이유: resetVerification()이 CHECK_FLAG 키만 순회하므로
+    // 안에 넣으면 그 함수가 못 지워 invalidate 이후에도 배달 기록이 남는다.
+    docs_delivered: [],
   };
 }
 
@@ -86,6 +96,240 @@ function requirePhase(state, expected) {
 function resetVerification(state) {
   for (const f of Object.values(CHECK_FLAG)) state.verification[f] = false;
   state.ts_check_scope = null; // 검사 범위도 함께 무효화 — 재검증 없이 남으면 안 된다
+  // 정본 판단도 함께 무효화한다. 이 함수를 부르는 두 경로(invalidate·rework)는 둘 다 "코드가
+  // 바뀌었다"는 뜻이고, 코드가 바뀌면 "명세도 바뀌었나"라는 판단이 낡는다. 남겨 두면 초기 구현
+  // 기준으로 한 번 declare한 뒤 그 뒤의 모든 변경이 게이트를 그냥 통과한다.
+  state.canon_updated = [];
+  state.canon_skip_reason = null;
+  // docs_delivered는 여기서 건드리지 않는다. invalidate가 이 함수를 부르므로 초기화를 넣으면
+  // 매번 전문이 나가 차등 배달이 통째로 무력해진다. 초기화는 phase가 바뀌는 지점에서 한다.
+}
+
+// ── 정본(canon) 문서 ────────────────────────────────────────────────────────
+// 같은 판정이 tests/helpers/CanonDoc.ts에도 있다(그쪽이 fixture로 검증된다). CLI에서 그 모듈을
+// import할 수 없어 생긴 복사본이므로, 규칙을 바꾸면 두 곳을 함께 고친다.
+const DEV_PREFIXES = ["code", "game", "docs", "ops"];
+const DESIGN_PREFIXES = ["art", "ui"];
+const CANON_ROW_START = "| [`";
+const CANON_LIST_HEADING = "## 목록";
+const CANON_SEPARATOR = /^\|(?:\s*:?-+:?\s*\|)+$/;
+/** 정본 폴더의 인덱스 파일명. STEP_DOC_INDEX와 값은 같지만 다른 개념이라 따로 둔다. */
+const CANON_INDEX = "README.md";
+
+function locateCanonListTable(lines) {
+  const headingIdx = lines.findIndex((l) => l.trim() === CANON_LIST_HEADING);
+  if (headingIdx < 0) {
+    throw new Error(
+      `README에서 「${CANON_LIST_HEADING}」 절을 찾지 못했습니다 — 등재할 표가 없습니다.`
+    );
+  }
+  const sepIdx = lines.findIndex((l, i) => i > headingIdx && CANON_SEPARATOR.test(l.trim()));
+  if (sepIdx < 0) {
+    throw new Error(`「${CANON_LIST_HEADING}」 절에 표가 없습니다 — 헤더와 구분선이 있어야 합니다.`);
+  }
+  const rowIdxs = [];
+  for (let i = sepIdx + 1; i < lines.length && lines[i].startsWith("|"); i++) {
+    if (lines[i].startsWith(CANON_ROW_START)) rowIdxs.push(i);
+  }
+  return { sepIdx, rowIdxs };
+}
+
+function parseCanonSlug(slug, allowed) {
+  const m = /^([a-z]+)-([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(slug);
+  if (!m) {
+    throw new Error(
+      `정본 슬러그 형식이 아닙니다: "${slug}"\n` +
+        "  <분류>-<주제> 꼴이어야 하고 소문자·숫자·하이픈만 씁니다(확장자는 붙이지 않습니다)."
+    );
+  }
+  if (!allowed.includes(m[1])) {
+    throw new Error(
+      `허용되지 않은 분류 접두사입니다: "${m[1]}"\n` +
+        `  이 폴더가 받는 접두사: ${allowed.join(", ")}\n` +
+        "  늘리려면 해당 spec/README.md를 먼저 고치세요."
+    );
+  }
+  return { prefix: m[1], topic: m[2] };
+}
+
+function assertOneLineField(value, label) {
+  if (value.trim() === "") throw new Error(`${label}이(가) 비었습니다.`);
+  if (/[\r\n]/.test(value)) throw new Error(`${label}에 줄바꿈을 넣을 수 없습니다.`);
+  if (value.includes("|")) throw new Error(`${label}에 \`|\`를 넣을 수 없습니다(표의 열 구분자).`);
+}
+
+function renderCanonDoc(o) {
+  return [
+    `# ${o.title}`,
+    "",
+    `> ${o.question}`,
+    "",
+    `- **최초 작성:** ${o.date}`,
+    "- **상태:** CONFIRMED",
+    `- **이력:** ${o.date} — 신설`,
+    "",
+    "---",
+    "",
+    "이 문서는 **정본**이다. 내용이 낡으면 새로 만들지 않고 이 문서를 고친다. 이력 절에는",
+    "날짜와 무엇이 바뀌었는지만 한 줄 남기고, 그렇게 정한 경위는 그 슬라이스의 세션 문서가 든다.",
+    "",
+    "## (본문)",
+    "",
+  ].join("\n");
+}
+
+function insertCanonRow(readme, slug, question) {
+  const lines = readme.split("\n");
+  const { sepIdx, rowIdxs } = locateCanonListTable(lines);
+  const marker = `${CANON_ROW_START}${slug}.md\`]`;
+  if (rowIdxs.some((i) => lines[i].startsWith(marker))) return readme;
+  const row = `| [\`${slug}.md\`](${slug}.md) | ${question} |`;
+  const slugOf = (line) => line.slice(CANON_ROW_START.length).split("`")[0];
+  const at = rowIdxs.find((i) => slugOf(lines[i]) > `${slug}.md`);
+  const insertAt = at ?? (rowIdxs.length > 0 ? rowIdxs[rowIdxs.length - 1] + 1 : sepIdx + 1);
+  lines.splice(insertAt, 0, row);
+  return lines.join("\n");
+}
+
+/** 레포 루트 기준 상대 경로 — 항상 슬래시. Windows 구분자가 상태 파일에 들어가면 머신마다 갈린다. */
+function toRel(full) {
+  return path.relative(ROOT, full).split(path.sep).join("/");
+}
+
+/** 정본 갱신을 상태에 기록한다. 상태 파일이 없으면 조용히 넘어간다(슬라이스 밖 사용). */
+function recordCanon(...rels) {
+  if (!fs.existsSync(STATE_PATH)) return null;
+  const s = load();
+  const merged = new Set([...(s.canon_updated ?? []), ...rels]);
+  s.canon_updated = [...merged].sort();
+  s.canon_skip_reason = null; // 갱신을 선언했으므로 "바꾼 것 없음"과 공존할 수 없다
+  save(s);
+  return s;
+}
+
+// ── 절차 문서 배달 ──────────────────────────────────────────────────────────
+// phase마다 같은 이름의 절차 문서가 하나 있고(`docs/development/workflow/<phase>.md`), 전이에
+// 성공한 순간 그 문서를 그대로 찍는다. CLAUDE.md가 단계별 절차를 상시 들고 있지 않아도 되는 대신,
+// 절차가 필요한 순간에 도착하게 하는 것이 이 기구의 전부다.
+//
+// 지켜야 할 성질 셋. ① 배달은 커맨드 함수 안이 아니라 **디스패치 뒤**에 붙는다 — 모든 실패 경로가
+// fail() → process.exit(1)이라 실패한 전이에는 자동으로 배달이 안 간다(특히 pass는 네 검증이 다
+// 통과한 뒤에도 QA 잠정 게이트에서 죽을 수 있어, 커맨드 안에서 배달하면 전이하지도 않은 절차가 샌다).
+// ② 절대 throw하지 않고 종료코드를 바꾸지 않는다 — 배달이 실패로 보이면 상태는 이미 전이됐는데
+// 재실행이 requirePhase에 막혀 사람이 갇힌다. ③ 문서가 없어도 전이를 막지 않는다 — 막으면 문서
+// 하나 누락으로 워크플로가 멈추는데 빠져나올 경로가 없다.
+const STEP_DOC_DIR = ["docs", "development", "workflow"];
+const STEP_DOC_INDEX = "README.md";
+// done = 슬라이스가 끝난 상태라 뒤에 밟을 절차가 없다. 면제하지 않으면 pr-done이 없는 done.md를
+// 찾아 매 슬라이스 마지막마다 누락 경고를 헛발화한다.
+const DOC_EXEMPT_PHASES = new Set(["done"]);
+const DELIVERING_COMMANDS = new Set([
+  "start",
+  "approve-plan",
+  "ready-impl",
+  "start-verification",
+  "pass",
+  "rework",
+  "approve-pr",
+  "invalidate",
+]);
+// phase가 그대로여도 배달하는 커맨드. invalidate는 절차를 처음부터 다시 돌라는 선언이고,
+// start는 새 슬라이스의 시작이다.
+const REDELIVERING_COMMANDS = new Set(["start", "invalidate"]);
+const SEP = "─".repeat(60);
+
+/** 절차 문서의 repo 상대 경로. 항상 슬래시 — Windows 구분자가 나가면 붙여넣을 수 없는 안내가 된다. */
+function stepDocRel(phase) {
+  return [...STEP_DOC_DIR, `${phase}.md`].join("/");
+}
+
+// 절차 문서 디렉터리의 파일 목록. 디렉터리 자체가 없으면 null(누락 원인을 구분하기 위해).
+function stepDocDirFiles() {
+  const dir = path.join(ROOT, ...STEP_DOC_DIR);
+  return fs.existsSync(dir) ? fs.readdirSync(dir) : null;
+}
+
+// 절차 문서 본문. 없거나 읽을 수 없으면 null. 존재 판정은 readdir 결과에 대한 **정확한 문자열
+// 비교**다 — existsSync는 대소문자를 무시하는 Windows에서 `Verification.md` 오타를 통과시키고
+// Linux에서만 깨진다.
+//
+// 읽기 실패도 부재와 같이 다룬다. 이름이 readdir에 있는데 읽을 수 없는 경우(권한, 그 자리가
+// 디렉터리, I/O 오류)에 예외를 그대로 올리면 두 군데가 깨진다 — 배달 쪽은 상위 catch가 예외와
+// 함께 진단까지 삼켜 **아무 말 없이** 절차가 안 나가고(이 기구가 막으려는 단 하나의 결과다),
+// `steps`는 try/catch 밖이라 원시 스택으로 죽어 압축 후 복구 경로 자체가 사라진다. null로
+// 내려보내면 두 경우 모두 아래 누락 경고가 이유를 말한다.
+function readStepDoc(phase) {
+  const files = stepDocDirFiles();
+  const name = `${phase}.md`;
+  if (!files || !files.includes(name)) return null;
+  try {
+    return fs.readFileSync(path.join(ROOT, ...STEP_DOC_DIR, name), "utf8");
+  } catch {
+    return null;
+  }
+}
+
+// 누락 경고. 파일만 없는 경우와 디렉터리가 없는 경우는 고치는 법이 다르므로 구분해 말한다.
+function warnMissingStepDoc(phase) {
+  const files = stepDocDirFiles();
+  const cause =
+    files === null
+      ? "절차 문서 디렉터리 자체가 없음"
+      : files.includes(`${phase}.md`)
+        ? "파일은 있으나 읽을 수 없음 (권한, 또는 그 자리가 디렉터리)"
+        : `디렉터리는 있으나 이 파일만 없음 (형제 ${files.filter((f) => f.endsWith(".md")).length}개는 존재)`;
+  const rel = stepDocRel(phase);
+  process.stderr.write(
+    `⚠ [배달] ${phase} 절차 문서를 찾지 못했습니다.\n` +
+      `   경로: ${rel}\n` +
+      `   원인: ${cause}\n` +
+      `   결과: 이 전이에서 절차가 전달되지 않았습니다 —\n` +
+      `         다음 단계를 기억에 의존해 진행하게 됩니다.\n` +
+      `   조치: git 이력에서 복구(\`git log --diff-filter=D -- ${rel}\`)하거나 사용자에게 알리세요.\n`
+  );
+}
+
+/**
+ * 절차 문서를 출력한다. 경로를 본문보다 먼저 찍는 이유는 vitest·tsc 출력 뒤에 배달되는 커맨드가
+ * 있어 본문이 잘릴 수 있기 때문이다 — 잘려도 경로가 남으면 회복된다. 상태 줄을 본문 뒤에 한 번 더
+ * 찍는 이유는 배달물이 자체 `#` 제목을 가진 마크다운이라, 구분자가 없으면 문서 제목이 CLI가 하는
+ * 말처럼 읽히기 때문이다. 상태·경로·본문은 전부 stdout이다 — 두 스트림은 리다이렉트 시 순서가
+ * 보장되지 않아, 나누면 이 순서가 깨진다.
+ * @param phase 배달할 phase
+ * @param cmd 상태 줄에 쓸 커맨드 표기 — 인자까지 포함한 원본(`pass review`). 읽기 전용 재출력이면 생략
+ * @param summary true면 본문 대신 제목 줄만 (같은 phase 두 번째부터)
+ * @param transitioned false면 phase가 그대로인 재배달이라 상태 줄이 전이를 함의하지 않게 쓴다
+ * @returns 배달했으면 true, 문서를 못 읽어 경고만 했으면 false
+ */
+function emitStepDoc(phase, { cmd = null, summary = false, transitioned = true } = {}) {
+  const body = readStepDoc(phase);
+  if (body === null) {
+    warnMissingStepDoc(phase);
+    return false;
+  }
+  console.log(SEP);
+  console.log(`▶ ${phase} 절차: ${stepDocRel(phase)}`);
+  console.log(`   (다시 보려면 \`pnpm wf steps ${phase}\`)`);
+  console.log(SEP);
+  // 억제는 전부 아니면 전무다 — 잘린 절차는 이 기구가 막으려는 실패 그 자체다.
+  if (process.env.WF_QUIET !== "1") {
+    if (summary) {
+      for (const line of body.split("\n")) {
+        if (/^#{1,3} /.test(line)) console.log(line);
+      }
+      console.log(`\n전문: pnpm wf steps ${phase}`);
+    } else {
+      console.log(body.trimEnd());
+    }
+    console.log(SEP);
+  }
+  // 전이가 없었는데 `→ phase=`를 쓰면 그 화살표가 전이를 함의해 오독된다.
+  if (cmd) {
+    console.log(
+      transitioned ? `✓ ${cmd} → phase=${phase}` : `✓ ${cmd} — phase=${phase} 절차 재배달`
+    );
+  }
+  return true;
 }
 
 // vitest를 항상 run 모드로 실행한다 (bare vitest = watch 모드 → hang 방지).
@@ -364,6 +608,22 @@ const commands = {
             `\`pnpm wf pass ${check}\`를 다시 실행하면 user-verification으로 전이됩니다.`
         );
       }
+      // 정본 게이트: 이번 슬라이스가 바꾼 명세가 정본에 실렸는지를 **선언하게** 한다.
+      // "정본을 고쳤는가"는 기계가 못 보지만 "판단했는가"는 볼 수 있다(skip-test와 같은 형태).
+      // 이 게이트가 없으면 새 규칙이 세션 문서와 ADR에만 쌓이고, 다음 사람이 시점 기록을
+      // 명세로 읽게 된다 — ADR 002·006·007이 그렇게 정본 자리에 섰다.
+      // 이 필드가 없던 시절의 상태 파일에서는 undefined다 — 없으면 "선언 안 함"으로 읽는다.
+      if ((s.canon_updated ?? []).length === 0 && !s.canon_skip_reason) {
+        save(s); // pass 플래그는 보존 — 선언 후 같은 pass를 다시 치면 곧장 전이한다
+        process.stderr.write(
+          "✗ 정본 갱신 여부가 선언되지 않았습니다 — 이번 슬라이스가 바꾼 명세는 정본에 실려야 합니다.\n" +
+            "    새로 만들기:  pnpm wf canon <분류>-<주제> \"<제목>\" \"<답하는 질문>\"\n" +
+            "    기존 것 고침: pnpm wf canon-done <경로...>\n" +
+            "    바꾼 명세 없음: pnpm wf canon-skip \"<사유>\"\n"
+        );
+        fail(`선언한 뒤 \`pnpm wf pass ${check}\`를 다시 실행하면 user-verification으로 전이됩니다.`);
+      }
+
       s.phase = "user-verification";
       save(s);
       console.log(`✓ pass ${check} → 전체 통과 → phase=user-verification (편집 잠금)`);
@@ -371,6 +631,99 @@ const commands = {
       save(s);
       console.log(`✓ pass ${check}`);
     }
+  },
+
+  // 새 정본 문서를 규칙에 맞게 만들고 인덱스에 등재한다. 만든 것 자체가 정본 갱신이므로
+  // canon_updated에도 바로 기록한다(상태 파일이 없으면 문서만 만든다 — 슬라이스 밖에서도 쓸 수 있게).
+  canon(args) {
+    const design = args.includes("--design");
+    const rest = args.filter((a) => a !== "--design");
+    const [slug, title, question] = rest;
+    if (!slug || !title || !question) {
+      fail('사용법: canon <분류>-<주제> "<제목>" "<답하는 질문>" [--design]');
+    }
+
+    const allowed = design ? DESIGN_PREFIXES : DEV_PREFIXES;
+    try {
+      parseCanonSlug(slug, allowed);
+      assertOneLineField(title, "제목");
+      assertOneLineField(question, "답하는 질문");
+    } catch (e) {
+      fail(e.message);
+    }
+
+    const dir = path.join(ROOT, "docs", design ? "design" : "development", "spec");
+    const docPath = path.join(dir, `${slug}.md`);
+    if (fs.existsSync(docPath)) {
+      fail(
+        `이미 있습니다: ${toRel(docPath)}\n` +
+          "  정본은 새로 만들지 않고 고칩니다. 고쳤다면 `pnpm wf canon-done`으로 기록하세요."
+      );
+    }
+
+    const readmePath = path.join(dir, CANON_INDEX);
+    if (!fs.existsSync(readmePath)) {
+      fail(`인덱스가 없습니다: ${toRel(readmePath)} — 정본 폴더가 아직 준비되지 않았습니다.`);
+    }
+
+    let readme;
+    try {
+      readme = insertCanonRow(fs.readFileSync(readmePath, "utf8"), slug, question);
+    } catch (e) {
+      fail(e.message);
+    }
+
+    // toISOString()은 UTC라 KST 저녁 이후에는 하루 이른 날짜가 찍힌다. 문서 날짜는 사람이
+    // 세션 파일을 날짜로 찾는 인덱스라 어긋나면 안 된다 — sv-SE 로캘이 로컬 YYYY-MM-DD를 준다.
+    const today = new Date().toLocaleDateString("sv-SE");
+    // **인덱스를 먼저 쓴다.** 문서를 먼저 쓰고 인덱스에서 죽으면 등재 안 된 정본이 남는데,
+    // 재실행하면 `이미 있습니다`로 막혀 canon-done으로 밀려나고 등재는 영영 안 된다.
+    // 반대 순서의 최악은 가리키는 대상이 없는 인덱스 행 하나이고, 그건 눈에 보인다.
+    // insertCanonRow가 멱등이라 재실행도 안전하다.
+    fs.writeFileSync(readmePath, readme);
+    fs.writeFileSync(docPath, renderCanonDoc({ slug, title, question, date: today }));
+    console.log(`✓ canon: ${toRel(docPath)} 생성 + ${toRel(readmePath)} 등재`);
+
+    recordCanon(toRel(docPath));
+  },
+
+  // 기존 정본을 고쳤을 때 기록한다. 경로가 실제로 있는지 확인한다 — 없는 경로를 적어
+  // 게이트만 통과시키는 것을 막는다.
+  "canon-done"(args) {
+    if (args.length === 0) fail("사용법: canon-done <경로...> (레포 루트 기준)");
+    const rels = [];
+    for (const a of args) {
+      const full = path.resolve(ROOT, a);
+      // 레포 밖을 막는다. 파일을 쓰지는 않지만, 밖을 가리키는 경로는 타 머신에서 의미가 없고
+      // 존재 검사를 넣은 목적(아무 경로로 게이트만 통과시키는 것을 막는다)이 그대로 샌다.
+      // path.isAbsolute도 본다. Windows에서 드라이브가 다르면 path.relative가 `../`가 아니라
+      // 절대 경로를 그대로 돌려주므로(ROOT가 C:, 인자가 F:\...), 앞 두 조건만으로는 샌다.
+      const rel = toRel(full);
+      if (rel === "" || rel.startsWith("../") || path.isAbsolute(rel)) {
+        fail(`레포 밖 경로입니다: ${a}\n  정본은 이 레포 안의 파일이어야 합니다.`);
+      }
+      if (!fs.existsSync(full) || !fs.statSync(full).isFile()) {
+        fail(`그런 파일이 없습니다: ${a}`);
+      }
+      rels.push(rel);
+    }
+    const s = recordCanon(...rels);
+    // recordCanon은 상태 파일이 없으면 null이다(슬라이스 밖 사용). 그 경우 기록만 건너뛴다.
+    console.log(
+      s ? `✓ canon-done: ${s.canon_updated.join(", ")}` : `✓ canon-done: ${rels.join(", ")} (상태 파일이 없어 기록은 생략)`
+    );
+  },
+
+  // 이번 슬라이스가 바꾼 명세가 없을 때. 사유를 남기는 것이 요점이다 — skip-test와 같은 형태로,
+  // "생각해 보고 없다고 판단했다"와 "생각하지 않았다"를 구분한다.
+  "canon-skip"(args) {
+    const reason = args.join(" ").trim();
+    if (!reason) fail('사용법: canon-skip "<사유>"');
+    const s = load();
+    s.canon_updated = [];
+    s.canon_skip_reason = reason;
+    save(s);
+    console.log(`✓ canon-skip: ${reason}`);
   },
 
   // verification 중 코드 변경 → 모든 검증 무효화 (cso 포함, 비대칭 제거)
@@ -466,17 +819,115 @@ const commands = {
     console.log("✓ pr-done → phase=done");
   },
 
+  // 현재(또는 인자로 받은) phase의 절차 문서를 다시 출력한다. 상태를 바꾸지 않는 읽기 전용이라
+  // 차등 배달 규칙을 타지 않는다 — 다시 보려고 친 명령이므로 항상 전문이다.
+  steps(args) {
+    // phase를 명시했으면 상태 파일을 읽지 않는다. steps는 "절차를 잃어버렸을 때" 치는 커맨드라,
+    // 상태까지 잃은 상황에서 `먼저 start를 실행하세요`로 죽으면 복구 경로가 사라진다.
+    const phase = args[0] ?? load().phase;
+    if (!PHASES.includes(phase)) {
+      fail(`알 수 없는 phase: "${phase}" (가능: ${PHASES.join(", ")})`);
+    }
+    if (DOC_EXEMPT_PHASES.has(phase)) {
+      console.log(`phase="${phase}"에는 절차 문서가 없습니다.`);
+      return;
+    }
+    emitStepDoc(phase);
+  },
+
+  // 절차 문서 정합 검사 (단독 실행 — 언제든 확인용). 누락·잉여가 있으면 종료코드 1.
+  // 같은 판정이 tests/helpers/WorkflowSteps.ts에도 있다(그쪽이 fixture로 검증된다).
+  // CLI에서 그 모듈을 import할 수 없어 생긴 복사본이므로, 규칙을 바꾸면 두 곳을 함께 고친다.
+  "check-docs"() {
+    const files = stepDocDirFiles();
+    if (files === null) fail(`절차 문서 디렉터리 없음: ${STEP_DOC_DIR.join("/")}/`);
+    const phaseDocs = PHASES.filter((p) => !DOC_EXEMPT_PHASES.has(p)).map((p) => `${p}.md`);
+    const expected = [STEP_DOC_INDEX, ...phaseDocs]; // 인덱스도 있어야 한다 — 통독 경로가 그것뿐이다
+    const markdown = files.filter((f) => f.endsWith(".md"));
+    const missing = expected.filter((n) => !markdown.includes(n));
+    const unexpected = markdown.filter((n) => !expected.includes(n));
+    if (missing.length > 0 || unexpected.length > 0) {
+      process.stderr.write("✗ 절차 문서 정합 실패:\n");
+      for (const n of missing) process.stderr.write(`    - 누락: ${n}\n`);
+      for (const n of unexpected) {
+        process.stderr.write(`    - 잉여: ${n} (배달되지 않는 문서 — 읽히지 않은 채 낡는다)\n`);
+      }
+      process.exit(1);
+    }
+    console.log(`✓ 절차 문서 정합 (phase ${phaseDocs.length}개 + ${STEP_DOC_INDEX})`);
+  },
+
   status() {
     const s = load();
     const editable = EDITABLE_PHASES.has(s.phase);
     console.log(JSON.stringify(s, null, 2));
     console.log(`\nscripts editable: ${editable ? "YES" : "no (locked)"}`);
+    // 경로 한 줄만 — 본문은 안 낸다. status는 "나 어디 있지"의 정본 커맨드라 일상적으로 돌아가고,
+    // 그러면 절차 문서의 **존재**로 신호가 온다. 압축 이후 "절차를 모르면 문서를 읽어라"는 지시가
+    // 안 듣는 이유가 여기에 있다 — 부재는 스스로를 알리지 않으므로 방아쇠가 될 수 없다.
+    // PHASES 검사를 한 번 태운다 — 상태가 어떤 이유로든 어휘 밖 값을 들고 있을 때
+    // 진단 커맨드가 그럴듯한 가짜 경로를 말하지 않게 한다.
+    if (PHASES.includes(s.phase) && !DOC_EXEMPT_PHASES.has(s.phase)) {
+      console.log(`\n▶ ${s.phase} 절차: ${stepDocRel(s.phase)}`);
+      console.log("   (전문: `pnpm wf steps`)");
+    }
   },
 };
+
+// 디스패치 직전의 phase. 전이가 실제로 일어났는지 판정하는 기준이라 커맨드 실행 전에 읽는다.
+// 상태 파일이 없을 수 있다(start 최초 실행).
+function phaseBeforeDispatch() {
+  try {
+    return JSON.parse(fs.readFileSync(STATE_PATH, "utf8")).phase ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 디스패치가 성공으로 끝난 뒤 절차 문서를 배달한다. 여기까지 실행이 왔다는 것 자체가 전이 성공의
+ * 증거다(모든 실패 경로는 process.exit(1)로 끝난다). 어떤 이유로도 throw하지 않는다.
+ * @param cmd 방금 실행한 커맨드 이름
+ * @param args 그 커맨드의 인자 — 상태 줄을 원본 그대로(`pass review`) 찍기 위해 받는다
+ * @param phaseBefore 디스패치 직전의 phase (null이면 상태 파일이 없었다)
+ */
+function deliverAfterDispatch(cmd, args, phaseBefore) {
+  try {
+    const state = JSON.parse(fs.readFileSync(STATE_PATH, "utf8"));
+    const phase = state.phase;
+    if (DOC_EXEMPT_PHASES.has(phase)) return;
+
+    const phaseChanged = phase !== phaseBefore;
+    if (!phaseChanged && !REDELIVERING_COMMANDS.has(cmd)) return;
+
+    // 기존 상태 파일에는 이 필드가 없어 첫 실행 시 undefined다.
+    // phase가 바뀔 때마다 비우므로 실제로는 항상 [] 아니면 [현재 phase] 하나다 —
+    // 여러 phase의 이력이 쌓이지 않는다.
+    let delivered = Array.isArray(state.docs_delivered) ? state.docs_delivered : [];
+    if (phaseChanged) delivered = []; // 새 phase = 새 회차. rework도 여기 걸린다
+
+    const summary = delivered.includes(phase);
+    const label = [cmd, ...args].join(" ");
+    if (emitStepDoc(phase, { cmd: label, summary, transitioned: phaseChanged }) && !summary) {
+      delivered = [...delivered, phase];
+    }
+
+    state.docs_delivered = delivered;
+    save(state);
+  } catch (e) {
+    // 배달은 곁가지다. 여기서 죽으면 이미 전이된 상태와 실패한 종료코드가 어긋난다.
+    // 다만 조용히 삼키지는 않는다 — 절차가 안 나갔다는 사실 자체가 이 기구의 실패다.
+    // String(e)로 받는다. `e.message`는 e가 null로 던져지면 catch **안에서** 다시 던져
+    // 이 catch가 지키려는 불변식을 스스로 깬다(도달 가능성은 사실상 0이지만 비용도 0이다).
+    process.stderr.write(`⚠ [배달] 절차 문서 배달에 실패했습니다: ${String(e)}\n`);
+  }
+}
 
 const [, , cmd, ...args] = process.argv;
 if (!cmd || !commands[cmd]) {
   console.log(`commands: ${Object.keys(commands).join(", ")}`);
   process.exit(cmd ? 1 : 0);
 }
+const phaseBefore = DELIVERING_COMMANDS.has(cmd) ? phaseBeforeDispatch() : null;
 commands[cmd](args);
+if (DELIVERING_COMMANDS.has(cmd)) deliverAfterDispatch(cmd, args, phaseBefore);
