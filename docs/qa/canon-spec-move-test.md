@@ -42,34 +42,34 @@
 
 ### 자동 검사가 덮는 것 — 먼저 돌린다
 
-- [ ] `pnpm vitest run` — 전체 스위트 통과
-- [ ] `pnpm wf check-links` — 깨진 링크 0건
-- [ ] `pnpm typecheck` — 통과
-- [ ] `pnpm wf check-docs` — 절차 문서 정합 통과
-- [ ] `pnpm wf check-meta` — 누락 0건
+- [x] `pnpm vitest run` — 전체 스위트 통과
+- [x] `pnpm wf check-links` — 깨진 링크 0건
+- [x] `pnpm typecheck` — 통과
+- [x] `pnpm wf check-docs` — 절차 문서 정합 통과
+- [x] `pnpm wf check-meta` — 누락 0건
 
 ### 검사기가 못 보는 것 — 사람이 본다
 
 평문 언급은 마크다운 링크가 아니라서 검사기가 지나친다. 아래는 그중 **낡으면 실제로 사람을 잘못 안내하는 자리**만 골랐다.
 
-- [ ] `docs/development/workflow/implementation.md`가 부르는 코드 규약 문서 경로가 `docs/development/spec/code-conventions.md`인가
-- [ ] `docs/development/workflow/user-verification.md`가 부르는 문체 문서 경로가 `docs/development/spec/docs-writing-style.md`인가
-- [ ] `CLAUDE.md` 「행동 규칙」의 두 문서 경로가 새 경로인가 (라우팅 표 밖이라 표 접기로는 안 고쳐진다)
-- [ ] `git grep -n "development/conventions\.md\|development/writing-style\.md\|development/glossary\.md\|development/i18n-guide\.md\|development/build-and-distribution\.md\|development/environment-setup\.md"` — 결과가 시점 기록(`sessions/`·`qa/`)의 맨 파일명 언급뿐인가. 정본·`CLAUDE.md`·`workflow/`에 남아 있으면 놓친 것이다
-- [ ] `git grep -n "code-code-\|docs-docs-"` — 0건인가 (부분 문자열 충돌로 이름이 겹쳐 붙은 사고 확인)
+- [x] `docs/development/workflow/implementation.md`가 부르는 코드 규약 문서 경로가 `docs/development/spec/code-conventions.md`인가
+- [x] `docs/development/workflow/user-verification.md`가 부르는 문체 문서 경로가 `docs/development/spec/docs-writing-style.md`인가
+- [x] `CLAUDE.md` 「행동 규칙」의 두 문서 경로가 새 경로인가 (라우팅 표 밖이라 표 접기로는 안 고쳐진다)
+- [x] `git grep -n "development/conventions\.md\|development/writing-style\.md\|development/glossary\.md\|development/i18n-guide\.md\|development/build-and-distribution\.md\|development/environment-setup\.md"` — 결과가 이 QA 문서 §「이 슬라이스에서 무엇을 확인하나」의 예시 한 줄과 `tests/logic/CanonSpecMove.test.ts`의 이동 대응표 여섯 줄뿐인가. 그 대응표는 옛 경로가 추적 목록에서 사라졌는지를 재는 게이트라 옛 이름을 왼쪽에 적는 것이 정상이다. 정본·`CLAUDE.md`·`workflow/`에 남아 있으면 놓친 것이다
+- [x] `git grep -n "code-code-\|docs-docs-" -- ':!docs/qa/canon-spec-move-test.md' ':!docs/development/sessions/2026-08-13-canon-spec-move-plan.md'` — 0건인가 (부분 문자열 충돌로 이름이 겹쳐 붙은 사고 확인). 제외한 두 파일은 그 사고를 **설명하려고** 겹친 이름을 본문에 그대로 적고 있어서, 빼지 않으면 검사가 자기 문장 세 줄을 잡아 항상 실패한다
 
 ### 문서가 사람에게 제대로 보이는가
 
-- [ ] GitHub PR의 **Files changed**에서 옮긴 문서 여섯 개를 열어 본문 링크를 클릭 — 전부 열리는가
-- [ ] `docs/development/spec/README.md`의 「목록」 표에 일곱 줄(옮긴 6 + `game-combat.md`)이 슬러그 사전순으로 있는가
-- [ ] `docs/design/spec/README.md`의 꼬리 문구가 F73이 아니라 **F69**를 가리키는가
-- [ ] `CLAUDE.md` 라우팅 표에서 "무엇을 왜 그렇게 그리나"·"몇 px·어떤 피벗인가"·"어떤 프롬프트로 뽑나" **세 행이 아직 파일명으로 남아 있는가** (지금 접으면 빈 인덱스로 보내진다 — 계획 CN1)
-- [ ] `docs/temp/architecture.md`가 로컬에 있고 `git status`에 안 뜨는가
+- [x] GitHub PR의 **Files changed**에서 옮긴 문서 여섯 개를 열어 본문 링크를 클릭 — 전부 열리는가
+- [x] `docs/development/spec/README.md`의 「목록」 표에 일곱 줄(옮긴 6 + `game-combat.md`)이 슬러그 사전순으로 있는가
+- [x] `docs/design/spec/README.md`의 꼬리 문구가 F73이 아니라 **F69**를 가리키는가
+- [x] `CLAUDE.md` 라우팅 표에서 "무엇을 왜 그렇게 그리나"·"몇 px·어떤 피벗인가"·"어떤 프롬프트로 뽑나" **세 행이 아직 파일명으로 남아 있는가** (지금 접으면 빈 인덱스로 보내진다 — 계획 CN1)
+- [x] `docs/temp/architecture.md`가 로컬에 있고 `git status`에 안 뜨는가
 
 ### 절차와 인게임이 그대로인가
 
-- [ ] `pnpm wf steps implementation` — 절차 문서가 정상 출력되는가
-- [ ] Cocos 에디터로 게임을 한 판 돌려 본다. 이 슬라이스는 게임 코드를 건드리지 않았으므로 **아무것도 달라지지 않아야 한다** — 달라졌다면 슬라이스 밖의 파일을 건드린 것이다
+- [x] `pnpm wf steps implementation` — 절차 문서가 정상 출력되는가
+- [x] Cocos 에디터로 게임을 한 판 돌려 본다. 이 슬라이스는 게임 코드를 건드리지 않았으므로 **아무것도 달라지지 않아야 한다** — 달라졌다면 슬라이스 밖의 파일을 건드린 것이다
 
 ---
 
@@ -77,6 +77,7 @@
 
 - 2026-08-13 — 계획 승인 직후 작성. 씬·프리팹·에디터 절은 이 슬라이스에 해당 사항이 **없음으로 확정**이라 사유와 함께 비웠다.
 - 2026-08-13 — 구현 완료 후 확정. 검사기가 실제로 잡은 수치로 아래 「구현이 확인한 것」을 채웠다.
+- 2026-08-13 — 사용자 검증 중 수동 체크 둘을 고쳤다. 이름 겹침 검사는 이 QA 문서와 계획 문서에 예시로 적힌 겹친 이름까지 잡아 사고가 없는데도 3건이 나왔으므로 두 파일을 제외 경로로 뺐고, 옛 경로 검사는 이동 게이트 테스트의 대응표 여섯 줄을 기대 결과에 적어 두지 않아 통과인지 아닌지를 판단할 수 없었으므로 그 표를 명시했다. 둘 다 검사 자체는 통과였고 기대값 쪽이 부실했다.
 
 ## 구현이 확인한 것
 
