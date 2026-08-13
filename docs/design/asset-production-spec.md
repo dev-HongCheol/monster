@@ -7,7 +7,7 @@
 
 [`art-direction.md`](art-direction.md)는 **무엇을 왜 그렇게 그리는가**의 정본이고, 스스로 §9에서 "이 문서는 방향의 정본이지 실행 계획이 아니다"라고 선을 그었다. 이 문서는 그 선의 반대편, **그래서 얼마로 그리는가**를 맡는다.
 
-그래서 여기엔 방향 서술을 다시 적지 않는다. 화풍이 왜 애니 셀인지, 왜 잡몹은 원이고 플레이어는 사각형인지는 링크로 넘기고, 이 문서는 그 결정에서 떨어지는 숫자와 조형 규칙만 든다. 같은 설명이 두 문서에 복사되면 한쪽이 반드시 낡고, 다음 사람이 어느 쪽을 믿을지 모르게 되기 때문이다([`writing-style.md`](../development/writing-style.md)).
+그래서 여기엔 방향 서술을 다시 적지 않는다. 화풍이 왜 애니 셀인지, 왜 잡몹은 원이고 플레이어는 사각형인지는 링크로 넘기고, 이 문서는 그 결정에서 떨어지는 숫자와 조형 규칙만 든다. 같은 설명이 두 문서에 복사되면 한쪽이 반드시 낡고, 다음 사람이 어느 쪽을 믿을지 모르게 되기 때문이다([`docs-writing-style.md`](../development/spec/docs-writing-style.md)).
 
 우선순위는 셋이다. **코드·데이터가 이 문서를 이기고, 이 문서가 방향 문서의 수치를 이기며, 방향 문서가 이 문서의 취향 판단을 이긴다.** 첫째는 CLAUDE.md의 정본 규칙 그대로다 — 구현이 실제로 무엇을 하는지는 코드가 쥐고 있다. 둘째는 이 문서가 코드·데이터를 직접 읽어 쓰는 문서이기 때문이고, 셋째는 "크게 그릴지 작게 그릴지" 같은 판단은 애초에 여기서 내리지 않기 때문이다.
 
@@ -408,7 +408,7 @@ v1이 캐릭터 하나여도 이 분해로 만들어야 v2가 재리깅 없이 �
 
 ### 8.3 텍스처 용량
 
-**텍스처 한 장의 상한을 숫자로 못 박지 않는다.** 이 프로젝트를 실제로 제한하는 것은 GPU 메모리가 아니라 **웹 빌드 용량**이다 — v1이 itch.io 배포라 총 텍스처 용량이 곧 플레이어의 다운로드 크기가 된다. 한도와 산출물 규격은 [`build-and-distribution.md`](../development/build-and-distribution.md)가 정본이다.
+**텍스처 한 장의 상한을 숫자로 못 박지 않는다.** 이 프로젝트를 실제로 제한하는 것은 GPU 메모리가 아니라 **웹 빌드 용량**이다 — v1이 itch.io 배포라 총 텍스처 용량이 곧 플레이어의 다운로드 크기가 된다. 한도와 산출물 규격은 [`ops-build.md`](../development/spec/ops-build.md)가 정본이다.
 
 소스는 표시 크기의 2배 이상으로 그리되(§6.4), 게임에 들어가는 아틀라스는 압축한다.
 
@@ -526,6 +526,6 @@ art-direction §5·§8-3이 "각 요괴 원전 도상을 확인하고 추측하�
 | 스킨과 판정의 관계 | [ADR 007](../decisions/007-skin-hitbox-independence.md) |
 | 구현이 실제로 무엇을 하는가 | `game/assets/scripts/**` + JSDoc |
 | 수치의 현재값 | `game/assets/resources/data/*.json` |
-| 빌드 산출물·배포 한도 | [`build-and-distribution.md`](../development/build-and-distribution.md) |
+| 빌드 산출물·배포 한도 | [`ops-build.md`](../development/spec/ops-build.md) |
 | 다음에 할 아트 작업 | [`backlog.md`](../development/backlog.md) F60·F62 |
 | 아트 도구·자동화 리스크 | [`backlog-implement.md`](../development/backlog-implement.md) F59 |

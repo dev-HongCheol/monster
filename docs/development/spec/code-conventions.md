@@ -4,6 +4,7 @@
 
 - **최초 작성:** 2026-05-19
 - **상태:** CONFIRMED
+- **이력:** 2026-08-13 — `spec/`으로 이전(`conventions.md` → `code-conventions.md`). 「scripts/logic 분리」와 「다국어」 절이 ADR 002·005를 링크하던 것을 끊고, 지금 지키는 규칙과 그 이유를 이 문서가 직접 들게 했다
 
 ---
 
@@ -183,7 +184,7 @@ const dist = Math.sqrt(dx * dx + dy * dy);
 
 WHY를 적기로 했다면, 그 WHY가 **읽는 사람 머릿속에서 다시 세워져야** 값어치가 있다. 쓴 사람에게는 자명해서 생략한 연결 고리가 문장에 없으면, 주석은 달려 있는데 아무도 이해하지 못하는 상태가 된다.
 
-지켜야 할 세 원칙(지시 대상 명시 · 인과 고리 · 실패 증상)은 [`writing-style.md` § 설명하는 글은 독자가 인과를 복원할 수 있게 쓴다](writing-style.md#설명하는-글은-독자가-인과를-복원할-수-있게-쓴다)가 정본이다. **원칙을 여기 옮겨 적지 않는다** — 예전에 이 규칙이 세 파일에 복사돼 있다가 한 곳만 고치는 사고가 두 번 났다(백로그 `F51`). 아래는 그 원칙을 코드 주석에 적용한 예시다.
+지켜야 할 세 원칙(지시 대상 명시 · 인과 고리 · 실패 증상)은 [`docs-writing-style.md` § 설명하는 글은 독자가 인과를 복원할 수 있게 쓴다](docs-writing-style.md#설명하는-글은-독자가-인과를-복원할-수-있게-쓴다)가 정본이다. **원칙을 여기 옮겨 적지 않는다** — 예전에 이 규칙이 세 파일에 복사돼 있다가 한 곳만 고치는 사고가 두 번 났다(백로그 `F51`). 아래는 그 원칙을 코드 주석에 적용한 예시다.
 
 ```ts
 // ❌ 쓴 사람만 아는 글 — "반대편"이 무엇의 반대편인지 문장에 없고,
@@ -355,13 +356,13 @@ scripts/
   ui/           # UI 컴포넌트
 ```
 
-게임 규칙 로직은 `logic/`에 구현하고 Component는 라이프사이클 + wiring만 담당한다. → [ADR 002](../../docs/decisions/002-scripts-logic-pattern.md)
+게임 규칙 로직은 `logic/`에 구현하고 Component는 라이프사이클 + wiring만 담당한다. 이렇게 가르는 이유는 `logic/`이 `cc`를 import하지 않아야 vitest가 엔진 없이 그 규칙을 돌려 볼 수 있기 때문이다 — Component에 규칙이 섞이면 그 부분은 테스트에서 통째로 사라진다.
 
 ---
 
 ## 다국어(i18n)
 
-자체 경량 `t()` 방식. 카탈로그는 `resources/i18n/<lang>.json`. → [ADR 005](../../docs/decisions/005-i18n-approach.md)
+자체 경량 `t()` 방식이고 카탈로그는 `resources/i18n/<lang>.json`이다. 방식과 절차의 정본은 [`code-i18n.md`](code-i18n.md)이고, 여기에는 코드를 쓸 때 지킬 규칙만 둔다.
 
 ### 핵심 규칙
 
@@ -402,10 +403,7 @@ scripts/
 
 ### 정적 라벨 vs 동적 라벨
 
-| 종류 | 방법 |
-|------|------|
-| 정적 씬 라벨(버튼/타이틀) | `ui/LocalizedLabel` 컴포넌트 부착 + `@property key` |
-| 코드 동적 라벨(HUD 수치 등) | Component에서 `I18n.instance.t(key, params)` 직접 호출 |
+씬의 `LocalizedLabel`과 코드의 `t()` 중 무엇을 고르는지는 [`code-i18n.md`](code-i18n.md) §8이 정본이다. **여기 옮겨 적지 않는다** — 같은 규칙이 두 곳에 있으면 한쪽만 고치는 사고가 나고, 이 레포는 그 사고를 이미 두 번 겪었다(백로그 `F51`).
 
 - **i18n 라벨은 TTF 폰트를 사용한다**(비트맵 `.fnt` 금지). 비트맵 폰트는 미리 구운 글자만 그려 다국어 글리프에 부적합. 폰트 글리프 커버리지는 언어 추가 단계에서 확인.
 - 언어 변경 갱신은 `I18n` 싱글톤의 **명시적 레지스트리**로 처리한다(LocalizedLabel가 onEnable 등록 / onDisable·onDestroy 해제, `setLanguage`·`onReady`가 순회 refresh). 이벤트 버스/매 프레임 폴링을 쓰지 않는다.
@@ -414,4 +412,4 @@ scripts/
 
 ## 문서 작성 스타일
 
-이 문서(`conventions.md`)는 **코드 작성 규칙**만 다룬다. 코드가 아닌 **문서**(계획·QA·세션 기록·ADR·PR 본문 등)의 한국어 서술 규칙은 별도 문서로 분리했다 → [`writing-style.md`](writing-style.md).
+이 문서(`code-conventions.md`)는 **코드 작성 규칙**만 다룬다. 코드가 아닌 **문서**(계획·QA·세션 기록·ADR·PR 본문 등)의 한국어 서술 규칙은 별도 문서로 분리했다 → [`docs-writing-style.md`](docs-writing-style.md).

@@ -22,4 +22,4 @@
 | 문서 | 답하는 질문 |
 |---|---|
 
-> 아직 비어 있다. 기존 정본(`art-direction.md`·`asset-production-spec.md`·`art-generation-playbook.md`)을 이 폴더로 옮기는 것은 백로그 **F73**이다.
+> 아직 비어 있다. 기존 정본(`art-direction.md`·`asset-production-spec.md`·`art-generation-playbook.md`)을 이 폴더로 옮기는 것은 백로그 **F69**다 — 그 셋은 결정 기록으로 나가는 링크를 59곳에서 걸고 있어, 링크를 끊는 작업과 이동을 한 슬라이스에서 함께 한다.

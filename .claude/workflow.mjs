@@ -810,6 +810,23 @@ const commands = {
     console.log("✓ QA 문서 확정됨 (잠정 표시 없음)");
   },
 
+  // 마크다운 링크·앵커 검사 (단독 실행 — 언제든 확인용). 깨진 링크가 있으면 종료코드 1.
+  //
+  // 판정을 여기 베끼지 않고 vitest를 띄운다. 로직은 tests/helpers/LinkCheck.ts 한 벌뿐이고
+  // tests/logic/DocLinks.test.ts가 그것을 부르므로, 이 커맨드는 그 테스트를 실행하기만 한다.
+  // check-docs·insertCanonRow처럼 CLI가 판정을 복사하면 한쪽만 고쳤을 때 나머지가 낡은 채로
+  // 초록불을 유지하는데(백로그 F78이 그 상태다), 새로 만드는 검사에까지 그 함정을 파지 않는다.
+  //
+  // 회귀를 실제로 막는 것은 이 커맨드가 아니라 vitest 스위트다 — start-verification의 GREEN
+  // 게이트가 매 슬라이스 강제로 돌린다. 이 커맨드는 사람이 중간에 확인할 때 쓴다.
+  "check-links"() {
+    console.log("\n▶ 마크다운 링크·앵커 검사: vitest run tests/logic/DocLinks.test.ts");
+    if (runVitest(["tests/logic/DocLinks.test.ts"]) !== 0) {
+      fail("깨진 링크가 있습니다 — 위 목록의 `파일:줄 → 대상`을 고치세요.");
+    }
+    console.log("✓ 깨진 링크 없음");
+  },
+
   // PR 생성·머지 완료
   "pr-done"() {
     const s = load();

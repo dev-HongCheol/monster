@@ -5,7 +5,7 @@
 - **상태:** 완료 (PR #68 — 구현·검증·리뷰 통과, 7단계 사용자 검증 후 squash merge, 2026-07-25). **스코프 축소(2026-07-25, 사용자 결정): 최종 마법사 4방향 아트는 별도 슬라이스로 분리하고, 이 슬라이스는 방향 판정·배선 + 인게임 실테스트용 플레이스홀더 아트까지만 한다.** 근거는 §10. 최종 아트는 백로그 **F62**, 발치 기준 확장은 **F64**가 이어받는다.
 - **정본:** [`../../design/art-direction.md`](../../design/art-direction.md) §9(작업 순서 2번)·§6(플레이어 슬롯)·§3.3(플레이어는 세로 자연 비율로 **크게** + AABB 피해 박스), [`../../decisions/006-collision-hitbox.md`](../../decisions/006-collision-hitbox.md)
 - **선행 완료:** F60 첫 조각(`feat/player-mage-art`, PR #66 — 정면 브릿지 스프라이트), 플레이어 AABB 히트박스(`feat/player-hitbox`, ADR 006)
-- **닫는 백로그:** [`../backlog.md`](backlog.md) **F60**(§9 step 2의 4방향 조각). 리깅 도구 [`../backlog-implement.md`](backlog-implement.md) **F59**는 다음 리깅 슬라이스 사안이라 여기선 다루지 않는다(도구는 **Spine** 확정, DragonBones 폐기 + Cocos 내장 컷아웃 실습안도 폐기 — art-direction §3.2).
+- **닫는 백로그:** [`../backlog.md`](../backlog.md) **F60**(§9 step 2의 4방향 조각). 리깅 도구 [`../backlog-implement.md`](../backlog-implement.md) **F59**는 다음 리깅 슬라이스 사안이라 여기선 다루지 않는다(도구는 **Spine** 확정, DragonBones 폐기 + Cocos 내장 컷아웃 실습안도 폐기 — art-direction §3.2).
 
 ---
 

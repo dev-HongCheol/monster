@@ -45,7 +45,7 @@
 
 ## 문서 드리프트 — 수정함
 
-- **`docs/development/i18n-guide.md`** — "순수 로직은 `logic/I18nKeyGuard.ts`"라고 적혀 있는데 파일이 `tests/helpers/`로 옮겨졌다. **이 슬라이스가 만든 실제 stale 참조**라 다음 세션이 없는 경로를 찾게 된다. → 수정됨
+- **`docs/development/spec/code-i18n.md`** — "순수 로직은 `logic/I18nKeyGuard.ts`"라고 적혀 있는데 파일이 `tests/helpers/`로 옮겨졌다. **이 슬라이스가 만든 실제 stale 참조**라 다음 세션이 없는 경로를 찾게 된다. → 수정됨
 - **계획·QA 문서의 `= null!` 표기** — 실제 코드는 `null as unknown as T`다(Biome `noNonNullAssertion` 때문에 바뀌었고, `conventions.md`만 실제 형태를 반영했다). **코드가 정본이고 QA 문서가 그 거울**이므로 문서를 코드에 맞췄다. → 수정됨
 - **QA 문서의 게이트 검증 근거 재현 불가** — 주입한 코드와 잔여 확인 grep이 어긋나 있었다. 실제 프로브 이름(`__gateProbe`)을 함께 적어 재현 가능하게 했다. → 수정됨
 - **백로그 F24 ID 재사용** — 기존 F24(「`GameManager.instance` 접근 null 가드 컨벤션 불일치」)의 서술을 새 F24(「싱글톤 타입 정직화 + 73곳 가드」)로 갈아끼웠다. 주제가 같아 사실상 흡수·승격이지만 「ID 영구」 규칙상 원 서술이 사라진 건 기록 손실이다. → **원 서술을 새 행 안에 접어 넣어 보존**했다.

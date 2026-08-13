@@ -1,7 +1,7 @@
 # input-focus-reset — 테스트 체크리스트
 
 - **브랜치:** feat/input-focus-reset
-- **정본:** [`../development/sessions/2026-08-01-input-focus-reset-plan.md`](../development/sessions/2026-08-01-input-focus-reset-plan.md), 배포 환경은 [`../development/build-and-distribution.md`](../development/build-and-distribution.md) §4
+- **정본:** [`../development/sessions/2026-08-01-input-focus-reset-plan.md`](../development/sessions/2026-08-01-input-focus-reset-plan.md), 배포 환경은 [`../development/spec/ops-build.md`](../development/spec/ops-build.md) §4
 - **범위:** 창이나 캔버스가 **포커스를 잃으면 눌린 것으로 기록된 이동키를 전부 해제**한다(백로그 **F65**). 그 과정에서 눌린 키 상태와 이동 벡터 계산을 순수 모듈 `logic/MoveInputLogic.ts`로 꺼낸다. 함께 `hitbox-viewer.html`의 biome 에러 4건을 닫는다(**F63**).
 - **범위 밖:** 다른 입력 소비처의 포커스 정책(`PauseController`는 `KEY_DOWN` 엣지만 들어 눌린 상태를 갖지 않는다), 키 리바인딩·게임패드, `hitbox-viewer.html`의 정보 수준 지적 29건.
 

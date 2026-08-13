@@ -69,14 +69,14 @@
 ### 다음 세션 시작 시 읽을 문서 순서
 1. `docs/planning/roadmap.md` (v0.2) — 합의된 MVP 정의 + 마일스톤
 2. 이 파일 — 의사결정 컨텍스트
-3. `docs/development/glossary.md` — 사용된 용어
+3. `docs/development/spec/docs-glossary.md` — 사용된 용어
 4. `docs/etc/plan.md` — 원본 풀-스코프 기획 (v3+ 비전 참고용)
 
 ### 다음 액션 (즉시)
 1. 사용자: roadmap.md v0.2 검토 → 필요 시 v0.3 갱신 요청
 2. 사용자: 별도 브랜치(`feat/roadmap-mvp-v0.2`)에서 신규 파일 커밋
    - `docs/planning/roadmap.md` (v0.2)
-   - `docs/development/glossary.md`
+   - `docs/development/spec/docs-glossary.md`
    - `docs/development/sessions/2026-05-23-office-hours-mvp-design.md` (이 파일)
 3. PR 생성 → squash merge (CLAUDE.md 규칙)
 

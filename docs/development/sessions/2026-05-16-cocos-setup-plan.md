@@ -63,5 +63,5 @@ monster/
 ## 참고
 
 - [Cocos 버전 선택 design doc](./2026-05-16-cocos-setup-design.md)
-- [ADR 001: Cocos Creator 버전 선택](../decisions/001-cocos-version.md)
+- [ADR 001: Cocos Creator 버전 선택](../../decisions/001-cocos-version.md)
 - [프로토타입 스코프 결정](./2026-05-14-prototype-scope.md)

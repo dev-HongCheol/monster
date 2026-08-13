@@ -4,7 +4,7 @@
 
 ## 코드를 쓰기 전에
 
-`docs/development/conventions.md`를 읽는다. 파일·클래스 명명, 컴포넌트 구조 순서, 주석 기준, null 처리, 싱글톤 소비 규칙이 거기 있고 코드 리뷰도 그 문서를 기준으로 본다.
+`docs/development/spec/code-conventions.md`를 읽는다. 파일·클래스 명명, 컴포넌트 구조 순서, 주석 기준, null 처리, 싱글톤 소비 규칙이 거기 있고 코드 리뷰도 그 문서를 기준으로 본다.
 
 Cocos 관련 코드는 Context7로 공식 문서를 먼저 조회한 뒤 쓴다. 훈련 데이터 기반으로 추측하지 않는다.
 
