@@ -9,7 +9,7 @@ docs/
 ├── planning/               # 기획 (게임 디자인, 컨셉, 로드맵)
 ├── design/                 # 디자인 (아트 디렉션, UI/UX, 에셋 파이프라인)
 │   └── spec/               # 디자인 정본 (art-·ui- 접두사)
-├── development/            # 개발 (아키텍처, 환경 설정)
+├── development/            # 개발 (정본·절차·세션 기록)
 │   ├── spec/               # 개발 정본 (code-·game-·docs-·ops- 접두사)
 │   ├── workflow/           # phase별 절차 문서 (정본 — pnpm wf가 배달)
 │   ├── sessions/           # 개발 세션/의사결정 기록 (날짜-주제.md)
@@ -70,12 +70,12 @@ docs/
 | 이 동작이 맞나 | `tests/logic/*.test.ts` — 실행 가능한 명세 |
 | 코드를 어떻게 쓰나 | `docs/development/spec/code-conventions.md` — **코드 작성 전 항상 읽는다** |
 | 문서를 어떻게 쓰나 | `docs/development/spec/docs-writing-style.md` — **문서 작성 전 항상 읽는다** |
-| 그 밖의 개발 정본 — 용어·판정·빌드·환경 | `docs/development/spec/README.md`가 목록. 안 옮긴 것은 `gbrain-setup.md`(F77 뒤)와 F70이 철거할 둘 |
+| 그 밖의 개발 정본 — 용어·판정·빌드·환경 | `docs/development/spec/README.md`가 목록. 안 옮긴 것은 `gbrain-setup.md`(F77 뒤)와 로컬 환경 복구 매뉴얼 둘 |
 | 지금 단계에서 뭘 하나 | `docs/development/workflow/<phase>.md` — **절차의 정본.** `pnpm wf` 전이가 배달하고 `pnpm wf steps`로 다시 본다 |
 | 게임을 어떻게 만드나 | `docs/planning/` — 게임 디자인·컨셉·로드맵 |
 | 무엇을 왜 그렇게 그리나 | `docs/design/art-direction.md` |
 | 몇 px·어떤 피벗·어떤 파일명인가 | `docs/design/asset-production-spec.md` |
-| 어떤 프롬프트로 뽑아 무엇으로 합격시키나 | `docs/design/art-generation-playbook.md` |
+| 어떤 프롬프트·설정으로 뽑아 무엇으로 합격시키나 | `docs/design/art-generation-playbook.md` |
 | 디자인 정본 목록 | `docs/design/spec/README.md` — 아직 비었다(위 셋은 F69가 옮긴다) |
 | 다음에 뭘 하나 | `docs/development/backlog.md`(게임) + `backlog-implement.md`(코드) |
 | 그 결정이 어느 슬라이스에서 났나 | `backlog-archive.md`·`backlog-implement-archive.md` — 세션 문서로 가는 실질 인덱스 |
@@ -208,10 +208,6 @@ Cocos는 `game/assets/` 아래 **모든 파일·디렉터리에 `.meta`(UUID 보
 
 ## 도구 스택
 
-- **gstack** — 제품 워크플로우 (기획 리뷰, 설계 검토, QA, 보안, 배포). 기획→구현→리뷰→배포 전 단계에서 사용.
-- **superpowers** — 구현 방법론 (TDD, bite-sized 태스크, subagent+worktree 병렬 개발). **코드 작성 시작 시점에 활성화.**
-- **Context7 MCP** — Cocos Creator 공식 문서를 실시간 조회.
+**gstack**(제품 워크플로) · **superpowers**(구현 방법론, 코드 작성 시점에 활성화) · **Context7 MCP**(Cocos 공식 문서 조회) 셋을 쓴다. **어느 구간에 무엇을 쓰고 어떻게 까는지, 이름만으로 용도가 안 드러나는 스킬의 매핑은 `docs/development/spec/ops-skill-routing.md`가 정본이다.**
 
 웹 브라우징은 항상 gstack의 `/browse` 사용. `mcp__claude-in-chrome__*` 도구는 사용 금지.
-
-**어떤 스킬을 쓰나** — 전체 목록은 세션 시작 시 자동 로드된다. 이름만으로 용도가 안 드러나는 것들의 매핑과 설치 방법은 `docs/development/spec/ops-skill-routing.md`.
