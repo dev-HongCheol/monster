@@ -3,7 +3,7 @@
 - **작업일:** 2026-08-07
 - **브랜치:** `design/art-decision-audit` (PR #74)
 - **입력:** `art-source/player/2026-08-06/` 시트 셋 — `4dir_dressed.png` · `4dir_bald.png` · `4dir_skin.png` (각 1088×608)
-- **절차 정본:** [`art-generation-playbook.md`](../../design/art-generation-playbook.md) §8
+- **절차 정본:** [`art-generation-playbook.md`](../../design/spec/art-generation-playbook.md) §8
 - **관련 백로그:** F62(플레이어 4방향 최종 아트) · F67(지팡이 분리) · F66 ③(피격 사각형)
 
 ---

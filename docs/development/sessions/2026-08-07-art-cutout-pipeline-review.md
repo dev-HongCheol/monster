@@ -3,7 +3,7 @@
 - **작성일:** 2026-08-07
 - **브랜치:** `design/art-decision-audit` (PR #74). 작성 당시 로컬 브랜치 이름은 `docs/art-cutout-pipeline-review`였으나 푸시가 앞 브랜치로 가 이 PR에 함께 들어갔다. 이 문서를 잇는 실험·구현은 별도 슬라이스에서 한다(§8).
 - **성격:** **결정이 아니다.** [`backlog-implement.md`](../backlog-implement.md) **F59 ②**의 미확정 결정 셋 중 「배경 제거 위치」를 닫기 위한 검토이고, 그 판단에 필요한 실험 둘의 설계다. 실험을 돌린 뒤 결과를 이 문서에 채우고 그때 결정한다.
-- **관련:** [후처리 기록](2026-08-07-player-4dir-postprocess.md) §9, [`art-generation-playbook.md`](../../design/art-generation-playbook.md) §8, 백로그 F59(툴체인)·F60(에셋 생성)·F67(지팡이 분리)
+- **관련:** [후처리 기록](2026-08-07-player-4dir-postprocess.md) §9, [`art-generation-playbook.md`](../../design/spec/art-generation-playbook.md) §8, 백로그 F59(툴체인)·F60(에셋 생성)·F67(지팡이 분리)
 
 ---
 

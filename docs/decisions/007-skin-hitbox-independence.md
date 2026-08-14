@@ -2,7 +2,7 @@
 
 - **날짜:** 2026-08-03
 - **상태:** 결정됨
-- **관련 설계:** [ADR 006](006-collision-hitbox.md)(판정 형태 — 플레이어 사각형·적 원), [`../development/sessions/2026-08-03-collision-shape-audit.md`](../development/sessions/2026-08-03-collision-shape-audit.md) §5.3·§6.4, [`../design/art-direction.md`](../design/art-direction.md) §6
+- **관련 설계:** [ADR 006](006-collision-hitbox.md)(판정 형태 — 플레이어 사각형·적 원), [`../development/sessions/2026-08-03-collision-shape-audit.md`](../development/sessions/2026-08-03-collision-shape-audit.md) §5.3·§6.4, [`../design/spec/art-direction.md`](../design/spec/art-direction.md) §6
 - **입력:** 판정 기하 전수 조사(2026-08-03)와 그에 이은 대화 — 사용자 결정
 
 ADR 006이 "판정이 무슨 모양인가"를 정한다면, 이 ADR은 **그 모양의 크기를 무엇이 정하는가**를 정한다.

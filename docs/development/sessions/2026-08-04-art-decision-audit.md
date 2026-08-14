@@ -3,7 +3,7 @@
 - **작성일:** 2026-08-04
 - **성격:** 확정으로 잠겨 있던 아트 결정 12건을 원문 근거까지 되짚어 재확인한 기록. 결론을 바꾸는 것이 목적이 아니라, **각 결정이 무엇에 기대어 서 있는지**를 다시 확인하는 것이 목적이다.
 - **발단:** 사양서 정리 중 사용자가 "생성 이미지 품질이 좋지 않다"고 제기 — 품질 문제가 어느 결정에 소급되는지 가리려면 결정들을 개별로 다시 봐야 했다.
-- **관련:** [`../../design/art-direction.md`](../../design/art-direction.md), [`../../design/asset-production-spec.md`](../../design/asset-production-spec.md), [ADR 006](../../decisions/006-collision-hitbox.md)·[ADR 007](../../decisions/007-skin-hitbox-independence.md)
+- **관련:** [`../../design/spec/art-direction.md`](../../design/spec/art-direction.md), [`../../design/spec/art-asset-spec.md`](../../design/spec/art-asset-spec.md), [ADR 006](../../decisions/006-collision-hitbox.md)·[ADR 007](../../decisions/007-skin-hitbox-independence.md)
 
 ## 판정 요약
 

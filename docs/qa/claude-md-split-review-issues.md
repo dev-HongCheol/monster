@@ -134,7 +134,7 @@ F71 한 줄을 넣으려고 쓴 스크립트가 파일 전체를 다시 쓰면�
 
 - **NEW-1** — `origin/main..HEAD` 백로그 순 diff `2 0`, 순수 LF. 나아가 이 슬라이스가 건드린 **16개 파일 전부**를 커밋된 blob 기준으로 훑어 16/16 LF, base 대비 EOL 변경 0건, 전 범위에서 raw diff와 `--ignore-all-space` diff가 완전히 일치함을 확인했다 — **리뷰어가 보는 diff가 곧 실제 변경이다.**
 - **RESIDUAL-1** — 2차 때 통과해 버렸던 mutation(`check-docs`의 README 포함만 되돌리기)을 다시 걸어 **이번엔 RED**임을 확인했다. 두 복사본의 정합에 실제로 이빨이 생겼다.
-- **RESIDUAL-2** — 복원한 참조 셋이 **실재하는지까지** 확인됐다(`walking-skeleton-test.md`, `docs/decisions/hud-layout.html`·`result-stats.html`). R1~R154 중복·결번 0, 상호참조 전부 유효.
+- **RESIDUAL-2** — 복원한 참조 셋이 **실재하는지까지** 확인됐다(`walking-skeleton-test.md`, `docs/design/mockups/hud-layout.html`·`result-stats.html`). R1~R154 중복·결번 0, 상호참조 전부 유효.
 - **3-gram 재조사** — 구 `CLAUDE.md` 281문장을 신 코퍼스에 다시 대조해 저커버리지 30건을 전수 판정했다. **인벤토리 밖 규범 유실은 더 없다** — 30건은 전보체를 서술체로 바꾸며 생긴 문자열 유사도 저하이고 지시문은 모두 새 위치에 있다.
 
 **더 쫓지 않기로 한 것 둘.** QA 문서 파일명 **예시**(`player-4dir-test.md` → `player-final-art-test.md`)와 R79의 이력 괄호("2026-08-08 이전 문서 셋에는 병기 형식이 남아 있다")다. 둘 다 살아 있는 규칙의 삽화이고 A층 예산과 직접 경쟁한다 — 여기서부터는 수익이 비용을 밑돈다는 리뷰어 판단에 따랐다.

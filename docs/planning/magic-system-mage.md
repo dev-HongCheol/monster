@@ -7,7 +7,7 @@
 > - [로드맵 v0.2](roadmap.md) — 출시 일정, MVP 정의
 > - [용어 사전 § 8 전투·마법](../development/spec/docs-glossary.md#8-전투--마법-시스템) — 호밍·노바·DOT·CC 등
 > - [개발 백로그](../development/backlog.md) — A1(효과 레이어), A2(facing), A3(범위·지속 강화), B1(§7.6 곱연산)
-> - [ADR 002: scripts/logic 분리](../decisions/002-scripts-logic-pattern.md) — 순수 로직/컴포넌트 경계
+> - [코드 규약](../development/spec/code-conventions.md) — `scripts/`와 `logic/`을 가르는 순수 로직/컴포넌트 경계
 
 ---
 

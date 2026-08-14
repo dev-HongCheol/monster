@@ -3,7 +3,7 @@
 > **브랜치:** feat/hud-layout
 > **슬라이스:** v1 완성도 첫 UI 슬라이스 (HUD 바·레이아웃·테마 토대)
 > **계획 문서:** [2026-07-02-hud-layout-plan.md](../development/sessions/2026-07-02-hud-layout-plan.md)
-> **레이아웃 청사진:** [hud-layout.html](../decisions/hud-layout.html) / `.png`
+> **레이아웃 청사진:** [hud-layout.html](../design/mockups/hud-layout.html) / `.png`
 > **닫는 백로그:** J4(UI 완성도) — 부분 전진(HUD 바·레이아웃·테마 토대). 설정·도감·결과 통계 등 J4 잔여는 후속 슬라이스.
 
 ---
@@ -118,7 +118,7 @@
 
 ### 4.2 placeholder 4종 — 이번 슬라이스 제외 (다음 UI 슬라이스로 이월)
 
-> **이월(2026-07-03 사용자 결정):** 미니맵·보스 HP 바·메뉴 버튼·스킬 그리드 placeholder는 이번 `feat/hud-layout`에서 **진행하지 않는다.** 이 슬라이스는 HP/XP 바·레이아웃·테마 토대에 집중하고, placeholder 배치·룩·후속 배선(스킬 쿨다운 라디얼·미니맵 기능·보스HP 데이터)은 **backlog J4**(`../development/backlog.md`)로 이월한다. 씬에 임시로 만든 placeholder 노드가 있으면 이번 커밋 전 제거한다. (역할·앵커 참고값 상세는 계획 문서와 목업 `../decisions/hud-layout.html`에 보존.)
+> **이월(2026-07-03 사용자 결정):** 미니맵·보스 HP 바·메뉴 버튼·스킬 그리드 placeholder는 이번 `feat/hud-layout`에서 **진행하지 않는다.** 이 슬라이스는 HP/XP 바·레이아웃·테마 토대에 집중하고, placeholder 배치·룩·후속 배선(스킬 쿨다운 라디얼·미니맵 기능·보스HP 데이터)은 **backlog J4**(`../development/backlog.md`)로 이월한다. 씬에 임시로 만든 placeholder 노드가 있으면 이번 커밋 전 제거한다. (역할·앵커 참고값 상세는 계획 문서와 목업 `../design/mockups/hud-layout.html`에 보존.)
 
 ### 4.3 바 스프라이트 에셋 (확정)
 

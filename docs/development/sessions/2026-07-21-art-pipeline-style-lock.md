@@ -3,7 +3,7 @@
 - **작성일:** 2026-07-21
 - **브랜치:** design/art-pipeline-style-lock
 - **상태:** 화풍 **확정** — 애니 셀 + 주인공은 젊은 여성 불 마법사(2026-07-21). 아트북 셀셰이딩(v1~v3)은 취향이 아니라 폐기, 6화풍 비교 후 애니 선택. 스타일 LoRA 학습은 다음 슬라이스.
-- **정본:** [`../../design/art-direction.md`](../../design/art-direction.md) §8·§9·부록 B. 이 문서는 그 1차 실행 기록이다.
+- **정본:** [`../../design/spec/art-direction.md`](../../design/spec/art-direction.md) §8·§9·부록 B. 이 문서는 그 1차 실행 기록이다.
 - **셋업 절차:** [`../comfyui-setup.md`](../comfyui-setup.md) — 이 문서만으로 환경을 다시 구축할 수 있게 유지한다.
 - **백로그:** [`../backlog.md`](../backlog.md) F58.
 

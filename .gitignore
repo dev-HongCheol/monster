@@ -23,5 +23,5 @@ node_modules/
 .gstack/
 
 # 작업용 스크래치 — 검사 판·중간 이미지처럼 스크립트로 다시 만들 수 있는 것만 둔다.
-# 보관할 원본은 art-source/에 넣는다 (docs/design/asset-production-spec.md §9.1)
+# 보관할 원본은 art-source/에 넣는다 (docs/design/spec/art-asset-spec.md §9.1)
 docs/temp/

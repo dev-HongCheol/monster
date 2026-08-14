@@ -3,7 +3,7 @@
 > **브랜치:** feat/spell-icon-row
 > **슬라이스:** J4 P0-2 — 보유 마법 아이콘 행(슬롯 정원 + 분류색 placeholder + 티어 라벨)
 > **계획 문서:** [2026-07-05-spell-icon-row-plan.md](../development/sessions/2026-07-05-spell-icon-row-plan.md)
-> **레이아웃 청사진:** [hud-layout.html](../decisions/hud-layout.html) (스킬 그리드 자리)
+> **레이아웃 청사진:** [hud-layout.html](../design/mockups/hud-layout.html) (스킬 그리드 자리)
 > **닫는 백로그:** J4(UI 완성도) — 부분 전진(슬롯 정원 + 티어 라벨). 호버 강화표시·쿨다운 라디얼·최종 아이콘 아트는 후속.
 
 ---

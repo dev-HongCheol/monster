@@ -3,7 +3,7 @@
 - **작성일:** 2026-08-04
 - **브랜치:** design/art-decision-audit
 - **성격:** 로컬 생성(ComfyUI + SDXL + 스타일 LoRA)에서 유료 서비스로 옮기는 것을 검토한 기록과, 그 판단을 닫기 위한 시험 절차. 여기서 설계한 §8 판정을 통과해 전환이 확정됐고(2026-08-06·08-07), **결정은 [ADR 008](../../decisions/008-paid-art-generation.md)이 든다.** 이 문서는 그 결정에 이른 검토와, §12의 철거 절차를 남긴다.
-- **관련:** [`2026-08-04-art-decision-audit.md`](2026-08-04-art-decision-audit.md) D2·D3·D4·D10, 백로그 [F62](../backlog.md), [`../comfyui-setup.md`](../comfyui-setup.md), [`../kohya-setup.md`](../kohya-setup.md), [`../../design/art-direction.md`](../../design/art-direction.md) §6·§8
+- **관련:** [`2026-08-04-art-decision-audit.md`](2026-08-04-art-decision-audit.md) D2·D3·D4·D10, 백로그 [F62](../backlog.md), [`../comfyui-setup.md`](../comfyui-setup.md), [`../kohya-setup.md`](../kohya-setup.md), [`../../design/spec/art-direction.md`](../../design/spec/art-direction.md) §6·§8
 
 ---
 
@@ -68,7 +68,7 @@ art-direction 부록 C는 **로컬 체크포인트**의 라이선스를 가려 �
 >
 > **그리고 §6("작업은 웹에서 한다")의 판단은 예상보다 강하게 옳았다.** fal.ai에는 [Sandbox](https://fal.ai/sandbox)가 있어 **같은 프롬프트를 여러 모델에 한 번에 돌려 결과·비용·소요 시간을 나란히 비교**할 수 있다. §5가 "어느 모델이 이 케이스에서 되는지 아직 모르는 상태"를 플랫폼 선택의 첫째 이유로 들었는데, 그 비교가 화면 하나에서 끝난다. 단계마다 모델을 하나씩 지정하는 위 표의 형식 자체가 실제 도구와 안 맞는다 — 단계마다 **후보 셋을 함께 돌리는** 것이 맞다.
 >
-> 확인된 엔드포인트·칸·가격·Sandbox 사용법의 정본은 [`../../design/art-generation-playbook.md`](../../design/art-generation-playbook.md) §1.1~§1.2이다. **이 절은 시점 기록으로 보존한다** — 무엇을 가설로 세웠고 실측이 어디를 뒤집었는지가 남아야 다음 판단에서 같은 근거를 다시 안 쓴다.
+> 확인된 엔드포인트·칸·가격·Sandbox 사용법의 정본은 [`../../design/spec/art-generation-playbook.md`](../../design/spec/art-generation-playbook.md) §1.1~§1.2이다. **이 절은 시점 기록으로 보존한다** — 무엇을 가설로 세웠고 실측이 어디를 뒤집었는지가 남아야 다음 판단에서 같은 근거를 다시 안 쓴다.
 
 한 모델로 전부 하지 않는다. 단계마다 강한 모델이 다르다.
 
@@ -93,7 +93,7 @@ API가 의미를 갖는 시점은 **잡몹 12종을 배치로 돌릴 때**다. �
 
 ## 7. 생성 명세
 
-외형은 [art-direction §6](../../design/art-direction.md)이 정본이다(2026-08-04 확정: 장비 없는 시작 상태라 **모자 없음 · 단순한 나무 지팡이 · 천옷 세트**). 여기서는 그 명세를 생성 프롬프트로 옮긴 것만 적는다.
+외형은 [art-direction §6](../../design/spec/art-direction.md)이 정본이다(2026-08-04 확정: 장비 없는 시작 상태라 **모자 없음 · 단순한 나무 지팡이 · 천옷 세트**). 여기서는 그 명세를 생성 프롬프트로 옮긴 것만 적는다.
 
 ### 7.1 1단계 — 정면 베이스
 
