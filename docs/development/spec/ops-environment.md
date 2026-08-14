@@ -160,7 +160,7 @@ context7로 cocos canvas hierarchy 조회해줘
 
 필수는 아니다. 설치하지 않아도 이 프로젝트의 모든 작업이 그대로 굴러간다.
 
-설치·색인·MCP 연결 절차와 윈도우에서 겪는 함정은 [`../gbrain-setup.md`](../gbrain-setup.md)가 정본이다.
+설치·색인·MCP 연결 절차와 윈도우에서 겪는 함정은 [`ops-gbrain.md`](ops-gbrain.md)가 정본이다.
 
 ---
 

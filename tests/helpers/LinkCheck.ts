@@ -94,7 +94,7 @@ function blankFences(markdown: string): string {
  * 정규식이 뒤에서 인덱스로 줄 번호를 세기 때문이다 — 길이가 줄면 그 줄부터 전부 어긋난다.
  *
  * 여기서 덮는 것이 검사기의 오탐을 통째로 막는다. 이 레포에는 링크 문법을 **설명하려고**
- * 본문에 적어 둔 코드 스팬이 여덟 군데 있는데(`gbrain-setup.md`가 그중 하나다), 덮지 않으면
+ * 본문에 적어 둔 코드 스팬이 여덟 군데 있는데(`spec/ops-gbrain.md` §5.5가 그중 하나다), 덮지 않으면
  * 전부 깨진 링크로 잡힌다. 예외 목록으로 막으면 그 목록이 계속 자란다.
  */
 function blankInlineCode(text: string): string {
