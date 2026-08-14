@@ -314,10 +314,18 @@ describe('레포 전체 회귀망', () => {
   it('정본은 결정 기록으로 나가는 링크를 걸지 않는다', () => {
     // 두 `spec/README.md`가 선언만 하고 지키는 기계가 없던 규칙이다. 링크를 타고 들어간
     // 사람이 폐기된 명세를 현재 명세로 읽은 사고가 2026-08-08에 실제로 났다.
+    //
+    // 범위가 두 `spec/`보다 넓은 이유는 「문서 정리 규칙」이 정한 대상이 그렇기 때문이다 —
+    // "지금 이렇다"를 말하는 문서 전부다. `docs/design/` **바로 아래**는 일부러 뺐다.
+    // 그 층은 인덱스가 초안과 진행 중 계획의 자리라고 선언한 곳이라 결정 기록 링크가
+    // 허용된다. 예외 목록 없이 출발하려고 위반 0건인 상태에서 범위를 넓혔다.
     const { docs } = loadDocs();
     const offenders: string[] = [];
     for (const doc of docs) {
-      if (!/^docs\/(development|design)\/spec\//.test(doc.path)) continue;
+      if (
+        !/^docs\/(?:(?:development|design)\/spec|planning|development\/workflow)\//.test(doc.path)
+      )
+        continue;
       for (const link of extractLinks(doc.content)) {
         if (/(?:^|\/)(?:sessions|decisions)\//.test(link.target)) {
           offenders.push(`${doc.path}:${link.line} → ${link.target}`);
@@ -325,5 +333,18 @@ describe('레포 전체 회귀망', () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+
+  it('docs/decisions/ 아래에 .html이 없다 — 목업은 결정 기록이 아니다', () => {
+    // 확정 목업 둘이 이 폴더에 앉아 있었다. QA 문서 셋이 지금도 레이아웃 기준으로 인용하는
+    // 청사진이라 결정 기록이 아니고, 위 단언이 경로만 보기 때문에 사양서가 `spec/`으로
+    // 들어가는 순간 멀쩡한 목업 링크가 위반으로 신고됐다. 검사기에 확장자 예외를 다는 대신
+    // 파일을 `docs/design/mockups/`로 옮겨 원인을 없앴다(2026-08-14).
+    //
+    // 옮기고 나면 "목업은 결정 기록이 아니다"를 드는 것이 링크 하나뿐이라, 다음 사람이 새
+    // 목업을 여기 두어도 아무도 말하지 않는다. 그 자리를 이 단언이 든다.
+    const { tracked } = loadDocs();
+    const strays = [...tracked].filter((p) => p.startsWith('docs/decisions/') && /\.html$/.test(p));
+    expect(strays).toEqual([]);
   });
 });

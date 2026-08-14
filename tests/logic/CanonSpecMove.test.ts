@@ -5,9 +5,9 @@
  * 이동이 계획대로 끝났는지 한 번 재는 것이 역할이다. 앞으로 계속 회귀를 잡을 그물(링크·앵커·
  * 정본 인덱스)은 이름이 슬라이스에 묶이지 않은 `DocLinks.test.ts`와 `CanonDoc.test.ts`에 둔다.
  *
- * 단언 하나는 **의도한 변경에 한 번 더 깨진다.** 「아트 정본 세 행은 아직 파일명으로 남아
- * 있다」는 F69가 그 셋을 옮기며 라우팅 행을 접을 때 RED가 되는데, 그것은 회귀가 아니라 그
- * 슬라이스가 할 일을 했다는 뜻이다. 그때 이 단언을 지운다.
+ * 인계해 둔 단언 하나는 예정대로 회수했다. 「아트 정본 세 행은 아직 파일명으로 남아 있다」는
+ * 그 셋이 옮겨 가기 전까지 라우팅 행을 조기에 접는 것을 막는 장치였고, 실제로 옮긴 슬라이스가
+ * 행을 접으면서 2026-08-14에 지웠다.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -111,14 +111,6 @@ describe('CLAUDE.md 라우팅 표를 접었다', () => {
 
   it('옮긴 여섯을 옛 경로로 부르지 않는다', () => {
     for (const [from] of MOVES) expectMention(from, false);
-  });
-
-  it('아트 정본 세 행은 아직 파일명으로 남아 있다', () => {
-    // 아트 이동은 F69로 넘겼으므로 지금 접으면 이 셋이 데이터 행 0개인
-    // `docs/design/spec/README.md`로 향한다 — 라우팅이 끊긴다(계획 CN1).
-    expectMention('docs/design/art-direction.md', true);
-    expectMention('docs/design/asset-production-spec.md', true);
-    expectMention('docs/design/art-generation-playbook.md', true);
   });
 
   it('두 spec/README.md를 가리키는 층 행이 생겼다', () => {
