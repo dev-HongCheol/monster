@@ -5,7 +5,7 @@
 - **상태:** 애니 셀 **스타일 LoRA 학습 완료 + 검증 합격**(2026-07-21). 짧은 프롬프트로 대비 3종의 룩이 잠기는 것을 확인.
 - **선행 슬라이스:** [`2026-07-21-art-pipeline-style-lock.md`](2026-07-21-art-pipeline-style-lock.md)(F58) — 화풍(애니 셀)·주인공(젊은 여성 불 마법사)·확정 씨앗을 여기서 결정했다. 이 문서는 그 씨앗으로 LoRA를 학습한 기록이다.
 - **셋업 절차:** [`../kohya-setup.md`](../kohya-setup.md) — 이 문서만으로 학습 환경을 다시 구축할 수 있게 유지한다.
-- **정본:** [`../../design/art-direction.md`](../../design/art-direction.md) §8·§9. **백로그:** [`../backlog.md`](../backlog.md) F58b.
+- **정본:** [`../../design/spec/art-direction.md`](../../design/spec/art-direction.md) §8·§9. **백로그:** [`../backlog.md`](../backlog.md) F58b.
 
 ---
 

@@ -4,7 +4,7 @@
 - **작성일:** 2026-07-22
 - **브랜치:** feat/player-mage-art
 - **상태:** 완료 (PR #66 squash merge)
-- **정본:** [`../../design/art-direction.md`](../../design/art-direction.md) §6(플레이어 슬롯 설계)·§8(AI 생성 파이프라인)·§9(작업 순서)
+- **정본:** [`../../design/spec/art-direction.md`](../../design/spec/art-direction.md) §6(플레이어 슬롯 설계)·§8(AI 생성 파이프라인)·§9(작업 순서)
 - **선행 완료:** F58/F58b — 애니 셀 스타일 확정 + 스타일 LoRA(`f58_anime_style`, 트리거 `f58anime`, 강도 0.8) 학습·검증
 - **닫는 백로그:** [`../backlog.md`](../backlog.md) **F60**(마법사 생성분). 리깅 툴 확인 [`../backlog-implement.md`](../backlog-implement.md) **F59**는 다음 슬라이스 선행 게이트이나, 이번 슬라이스가 **병행으로 구동 확인만** 먼저 한다(아래 §5).
 
@@ -14,7 +14,7 @@
 >
 > - **리깅 도구:** 본문(§2·§5·§9)은 리깅을 DragonBones로 잡고 "DesignPanel이 Windows 11에서 도는가(F59)"를 이 트랙의 첫째 리스크로 놓았다. 그 뒤 최종 확인에서 DragonBones 공식 사이트가 loongbones.app(SaaS)으로 전환돼 정상 사용에 월 구독료가 붙고 에디터도 2021년 이후 정체인 것이 드러나 **폐기**했다. **리깅은 Spine 확정**(기본 요금제 결제 예정, Cocos는 `sp.Skeleton`으로 재생)이고 **학습도 Spine에서 한다** — Cocos 내장 노드 컷아웃으로 먼저 실습하는 안을 검토했으나 Cocos엔 뼈대 에디터가 없어 배우는 것의 절반이 Cocos 전용이라 폐기했다. 따라서 §5의 "DragonBones 구동 확인" 항목과 그것에 매달린 "브릿지 수명 판단"은 소멸했다. 본문의 `ArmatureDisplay`(DragonBones API)는 Spine의 `sp.Skeleton`으로 읽는다.
 > - **브릿지 크기:** §7·§9의 `50×64`는 당시 **중앙 원 히트박스**에 실루엣을 맞추려 작게 잡은 값이다. [ADR 006](../../decisions/006-collision-hitbox.md)이 플레이어를 **AABB 피해 박스 + 세로 자연 비율로 크게**로 반전했으므로 이 수치는 더 이상 기준이 아니다 — 4방향 아트는 이보다 눈에 띄게 크게 뽑는다.
-> - **현행 정본:** [`../../design/art-direction.md`](../../design/art-direction.md) §3.2(리깅 도구)·§3.3(온스크린 크기), [4방향 계획](2026-07-24-player-4dir-plan.md).
+> - **현행 정본:** [`../../design/spec/art-direction.md`](../../design/spec/art-direction.md) §3.2(리깅 도구)·§3.3(온스크린 크기), [4방향 계획](2026-07-24-player-4dir-plan.md).
 
 ---
 
@@ -107,7 +107,7 @@ codex 부재로 각 페이즈 Claude 서브에이전트 단독 리뷰. Eng는 3�
 | 8 | Eng | Sprite를 Player 노드에 유지(Visual 자식 재구조화 안 함) | 자동(P3·P5) | 실용·명시성 | 최소 유지, 리깅이 구조 소유 |
 
 ### 남는 관찰 (다음 슬라이스로)
-- **플레이어/캐릭터 충돌 = 원 유지 + "작게 그린다" 컨벤션(2026-07-22 확정).** 원-원 충돌은 대략 정사각/작은 캐릭터에 맞고, 세로로 긴 캐릭터를 크게 표시하면 원이 몸통 밴드만 덮어 위아래가 어긋난다. 해법은 캡슐/박스(충돌 시스템 재작성 + 스웜 성능 부담, G1)나 밸런스 변경이 아니라 **캐릭터를 히트박스 크기(≈50px)로 작게** 두는 것 — 원이 캐릭터를 거의 감싸 어긋남이 몇 px로 사라진다(원래 50×50 placeholder + 반지름 25 설계와 일치, VS·Brotato 방식). 플레이어 브릿지 contentSize **50×64** 확정, `collisionRadius=25` 불변. 아트 정본 반영: [`../../design/art-direction.md`](../../design/art-direction.md) §3.3. **적·최종 캐릭터 이미지도 이 "작게" 감각을 따른다.**
+- **플레이어/캐릭터 충돌 = 원 유지 + "작게 그린다" 컨벤션(2026-07-22 확정).** 원-원 충돌은 대략 정사각/작은 캐릭터에 맞고, 세로로 긴 캐릭터를 크게 표시하면 원이 몸통 밴드만 덮어 위아래가 어긋난다. 해법은 캡슐/박스(충돌 시스템 재작성 + 스웜 성능 부담, G1)나 밸런스 변경이 아니라 **캐릭터를 히트박스 크기(≈50px)로 작게** 두는 것 — 원이 캐릭터를 거의 감싸 어긋남이 몇 px로 사라진다(원래 50×50 placeholder + 반지름 25 설계와 일치, VS·Brotato 방식). 플레이어 브릿지 contentSize **50×64** 확정, `collisionRadius=25` 불변. 아트 정본 반영: [`../../design/spec/art-direction.md`](../../design/spec/art-direction.md) §3.3. **적·최종 캐릭터 이미지도 이 "작게" 감각을 따른다.**
 - y-정렬 없음(적이 플레이어 위에 그려짐) — 기존 이슈, 리깅 슬라이스에서 함께 볼 것(Eng 6).
 - 7단계 Draft PR의 씬 diff가 아직 커밋 안 된 이미지/`.meta`의 UUID를 참조 — 워크플로우상 정상(Cocos가 7단계에 `.meta` 생성, 8단계 커밋). 리뷰어가 dangling 참조로 오독하지 않도록 PR 본문에 명기.
 

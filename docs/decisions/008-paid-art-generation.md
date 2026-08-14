@@ -2,7 +2,7 @@
 
 - **날짜:** 2026-08-06 확정 (ADR 작성 2026-08-08)
 - **상태:** 결정됨
-- **관련 설계:** [`../design/art-direction.md`](../design/art-direction.md) §8(파이프라인 정본), [`../design/art-generation-playbook.md`](../design/art-generation-playbook.md) §1.1~§1.2(엔드포인트·가격·Sandbox 사용법), [`../development/sessions/2026-08-04-paid-art-pipeline-plan.md`](../development/sessions/2026-08-04-paid-art-pipeline-plan.md)(검토와 시험 설계), [`../development/sessions/2026-08-06-player-front-cut-generation.md`](../development/sessions/2026-08-06-player-front-cut-generation.md) §7(4방향 판정 통과)
+- **관련 설계:** [`../design/spec/art-direction.md`](../design/spec/art-direction.md) §8(파이프라인 정본), [`../design/spec/art-generation-playbook.md`](../design/spec/art-generation-playbook.md) §1.1~§1.2(엔드포인트·가격·Sandbox 사용법), [`../development/sessions/2026-08-04-paid-art-pipeline-plan.md`](../development/sessions/2026-08-04-paid-art-pipeline-plan.md)(검토와 시험 설계), [`../development/sessions/2026-08-06-player-front-cut-generation.md`](../development/sessions/2026-08-06-player-front-cut-generation.md) §7(4방향 판정 통과)
 - **입력:** 아트 결정 재조사(2026-08-04) D3·D4·D9 → 로컬 실패 실측 → 유료 전환 검토와 시험 절차 → fal.ai Sandbox 실측(2026-08-06·08-07) — 사용자 결정
 
 [ADR 001](001-cocos-version.md)이 게임을 만드는 엔진을 정했다면, 이 ADR은 **그 게임에 들어갈 그림을 어디서 만드는가**를 정한다.

@@ -3,7 +3,7 @@
 - **작성일:** 2026-07-07
 - **브랜치:** feat/result-stats
 - **계획:** `../development/sessions/2026-07-06-result-stats-plan.md`
-- **목업:** `../decisions/result-stats.html` (색·스크롤·행 포맷)
+- **목업:** `../design/mockups/result-stats.html` (색·스크롤·행 포맷)
 - **성격:** 결과 화면(`ResultController`)에 생존·레벨·킬(종류별)·보유 마법(강화 레벨 브레이크다운)·패시브를 얹는다. 순수 조립은 `buildResultStats`(피처 테스트가 덮음), Cocos 의존부(스냅샷 실제 채움·registerKill·RichText 렌더·씬 전환)는 수동 QA.
 
 > **확정 안내:** 아래 프리팹/씬·에디터 섹션은 구현 완료(GREEN) 후 실제 컴포넌트(`ResultController`의 `@property` 이름·노드, RichText 색값)에 맞춰 확정했다 — 코드가 정본, 이 문서가 그 거울이다.
@@ -152,7 +152,7 @@ SpellRow            [신규 프리팹] Node + UITransform(폭 700) + Layout(VERT
    | `PassiveLabel` | Label | RESIZE_HEIGHT | on | 700 | 18 | LEFT |
 
    - **`Overflow`를 반드시 `RESIZE_HEIGHT`로 둔다.** 기본값 `NONE`이면 Label이 글자 길이에 맞춰 **Content Size를 스스로 줄여** 폭 700 설정이 무시된다. 그러면 노드 Anchor가 `(0.5, 0.5)`라 글자가 **가운데 정렬처럼 보이고**, 폭 700을 유지하는 다른 라벨(킬 목록·패시브)만 왼쪽에서 시작해 **줄마다 정렬이 어긋난다.**
-   - Font Size는 목업(`../decisions/result-stats.html`) 비율에서 왔다 — 핵심 지표(생존·레벨·처치)가 크고, 목록성 텍스트(킬 종류별·패시브)는 작다. 헤더(`WaveLabel` 30)보다 크지 않아야 한다.
+   - Font Size는 목업(`../design/mockups/result-stats.html`) 비율에서 왔다 — 핵심 지표(생존·레벨·처치)가 크고, 목록성 텍스트(킬 종류별·패시브)는 작다. 헤더(`WaveLabel` 30)보다 크지 않아야 한다.
    - `SpellListContent`는 마법 행을 `ResultController`가 `spellRowPrefab`을 `instantiate`해 채우므로 에디터엔 **빈 컨테이너**만 둔다. 비어 있는 동안 Content Size 높이가 음수(−8)로 보이는 것은 정상이며, 런타임에 행이 붙으면 맞춰진다.
 5. **SpellRow 프리팹 제작** — 아래 순서를 그대로 따른다. 세 함정(자식 중첩·루트 UITransform 누락·행 내부 Layout 누락)이 전부 조용히 실패하므로 주의.
    1. `Create → 2D Object → Node`로 `SpellRow`를 만든다. **`Create → Empty Node`를 쓰지 않는다** — 빈 노드는 `UITransform`이 없어서, 부모 `SpellListContent`의 Layout이 행 크기를 못 재 행들이 겹치거나 안 보인다.

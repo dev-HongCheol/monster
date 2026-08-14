@@ -2,7 +2,7 @@
 
 - **브랜치:** `design/art-decision-audit` (PR #74)
 - **성격:** 플레이어 4방향 **최종 아트**를 씬에 반영하는 변경의 검증 문서다. 방향 전환 로직 자체는 `feat/player-4dir`이 이미 구현·검증했고([`player-4dir-test.md`](player-4dir-test.md)), 여기서 바뀌는 것은 **그 로직이 물고 있는 그림과 노드 상자**뿐이다.
-- **선행:** 그림을 뽑고 다듬은 절차와 실측은 [`sessions/2026-08-07-player-4dir-postprocess.md`](../development/sessions/2026-08-07-player-4dir-postprocess.md), 규격 정본은 [`asset-production-spec.md`](../design/asset-production-spec.md).
+- **선행:** 그림을 뽑고 다듬은 절차와 실측은 [`sessions/2026-08-07-player-4dir-postprocess.md`](../development/sessions/2026-08-07-player-4dir-postprocess.md), 규격 정본은 [`art-asset-spec.md`](../design/spec/art-asset-spec.md).
 
 > **이 문서는 이 슬라이스의 시점 기록이다.** 다음 슬라이스가 같은 노드를 또 건드리면 그때는 이 문서를 고치지 않고 새 문서를 만든다(`CLAUDE.md` 「문서 정리 규칙」).
 

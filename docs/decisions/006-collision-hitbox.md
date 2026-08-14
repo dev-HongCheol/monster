@@ -2,7 +2,7 @@
 
 - **날짜:** 2026-07-23
 - **상태:** 결정됨
-- **관련 설계:** [`../design/art-direction.md`](../design/art-direction.md) §3.1·§3.3·§6, [`../development/sessions/2026-07-23-player-hitbox-plan.md`](../development/sessions/2026-07-23-player-hitbox-plan.md)
+- **관련 설계:** [`../design/spec/art-direction.md`](../design/spec/art-direction.md) §3.1·§3.3·§6, [`../development/sessions/2026-07-23-player-hitbox-plan.md`](../development/sessions/2026-07-23-player-hitbox-plan.md)
 - **반전 대상:** 2026-07-22 "원 유지 + 작게 그리기" 결정 (`../development/sessions/2026-07-22-player-mage-art-plan.md` §7 「남는 관찰」, art-direction §3.3)
 - **입력:** 캐릭터 방향성(4방향)·충돌(AABB)·VFX 재검토(이 대화, 2026-07-23) — 검토 내용은 본 ADR과 art-direction에 흡수했다.
 

@@ -1,7 +1,7 @@
 # player-4dir — 테스트 체크리스트
 
 - **브랜치:** feat/player-4dir
-- **정본:** [`../development/sessions/2026-07-24-player-4dir-plan.md`](../development/sessions/2026-07-24-player-4dir-plan.md), [`../design/art-direction.md`](../design/art-direction.md) §3.3(온스크린 크기)·§9(작업 순서 2번), [`../decisions/006-collision-hitbox.md`](../decisions/006-collision-hitbox.md) (ADR 006)
+- **정본:** [`../development/sessions/2026-07-24-player-4dir-plan.md`](../development/sessions/2026-07-24-player-4dir-plan.md), [`../design/spec/art-direction.md`](../design/spec/art-direction.md) §3.3(온스크린 크기)·§9(작업 순서 2번), [`../decisions/006-collision-hitbox.md`](../decisions/006-collision-hitbox.md) (ADR 006)
 - **범위:** 플레이어가 **이동하는 방향을 바라본다.** 이동 입력으로 네 방향 중 하나를 판정해, 방향이 바뀐 프레임에만 `Sprite`의 그림을 갈아끼운다. 함께 그림을 세로로 키우고(64→96px) 피해 히트박스 반높이를 그 실루엣에 맞춰 올린다. **리워크로 발치 오프셋을 여기에 포함했다**(아래 참고).
 - **범위 밖:** 이동 충돌 원의 반지름(`collisionRadius=25`), y-정렬, 스켈레탈 리깅, 이동·시전 애니메이션(계획 §8). 그리고 **최종 마법사 4방향 아트**(계획 §10 — 이번엔 플레이스홀더를 넣고 별도 슬라이스로 분리했다).
 

@@ -61,7 +61,7 @@
 
 **장르 클러스터:** Vampire Survivors / Brotato / Hell Maiden / Magic Survival
 **시점:** 탑다운 2D
-**그래픽:** 고해상도 스타일라이즈드 2D — 애니 셀 화풍을 **유료 생성 서비스**(fal.ai Sandbox, 채택 모델 `openai/gpt-image-2`)로 뽑고, 플레이어와 해금 캐릭터는 **Spine** 스켈레탈 리깅으로 움직인다. 로컬 생성(ComfyUI + SDXL 1.0 base + 자체 스타일 LoRA)은 한 번 세웠다가 **2026-08-06에 폐기**했다 — 4방향을 뽑으려면 시점과 인물 동일성이 서로를 잡아먹어 뒷모습이 아예 나오지 않았고, 유료 쪽이 그 둘을 한 번에 통과했다. 화풍·해상도·파이프라인의 정본은 [`docs/design/art-direction.md`](../design/art-direction.md), 제작 규격은 [`docs/design/asset-production-spec.md`](../design/asset-production-spec.md), 생성 실행 절차는 [`docs/design/art-generation-playbook.md`](../design/art-generation-playbook.md)다.
+**그래픽:** 고해상도 스타일라이즈드 2D — 애니 셀 화풍을 **유료 생성 서비스**(fal.ai Sandbox, 채택 모델 `openai/gpt-image-2`)로 뽑고, 플레이어와 해금 캐릭터는 **Spine** 스켈레탈 리깅으로 움직인다. 로컬 생성(ComfyUI + SDXL 1.0 base + 자체 스타일 LoRA)은 한 번 세웠다가 **2026-08-06에 폐기**했다 — 4방향을 뽑으려면 시점과 인물 동일성이 서로를 잡아먹어 뒷모습이 아예 나오지 않았고, 유료 쪽이 그 둘을 한 번에 통과했다. 화풍·해상도·파이프라인의 정본은 [`docs/design/spec/art-direction.md`](../design/spec/art-direction.md), 제작 규격은 [`docs/design/spec/art-asset-spec.md`](../design/spec/art-asset-spec.md), 생성 실행 절차는 [`docs/design/spec/art-generation-playbook.md`](../design/spec/art-generation-playbook.md)다.
 **플랫폼:** v1 = itch.io 웹, v2 = Steam PC. 모바일 비목표.
 
 ---
@@ -123,7 +123,7 @@
 - [x] **마법 슬롯 시스템** — 활성 6칸(`LoadoutLogic.MAX_SLOTS`). 패시브는 슬롯을 쓰지 않고 획득 즉시 영구 스탯으로 적용되므로 「패시브 6」은 **다른 방식으로 대체**됐다
 - [x] **자동 발사 + 마법 패턴 시스템** (마법별 패턴 데이터로 정의)
 - [x] 적 AI — 추격에 더해 지그재그·돌진·유격과 능동 공격까지. 원안(단순 추격 + 충돌)을 넘어섰다(아래 콘텐츠 절 참고)
-- [x] 충돌 감지 — 거리 기반 + 공간 그리드. 판정 형태는 [ADR 006](../decisions/006-collision-hitbox.md)
+- [x] 충돌 감지 — 거리 기반 + 공간 그리드. 판정 형태는 [판정 규칙](../development/spec/game-combat.md)
 - [x] HP 시스템
 - [x] **본격 덱 시스템:**
   - 레벨업 시 3장 카드 표시
@@ -161,7 +161,7 @@
 
 **아트**
 
-> **목록을 2026-08-07에 현재 스코프로 맞췄다.** 종전 목록은 캐릭터 3종·적 5종·마법 10종을 기준으로 세어 동결 결정(마법 5종·적 12종·직업 1종)과 어긋나 있었다. 제작 순서의 정본은 [`art-direction.md`](../design/art-direction.md) §9이고, 아래는 그 순서를 로드맵 단위로 센 것이다.
+> **목록을 2026-08-07에 현재 스코프로 맞췄다.** 종전 목록은 캐릭터 3종·적 5종·마법 10종을 기준으로 세어 동결 결정(마법 5종·적 12종·직업 1종)과 어긋나 있었다. 제작 순서의 정본은 [`art-direction.md`](../design/spec/art-direction.md) §9이고, 아래는 그 순서를 로드맵 단위로 센 것이다.
 
 - [x] **플레이어(마법사) 4방향 스프라이트** — 최종 아트 확보(2026-08-07). 몸 4장 + 지팡이 1장, 같은 캔버스·같은 발 밑선 정렬
 - [ ] **플레이어 스켈레탈 리깅** — 파츠 컷 → Spine. 위 4방향은 리깅 전 단계이고, 스킨(v2)이 여기서 갈린다
@@ -320,7 +320,7 @@ itch.io 출시 후 4주 데이터 수집:
 | 위험 | 확률 | 영향 | 완화책 |
 |------|------|------|--------|
 | AI 그래픽 일관성 부족 | 중 | 높음 | **절반 해소(2026-08-06).** 종전 완화책이던 "Sref 워크플로우"는 Midjourney 기능인데 Midjourney는 채택된 적이 없다 — 실제로 통한 것은 유료 서비스의 다중 이미지 편집으로, 정면 한 장을 레퍼런스로 넣어 네 방향을 같은 인물로 받았다. 남은 위험은 **적 12종끼리의 일관성·변별**이고, 12종을 다 뽑기 전 소수 표본으로 거른다 |
-| **채택 생성 모델의 상업 이용 조건 미확인** | 중 | 높음 | v2 스킨 판매(상업 배포)를 예고해 두고 **채택 모델(`openai/gpt-image-2`)의 약관을 확인한 기록이 없다.** 로컬 체크포인트만 가려 둔 상태다([`art-direction.md`](../design/art-direction.md) 부록 C). 리깅·로스터로 에셋이 불어나기 전에 확인한다(백로그 F68) |
+| **채택 생성 모델의 상업 이용 조건 미확인** | 중 | 높음 | v2 스킨 판매(상업 배포)를 예고해 두고 **채택 모델(`openai/gpt-image-2`)의 약관을 확인한 기록이 없다.** 로컬 체크포인트만 가려 둔 상태다([`art-direction.md`](../design/spec/art-direction.md) 부록 C). 리깅·로스터로 에셋이 불어나기 전에 확인한다(백로그 F68) |
 | Cocos Creator 학습 추가 시간 | 중 | 중 | 이미 부트스트랩 + 프로토타입 완성 |
 | 덱 시스템이 1시간만에 질림 (전제 3) | 중 | 높음 | 5주차 외부 테스트로 조기 발견 |
 | 마법 6슬롯 동시 발사 시 성능 저하 | 중 | 중 | 객체 풀링 + 파티클 LOD |
@@ -336,7 +336,7 @@ itch.io 출시 후 4주 데이터 수집:
 
 ### 완료 (기록 보존)
 - [x] 로드맵 v0.2 합의 + 저장, 사용자 검토, PR 병합
-- [x] **코딩 1주차 Walking Skeleton** — DataManager·WaveManager·DeckManager와 씬 셋(menu/main/result), 메뉴 → 게임 → 카드 선택 → 게임오버 → 결과 플로우까지 전부 구현됐다. 결정 세션은 [`sessions/2026-05-23-walking-skeleton-plan.md`](../development/sessions/2026-05-23-walking-skeleton-plan.md)
+- [x] **코딩 1주차 Walking Skeleton** — DataManager·WaveManager·DeckManager와 씬 셋(menu/main/result), 메뉴 → 게임 → 카드 선택 → 게임오버 → 결과 플로우까지 전부 구현됐다(2026-05-23 결정)
 
 ### 지금 열려 있는 것
 - [ ] **플레이어 4방향 에디터 반영** — Sprite의 Trim 해제 + Content Size 48×96. 최종 아트가 나왔으므로 이걸 해야 화면에 제대로 선다(백로그 F62)
@@ -351,9 +351,9 @@ itch.io 출시 후 4주 데이터 수집:
 **지금 이어서 볼 것 (2026-08-07 추가)**
 
 - `docs/development/backlog.md` · `backlog-implement.md` — 슬라이스를 가로지르는 TODO의 정본. §13이 큰 걸음만 적는 대신 실제 목록은 여기 있다
-- `docs/design/art-direction.md` — 아트 방향(무엇을 왜 그렇게 그리는가)의 정본
-- `docs/design/asset-production-spec.md` — 제작 규격(몇 px·어떤 피벗·어떤 파일명)
-- `docs/design/art-generation-playbook.md` — 생성 실행(어떤 설정으로 뽑아 무엇으로 합격시키는가)
+- `docs/design/spec/art-direction.md` — 아트 방향(무엇을 왜 그렇게 그리는가)의 정본
+- `docs/design/spec/art-asset-spec.md` — 제작 규격(몇 px·어떤 피벗·어떤 파일명)
+- `docs/design/spec/art-generation-playbook.md` — 생성 실행(어떤 설정으로 뽑아 무엇으로 합격시키는가)
 - `docs/development/spec/ops-build.md` — 빌드 산출물과 itch.io 배포 경로의 정본. §7 「출시 준비」의 실행판
 - `docs/decisions/006-collision-hitbox.md` · `007-skin-hitbox-independence.md` — 판정 형태와 스킨 독립성
 
@@ -377,5 +377,5 @@ itch.io 출시 후 4주 데이터 수집:
 - **v0.2 (2026-05-23):** 정통 덱 시스템 채택 (뱀서/Brotato 모델). 판타지 직업 3종 + 마법 슬롯 6 + 마법 풀 10종. 시나리오 명시(판타지 영웅 소환). v1 일정 14주 → 17.5주.
 - **v0.2.1 (2026-05-23):** 코딩 시작 반영. Walking Skeleton 접근(마법 1종 + 적 1종 전체 플로우 먼저) 합의. 구현 방식 B(시스템 분리 우선), 별도 씬(menu/game/result), 타이머 기반 웨이브 결정.
 - **v0.2.2 (2026-06-09):** 마법사 단일로 v1 전체 플로우(마법·적·배경·메타) 완성 우선. 추가 직업(성직자·드루이드)·캐릭터 선택 화면을 post-MVP로 이월(§7·§10). 회귀 위험·스코프 축소.
-- **v0.3.1 (2026-08-07):** 아트 파이프라인 서술을 실제와 맞췄다. §2·§10·§12가 로컬 생성(ComfyUI + 스타일 LoRA)을 채택 파이프라인으로 적고 있었으나 그건 4방향에서 막혀 **2026-08-06에 폐기**됐고, 실제로 선 것은 유료 생성 서비스(fal.ai, `openai/gpt-image-2`)다. §12의 완화책 "Sref 워크플로우"는 채택된 적 없는 Midjourney 기능이라 실제 이력으로 교체하고, **채택 모델의 상업 이용 조건 미확인**을 새 위험으로 세웠다(백로그 F68). 함께 §7 체크리스트를 코드 기준으로 갱신했다 — 코어 시스템은 대부분 구현됐고 남은 공백은 메타 3종(메인 메뉴 확장·도감·세이브)이며, 강화·패시브·아트 목록도 동결 결정 이후 숫자로 맞췄다. §13은 완료된 Walking Skeleton 체크리스트를 걷어내고 열린 항목만 남겼다. 근거: [`sessions/2026-08-06-player-front-cut-generation.md`](../development/sessions/2026-08-06-player-front-cut-generation.md) §7, [`sessions/2026-08-07-player-4dir-postprocess.md`](../development/sessions/2026-08-07-player-4dir-postprocess.md).
+- **v0.3.1 (2026-08-07):** 아트 파이프라인 서술을 실제와 맞췄다. §2·§10·§12가 로컬 생성(ComfyUI + 스타일 LoRA)을 채택 파이프라인으로 적고 있었으나 그건 4방향에서 막혀 **2026-08-06에 폐기**됐고, 실제로 선 것은 유료 생성 서비스(fal.ai, `openai/gpt-image-2`)다. §12의 완화책 "Sref 워크플로우"는 채택된 적 없는 Midjourney 기능이라 실제 이력으로 교체하고, **채택 모델의 상업 이용 조건 미확인**을 새 위험으로 세웠다(백로그 F68). 함께 §7 체크리스트를 코드 기준으로 갱신했다 — 코어 시스템은 대부분 구현됐고 남은 공백은 메타 3종(메인 메뉴 확장·도감·세이브)이며, 강화·패시브·아트 목록도 동결 결정 이후 숫자로 맞췄다. §13은 완료된 Walking Skeleton 체크리스트를 걷어내고 열린 항목만 남겼다(근거는 2026-08-06 생성 기록과 08-07 후처리 기록).
 - **v0.3 (2026-07-02):** 마법·적 콘텐츠 동결. 적 12종 + 능동 공격(발사체·근접 휘두르기·돌진·유격)까지 이미 v1에 구현돼 §8 v2 스코프를 당겼고, 마법은 5종·깊은 효과 레이어(폭발·기절·둔화·노바·궤도) 상태. 두 영역은 이후 버그·밸런스·현 기준 마감만 하고 신규 콘텐츠는 2차로 이월. 개발 축을 완성도(맵·스토리·전체 플로우·UI·메타)로 전환. 성능 트랙(백로그 G1)도 2차 이월. 세부 시퀀싱은 후속 office-hours 대기 → 상태 DRAFT.

@@ -4,7 +4,7 @@
 - **브랜치:** feat/player-mage-art
 - **계획:** [`../development/sessions/2026-07-22-player-mage-art-plan.md`](../development/sessions/2026-07-22-player-mage-art-plan.md)
 - **성격:** 아트/에셋 + 에디터 교체 슬라이스. 순수 로직 변경 없음(자동 테스트 skip). 검증은 전부 에디터 조립 + 인게임 육안.
-- **정본:** [`../design/art-direction.md`](../design/art-direction.md) §6
+- **정본:** [`../design/spec/art-direction.md`](../design/spec/art-direction.md) §6
 
 ---
 
@@ -37,7 +37,7 @@
 4. **크기(contentSize)** — `UITransform`:
    - 종횡비는 소스 그대로. 소스가 `W×H`면 `contentSize`도 그 비율(`W':H' = W:H`).
    - **몸통 코어 실루엣(모자·로브 넘침 제외)이 대략 지름 50px**(= `collisionRadius 25` × 2)에 오도록 전체 크기를 잡는다. 마법사는 전신이라 모자 끝·로브 자락은 50px 밖으로 넘쳐도 된다(그 부분은 비충돌).
-   - **확정 (채택 이미지 `player_mage_bridge.png` = 788×1012, 사용자 설정 2026-07-22): `contentSize = 50 × 64`** (종횡비 788:1012 ≈ 0.78 보존). **작게 잡는 이유:** 충돌이 단일 원(지름 50px = `collisionRadius 25` × 2)이라, 캐릭터를 히트박스 크기 정도로 작게 두면 원이 캐릭터를 거의 감싸 위아래 어긋남이 몇 px로 사라진다(원래 50×50 placeholder 스케일 복귀, VS·Brotato 방식). 크게 그리면 원이 몸통 밴드만 덮어 위아래가 안 맞는다. 비율 유지한 채 눈으로 미세조정(예 44×56 ~ 54×69). 반드시 contentSize로 조정하고 노드 스케일은 (1,1,1) 유지. 정본: `../design/art-direction.md` §3.3.
+   - **확정 (채택 이미지 `player_mage_bridge.png` = 788×1012, 사용자 설정 2026-07-22): `contentSize = 50 × 64`** (종횡비 788:1012 ≈ 0.78 보존). **작게 잡는 이유:** 충돌이 단일 원(지름 50px = `collisionRadius 25` × 2)이라, 캐릭터를 히트박스 크기 정도로 작게 두면 원이 캐릭터를 거의 감싸 위아래 어긋남이 몇 px로 사라진다(원래 50×50 placeholder 스케일 복귀, VS·Brotato 방식). 크게 그리면 원이 몸통 밴드만 덮어 위아래가 안 맞는다. 비율 유지한 채 눈으로 미세조정(예 44×56 ~ 54×69). 반드시 contentSize로 조정하고 노드 스케일은 (1,1,1) 유지. 정본: `../design/spec/art-direction.md` §3.3.
 5. **노드 스케일 금지** — 크기는 오직 contentSize로. `Player` 노드 `Scale`은 (1,1,1) 그대로. (노드 스케일을 주면 리깅 때 같은 노드의 `ArmatureDisplay`로 이월돼 숨은 재작업이 됨.)
 6. **피벗 정렬** — PNG를 캐릭터의 의도한 피벗(발밑 또는 몸 중심) 기준으로 생성해, 앵커(0.5,0.5)·트림 중심이 노드 원점과 맞게 한다. 어긋나면 그림이 논리 위치에서 밀려 보인다.
 

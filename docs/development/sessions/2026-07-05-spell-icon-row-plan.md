@@ -88,7 +88,7 @@ SpellCaster.instance.loadout.spells   (보유 마법 id[] — 이미 public gett
 ### 4.5 노드 구조 (씬 — 7단계 에디터)
 
 - 슬롯 프리팹 1종: 분류색 Sprite(placeholder 박스) + 티어 Label + 빈칸용 테두리. HUD가 `MAX_SLOTS`개 복제.
-- 슬롯 컨테이너: **3×2 그리드 배치**(cc.Layout GRID, 3열 고정), hud-layout 목업(`docs/decisions/hud-layout.html`)의 스킬 그리드 자리(우하단). *(정정 2026-07-05: 초안의 "가로 한 줄"은 오기획 — 목업이 3열×2줄 그리드이므로 그리드로 확정.)*
+- 슬롯 컨테이너: **3×2 그리드 배치**(cc.Layout GRID, 3열 고정), hud-layout 목업(`docs/design/mockups/hud-layout.html`)의 스킬 그리드 자리(우하단). *(정정 2026-07-05: 초안의 "가로 한 줄"은 오기획 — 목업이 3열×2줄 그리드이므로 그리드로 확정.)*
 
 ## 5. 리뷰 요약 (autoplan 집중 리뷰 — Codex 미설치, 단일 리뷰어 + 사용자 조정)
 
