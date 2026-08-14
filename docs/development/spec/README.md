@@ -30,4 +30,5 @@
 | [`game-combat.md`](game-combat.md) | 무엇이 무엇에 맞나 (히트박스 형태와 판정 수치의 출처) |
 | [`ops-build.md`](ops-build.md) | 빌드가 뭘 내놓고 어디에 올리나 |
 | [`ops-environment.md`](ops-environment.md) | 새 장비에 뭘 까나 |
+| [`ops-gbrain.md`](ops-gbrain.md) | 레포를 의미로 검색하려면 뭘 깔고 색인을 언제 갱신하나 |
 | [`ops-skill-routing.md`](ops-skill-routing.md) | 이 상황에 어떤 스킬을 쓰나 |
