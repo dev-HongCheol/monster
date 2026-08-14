@@ -21,5 +21,10 @@
 
 | 문서 | 답하는 질문 |
 |---|---|
+| [`art-asset-spec.md`](art-asset-spec.md) | 몇 px·어떤 피벗·어떤 파일명으로 만드나 |
+| [`art-direction.md`](art-direction.md) | 무엇을 왜 그렇게 그리나 |
+| [`art-generation-playbook.md`](art-generation-playbook.md) | 어떤 프롬프트·설정으로 뽑아 무엇으로 합격시키나 |
 
-> 아직 비어 있다. 기존 정본(`art-direction.md`·`asset-production-spec.md`·`art-generation-playbook.md`)을 이 폴더로 옮기는 것은 백로그 **F69**다 — 그 셋은 결정 기록으로 나가는 링크를 59곳에서 걸고 있어, 링크를 끊는 작업과 이동을 한 슬라이스에서 함께 한다.
+## 확정 목업
+
+`../mockups/`에 HTML 목업과 그 렌더 이미지가 있다. 결정 기록이 아니라 **지금도 쓰는 청사진**이라 — QA 문서 셋이 지금도 레이아웃 기준으로 인용한다 — `docs/decisions/`가 아니라 여기 둔다. 규격 쪽에서 부르는 자리는 [`art-asset-spec.md`](art-asset-spec.md) §10이다.
