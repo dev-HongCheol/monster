@@ -5,10 +5,12 @@
   "test_skip_reason": null,
   "ts_check_scope": "full",
   "canon_updated": [
+    "CLAUDE.md",
     "docs/design/spec/README.md",
     "docs/design/spec/art-asset-spec.md",
     "docs/design/spec/art-direction.md",
     "docs/design/spec/art-generation-playbook.md",
+    "docs/development/spec/docs-glossary.md",
     "docs/development/workflow/qa-setup.md",
     "docs/planning/magic-system-mage.md",
     "docs/planning/roadmap.md"

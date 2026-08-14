@@ -1,9 +1,11 @@
 /**
  * 정본 이전 슬라이스의 이동 단언.
  *
- * **여기 있는 것은 회귀망이 아니라 일회용 게이트다.** `wf ready-impl`이 요구하는 RED를 만들고,
- * 이동이 계획대로 끝났는지 한 번 재는 것이 역할이다. 앞으로 계속 회귀를 잡을 그물(링크·앵커·
- * 정본 인덱스)은 이름이 슬라이스에 묶이지 않은 `DocLinks.test.ts`와 `CanonDoc.test.ts`에 둔다.
+ * **이름에 슬라이스가 붙었지만 지우지 않는다.** `wf ready-impl`이 요구하는 RED를 만드는 것이
+ * 첫 역할이었지만, "옮긴 여섯이 `spec/` 아래에 있다"는 누가 되돌리면 그때 다시 빨개져야 하는
+ * 명제라 슬라이스가 끝나도 남는다(`ArtCanonMove.test.ts`가 아트 셋에 대해 하는 일과 같다).
+ * 다만 여기 두는 것은 **이 이동이 일어났고 유지된다**까지다 — 링크·앵커·정본 인덱스처럼
+ * 슬라이스에 묶이지 않는 규칙은 `DocLinks.test.ts`와 `CanonDoc.test.ts`가 든다.
  *
  * 인계해 둔 단언 하나는 예정대로 회수했다. 「아트 정본 세 행은 아직 파일명으로 남아 있다」는
  * 그 셋이 옮겨 가기 전까지 라우팅 행을 조기에 접는 것을 막는 장치였고, 실제로 옮긴 슬라이스가
@@ -35,7 +37,7 @@ const GAME_COMBAT = 'docs/development/spec/game-combat.md';
 /** 레포에서 내보내는 문서. 스스로 "AI 작업의 참조원이 아니다"라고 적어 둔 낡은 조감도다. */
 const REMOVED = 'docs/development/architecture.md';
 
-/** git이 추적하는 파일 목록. 존재 판정을 여기에 거는 이유는 `findTrackedFiles`의 JSDoc에 있다. */
+/** git이 추적하는 파일 목록. 존재 판정을 여기에 거는 이유는 `tracked`의 주석에 있다. */
 function findTrackedFiles(): Set<string> {
   const r = spawnSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`git ls-files 실패: ${r.stderr}`);

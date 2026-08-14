@@ -53,9 +53,9 @@
 
 | 문서 | 링크 수 |
 |------|--------|
-| `design/spec/art-direction.md` | 16 |
-| `design/spec/art-generation-playbook.md` | 11 |
-| `design/spec/art-asset-spec.md` | 3 |
+| `design/art-direction.md` | 16 |
+| `design/art-generation-playbook.md` | 11 |
+| `design/asset-production-spec.md` | 3 |
 | `design/ui-completeness-plan.md` | 1 |
 | `planning/roadmap.md` | 6 |
 | `planning/enemy-system.md` | 1 |

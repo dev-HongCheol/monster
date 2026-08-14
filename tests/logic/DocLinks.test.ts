@@ -260,6 +260,15 @@ describe('findBrokenLinks — 판정', () => {
   });
 });
 
+/**
+ * 「정본은 결정 기록을 링크하지 않는다」가 적용되는 층.
+ *
+ * 「문서 정리 규칙」이 정한 대상은 **"지금 이렇다"를 말하는 문서 전부**라 두 `spec/`보다
+ * 넓다. `docs/design/` **바로 아래**는 일부러 뺐다 — 그 층은 인덱스가 초안과 진행 중 계획의
+ * 자리라고 선언한 곳이라 결정 기록 링크가 허용된다.
+ */
+const CANON_SCOPE = /^docs\/(?:(?:development|design)\/spec|planning|development\/workflow)\//;
+
 describe('레포 전체 회귀망', () => {
   /** 추적되는 마크다운 문서를 전부 읽는다. 검사 범위를 좁히면 그만큼 사각지대가 된다. */
   function loadDocs(): { docs: { path: string; content: string }[]; tracked: Set<string> } {
@@ -313,19 +322,30 @@ describe('레포 전체 회귀망', () => {
 
   it('정본은 결정 기록으로 나가는 링크를 걸지 않는다', () => {
     // 두 `spec/README.md`가 선언만 하고 지키는 기계가 없던 규칙이다. 링크를 타고 들어간
-    // 사람이 폐기된 명세를 현재 명세로 읽은 사고가 2026-08-08에 실제로 났다.
-    //
-    // 범위가 두 `spec/`보다 넓은 이유는 「문서 정리 규칙」이 정한 대상이 그렇기 때문이다 —
-    // "지금 이렇다"를 말하는 문서 전부다. `docs/design/` **바로 아래**는 일부러 뺐다.
-    // 그 층은 인덱스가 초안과 진행 중 계획의 자리라고 선언한 곳이라 결정 기록 링크가
-    // 허용된다. 예외 목록 없이 출발하려고 위반 0건인 상태에서 범위를 넓혔다.
+    // 사람이 폐기된 명세를 현재 명세로 읽은 사고가 2026-08-08에 실제로 났다. 범위는
+    // `CANON_SCOPE`가 들고, 예외 목록 없이 출발하려고 위반 0건인 상태에서 넓혔다.
     const { docs } = loadDocs();
+    const inScope = docs.filter((d) => CANON_SCOPE.test(d.path));
+
+    // **범위가 조용히 좁아지는 것을 막는다.** `CANON_SCOPE`를 잘못 고쳐 한 층이 빠지면
+    // 그 층의 위반이 통째로 안 보이는데, `offenders`는 빈 채로 통과해 검사하지 않으면서
+    // 초록을 낸다. 같은 구멍을 CLI 쪽에서 막는 것이 아래 「wf check-links가 이 파일을
+    // 가리킨다」다.
+    //
+    // 총 개수 하한이 아니라 **층마다 하나씩**을 재는 이유는, 개수로 재면 문서가 하나
+    // 늘고 줄 때마다 하한이 낡아 진짜 회귀와 평범한 증감을 구분하지 못하기 때문이다.
+    // 여기서 잡고 싶은 것은 "몇 개인가"가 아니라 "네 층이 다 들어 있는가"다.
+    const layers = [
+      'docs/design/spec/',
+      'docs/development/spec/',
+      'docs/planning/',
+      'docs/development/workflow/',
+    ];
+    const missing = layers.filter((l) => !inScope.some((d) => d.path.startsWith(l)));
+    expect(missing).toEqual([]);
+
     const offenders: string[] = [];
-    for (const doc of docs) {
-      if (
-        !/^docs\/(?:(?:development|design)\/spec|planning|development\/workflow)\//.test(doc.path)
-      )
-        continue;
+    for (const doc of inScope) {
       for (const link of extractLinks(doc.content)) {
         if (/(?:^|\/)(?:sessions|decisions)\//.test(link.target)) {
           offenders.push(`${doc.path}:${link.line} → ${link.target}`);
