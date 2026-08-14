@@ -69,8 +69,8 @@
 
 평문 경로와 코드 스팬 안 경로는 마크다운 링크가 아니라서 검사기가 지나친다. 아래는 그중 **낡으면 실제로 사람을 잘못 안내하는 자리**만 골랐다.
 
-- [ ] `git grep -n "docs/design/asset-production-spec\.md\|docs/design/art-direction\.md\|docs/design/art-generation-playbook\.md" -- ':!docs/qa/art-canon-move-test.md' ':!docs/development/sessions/'` — 결과가 **`tests/logic/ArtCanonMove.test.ts`의 이동 대응표 세 줄뿐**인가. 그 표는 옛 경로가 추적 목록에서 사라졌는지를 재는 게이트라 왼쪽에 옛 경로를 적는 것이 정상이다. 제외한 둘은 시점 기록(세션)과 이 QA 문서 자신이다 — 이 문서는 옛 경로를 **설명하려고** 본문에 적고 있어서 빼지 않으면 자기 문장을 잡는다. 정본·`CLAUDE.md`·`workflow/`·`planning/`에 남아 있으면 놓친 것이다
-- [ ] `git grep -n "decisions/hud-layout\|decisions/result-stats" -- ':!docs/development/sessions/2026-08-13-art-canon-move-plan.md' ':!docs/development/sessions/2026-08-13-canon-spec-move-plan.md' ':!tests/logic/'` — 결과가 **이 QA 문서의 이 줄 하나**뿐인가(목업 인용 11곳 중 코드 스팬 일곱은 검사기 밖이라 손으로 훑은 자리다). 제외한 셋은 옛 위치를 설명해야 하는 자리다 — 두 계획 문서는 이동 전 상태를 서술하고, `ArtCanonMove.test.ts`는 옛 경로가 비었는지를 잰다
+- [x] `git grep -n "docs/design/asset-production-spec\.md\|docs/design/art-direction\.md\|docs/design/art-generation-playbook\.md" -- ':!docs/qa/art-canon-move-test.md' ':!docs/development/sessions/'` — 결과가 **`tests/logic/ArtCanonMove.test.ts`의 이동 대응표 세 줄뿐**인가. 그 표는 옛 경로가 추적 목록에서 사라졌는지를 재는 게이트라 왼쪽에 옛 경로를 적는 것이 정상이다. 제외한 둘은 시점 기록(세션)과 이 QA 문서 자신이다 — 이 문서는 옛 경로를 **설명하려고** 본문에 적고 있어서 빼지 않으면 자기 문장을 잡는다. 정본·`CLAUDE.md`·`workflow/`·`planning/`에 남아 있으면 놓친 것이다
+- [x] `git grep -n "decisions/hud-layout\|decisions/result-stats" -- ':!docs/development/sessions/2026-08-13-art-canon-move-plan.md' ':!docs/development/sessions/2026-08-13-canon-spec-move-plan.md' ':!tests/logic/'` — 결과가 **이 QA 문서의 이 줄 하나**뿐인가(목업 인용 11곳 중 코드 스팬 일곱은 검사기 밖이라 손으로 훑은 자리다). 제외한 셋은 옛 위치를 설명해야 하는 자리다 — 두 계획 문서는 이동 전 상태를 서술하고, `ArtCanonMove.test.ts`는 옛 경로가 비었는지를 잰다
 - [x] `docs/development/spec/docs-glossary.md`의 아트 문서 언급 7곳이 새 경로·새 이름인가. **정본 안의 평문**이라 낡으면 이 슬라이스가 막으려던 상태가 그대로 재현된다
 - [x] `docs/development/workflow/qa-setup.md`가 목업 위치를 `docs/design/mockups/*.html`로 부르는가. `pnpm wf`가 매 슬라이스 배달하는 절차 정본이라 낡으면 다음 슬라이스의 AI가 없는 폴더를 본다
 - [x] `.gitignore`의 원본 보관 안내가 `docs/design/spec/art-asset-spec.md §9.1`을 가리키는가
@@ -80,7 +80,7 @@
 
 ### 문서가 사람에게 제대로 보이는가
 
-- [ ] GitHub PR의 **Files changed**에서 옮긴 셋을 열어 본문 링크를 클릭 — 전부 열리는가. 특히 `../../`로 깊어진 것들
+- [x] GitHub PR의 **Files changed**에서 옮긴 셋을 열어 본문 링크를 클릭 — 전부 열리는가. 특히 `../../`로 깊어진 것들
 - [x] `docs/design/spec/README.md`의 「목록」 표에 세 줄이 슬러그 사전순(`art-asset-spec` → `art-direction` → `art-generation-playbook`)으로 있는가. 꼬리 문구가 "아직 비어 있다"로 남아 있지 않은가 — `CanonDoc.test.ts`의 인덱스↔폴더 정합 단언이 이것을 잰다
 - [ ] `docs/design/mockups/`의 목업 둘을 브라우저로 열어 렌더가 깨지지 않는가
 - [x] `CLAUDE.md` 문서 구조 트리에 `design/mockups/`가 있는가. 없으면 다음 사람이 트리에 없는 폴더를 초안 폴더로 오해한다
@@ -89,7 +89,7 @@
 ### 절차와 인게임이 그대로인가
 
 - [x] `pnpm wf steps qa-setup` — 절차 문서가 정상 출력되고, 그 안의 목업 경로가 새 경로인가(`docs/design/mockups/*.html` 확인)
-- [ ] Cocos 에디터로 게임을 한 판 돌려 본다. 이 슬라이스는 게임 코드를 건드리지 않았으므로 **아무것도 달라지지 않아야 한다** — 달라졌다면 슬라이스 밖의 파일을 건드린 것이다
+- [x] Cocos 에디터로 게임을 한 판 돌려 본다. 이 슬라이스는 게임 코드를 건드리지 않았으므로 **아무것도 달라지지 않아야 한다** — 달라졌다면 슬라이스 밖의 파일을 건드린 것이다
 
 ---
 
@@ -97,6 +97,7 @@
 
 - 2026-08-14 — 계획 승인 직후 작성. 씬·프리팹·에디터 절은 이 슬라이스에 해당 사항이 **없음으로 확정**이라 사유와 함께 비웠다.
 - 2026-08-14 — 구현 완료 후 확정. 자동 검사와 AI가 확인 가능한 항목을 실측값으로 채웠고, 두 `git grep` 항목은 **기대 결과를 명시**로 바꿨다 — 옛 경로를 일부러 들고 있는 자리(이동 게이트의 대응표, 이 문서 자신, 두 계획 문서)를 적어 두지 않으면 통과인지 아닌지를 판단할 수 없다. 남은 `[ ]` 넷은 브라우저·에디터·GitHub 화면이 필요한 항목이라 7단계에서 사용자가 본다.
+- 2026-08-14 — 사용자 검증 후 `PR 승인`. 사용자가 GitHub·에디터 항목 셋을 확인했고, 두 `git grep` 항목은 **AI가 이미 돌려 기대 결과와 맞는 것을 봤는데 체크 표시를 빠뜨렸던 것**이라 여기서 채웠다. 목업 렌더 확인 하나는 미체크로 남는다 — 셋 다 `git mv` 100% 유사도 rename이라 내용이 한 바이트도 안 바뀌었고, 새 경로를 부르는 링크는 검사기가 판정한다.
 
 ## 구현이 확인한 것
 
