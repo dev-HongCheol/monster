@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { CANON_ALIASES, findInlineCanonQuotes } from '../helpers/LinkCheck';
+import { ATTRIBUTION_VERBS, CANON_ALIASES, findInlineCanonQuotes } from '../helpers/LinkCheck';
 
 /** 인용하는 쪽으로 쓸 정본. 실제 위반이 가장 많이 났던 파일이다. */
 const SPEC = 'docs/design/spec/art-asset-spec.md';
@@ -56,6 +56,44 @@ describe('잡아야 하는 것 — 다른 정본의 문장을 인라인으로 �
         quote: '각 요괴 원전 도상을 확인하고 추측하지 말 것',
         source: 'art-direction',
       },
+    ]);
+  });
+
+  it('귀속 동사가 인용구 바로 앞에서 수식해도 잡는다', () => {
+    // `art-generation-playbook.md`의 실물이다. 한국어는 관형형으로 인용구를 앞에서 수식할 수
+    // 있어서, 동사가 뒤에 오는 것만 보면 이 형태가 통째로 빠진다.
+    const line =
+      'art-direction §6이 계획으로 적어 둔 "지팡이 든 팔을 조준 각으로 회전"은 별도 슬라이스로 둔다.';
+    expect(check(line)).toEqual([
+      {
+        file: SPEC,
+        line: 1,
+        quote: '지팡이 든 팔을 조준 각으로 회전',
+        source: 'art-direction',
+      },
+    ]);
+  });
+
+  it('한 줄에 위반이 둘이면 둘 다 보고한다', () => {
+    // 줄이 아니라 인용구가 판정 단위라서 얻는 성질이다. 첫 건만 보고하면 고친 사람이 초록불을
+    // 보고 끝냈다고 믿는데 같은 줄에 하나가 더 남아 있다.
+    const line =
+      'art-direction §1이 "무섭되 유치하지 않게"를 정체성으로 잡았고, ' +
+      '사양서 §2.6은 "무기는 손과 분리된 별도 슬롯"이라고 못 박았다.';
+    expect(check(line, PLAYBOOK)).toEqual([
+      { file: PLAYBOOK, line: 1, quote: '무섭되 유치하지 않게', source: 'art-direction' },
+      { file: PLAYBOOK, line: 1, quote: '무기는 손과 분리된 별도 슬롯', source: '사양서' },
+    ]);
+  });
+
+  it('회상형 인용이 같은 줄에 있어도 뒤의 살아 있는 위반을 놓치지 않는다', () => {
+    // 이 레포는 한 줄이 곧 한 문단이라 600자를 넘는 줄이 있다. 회상 여부를 줄 단위로 재면
+    // 회상 하나가 같은 문단의 살아 있는 위반을 통째로 가린다.
+    const line =
+      'art-direction §5-3이 "호드에선 20px급"이라고 적고 있었으나 그쪽 문구는 고쳤다. ' +
+      '한편 사양서 §3.2는 "트림 기준"이라고 못 박았다.';
+    expect(check(line, PLAYBOOK)).toEqual([
+      { file: PLAYBOOK, line: 1, quote: '트림 기준', source: '사양서' },
     ]);
   });
 
@@ -105,6 +143,17 @@ describe('규칙이 건드리지 않는 셋 — 전부 실측으로 확인한 �
     const line =
       'art-direction §5-3이 잡몹을 "호드에선 20px급으로 작게 보인다"고 적고 있었으나 ' +
       '위 계산과 맞지 않았고, 그쪽 문구는 이 값으로 고쳤다.';
+    expect(check(line)).toEqual([]);
+  });
+});
+
+describe('세 조건이 우연히 한 줄에 모인 것과는 다르다', () => {
+  it('귀속 동사가 인용구에서 멀리 떨어져 있으면 잡지 않는다', () => {
+    // 여기서 `"임시"`는 `art-direction`을 인용한 것이 아니라 우리가 지어낸 말이다. 거리를 안
+    // 재고 「같은 줄 어딘가」로만 묶으면 이 줄이 빨간불이 되는데, 옮길 대상 자체가 없어서
+    // **규칙을 지켜도 통과시킬 방법이 없다.** 계획 §2가 줄 단위 내용 검사를 기각한 이유와 같다.
+    const line =
+      'art-direction §6이 슬롯 분해를 정해 뒀으므로, 우리는 이 단계를 "임시"라고 부른다.';
     expect(check(line)).toEqual([]);
   });
 });
@@ -166,6 +215,12 @@ describe('그물이 자라는 것을 눈에 보이게 한다', () => {
     // 별칭이 늘면 검사 범위가 조용히 넓어지고, 그만큼 오탐 위험도 함께 는다. 길이를 단언으로
     // 박아 두면 늘리는 사람이 이 줄을 함께 고치게 되어 그 판단이 리뷰에 드러난다.
     expect(CANON_ALIASES.size).toBe(5);
+  });
+
+  it('귀속 동사 목록은 열일곱이다', () => {
+    // 동사가 늘면 그물이 넓어지는 것이 아니라 **인라인 인용이 다시 늘고 있다**는 신호다.
+    // 길이를 박아 두면 늘리는 사람이 이 줄을 함께 고치게 되어 그 신호가 diff에 드러난다.
+    expect(ATTRIBUTION_VERBS).toHaveLength(17);
   });
 
   it('별칭은 전부 실재하는 정본 경로를 가리킨다', () => {
