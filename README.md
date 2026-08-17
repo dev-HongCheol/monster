@@ -2,6 +2,10 @@
 
 > **판타지 영웅이 한국 신화 세계에서 귀신과 싸우는 정통 덱 호드 서바이벌 (탑다운 2D 액션 로그라이크)**
 
+<p align="center">
+  <img src="docs/assets/gameplay-screenshot.png" alt="Monster Gameplay Screenshot" width="800"/>
+</p>
+
 ---
 
 ## 📌 목차
@@ -166,6 +170,7 @@
 monster/
 ├── .claude/                   # 개발 워크플로우 CLI 및 훅 스크립트
 ├── docs/                      # 프로젝트 문서 체계
+│   ├── assets/                # README 및 문서용 이미지 에셋
 │   ├── planning/              # 기획 (게임 디자인, 마법/적 시스템, 로드맵)
 │   ├── design/                # 디자인 (아트 디렉션, 에셋 스펙, 프롬프트 플레이북)
 │   ├── development/           # 개발 정본 (코드 컨벤션, 전투 판정 규칙, 환경 가이드)
