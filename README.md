@@ -9,10 +9,11 @@
 - [2. 기술 스택 (Tech Stack)](#2-기술-스택-tech-stack)
 - [3. 핵심 게임 시스템 (Core Systems)](#3-핵심-게임-시스템-core-systems)
 - [4. 아키텍처 및 설계 원칙 (Architecture)](#4-아키텍처-및-설계-원칙-architecture)
-- [5. 프로젝트 구조 (Directory Structure)](#5-프로젝트-구조-directory-structure)
-- [6. 시작 가이드 (Getting Started)](#6-시작-가이드-getting-started)
-- [7. 개발 워크플로우 & 스크립트 (Workflow & Scripts)](#7-개발-워크플로우--스크립트-workflow--scripts)
-- [8. 문서 가이드 (Documentation)](#8-문서-가이드-documentation)
+- [5. AI 기반 개발 워크플로우 (AI-Driven Development)](#5-ai-기반-개발-워크플로우-ai-driven-development)
+- [6. 프로젝트 구조 (Directory Structure)](#6-프로젝트-구조-directory-structure)
+- [7. 시작 가이드 (Getting Started)](#7-시작-가이드-getting-started)
+- [8. 개발 워크플로우 & 스크립트 (Workflow & Scripts)](#8-개발-워크플로우--스크립트-workflow--scripts)
+- [9. 문서 가이드 (Documentation)](#9-문서-가이드-documentation)
 
 ---
 
@@ -118,7 +119,48 @@
 
 ---
 
-## 5. 프로젝트 구조 (Directory Structure)
+## 5. AI 기반 개발 워크플로우 (AI-Driven Development)
+
+본 프로젝트는 AI 에이전트와 개발자가 고도의 신뢰성과 생산성을 유지하며 협업할 수 있도록 **엄격한 자동화 파이프라인과 안전 가드**를 구축하여 개발되고 있습니다.
+
+> **루프 엔지니어링 & 서브 에이전트 검증:** 격리된 순수 로직 테스트 하네스(Vitest) 위에서 서브 에이전트의 다면 리뷰(CSO·코드리뷰)와 `invalidate` 자동 재구현 피드백 루프를 결합하여, AI가 실패 시 스스로 수정하고 완결성을 보장하는 루프 엔지니어링이 적용되어 있습니다.
+
+```
+[ planning ] ──► [ qa-setup ] ──► [ implementation ] ──► [ verification ] ──► [ user-verification ] ──► [ pr-ready ] ──► [ done ]
+ (계획 수립)     (RED 테스트)        (GREEN 구현)         (AI 자체 검증)        (사용자 검증/Draft PR)     (PR 승인)     (머지)
+      ▲                                                                                 │
+      └─────────────────────────── 버그 발견 시 리워크 (rework) ─────────────────────────┘
+```
+
+### 🤖 1) 워크플로우 상태 머신 & TDD 강제 (`.claude/workflow.mjs`)
+- **CLI 상태 머신:** 상태의 단일 진실은 `.claude/workflow-state.json`이며, `pnpm wf` 명령어로만 단계 전이가 가능합니다.
+- **코드 수정 통제 (PreToolUse Hook):** `gate-scripts.mjs` 훅이 AI의 임의 코드 수정을 차단하며, 오직 `implementation` 및 `verification` 단계에서만 스크립트 수정을 허용합니다.
+- **테스트 주도 개발 (TDD):**
+  - `qa-setup` 단계에서 기획 명세를 바탕으로 실패하는 테스트(`tests/logic/*.test.ts`, **RED**)를 먼저 작성해야만 구현 단계(`ready-impl`)로 전이됩니다.
+  - `implementation` 단계에서 테스트를 모두 통과(**GREEN**)시킨 후 리팩터링을 거쳐 검증 단계(`start-verification`)로 진입합니다.
+
+### 🛡️ 2) 인간-AI 협업 경계 (Human-in-the-Loop & Safety)
+- **3대 사람 게이트 (Human Gates):** 중요한 의사결정 지점은 개발자의 명시적 지시가 있어야만 AI가 다음 단계로 전이합니다.
+  - `계획 승인` ➔ `pnpm wf approve-plan` (기획/설계 문서 확인 후 테스트 작성 진입)
+  - `PR 승인` ➔ `pnpm wf approve-pr` (인게임 검증 및 `.meta` 생성 확인 후 PR 완료)
+  - `리워크` ➔ `pnpm wf rework` (인게임 플레이 중 버그 발견 시 구현 단계로 복귀)
+- **실수 머지 차단 (Draft PR):** 사용자 검증 단계 진입 시 검토용 Draft PR을 자동 생성하여 미승인 머지를 원천 차단합니다.
+- **Cocos 에셋 `.meta` 관리 규칙:**
+  - Cocos Creator의 UUID 일관성을 유지하기 위해 **AI는 `.meta` 파일을 직접 생성하지 않습니다.**
+  - 사용자가 Cocos 에디터에서 인게임 테스트를 수행할 때 엔진이 생성한 정품 `.meta`를 8단계(`PR 승인`) 시점에 일괄 커밋합니다.
+
+### 🎨 3) AI 그래픽 파이프라인 (AI Art Pipeline)
+- **일관된 애니 셀 화풍 생성:** 유료 이미지 생성 서비스(fal.ai Sandbox / GPT-Image-2)를 활용하여 한국 귀신 및 캐릭터의 4방향 시점과 화풍 일관성을 유지하며 에셋을 제작합니다.
+- **Spine 2D 스켈레탈 리깅:** 생성된 2D 일러스트레이션 파츠를 Spine으로 리깅하여 유기적인 전투 및 이동 애니메이션을 구현합니다.
+
+### 📚 4) 단일 진실 공급원(SSOT)과 정본(Canon) 시스템
+- **코드가 이긴다 (Code as Ultimate Truth):** 문서와 구현이 어긋날 경우 실제 동작하는 코드와 JSDoc이 최상위 기준이 됩니다.
+- **정본 선언 게이트:** 기능 개발 완료 시 `pnpm wf canon` 또는 `canon-done`을 통해 `docs/` 내 정본 문서를 반드시 갱신하도록 강제합니다.
+- **링크 무결성 회귀망:** `DocLinks.test.ts`를 통해 레포지토리 내 모든 마크다운 문서 간의 상대 경로 및 앵커 링크가 유효한지 자동으로 검사합니다.
+
+---
+
+## 6. 프로젝트 구조 (Directory Structure)
 
 ```
 monster/
@@ -151,7 +193,7 @@ monster/
 
 ---
 
-## 6. 시작 가이드 (Getting Started)
+## 7. 시작 가이드 (Getting Started)
 
 ### 사전 요구사항 (Prerequisites)
 - **Node.js:** `v20.0.0` 이상 권장
@@ -172,7 +214,7 @@ pnpm install
 
 ---
 
-## 7. 개발 워크플로우 & 스크립트 (Workflow & Scripts)
+## 8. 개발 워크플로우 & 스크립트 (Workflow & Scripts)
 
 | 명령어 | 설명 |
 |---|---|
@@ -185,7 +227,7 @@ pnpm install
 
 ---
 
-## 8. 문서 가이드 (Documentation)
+## 9. 문서 가이드 (Documentation)
 
 자세한 기획, 아트, 아키텍처 및 코딩 컨벤션은 `docs/` 하위 정본 문서에 기술되어 있습니다.
 
