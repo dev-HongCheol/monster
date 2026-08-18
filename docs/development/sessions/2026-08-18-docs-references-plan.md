@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-08-18
 - **브랜치:** `feat/docs-references`
-- **상태:** 계획
+- **상태:** 완료
 - **닫는 백로그:** `F81`(`CLAUDE.md` 크기 예산의 여유가 얇다 — 선택지 ② 실행)
 - **정본:** [`spec/docs-references.md`](../spec/docs-references.md) — 이 슬라이스가 신설한다 · [`workflow/user-verification.md`](../workflow/user-verification.md) — 「문서 정리 규칙」의 절차 조항을 받아 간다
 - **출처:** 직전 슬라이스(`feat/canon-quote-guard`)가 스쿼시 직전에 써 두고 PR에 넣지 않은 초안
