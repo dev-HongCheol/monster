@@ -11,13 +11,8 @@
  * 잰다.
  */
 
-import { spawnSync } from 'node:child_process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(HERE, '../..');
+import { findTrackedFiles } from '../helpers/DocFs';
 
 /**
  * 옮기는 아트 정본 셋. 왼쪽이 옛 경로, 오른쪽이 `docs/design/spec/` 아래 새 이름이다.
@@ -47,20 +42,9 @@ const MOCKUP_MOVES: ReadonlyArray<readonly [string, string]> = [
   ['docs/decisions/result-stats.html', 'docs/design/mockups/result-stats.html'],
 ];
 
-/** git이 추적하는 파일 목록. 존재 판정을 여기에 거는 이유는 `tracked`의 주석에 있다. */
-function findTrackedFiles(): Set<string> {
-  const r = spawnSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' });
-  if (r.status !== 0) throw new Error(`git ls-files 실패: ${r.stderr}`);
-  return new Set(r.stdout.split('\n').filter(Boolean));
-}
-
 /**
- * 존재 판정은 `fs.existsSync`가 아니라 **git 추적 목록**으로 한다.
- *
- * 링크 검사기가 추적 목록으로 존재를 재기 때문이다. 디스크만 보고 초록을 내면 `git add`를
- * 빠뜨린 상태가 통과하는데, 그 상태에서는 새 경로로 가는 링크가 검사기에게 **전부 깨진 것**으로
- * 잡힌다 — 두 판정이 갈리면 어느 쪽도 못 믿는다. 대소문자를 무시하는 Windows에서 `Art-Direction.md`
- * 오타가 통과하고 Linux에서만 깨지는 것도 여기서 막힌다.
+ * 존재 판정은 `fs.existsSync`가 아니라 **git 추적 목록**으로 한다. 이유는 `DocFs.ts`의
+ * `findTrackedFiles` 주석이 든다 — 세 벌로 복사돼 있던 것을 그 파일 한 곳으로 접었다.
  */
 const tracked = findTrackedFiles();
 

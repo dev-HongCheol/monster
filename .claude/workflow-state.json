@@ -1,15 +1,14 @@
 {
-  "feature": "gbrain-canon",
-  "phase": "user-verification",
-  "test_skipped": true,
-  "test_skip_reason": "문서·절차 변경만이라 새 순수 로직이 없다. 정본 이동으로 생기는 링크 회귀는 기존 DocLinks.test.ts가 레포 전체를 검사해 덮는다.",
+  "feature": "canon-quote-guard",
+  "phase": "pr-ready",
+  "test_skipped": false,
+  "test_skip_reason": null,
   "ts_check_scope": "full",
   "canon_updated": [
-    "CLAUDE.md",
-    "docs/development/spec/README.md",
-    "docs/development/spec/ops-environment.md",
-    "docs/development/spec/ops-gbrain.md",
-    "docs/development/workflow/pr-ready.md"
+    "docs/design/spec/art-asset-spec.md",
+    "docs/design/spec/art-generation-playbook.md",
+    "docs/development/spec/docs-writing-style.md",
+    "docs/development/spec/ops-build.md"
   ],
   "canon_skip_reason": null,
   "verification": {
@@ -19,6 +18,6 @@
     "code_review_clean": true
   },
   "docs_delivered": [
-    "user-verification"
+    "pr-ready"
   ]
 }

@@ -9,21 +9,18 @@
  * 방식이라, 게이트와 테스트가 갈라질 여지가 없다.
  */
 
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { findTrackedFiles, loadDocs, ROOT } from '../helpers/DocFs';
 import {
   collectAnchors,
   extractLinks,
   findBrokenLinks,
+  findInlineCanonQuotes,
   resolveTarget,
   slugifyHeading,
 } from '../helpers/LinkCheck';
-
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(HERE, '../..');
 
 describe('extractLinks — 무엇을 링크로 세는가', () => {
   it('평범한 상대 링크를 센다', () => {
@@ -270,19 +267,12 @@ describe('findBrokenLinks — 판정', () => {
 const CANON_SCOPE = /^docs\/(?:(?:development|design)\/spec|planning|development\/workflow)\//;
 
 describe('레포 전체 회귀망', () => {
-  /** 추적되는 마크다운 문서를 전부 읽는다. 검사 범위를 좁히면 그만큼 사각지대가 된다. */
-  function loadDocs(): { docs: { path: string; content: string }[]; tracked: Set<string> } {
-    const r = spawnSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' });
-    if (r.status !== 0) throw new Error(`git ls-files 실패: ${r.stderr}`);
-    const tracked = new Set(r.stdout.split('\n').filter(Boolean));
-    const docs = [...tracked]
-      .filter((p) => p.endsWith('.md'))
-      .map((p) => ({ path: p, content: fs.readFileSync(path.join(ROOT, p), 'utf8') }));
-    return { docs, tracked };
-  }
+  // 한 번만 읽는다. 검사마다 `loadDocs()`를 다시 부르면 그때마다 `git ls-files`와 추적 마크다운
+  // 전량을 다시 읽게 되는데, 여기서 필요한 것은 같은 시점의 같은 스냅숏이다.
+  const tracked = findTrackedFiles();
+  const docs = loadDocs(tracked);
 
   it('깨진 링크가 하나도 없다', () => {
-    const { docs, tracked } = loadDocs();
     const broken = findBrokenLinks(docs, tracked);
     // 배열이 아니라 **줄바꿈으로 이은 한 문자열**로 비교한다. 배열로 비교하면 vitest가
     // `…(21)`로 줄여 버려서 정작 어디가 깨졌는지 안 보인다 — 고칠 수 없는 실패 메시지다.
@@ -305,7 +295,6 @@ describe('레포 전체 회귀망', () => {
   it('표시 텍스트가 파일명이면 가리키는 파일과 같은 이름이다', () => {
     // 대상만 고치고 표시 텍스트를 놔두면 화면에는 없는 경로가 보이는데 링크는 멀쩡히
     // 동작해서, 존재 검사로는 영영 안 걸린다. 이번 이전에서 실제로 다섯 곳이 그렇게 됐다.
-    const { docs } = loadDocs();
     const offenders: string[] = [];
     for (const doc of docs) {
       for (const raw of doc.content.split('\n').entries()) {
@@ -324,7 +313,6 @@ describe('레포 전체 회귀망', () => {
     // 두 `spec/README.md`가 선언만 하고 지키는 기계가 없던 규칙이다. 링크를 타고 들어간
     // 사람이 폐기된 명세를 현재 명세로 읽은 사고가 2026-08-08에 실제로 났다. 범위는
     // `CANON_SCOPE`가 들고, 예외 목록 없이 출발하려고 위반 0건인 상태에서 넓혔다.
-    const { docs } = loadDocs();
     const inScope = docs.filter((d) => CANON_SCOPE.test(d.path));
 
     // **범위가 조용히 좁아지는 것을 막는다.** `CANON_SCOPE`를 잘못 고쳐 한 층이 빠지면
@@ -363,8 +351,21 @@ describe('레포 전체 회귀망', () => {
     //
     // 옮기고 나면 "목업은 결정 기록이 아니다"를 드는 것이 링크 하나뿐이라, 다음 사람이 새
     // 목업을 여기 두어도 아무도 말하지 않는다. 그 자리를 이 단언이 든다.
-    const { tracked } = loadDocs();
     const strays = [...tracked].filter((p) => p.startsWith('docs/decisions/') && /\.html$/.test(p));
     expect(strays).toEqual([]);
+  });
+
+  it('정본이 다른 정본의 문장을 인라인으로 인용하지 않는다', () => {
+    // 링크 재지정은 문장이 그저 **가리킬** 때만 안전하다. 인용하면 그 문장은 "대상 문서가
+    // 무엇을 적었는가"에 대한 주장이 되고, 링크를 옮기는 순간 주장이 거짓이 되는데 링크는
+    // 멀쩡히 풀리므로 위 「깨진 링크」도 여기 회귀망도 침묵한다. F69에서 두 번 났다.
+    //
+    // 규칙과 예외의 정본은 `spec/docs-writing-style.md`이고, 검사기가 무엇을 못 잡는지는
+    // `findInlineCanonQuotes`의 JSDoc이 든다. 범위를 결정 기록 링크 금지와 같은
+    // `CANON_SCOPE`로 두는 이유는, 둘 다 "지금 이렇다"를 말하는 문서에만 거는 규칙이라서다.
+    const inScope = docs.filter((d) => CANON_SCOPE.test(d.path));
+    const hits = findInlineCanonQuotes(inScope);
+    const report = hits.map((h) => `${h.file}:${h.line} ${h.source} → "${h.quote}"`).join('\n');
+    expect(report).toBe('');
   });
 });

@@ -12,14 +12,10 @@
  * 행을 접으면서 2026-08-14에 지웠다.
  */
 
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(HERE, '../..');
+import { findTrackedFiles, ROOT } from '../helpers/DocFs';
 
 /** 옮기는 개발 정본 여섯. 왼쪽이 옛 경로, 오른쪽이 `docs/development/spec/` 아래 새 이름이다. */
 const MOVES: ReadonlyArray<readonly [string, string]> = [
@@ -37,20 +33,11 @@ const GAME_COMBAT = 'docs/development/spec/game-combat.md';
 /** 레포에서 내보내는 문서. 스스로 "AI 작업의 참조원이 아니다"라고 적어 둔 낡은 조감도다. */
 const REMOVED = 'docs/development/architecture.md';
 
-/** git이 추적하는 파일 목록. 존재 판정을 여기에 거는 이유는 `tracked`의 주석에 있다. */
-function findTrackedFiles(): Set<string> {
-  const r = spawnSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' });
-  if (r.status !== 0) throw new Error(`git ls-files 실패: ${r.stderr}`);
-  return new Set(r.stdout.split('\n').filter(Boolean));
-}
-
 /**
- * 존재 판정은 `fs.existsSync`가 아니라 **git 추적 목록**으로 한다.
- *
- * 이유가 둘이다. 첫째로 `existsSync`는 대소문자를 무시하는 Windows에서 `Code-Conventions.md`
- * 오타를 통과시키고 Linux에서만 깨진다. 둘째로 `architecture.md`는 디스크에서 지우는 것이
- * 아니라 무시되는 `docs/temp/`에 사본을 남기고 추적만 끊는 것이라, 파일 존재로 재면 "제거됐다"를
- * 영영 확인할 수 없다.
+ * 존재 판정은 `fs.existsSync`가 아니라 **git 추적 목록**으로 한다. 일반적인 이유는 `DocFs.ts`의
+ * `findTrackedFiles` 주석이 들고, 이 파일에는 그것 말고 하나가 더 있다 — `architecture.md`는
+ * 디스크에서 지우는 것이 아니라 무시되는 `docs/temp/`에 사본을 남기고 추적만 끊는 것이라,
+ * 파일 존재로 재면 "제거됐다"를 영영 확인할 수 없다.
  */
 const tracked = findTrackedFiles();
 
