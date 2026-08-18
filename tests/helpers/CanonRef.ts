@@ -7,7 +7,13 @@
  * 않아 파일을 나눴다.
  *
  * 파일을 읽어 오는 일은 부르는 쪽(`DocsReferences.test.ts`)이 `DocFs.ts`로 한다.
+ *
+ * 본문 전처리 둘(`normalizeEol`·`blankFences`)은 `LinkCheck.ts`에서 가져다 쓴다. 사본을 뜨면
+ * 한쪽만 고쳤을 때 나머지가 낡은 채로 초록불을 유지하는데, 직전 슬라이스가 같은 종류의 사본
+ * 셋을 접은 참이다.
  */
+
+import { blankFences, normalizeEol } from './LinkCheck';
 
 /** 검사 대상 세션 문서 하나. `name`은 경계 판정에 쓰는 파일명이라 경로와 따로 든다. */
 export interface SessionDoc {
@@ -50,8 +56,11 @@ const CANON_LINE = /^-\s*\*\*정본:\*\*\s*(.*)$/;
 /** 마크다운 인라인 링크 — 표시 텍스트는 비어 있어도 되고 대상만 있으면 된다. */
 const MARKDOWN_LINK = /\[[^\]]*\]\([^)\s]+\)/;
 
-/** 「없음」 뒤에 사유를 잇는 구분자. 줄표·하이픈·콜론 중 무엇을 써도 받는다. */
-const NONE_WITH_REASON = /^없음\s*[—\-:]?\s*(.*)$/;
+/** 「없음」 뒤에 붙는 구분자와 여백. 줄표·하이픈·콜론·마침표 중 무엇을 써도 벗겨 낸다. */
+const NONE_SEPARATOR = /^[\s—\-:.]+/;
+
+/** 사유로 인정하는 최소 길이. 한 글자는 오타이거나 빈칸을 메우려고 찍은 것이라 사유가 아니다. */
+const MIN_REASON_LENGTH = 2;
 
 /**
  * 파일명의 날짜가 경계 이상인가.
@@ -76,10 +85,15 @@ export function isEnforced(name: string, boundary: string): boolean {
  * 적어도 내용은 같지만, 의미 검색으로 문서 **안쪽**에 착지한 사람이 못 보므로 그 줄이 막으려던
  * 사고(낡은 값을 현재로 읽는 것)를 그대로 남긴다.
  *
+ * 본문을 재기 전에 두 가지를 걷어낸다. **줄 끝을 LF로 맞추지 않으면** CRLF 문서에서 정규식의
+ * `$`가 `\r` 앞에서 안 맞아, 멀쩡히 있는 줄을 「없다」고 신고한다(이 레포에 CRLF 문서가 셋
+ * 있다). **코드 펜스 안을 비우지 않으면** 예시로 적은 `---`가 머리말을 조기에 끊고, 펜스 안의
+ * 예시 `정본:` 줄이 진짜 줄로 세어진다.
+ *
  * @param content 세션 문서 전문
  */
 export function checkCanonLine(content: string): CanonLineProblem | null {
-  const lines = content.split('\n');
+  const lines = blankFences(normalizeEol(content)).split('\n');
   const ruleAt = lines.findIndex((l) => HORIZONTAL_RULE.test(l));
   // `---`가 없으면 문서 전체가 아직 머리말이다 — 본문을 안 쓴 문서를 위치 위반으로 잡지 않는다.
   const frontmatterEnd = ruleAt === -1 ? lines.length : ruleAt;
@@ -97,8 +111,10 @@ export function checkCanonLine(content: string): CanonLineProblem | null {
     return valueAt(frontmatterEnd, lines.length) === null ? 'missing' : 'not-in-frontmatter';
   }
 
-  const none = NONE_WITH_REASON.exec(value);
-  if (none) return none[1].trim() === '' ? 'empty-reason' : null;
+  if (value.startsWith('없음')) {
+    const reason = value.slice('없음'.length).replace(NONE_SEPARATOR, '').trim();
+    return reason.length >= MIN_REASON_LENGTH ? null : 'empty-reason';
+  }
 
   return MARKDOWN_LINK.test(value) ? null : 'no-link';
 }
@@ -135,6 +151,8 @@ const PROBLEM_TEXT: Record<CanonLineProblem, string> = {
  *
  * 이 게이트는 앞으로 새 세션 문서를 쓸 때마다 걸릴 수 있어서 메시지가 곧 비용이다. 무엇이 없는지만
  * 알려 주면 그때마다 규칙 문서를 찾아 읽게 되므로, 요구 형태와 탈출구를 메시지가 직접 든다.
+ *
+ * @param v 위반 한 건
  */
 export function formatViolation(v: CanonLineViolation): string {
   return (

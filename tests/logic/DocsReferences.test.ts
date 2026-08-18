@@ -86,9 +86,63 @@ describe('checkCanonLine — 무엇을 통과시키나', () => {
   });
 
   it('사유 없이 「없음」만 적으면 잡는다', () => {
-    // `wf canon-skip "<사유>"`와 같은 방식이다. 빈칸으로 빠져나가는 길을 막는다.
+    // `wf canon-skip "<사유>"`와 같은 방식이다. 빈칸으로 빠져나가는 길을 막는다. 구분자만 찍거나
+    // 한 글자를 적는 것도 빈칸을 메운 것이지 사유가 아니라서 함께 막는다.
     expect(checkCanonLine(frontmatter(['- **정본:** 없음']))).toBe('empty-reason');
     expect(checkCanonLine(frontmatter(['- **정본:** 없음 —']))).toBe('empty-reason');
+    expect(checkCanonLine(frontmatter(['- **정본:** 없음.']))).toBe('empty-reason');
+    expect(checkCanonLine(frontmatter(['- **정본:** 없음 — ㅁ']))).toBe('empty-reason');
+  });
+
+  it('CRLF 문서에서도 줄을 찾는다', () => {
+    // 줄 끝을 LF로 안 맞추면 정규식의 `$`가 `\r` 앞에서 안 맞아, 멀쩡히 있는 줄을 「없다」고
+    // 신고한다. 이 레포에 CRLF 문서가 셋 있어서(세션 하나·정본 둘) 가정이 아니다.
+    const lines = [
+      '# 제목',
+      '',
+      '- **정본:** [`spec/docs-references.md`](../spec/docs-references.md) — 신설한다',
+      '',
+      '---',
+      '',
+      '## 1. 본문',
+    ];
+    expect(checkCanonLine(lines.join('\r\n'))).toBeNull();
+    expect(
+      checkCanonLine(['# 제목', '', '- **정본:** 없음 — 명세를 안 바꿨다'].join('\r\n')),
+    ).toBeNull();
+  });
+
+  it('코드 펜스 안의 `---`는 머리말을 끊지 않는다', () => {
+    // 세션 문서가 예시로 펜스를 열면 그 안의 `---`가 머리말을 조기에 끊어, 진짜 `정본:` 줄이
+    // 본문에 있는 것으로 오인된다.
+    const doc = [
+      '# 제목',
+      '',
+      '```',
+      '---',
+      '```',
+      '- **정본:** [`spec/docs-references.md`](../spec/docs-references.md)',
+      '',
+      '---',
+      '',
+      '## 1. 본문',
+    ].join('\n');
+    expect(checkCanonLine(doc)).toBeNull();
+  });
+
+  it('코드 펜스 안의 예시는 진짜 줄로 세지 않는다', () => {
+    const doc = [
+      '# 제목',
+      '',
+      '```',
+      '- **정본:** [`예시.md`](예시.md) — 이건 예시다',
+      '```',
+      '',
+      '---',
+      '',
+      '## 1. 본문',
+    ].join('\n');
+    expect(checkCanonLine(doc)).toBe('missing');
   });
 });
 
@@ -127,7 +181,25 @@ describe('「문서 정리 규칙」 이전 결과', () => {
   it('`CLAUDE.md`가 Knowledge Base 표에서 새 정본을 가리킨다', () => {
     // 자리가 Workflow 절이 아니라 Knowledge Base여야 하는 이유는, 이 다섯 조항이 문서를
     // **쓰는 동안** 작동해야 하는 규칙이라 쓰기 전에 조회되는 표에 있어야 하기 때문이다.
-    expect(read('CLAUDE.md')).toContain('spec/docs-references.md');
+    // 그래서 파일 어딘가가 아니라 **그 표의 행**을 재야 이 주장이 지켜진다.
+    const row = read('CLAUDE.md')
+      .split('\n')
+      .find((l) => l.startsWith('| 문서끼리 어떻게 참조하나 |'));
+    expect(row).toContain('spec/docs-references.md');
+  });
+
+  it('참조 조항 다섯이 새 정본에 실제로 도착했다', () => {
+    // 떠난 것(`CLAUDE.md`에서 절이 사라짐)만 재면, 내일 새 정본에서 한 조항이 지워져도
+    // 스위트가 초록을 유지한다. 다섯을 절 제목으로 하나씩 잡는다.
+    const doc = read('docs/development/spec/docs-references.md');
+    const missing = [
+      '## 2. 참조 방향',
+      '## 4. 순환 참조를 만들지 않는다',
+      '## 5. 절 번호',
+      '## 9. 과거 결정 기록은 고치지 않는다',
+      '## 11. 기각·뒤집힌 안을 남기는 법',
+    ].filter((h) => !doc.includes(h));
+    expect(missing).toEqual([]);
   });
 
   it('절차 조항이 `user-verification.md`로 옮겨 갔다', () => {

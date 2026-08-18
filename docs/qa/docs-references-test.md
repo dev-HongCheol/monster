@@ -22,7 +22,7 @@
 | `tests/helpers/CanonRef.ts` (신설) | §7 판정 순수 함수 | 디스크를 읽지 않는가(`LinkCheck.ts`와 같은 규약) |
 | `tests/logic/DocsReferences.test.ts` (신설) | §7 검사 + 이번 이전의 결과 검증 | — |
 | `tests/logic/DocLinks.test.ts` | `:263` 주석의 지목을 새 정본으로 수정 | 기존 단언 전부 그대로 통과 |
-| 두 백로그 | `F81` 완료 처리 + 신규 항목 셋 | 항목 ID 중복 없음(`origin/main` 기준) |
+| `docs/development/backlog-implement.md` | 신규 항목 넷(F88~F91). `F81` 완료 표시는 9단계 몫이라 여기서 안 한다 | 항목 ID 중복 없음(`origin/main` 기준). `backlog.md`는 안 건드린다 — 전부 코드·문서 인프라 항목이다 |
 
 ## 2. 씬/프리팹 변경 사항
 

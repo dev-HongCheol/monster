@@ -71,7 +71,7 @@ docs/
 | 이 동작이 맞나 | `tests/logic/*.test.ts` — 실행 가능한 명세 |
 | 코드를 어떻게 쓰나 | `docs/development/spec/code-conventions.md` — **코드 작성 전 항상 읽는다** |
 | 문서를 어떻게 쓰나 | `docs/development/spec/docs-writing-style.md` — **문서 작성 전 항상 읽는다** |
-| 문서끼리 어떻게 참조하나 | `docs/development/spec/docs-references.md` — 층·링크 방향·순환 참조·절 번호·이력. **문서 작성 전 항상 읽는다** |
+| 문서끼리 어떻게 참조하나 | `docs/development/spec/docs-references.md` — 층·링크 방향·순환 참조·절 번호·과거 기록 불수정·이력. **문서 작성 전 항상 읽는다** |
 | 그 밖의 개발 정본 — 용어·판정·빌드·환경·검색 | `docs/development/spec/README.md`가 목록. 안 옮긴 것은 로컬 환경 복구 매뉴얼 둘 |
 | 지금 단계에서 뭘 하나 | `docs/development/workflow/<phase>.md` — **절차의 정본.** `pnpm wf` 전이가 배달하고 `pnpm wf steps`로 다시 본다 |
 | 게임을 어떻게 만드나 | `docs/planning/` — 게임 디자인·컨셉·로드맵 |
@@ -169,6 +169,8 @@ planning → qa-setup → implementation → verification → user-verification 
 ### 문서/설계 작업 (코드 없음)
 
 `/office-hours` 또는 `/plan-ceo-review`로 방향을 검토하고, 결과물을 해당 `docs/` 하위 폴더에 저장한다. 주요 결정은 `docs/decisions/` ADR로 기록한다.
+
+이 경로는 `wf` phase를 안 거치므로 절차 문서가 배달되지 않는다. PR을 올리기 전 문서 정리는 `docs/development/workflow/user-verification.md` §1을 직접 열어 훑는다.
 
 ## Cocos Creator 구현 규칙
 
