@@ -1,6 +1,6 @@
 {
   "feature": "eol-policy",
-  "phase": "user-verification",
+  "phase": "pr-ready",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": "full",
@@ -13,6 +13,6 @@
     "code_review_clean": true
   },
   "docs_delivered": [
-    "user-verification"
+    "pr-ready"
   ]
 }

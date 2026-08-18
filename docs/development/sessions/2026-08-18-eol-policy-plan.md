@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-08-18
 - **브랜치:** `feat/eol-policy`
-- **상태:** 계획
+- **상태:** 완료
 - **닫는 백로그:** `F72`(줄바꿈(EOL) 정책 — `.gitattributes` 도입)
 - **정본:** 없음 — 줄 끝 정책의 정본은 `.gitattributes`와 `.editorconfig` 파일 자신이다. 두 파일이 정책을 선언하고 동시에 강제하므로, 같은 내용을 `spec/`에 옮겨 적으면 [`spec/docs-references.md`](../spec/docs-references.md#3-1-소유권-지목이-기본이다) §3-1이 금지하는 두 벌 소유가 된다
 - **출처:** [`../../qa/claude-md-split-review-issues.md`](../../qa/claude-md-split-review-issues.md) NEW-1(F72 등록) · 직전 슬라이스 `feat/docs-references`의 CRLF 회귀(`f2f1910`)
