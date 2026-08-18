@@ -152,6 +152,16 @@ context7로 cocos canvas hierarchy 조회해줘
 
 이미 레포에 포함되어 있으므로 별도 설정 불필요.
 
+### git blame 무시 목록 (새 장비마다 한 번)
+
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
+`.git-blame-ignore-revs`는 **내용은 안 바꾸고 형식만 바꾼 커밋**을 담는다(현재는 줄 끝 재정규화 하나). 그 커밋들을 건너뛰지 않으면 재정규화된 문서에서 `git blame`이 모든 줄에 대해 그 커밋을 가리켜, "이 줄이 왜 이렇게 됐나"를 되짚는 경로가 끊긴다.
+
+**설정이 필요한 이유는 이 값이 커밋되지 않기 때문이다.** GitHub는 저장소 루트의 그 파일을 자동으로 읽지만 로컬 git은 안 읽으므로, 웹에서는 멀쩡한 blame이 로컬에서만 재정규화 커밋으로 덮인다.
+
 ---
 
 ## 6. gbrain — 레포 의미 검색 (선택)

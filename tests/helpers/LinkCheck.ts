@@ -127,6 +127,22 @@ function blankInlineCode(text: string): string {
 }
 
 /**
+ * 문서에서 **코드로 적힌 부분을 공백으로 덮는다**(줄 끝 정규화 → 펜스 → 인라인 스팬).
+ *
+ * 문서를 형태로 재는 검사는 전부 이걸 먼저 통과시켜야 한다. 안 그러면 규칙을 **설명하려고** 본문에
+ * 적어 둔 예시가 위반으로 잡힌다. 2026-08-18에 실제로 났다 — `check-qa`가 "미확정 항목이 없다"고
+ * 선언한 문장 자체를 미확정 표시로 물어 게이트가 거짓으로 실패했고, 그 문서는 태그 이름을 안 쓰는
+ * 쪽으로 문장을 비틀어 우회해야 했다(백로그 F92).
+ *
+ * 덮는 것이지 지우는 것이 아니다. 길이와 줄 번호가 보존되므로 호출부가 위치를 그대로 보고할 수 있다.
+ *
+ * @param markdown 문서 본문
+ */
+export function scrubCode(markdown: string): string {
+  return blankInlineCode(blankFences(normalizeEol(markdown)));
+}
+
+/**
  * 본문에서 마크다운 인라인 링크를 순서대로 뽑는다.
  *
  * 코드 펜스와 인라인 코드 스팬 안쪽은 먼저 덮으므로 걸리지 않는다. 외부 주소(`https://` 등)도
@@ -148,7 +164,7 @@ function blankInlineCode(text: string): string {
  * @param markdown 문서 본문
  */
 export function extractLinks(markdown: string): MarkdownLink[] {
-  const scrubbed = blankInlineCode(blankFences(normalizeEol(markdown)));
+  const scrubbed = scrubCode(markdown);
   const links: MarkdownLink[] = [];
   for (const m of scrubbed.matchAll(INLINE_LINK)) {
     const before = scrubbed.slice(0, m.index ?? 0);
