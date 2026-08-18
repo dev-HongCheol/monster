@@ -105,6 +105,7 @@
 | F89 | 열림 | 낮음 | 📐 정본 층 상호 링크 다섯 쌍이 진짜 순환 참조인지 판정 | 아트 정본 셋이 서로 셋, `code-conventions.md`↔`docs-writing-style.md`, `docs-glossary.md`↔`enemy-system.md`. 각자 다른 축을 소유하면서 서로 가리키는 것은 정상이고 위반은 둘 다 상세를 미룰 때뿐인데, 형태로는 안 갈려서 기계를 못 만든다(`spec/docs-references.md` §12). 한 번 읽고 가른 뒤 결과를 그 문서에 남긴다. | `sessions/2026-08-18-docs-references-plan.md` §8 |
 | F90 | 열림 | 낮음 | ♻️ 「문서 정리 규칙」을 규칙 소유자로 부르는 주석 둘 | `tests/helpers/CanonDoc.ts:78`·`tests/logic/CanonDoc.test.ts:124`. 그 절은 2026-08-18에 `spec/docs-references.md`와 `workflow/user-verification.md`로 갈렸으므로 지목이 어긋난다. 같은 지목이 있던 `DocLinks.test.ts`는 그 슬라이스가 건드린 파일이라 함께 고쳤다. | `sessions/2026-08-18-docs-references-plan.md` §7 |
 | F91 | 열림 | 중(다음 절차 문서 슬라이스 전) | 🔧📐 절차 문서 합계 예산의 여유가 얇아졌다 | `F81`이 `CLAUDE.md`에서 덜어낸 부피가 절차 문서 쪽으로 옮겨 갔다 — 합계 13,206 → 14,784자로 상한 16,000자에 **1,216자** 남았다(`ClaudeMdSplit.test.ts`). 일곱 문서에 걸친 여유라 한 문서에 절 하나만 늘어도 위험하고, 개별로는 `verification.md` 3,407·`user-verification.md` 3,334가 상한 4,000에 가장 가깝다. `F81`과 같은 압박이 한 층 아래에서 되풀이되는 것이므로, 다음에 절차 문서를 늘릴 때 상한을 올릴지 절을 갈지 먼저 정한다. | `sessions/2026-08-18-docs-references-plan.md` §5 |
+| F92 | 열림 | 낮음 | 🔧📐 `check-qa`가 산문과 미확정 표시를 형태로 못 가른다 | `.claude/workflow.mjs`의 QA 확정 게이트가 줄 안에 태그 문자열이 있는지만 보고 코드 스팬 안팎을 가리지 않는다. 그래서 「이 문서에는 미확정 항목이 없다」고 **선언한 문장 자체가** 미확정 표시로 잡혀 게이트가 거짓으로 실패한다 — `feat/eol-policy`에서 실제로 났고, 그 문서는 태그 이름을 안 쓰는 쪽으로 우회했다. `LinkCheck.ts`의 `blankFences`가 같은 문제를 이미 푸므로 그것을 가져다 쓰면 된다. 같은 계열의 구멍이 `F82` ①에도 있다(링크 검사가 코드 스팬 속 예시를 문다). | [`../qa/eol-policy-review-issues.md`](../qa/eol-policy-review-issues.md) C1 |
 
 ---
 
