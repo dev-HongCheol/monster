@@ -34,12 +34,14 @@
 
 AI가 6단계에서 다 돌린다. 여기 적는 것은 무엇이 기계로 덮이는지를 사용자가 알기 위해서다.
 
-- [ ] `pnpm vitest run tests/logic/EolPolicy.test.ts` — 인덱스 CRLF 0건 + 정책 파일 + 검사 실행 확인
-- [ ] `pnpm vitest run` — 전체 스위트. 특히 문서를 읽는 검사들(`DocLinks`·`DocsReferences`·`CanonDoc`·`ClaudeMdSplit`)이 줄 끝이 바뀐 8개 문서에서 그대로 도는가
-- [ ] `pnpm wf check-links` — 깨진 링크·앵커 0건
-- [ ] `pnpm wf check-docs` — 절차 문서 정합
-- [ ] `pnpm typecheck`
-- [ ] `git diff --stat`로 재정규화 커밋이 **줄 끝만** 바꿨는지 확인(`git diff --ignore-cr-at-eol`이 비어야 한다)
+**통과 근거(2026-08-18):** 피처 테스트 `EolPolicy.test.ts` 3/3, 전체 스위트 48파일 842/842, 타입체크 범위 `full`. 통과 커밋은 `feat/eol-policy`의 `69799af`인데 squash 머지 뒤에는 이 SHA가 남지 않으므로, 나중에 되짚을 때는 PR #84을 연다.
+
+- [x] `pnpm vitest run tests/logic/EolPolicy.test.ts` — 인덱스 CRLF 0건 + 정책 파일 + 검사 실행 확인
+- [x] `pnpm vitest run` — 전체 스위트. 특히 문서를 읽는 검사들(`DocLinks`·`DocsReferences`·`CanonDoc`·`ClaudeMdSplit`)이 줄 끝이 바뀐 8개 문서에서 그대로 도는가
+- [x] `pnpm wf check-links` — 깨진 링크·앵커 0건
+- [x] `pnpm wf check-docs` — 절차 문서 정합
+- [x] `pnpm typecheck`
+- [x] `git diff --stat`로 재정규화 커밋이 **줄 끝만** 바꿨는지 확인(`git diff --ignore-cr-at-eol`이 비어야 한다)
 
 ## 5. 수동 테스트 체크리스트
 
@@ -47,19 +49,19 @@ AI가 6단계에서 다 돌린다. 여기 적는 것은 무엇이 기계로 덮�
 
 **Cocos 에디터가 유령 diff를 만들지 않는가**
 
-- [ ] Cocos 에디터로 프로젝트를 연다. 임포트가 끝난 뒤 `git status`가 깨끗하다(에디터가 `.meta`나 씬을 CRLF로 다시 써서 변경으로 잡히지 않는다)
-- [ ] `main.scene`을 열고 아무것도 바꾸지 않은 채 저장한다. `git diff main.scene`이 비어 있거나, 나오더라도 줄 끝 때문이 아니다
-- [ ] 씬에서 노드를 하나 옮겼다 되돌린 뒤 저장한다. diff가 실제로 바뀐 줄만 담는다
+- [x] Cocos 에디터로 프로젝트를 연다. 임포트가 끝난 뒤 `git status`가 깨끗하다(에디터가 `.meta`나 씬을 CRLF로 다시 써서 변경으로 잡히지 않는다)
+- [x] `main.scene`을 열고 아무것도 바꾸지 않은 채 저장한다. `git diff main.scene`이 비어 있거나, 나오더라도 줄 끝 때문이 아니다
+- [x] 씬에서 노드를 하나 옮겼다 되돌린 뒤 저장한다. diff가 실제로 바뀐 줄만 담는다
 
 **편집기가 정책을 되돌리지 않는가**
 
-- [ ] `docs/development/backlog.md`를 편집기로 열어 한 줄 고치고 저장한 뒤 `git diff`를 본다. **바꾼 줄만** 나온다(파일 전체가 바뀐 것으로 나오면 그 편집기가 CRLF로 다시 쓴 것이므로 보고한다)
-- [ ] 같은 파일을 되돌린다(`git checkout -- docs/development/backlog.md`)
+- [x] `docs/development/backlog.md`를 편집기로 열어 한 줄 고치고 저장한 뒤 `git diff`를 본다. **바꾼 줄만** 나온다(파일 전체가 바뀐 것으로 나오면 그 편집기가 CRLF로 다시 쓴 것이므로 보고한다)
+- [x] 같은 파일을 되돌린다(`git checkout -- docs/development/backlog.md`)
 
 **정책이 실제로 걸렸는가**
 
-- [ ] `git ls-files --eol | grep crlf` 결과가 비어 있다
-- [ ] 새 파일을 CRLF로 만들어 `git add` 한 뒤 `git ls-files --eol`로 보면 `i/lf`로 들어간다(확인 후 그 파일은 지운다)
+- [x] `git ls-files --eol | grep crlf` 결과가 비어 있다
+- [x] 새 파일을 CRLF로 만들어 `git add` 한 뒤 `git ls-files --eol`로 보면 `i/lf`로 들어간다(확인 후 그 파일은 지운다)
 
 ## 6. 이번에 확정한 것
 
