@@ -2,6 +2,7 @@
 
 - **작성일:** 2026-08-15
 - **브랜치:** `feat/canon-quote-guard`
+- **상태:** 완료 (PR #80, 2026-08-18 머지)
 - **닫는 백로그:** `F84`(정본이 정본을 인용할 때를 검사가 못 본다) · `F82 ⑤`(검사 도구 중복 둘)
 - **정본:** [`spec/docs-writing-style.md`](../spec/docs-writing-style.md) — 이 슬라이스가 「정본이 정본을 인용할 때」 절을 신설한다
 - **출처:** [`qa/art-canon-move-review-issues.md`](../../qa/art-canon-move-review-issues.md) 「넘긴 것」
