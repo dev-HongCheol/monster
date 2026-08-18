@@ -1,16 +1,11 @@
 {
-  "feature": "docs-references",
+  "feature": "eol-policy",
   "phase": "pr-ready",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": "full",
-  "canon_updated": [
-    "docs/development/spec/docs-references.md",
-    "docs/development/workflow/planning.md",
-    "docs/development/workflow/pr-ready.md",
-    "docs/development/workflow/user-verification.md"
-  ],
-  "canon_skip_reason": null,
+  "canon_updated": [],
+  "canon_skip_reason": "줄 끝 정책의 정본은 .gitattributes와 .editorconfig 파일 자신이다. 두 파일이 정책을 선언하면서 동시에 강제하므로, 같은 내용을 spec/에 옮겨 적으면 docs-references.md 3-1이 금지하는 두 벌 소유가 된다. 왜 이 정책인지의 인과는 .gitattributes 주석이 든다",
   "verification": {
     "cso_done": true,
     "ts_check_clean": true,
