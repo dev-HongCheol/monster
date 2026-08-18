@@ -20,7 +20,17 @@
 
 ## 계획 문서 작성
 
-리뷰 결과를 `docs/development/sessions/<YYYY-MM-DD>-<feature>-plan.md`로 저장한다. **파일명에 `wf start`에 쓴 슬러그가 들어가야 한다** — 아래 게이트가 파일명에서 그 슬러그를 찾는다. 내용과 형식은 강제하지 않는다.
+리뷰 결과를 `docs/development/sessions/<YYYY-MM-DD>-<feature>-plan.md`로 저장한다. **파일명에 `wf start`에 쓴 슬러그가 들어가야 한다** — 아래 게이트가 파일명에서 그 슬러그를 찾는다.
+
+**머리말에 `정본:` 줄을 링크 형태로 단다.** 첫 `---` 앞에 둔다.
+
+```
+- **정본:** [`spec/<파일명>.md`](../spec/<파일명>.md) — 이 슬라이스가 무엇을 바꾸나
+```
+
+이 줄이 가리키는 것은 당시 정본 내용의 스냅샷이 아니라 **이 결정의 결과가 현재 반영되는 정본의 위치**다. 의미 검색은 링크 방향을 몰라서 몇 달 뒤 이 문서를 현재 정본보다 위에 올려 주는데, 그렇게 문서 안쪽에 착지한 사람에게 "현재는 여기"를 알려 주는 것이 이 줄이다. 이번 슬라이스가 명세를 안 바꾸면 `- **정본:** 없음 — <사유>`로 적는다. 규칙과 그 이유는 [`../spec/docs-references.md`](../spec/docs-references.md) §7이 든다.
+
+`tests/logic/DocsReferences.test.ts`가 이 줄을 검사하므로, 빠뜨리면 세 phase 뒤 `start-verification`의 GREEN 게이트에서 막힌다. 나머지 내용과 형식은 강제하지 않는다.
 
 ## 나가는 게이트: `approve-plan`
 

@@ -1,14 +1,14 @@
 {
-  "feature": "canon-quote-guard",
+  "feature": "docs-references",
   "phase": "pr-ready",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": "full",
   "canon_updated": [
-    "docs/design/spec/art-asset-spec.md",
-    "docs/design/spec/art-generation-playbook.md",
-    "docs/development/spec/docs-writing-style.md",
-    "docs/development/spec/ops-build.md"
+    "docs/development/spec/docs-references.md",
+    "docs/development/workflow/planning.md",
+    "docs/development/workflow/pr-ready.md",
+    "docs/development/workflow/user-verification.md"
   ],
   "canon_skip_reason": null,
   "verification": {

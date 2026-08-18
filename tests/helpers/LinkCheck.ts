@@ -53,7 +53,7 @@ const FENCE = /^\s*(?:```|~~~)/;
  * 수집되지 않고, 그 문서 안의 멀쩡한 앵커 링크가 전부 깨진 것으로 신고된다. 실제로 그 문서
  * 하나에서 열한 건이 그렇게 잡혔다.
  */
-function normalizeEol(text: string): string {
+export function normalizeEol(text: string): string {
   return text.replace(/\r\n?/g, '\n');
 }
 
@@ -78,7 +78,7 @@ const EMPHASIS = /[*~]{1,3}/g;
  * @param markdown 원문
  * @returns 펜스 안이 비워진 같은 줄 수의 본문
  */
-function blankFences(markdown: string): string {
+export function blankFences(markdown: string): string {
   let inFence = false;
   return markdown
     .split('\n')

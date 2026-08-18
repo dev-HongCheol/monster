@@ -11,6 +11,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { SessionDoc } from './CanonRef';
 import type { DocFile } from './LinkCheck';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -43,4 +44,30 @@ export function loadDocs(tracked: ReadonlySet<string> = findTrackedFiles()): Doc
   return [...tracked]
     .filter((p) => p.endsWith('.md'))
     .map((p) => ({ path: p, content: fs.readFileSync(path.join(ROOT, p), 'utf8') }));
+}
+
+/** 세션 문서가 사는 곳. 파일명이 `YYYY-MM-DD-`로 시작한다는 규약도 이 폴더에만 걸린다. */
+const SESSION_DIR = 'docs/development/sessions';
+
+/**
+ * 세션 문서를 **디스크에서** 읽는다 — 여기만 `findTrackedFiles`를 안 거친다.
+ *
+ * 위 두 함수가 추적 목록을 쓰는 이유는 링크 검사가 **대상의 존재**를 판정하기 때문이다. 그 판정을
+ * 디스크로 하면 `git add`를 빠뜨린 상태가 통과하는데, 정작 검사기는 그 새 경로로 가는 링크를 전부
+ * 깨진 것으로 잡아 두 판정이 갈린다.
+ *
+ * `정본:` 줄 검사에는 그 위험이 없다. 재는 것이 다른 파일의 존재가 아니라 **자기 파일 안의 형태**라
+ * 추적 여부와 무관하게 답이 같기 때문이다. 오히려 추적 목록을 쓰면 갓 쓴 세션 문서가 커밋 전까지
+ * 검사에서 빠지는데, 그때가 바로 저자가 고치기 가장 싼 시점이라 손해다.
+ */
+export function loadSessionDocs(): SessionDoc[] {
+  const dir = path.join(ROOT, SESSION_DIR);
+  return fs
+    .readdirSync(dir)
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => ({
+      path: `${SESSION_DIR}/${name}`,
+      name,
+      content: fs.readFileSync(path.join(dir, name), 'utf8'),
+    }));
 }
