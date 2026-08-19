@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-08-18
 - **브랜치:** `feat/docs-hygiene`
-- **상태:** 계획
+- **상태:** 완료
 - **닫는 백로그:** `F92`(`check-qa`가 산문과 미확정 표시를 못 가른다) · `F93`(6단계 절차 1번을 기계가 안 본다). 백로그에 없는 둘을 함께 담는다 — [`2026-08-18-eol-policy-plan.md`](2026-08-18-eol-policy-plan.md) §8이 "다음 슬라이스의 첫 작업"으로 지정한 `.git-blame-ignore-revs` 생성과, **이 계획을 세우는 중에 발견해 같은 슬라이스에서 닫는** `wf start` 기준점 가드다(§3-4). **`F76`은 담지 않는다** — 사유는 §6
 - **정본:** [`spec/docs-references.md`](../spec/docs-references.md) §12 「기계가 잡는 것」 표 — 이 슬라이스가 만드는 검사기 행이 거기 붙는다. 함께 고치는 정본 둘은 [`workflow/verification.md`](../workflow/verification.md)(절차 1번 문구 둘 교체)와 [`spec/ops-environment.md`](../spec/ops-environment.md)(로컬 `blame.ignoreRevsFile` 설정)이다
 - **출처:** [`../backlog-implement.md`](../backlog-implement.md) F92·F93 · [`2026-08-18-eol-policy-plan.md`](2026-08-18-eol-policy-plan.md) §8 · [`../../qa/eol-policy-test.md`](../../qa/eol-policy-test.md) §4
