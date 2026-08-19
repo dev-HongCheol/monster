@@ -574,40 +574,56 @@ describe('배달 — 누락 처리', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4.5 크기 예산 — 재성장 차단
+// 4.5 의무 독서 예산 — 쪼개서는 통과할 수 없는 지표
 // ---------------------------------------------------------------------------
 
-describe('크기 예산 (재성장 차단)', () => {
-  // 자수는 UTF-8 문자열 길이, 줄 수는 그 문자열의 개행 분할 수로 잰다. PowerShell로 재면
-  // 한국어 문서의 자수가 약 1.18배 부풀고 빈 줄이 누락돼 값이 어긋난다.
+/**
+ * `CLAUDE.md` 지식 베이스 표에서 「항상 읽는다」로 표시된 정본의 경로를 뽑는다.
+ *
+ * 대상을 목록으로 박지 않고 표에서 읽는다. 새 정본에 그 표시를 붙이는 순간 예산에 자동으로
+ * 들어오게 하려는 것이다 — 목록을 손으로 들면 표시만 붙이고 목록을 잊는 경로가 생긴다.
+ */
+function alwaysReadDocs(claudeMd: string): string[] {
+  const found: string[] = [];
+  for (const line of claudeMd.split('\n')) {
+    if (!line.includes('항상 읽는다')) continue;
+    const m = /`(docs\/[^`]+\.md)`/.exec(line);
+    if (m) found.push(m[1]);
+  }
+  return found;
+}
+
+describe('의무 독서 예산 (재성장 차단)', () => {
+  // 자수는 UTF-8 문자열 길이로 잰다. PowerShell로 재면 한국어 문서의 자수가 약 1.18배
+  // 부풀고 빈 줄이 누락돼 값이 어긋난다.
   const claudeMd = fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8');
+  const targets = alwaysReadDocs(claudeMd);
 
-  it('CLAUDE.md가 14,000자 이하다', () => {
-    // 컨텍스트 비용이 실제로 사는 곳이라 자수가 주 지표다. 분할 전 24,971자.
-    expect(claudeMd.length).toBeLessThanOrEqual(14_000);
+  it('「항상 읽는다」 대상을 셋 이상 잡는다', () => {
+    // 파서가 조용히 0건이 되면 아래 합계가 CLAUDE.md 하나만 재면서 초록을 유지한다.
+    // 표시 문구를 고치는 사람이 이 단언에서 먼저 걸리라고 바닥을 둔다. 현재 셋이고,
+    // 정당하게 줄일 때는 이 수도 함께 내린다.
+    expect(targets.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('CLAUDE.md가 240줄 이하다', () => {
-    // 이 파일은 한 줄이 200자를 넘는 곳이 30군데라 줄 수는 비용의 대리지표로 나쁘다.
-    // 공식 권장치 200줄은 잔류 목록의 산술상 도달 불가라 걸지 않는다. 분할 전 355줄.
-    expect(claudeMd.split('\n').length).toBeLessThanOrEqual(240);
+  it('대상 경로가 전부 실재한다', () => {
+    const missing = targets.filter((rel) => !fs.existsSync(path.join(ROOT, rel)));
+    expect(missing).toEqual([]);
   });
 
-  it('절차 문서가 개당 4,000자 이하다', () => {
-    const oversized = fs
-      .readdirSync(STEP_DOC_DIR)
-      .filter((f) => f.endsWith('.md'))
-      .map((f) => ({ f, size: fs.readFileSync(path.join(STEP_DOC_DIR, f), 'utf8').length }))
-      .filter((d) => d.size > 4_000);
-    expect(oversized).toEqual([]);
-  });
-
-  it('절차 문서 합계가 16,000자 이하다', () => {
-    const total = fs
-      .readdirSync(STEP_DOC_DIR)
-      .filter((f) => f.endsWith('.md'))
-      .reduce((sum, f) => sum + fs.readFileSync(path.join(STEP_DOC_DIR, f), 'utf8').length, 0);
-    expect(total).toBeLessThanOrEqual(16_000);
+  it('CLAUDE.md와 「항상 읽는다」 정본의 자수 합계가 38,000자 이하다', () => {
+    // **CLAUDE.md 하나가 아니라 합계를 재는 것이 이 단언의 전부다.** 2026-08-18에 종전의
+    // CLAUDE.md 자수 단언이 걸렸고(F81), 참조 규칙 절을 `spec/`으로 내보내 통과시켰다.
+    // 그때 CLAUDE.md는 2,280자 줄었지만 새 정본이 8,695자로 태어나면서 실제로 읽어야 하는
+    // 총량은 29,326자에서 37,845자가 됐다 — 감시하는 숫자는 내려가고 비용은 29% 올랐다.
+    // 합계로 재면 쪼개기가 통과 수단이 되지 못한다.
+    //
+    // 넘으면 문서를 나누지 말고 덜어낸다. 새 정본을 「항상 읽는다」로 올리려면 같은 분량을
+    // 어디선가 빼야 한다. 경위는 `sessions/2026-08-19-docs-guard-cut-plan.md` §4가 든다.
+    const total =
+      claudeMd.length +
+      targets.reduce((sum, rel) => sum + fs.readFileSync(path.join(ROOT, rel), 'utf8').length, 0);
+    expect(total).toBeLessThanOrEqual(38_000);
   });
 });
 

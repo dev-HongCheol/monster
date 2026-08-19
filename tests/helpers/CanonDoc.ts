@@ -75,7 +75,7 @@ export function assertOneLineField(value: string, label: string): void {
  * 정본 문서 본문을 만든다. 머리말 모양은 기존 정본(`docs-writing-style.md`)에 맞춘다.
  *
  * 템플릿에 **결정 기록으로 가는 링크를 넣지 않는다** — 정본이 세션 문서·ADR을 가리키면
- * 링크를 타고 들어간 사람이 폐기된 내용을 현재 명세로 읽는다(「문서 정리 규칙」).
+ * 링크를 타고 들어간 사람이 폐기된 내용을 현재 명세로 읽는다(`spec/docs-references.md` §2).
  *
  * @param o.slug 파일 슬러그 (본문에는 안 쓰지만 호출부 실수를 줄이려고 받는다)
  * @param o.title 문서 제목

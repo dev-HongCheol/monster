@@ -121,7 +121,7 @@ describe('renderCanonDoc', () => {
   });
 
   it('결정 기록으로 나가는 링크를 넣지 않는다', () => {
-    // 정본 → 세션·ADR 링크는 「문서 정리 규칙」이 금지한 방향이다. 템플릿이 그걸 심으면 안 된다.
+    // 정본 → 세션·ADR 링크는 `spec/docs-references.md` §2가 금지한 방향이다. 템플릿이 그걸 심으면 안 된다.
     expect(doc).not.toMatch(/\]\(.*(sessions|decisions)\//);
   });
 });
