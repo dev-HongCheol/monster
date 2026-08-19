@@ -11,7 +11,7 @@
  * 위반으로 잡히는 것을 막기 위해서다(F92).
  */
 
-import { scrubCode } from './LinkCheck';
+import { normalizeEol, scrubCode } from './LinkCheck';
 
 /** blame 무시 목록 파일의 repo 상대 경로. */
 export const BLAME_IGNORE_FILE = '.git-blame-ignore-revs';
@@ -110,13 +110,18 @@ export function hasEvidenceLine(markdown: string): boolean {
 /**
  * 문서에 남은 미확정 표시를 `<줄번호>: <내용>` 목록으로 돌려준다.
  *
- * 줄 번호는 1부터이고 원본 기준이다 — `scrubCode`가 길이를 보존하므로 그대로 쓴다. 보고에는
- * 덮이지 않은 **원본** 줄을 담는다(덮인 줄을 보여 주면 사람이 무엇을 고쳐야 할지 못 읽는다).
+ * 줄 번호는 1부터다. 보고에는 덮이지 않은 **원본** 줄을 담는다 — 덮인 줄을 보여 주면 사람이
+ * 무엇을 고쳐야 할지 못 읽는다.
+ *
+ * **원본도 `normalizeEol`로 쪼갠다.** 스크럽본과 같은 규칙으로 나눠야 두 배열의 인덱스가 맞는데,
+ * `normalizeEol`은 홀로 선 `\r`도 줄바꿈으로 세는 반면 `/\r?\n/`은 그것을 줄 안에 남긴다. 그래서
+ * 문서에 홀로 선 `\r`이 하나라도 있으면 스크럽본이 더 길어지고, 뒤쪽 위반을 만나는 순간
+ * `raw[i]`가 `undefined`가 되어 게이트가 메시지 대신 **TypeError로 죽는다.**
  *
  * @param markdown 문서 본문
  */
 export function listProvisionalMarkers(markdown: string): string[] {
-  const raw = markdown.split(/\r?\n/);
+  const raw = normalizeEol(markdown).split('\n');
   return scrubCode(markdown)
     .split('\n')
     .flatMap((line, i) => (PROVISIONAL.test(line) ? [`${i + 1}: ${raw[i].trim()}`] : []));

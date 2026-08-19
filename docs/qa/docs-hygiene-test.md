@@ -37,7 +37,7 @@
 
 AI가 6단계에서 다 돌린다. 여기 적는 것은 무엇이 기계로 덮이는지를 사용자가 알기 위해서다.
 
-**통과 근거(2026-08-19):** 피처 테스트 `DocsHygiene.test.ts` 23/23(+1 스킵 — `WF_QA_DOC` 없을 때 꺼지는 현재-문서 검사), 전체 스위트 49파일 865/865, 타입체크 범위 `full`.
+**통과 근거(2026-08-19, 자체 리뷰 반영 후):** 피처 테스트 `DocsHygiene.test.ts` 28/28(+1 스킵 — `WF_QA_DOC` 없을 때 꺼지는 현재-문서 검사), 전체 스위트 49파일 870/870, 타입체크 범위 `full`. 리뷰가 잡은 셋은 [`docs-hygiene-review-issues.md`](docs-hygiene-review-issues.md)에 있고 전부 수정됐다.
 
 - [x] `pnpm vitest run tests/logic/DocsHygiene.test.ts` — 스윕 셋 + fixture + `wf start` 가드 E2E 셋
 - [x] `pnpm vitest run` — 전체 스위트. `DocLinks`(39)가 `scrubCode` 추출 뒤에도 그대로 돌고, `ClaudeMdSplit`(57)이 절차 문서 문구 교체 뒤에도 통과한다

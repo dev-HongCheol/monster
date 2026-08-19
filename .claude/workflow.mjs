@@ -502,12 +502,17 @@ const QA_JUDGE_TEST = "tests/logic/DocsHygiene.test.ts";
 function qaDocClean(state) {
   const p = qaDocPath(state);
   if (!fs.existsSync(p)) return true; // 존재 강제는 ready-impl의 몫이다
-  // 판정 파일이 없는 트리에서는 건너뛴다. 실제로 이 경로를 타는 것은 workflow.mjs 자신을 시험하는
-  // E2E 샌드박스뿐이고(레포에는 추적 파일로 늘 있다), 그 샌드박스에는 vitest가 설치돼 있지 않아
-  // 띄우면 다른 게이트를 시험하던 테스트가 이 검사 때문에 실패한다. 조용히 넘기지는 않는다.
+  // 테스트 트리가 통째로 없으면 건너뛴다 — 이 경로를 타는 것은 workflow.mjs 자신을 시험하는 E2E
+  // 샌드박스뿐이다(문서와 상태 파일만 꾸미고 tests/는 안 만든다). 그 샌드박스에는 vitest도 없어서
+  // 띄우면 다른 게이트를 시험하던 테스트가 이 검사 때문에 실패한다.
+  //
+  // **판정 파일 하나만 없는 경우는 건너뛰지 않고 막는다.** 그렇게 하지 않으면 그 파일을 지우는 것만으로
+  // 게이트가 꺼지는데, 지워도 스위트는 초록을 유지하므로(그 파일이 자기 존재를 단언할 수는 없다)
+  // 아무도 알아채지 못한다. 이 슬라이스가 없애려는 형태 그대로다.
+  if (!fs.existsSync(path.join(ROOT, "tests", "logic"))) return true;
   if (!fs.existsSync(path.join(ROOT, QA_JUDGE_TEST))) {
-    process.stderr.write(`⚠ ${QA_JUDGE_TEST}이 없어 QA 문서 검사를 건너뜁니다.\n`);
-    return true;
+    process.stderr.write(`✗ ${QA_JUDGE_TEST}이 없습니다 — QA 문서 게이트의 판정 파일입니다.\n`);
+    return false;
   }
   const rel = path.relative(ROOT, p).split(path.sep).join("/");
   if (runVitest(["tests/logic/DocsHygiene.test.ts"], { WF_QA_DOC: rel }) !== 0) return false;

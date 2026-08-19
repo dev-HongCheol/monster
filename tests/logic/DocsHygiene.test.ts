@@ -108,6 +108,17 @@ describe('findAutoSection — 절 판정은 접두어로 한다', () => {
     expect(findAutoSection('## 1. Impact Map\n- [ ] 뭔가')).toBeNull();
   });
 
+  it('`###` 소제목은 절을 끊지 않는다 — 자동 검증 절 안에 소제목을 둘 수 있다', () => {
+    const md = '## 4. 자동 검증\n\n### 회귀\n- [ ] 미체크\n';
+    expect(countUncheckedInAutoSection(md)).toBe(1);
+  });
+
+  it('펜스 안의 `##`는 절을 끊지 않는다', () => {
+    // 끊어 버리면 그 뒤의 진짜 미체크를 못 센다 — 문서가 제목 형식을 예시로 적기만 해도 게이트가 눈을 감는다.
+    const md = '## 4. 자동 검증\n\n```md\n## 5. 예시 제목\n```\n\n- [ ] 진짜 미체크\n';
+    expect(countUncheckedInAutoSection(md)).toBe(1);
+  });
+
   it('다음 `##`에서 절이 끝난다 — 수동 절의 미체크를 세지 않는다', () => {
     expect(countUncheckedInAutoSection(`## 4. 자동 검증\n${body}`)).toBe(0);
   });
@@ -228,6 +239,48 @@ describe('wf start — 기준점 가드', () => {
     expect(r.stderr).toContain('main이(가) origin/main보다 1커밋 뒤');
   });
 
+  it('invalidate가 재검증 기준이 될 QA 문서 지문을 남긴다', () => {
+    // 게이트는 이 지문과 **달라야** 통과시킨다(qaDocClean). 지문이 안 찍히면 1회차 근거로 2회차를
+    // 통과하는데, 낡은 N/N이 남는 것은 없느니만 못하다 — 있으니까 아무도 안 본다.
+    //
+    // **막는 쪽까지는 여기서 못 잰다.** 그 판정은 vitest를 띄우는데 샌드박스에는 vitest가 없다.
+    // 이 테스트가 고정하는 것은 "기준값이 실제로 기록되는가"까지다.
+    const dir = makeRepo();
+    fs.writeFileSync(
+      path.join(dir, '.claude', 'workflow-state.json'),
+      `${JSON.stringify({
+        feature: 'probe',
+        phase: 'verification',
+        verification: {
+          cso_done: true,
+          ts_check_clean: true,
+          lint_clean: true,
+          code_review_clean: true,
+        },
+      })}\n`,
+    );
+    fs.mkdirSync(path.join(dir, 'docs', 'qa'), { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, 'docs', 'qa', 'probe-test.md'),
+      '## 4. 자동 검증\n- [x] 돌렸다\n',
+    );
+
+    const r = spawnSync(
+      process.execPath,
+      [path.join(ROOT, '.claude', 'workflow.mjs'), 'invalidate'],
+      {
+        cwd: dir,
+        encoding: 'utf8',
+        env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+      },
+    );
+    expect(r.status, r.stderr).toBe(0);
+    const state = JSON.parse(
+      fs.readFileSync(path.join(dir, '.claude', 'workflow-state.json'), 'utf8'),
+    );
+    expect(state.qa_doc_fingerprint).toMatch(/^[0-9a-f]{16}$/);
+  });
+
   it('기준점이 origin/main을 담고 있으면 통과시킨다', () => {
     const dir = makeRepo();
     const r = wfStart(dir, 'brand-new');
@@ -252,5 +305,17 @@ describe('listProvisionalMarkers — 미확정 표시도 코드를 세지 않는
 
   it('코드 펜스 안의 태그 이름도 안 잡는다', () => {
     expect(listProvisionalMarkers('```md\n제목 (가칭 Foo)\n```')).toEqual([]);
+  });
+
+  it('홀로 선 \\r이 있어도 죽지 않고 원본 줄을 보고한다', () => {
+    // 스크럽본은 `normalizeEol`이 홀로 선 `\r`도 줄바꿈으로 세는데 원본을 `/\r?\n/`으로 쪼개면
+    // 그것이 줄 안에 남아 배열 길이가 어긋난다. 그러면 `raw[i]`가 undefined가 되어 게이트가
+    // 안내 메시지 대신 TypeError로 죽는다 — 게이트가 죽는 방식으로는 최악이다.
+    const md = '머리말\r본문 (잠정 값)\r끝';
+    expect(listProvisionalMarkers(md)).toEqual(['2: 본문 (잠정 값)']);
+  });
+
+  it('CRLF 문서도 같은 줄 번호를 낸다', () => {
+    expect(listProvisionalMarkers('머리말\r\n본문 (가칭 Foo)\r\n')).toEqual(['2: 본문 (가칭 Foo)']);
   });
 });
