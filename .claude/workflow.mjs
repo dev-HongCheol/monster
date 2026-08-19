@@ -5,6 +5,7 @@
 // 사용: node .claude/workflow.mjs <command> [args]
 
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { runTypecheck } from "./typecheck.mjs";
@@ -56,6 +57,10 @@ function freshState(feature) {
     // `Object.values(verification).every(Boolean)` 판정에 배열·문자열이 섞이면 안 된다.
     canon_updated: [],
     canon_skip_reason: null,
+    // 검증을 시작한 시점의 QA 문서 지문. 게이트는 이것과 **달라야** 통과시킨다 — 재검증 회차마다
+    // 통과 근거를 다시 적게 하는 장치다(resetVerification·qaDocClean 참조). 이 필드가 없던
+    // 시절의 상태 파일에서는 undefined이고, 그때는 검사를 건너뛴다.
+    qa_doc_fingerprint: null,
     verification: {
       cso_done: false,
       ts_check_clean: false,
@@ -101,6 +106,10 @@ function resetVerification(state) {
   // 기준으로 한 번 declare한 뒤 그 뒤의 모든 변경이 게이트를 그냥 통과한다.
   state.canon_updated = [];
   state.canon_skip_reason = null;
+  // QA 자동 검증 절의 통과 근거도 같은 이유로 낡는다. 근거 줄이 "있는가"만 보면 1회차 근거로
+  // 2회차를 통과하는데, 낡은 N/N이 남는 것은 없느니만 못하다 — 있으니까 아무도 안 본다.
+  // 여기서 지금 문서의 지문을 찍어 두고, 게이트는 그것과 **달라야** 통과시킨다.
+  state.qa_doc_fingerprint = qaDocFingerprint(state);
   // docs_delivered는 여기서 건드리지 않는다. invalidate가 이 함수를 부르므로 초기화를 넣으면
   // 매번 전문이 나가 차등 배달이 통째로 무력해진다. 초기화는 phase가 바뀌는 지점에서 한다.
 }
@@ -335,11 +344,12 @@ function emitStepDoc(phase, { cmd = null, summary = false, transitioned = true }
 // vitest를 항상 run 모드로 실행한다 (bare vitest = watch 모드 → hang 방지).
 // stdio는 상속해 결과가 그대로 보이게 하고, 예외가 아니라 종료코드로 판단한다.
 // 반환: 0 = 통과, 그 외 = 실패/오류.
-function runVitest(extraArgs = []) {
+function runVitest(extraArgs = [], env = {}) {
   const r = spawnSync("pnpm", ["exec", "vitest", "run", ...extraArgs], {
     cwd: ROOT,
     stdio: "inherit",
     shell: true, // Windows .cmd 해석
+    env: { ...process.env, ...env },
   });
   return r.status;
 }
@@ -401,12 +411,39 @@ function requireAssetMeta() {
   console.log("✓ 에셋 .meta 누락 없음");
 }
 
+// 슬라이스의 시작점이 origin/main을 담고 있는지 확인하고, 아니면 막는다.
+//
+// 낡게 시작하는 길이 둘인데 둘 다 조용했다. **로컬 main이 origin보다 뒤처진 채로 자르거나**,
+// **같은 이름의 브랜치가 예전에 만들어져 있으면 그 낡은 지점으로 그냥 전환하거나**다. 후자는
+// 2026-08-19에 실제로 났다 — `feat/docs-hygiene`이 직전 main에서 미리 만들어져 있어서, 계획이
+// `.gitattributes`도 백로그 새 항목도 없는 트리 위에 섰고 리뷰어 둘이 그것을 첫 발견으로 냈다.
+// 전자는 그전에 두 번 났고 백로그 ID 충돌로 남았다(F47·F48, backlog.md 머리말 2026-07-17 정리).
+//
+// 자동으로 rebase하지 않는다. 브랜치에 남의 커밋이 얹혀 있을 수 있고, 무엇을 버리고 무엇을 살릴지는
+// 사람의 판단이다. 여기서는 막고 다음에 칠 명령을 알려 주기만 한다.
+function requireCurrentBase(base, branch) {
+  git(["fetch", "origin", "main", "--quiet"]); // 오프라인이면 실패해도 그냥 로컬 기준으로 잰다
+  const originMain = git(["rev-parse", "--verify", "--quiet", "refs/remotes/origin/main"]);
+  if (originMain.status !== 0) return; // origin이 없는 클론에서는 잴 기준이 없다
+  if (git(["merge-base", "--is-ancestor", "origin/main", base]).status === 0) return;
+
+  const behind = git(["rev-list", "--count", `${base}..origin/main`]).stdout.trim();
+  fail(
+    `${base}이(가) origin/main보다 ${behind}커밋 뒤처져 있습니다 — 여기서 시작하면 최근 머지된 ` +
+      "인프라·백로그 항목이 없는 트리 위에 슬라이스가 섭니다.\n" +
+      `  먼저 맞추세요:  git switch ${base} && git merge --ff-only origin/main\n` +
+      `  ${base === "main" ? "" : `또는 다른 이름으로 시작하세요 (지금 이름: ${branch})\n`}` +
+      "  맞춘 뒤 `pnpm wf start`를 다시 실행합니다."
+  );
+}
+
 // feat/<feature> 브랜치를 보장한다 — 없으면 main 기준 생성, 있으면 전환.
 // 슬라이스 시작점 = 브랜치 시작점. planning 커밋이 main에 직접 쌓이는 사고를 막는다.
 function ensureFeatureBranch(feature) {
   const branch = `feat/${feature}`;
   const exists =
     git(["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]).status === 0;
+  requireCurrentBase(exists ? branch : "main", branch);
   const r = exists
     ? git(["switch", branch], { stdio: "inherit" })
     : git(["switch", "-c", branch, "main"], { stdio: "inherit" });
@@ -446,19 +483,58 @@ function testFilePath(state) {
   return path.join(ROOT, "tests", "logic", `${toPascal(state.feature)}.test.ts`);
 }
 
-// QA 문서의 미확정(잠정) 표시 검사. qa-setup에선 프리팹/씬·에디터 섹션을 계획 기준 잠정안으로
-// 쓰며 제목/값에 `(잠정 …)`·`(가칭 …)` 태그를 단다. 구현 완료 후(GREEN 직후) 실제 컴포넌트에
-// 맞춰 확정하며 그 태그를 `(확정)`으로 바꾼다 — 코드가 정본이고 QA 문서가 그 거울이다.
-// feature QA 문서에 남은 잠정 태그 줄(번호:내용)을 반환한다(없으면 빈 배열).
-function listQaProvisionalMarkers(state) {
+// 현재 슬라이스 QA 문서를 검사한다. 통과하면 true.
+//
+// 묻는 것은 셋이다. ① 미확정(잠정) 표시가 남았는가 — qa-setup에선 프리팹/씬·에디터 섹션을 계획
+// 기준 잠정안으로 쓰며 `(잠정 …)`·`(가칭 …)` 태그를 달고, 구현 후 실제 컴포넌트에 맞춰 확정한다
+// (코드가 정본이고 QA 문서가 그 거울이다). ② 자동 검증 절이 있고 그 안에 미체크가 없는가.
+// ③ 통과 근거가 적혔는가.
+//
+// **판정을 여기 베끼지 않고 vitest를 띄운다.** 로직은 tests/helpers/QaDoc.ts 한 벌이고, 이
+// 커맨드는 문서 경로만 `WF_QA_DOC`으로 건넨다 — 상태 파일을 아는 쪽은 CLI뿐이고 판정을 아는 쪽은
+// 그 헬퍼뿐이라 경로 하나만 넘기면 사본이 안 생긴다. check-links가 세운 형태이고, CLI가 판정을
+// 복사하면 한쪽만 고쳤을 때 나머지가 낡은 채로 초록불을 유지한다(백로그 F78이 그 상태다).
+//
+// 옛 인라인 판정은 줄 전체에서 태그 문자열만 찾아 **코드 스팬 안팎을 못 갈랐다.** 그래서 "미확정
+// 항목이 없다"고 설명한 문장 자체가 위반으로 잡혀 게이트가 거짓으로 실패했다(2026-08-18, F92).
+const QA_JUDGE_TEST = "tests/logic/DocsHygiene.test.ts";
+
+function qaDocClean(state) {
   const p = qaDocPath(state);
-  if (!fs.existsSync(p)) return [];
-  const out = [];
-  const lines = fs.readFileSync(p, "utf8").split("\n");
-  lines.forEach((line, i) => {
-    if (/\(잠정|\(가칭/.test(line)) out.push(`${i + 1}: ${line.trim()}`);
-  });
-  return out;
+  if (!fs.existsSync(p)) return true; // 존재 강제는 ready-impl의 몫이다
+  // 테스트 트리가 통째로 없으면 건너뛴다 — 이 경로를 타는 것은 workflow.mjs 자신을 시험하는 E2E
+  // 샌드박스뿐이다(문서와 상태 파일만 꾸미고 tests/는 안 만든다). 그 샌드박스에는 vitest도 없어서
+  // 띄우면 다른 게이트를 시험하던 테스트가 이 검사 때문에 실패한다.
+  //
+  // **판정 파일 하나만 없는 경우는 건너뛰지 않고 막는다.** 그렇게 하지 않으면 그 파일을 지우는 것만으로
+  // 게이트가 꺼지는데, 지워도 스위트는 초록을 유지하므로(그 파일이 자기 존재를 단언할 수는 없다)
+  // 아무도 알아채지 못한다. 이 슬라이스가 없애려는 형태 그대로다.
+  if (!fs.existsSync(path.join(ROOT, "tests", "logic"))) return true;
+  if (!fs.existsSync(path.join(ROOT, QA_JUDGE_TEST))) {
+    process.stderr.write(`✗ ${QA_JUDGE_TEST}이 없습니다 — QA 문서 게이트의 판정 파일입니다.\n`);
+    return false;
+  }
+  const rel = path.relative(ROOT, p).split(path.sep).join("/");
+  if (runVitest(["tests/logic/DocsHygiene.test.ts"], { WF_QA_DOC: rel }) !== 0) return false;
+
+  // 검증을 다시 시작한 뒤로 문서가 손대지지 않았으면 근거가 낡은 것이다(resetVerification 참조).
+  if (state.qa_doc_fingerprint && state.qa_doc_fingerprint === qaDocFingerprint(state)) {
+    process.stderr.write(
+      `✗ ${rel}이(가) 재검증 시작 이후 한 번도 바뀌지 않았습니다 — 통과 근거가 이전 회차의 값입니다.\n` +
+        "    이번 회차의 피처 N/N·전체 M/M로 갱신하세요.\n"
+    );
+    return false;
+  }
+  return true;
+}
+
+// QA 문서의 지문. **절이 아니라 파일 전체**를 해싱한다 — 절만 잘라 내려면 판정 로직을 CLI에
+// 복사해야 하고(F78이 그 상태다), 그 대가가 여기서 얻는 정밀도보다 크다. 문서의 다른 곳만
+// 고쳐도 지문이 바뀌므로 이 검사는 "손댔는가"까지만 보장하고 "근거를 갱신했는가"는 사람이 진다.
+function qaDocFingerprint(state) {
+  const p = qaDocPath(state);
+  if (!fs.existsSync(p)) return null;
+  return createHash("sha256").update(fs.readFileSync(p)).digest("hex").slice(0, 16);
 }
 
 const commands = {
@@ -595,17 +671,11 @@ const commands = {
       // QA 확정 게이트: user-verification 진입 전, QA 프리팹/에디터 섹션이 코드에 맞춰 확정됐는지
       // (= 잠정 태그가 제거됐는지) 확인한다. 남아 있으면 전이를 막는다(pass 플래그는 보존 — 확정 후
       // 같은 `pass`를 다시 실행하면 곧장 전이). stale 프리팹 레시피가 7단계 사용자 테스트로 새는 것을 막는다.
-      const prov = listQaProvisionalMarkers(s);
-      if (prov.length > 0) {
+      if (!qaDocClean(s)) {
         save(s);
-        const rel = path.relative(ROOT, qaDocPath(s));
-        process.stderr.write(
-          "✗ QA 문서에 미확정(잠정) 표시가 남아 있습니다 — 구현된 코드·컴포넌트에 맞춰 확정하세요:\n"
-        );
-        for (const h of prov) process.stderr.write(`    ${rel}:${h}\n`);
         fail(
-          "프리팹/씬·에디터 섹션의 `(잠정)`/`(가칭)`을 실제 값으로 고쳐 `(확정)`으로 바꾼 뒤 " +
-            `\`pnpm wf pass ${check}\`를 다시 실행하면 user-verification으로 전이됩니다.`
+          "QA 문서가 아직 확정되지 않았습니다 — 위 실패 메시지가 무엇을 고칠지 듭니다. " +
+            `고친 뒤 \`pnpm wf pass ${check}\`를 다시 실행하면 user-verification으로 전이됩니다.`
         );
       }
       // 정본 게이트: 이번 슬라이스가 바꾼 명세가 정본에 실렸는지를 **선언하게** 한다.
@@ -797,17 +867,11 @@ const commands = {
     requireAssetMeta();
   },
 
-  // QA 문서 미확정(잠정) 표시 검사 (단독 실행 — 언제든 확인용). 남아 있으면 종료코드 1.
+  // QA 문서 검사 (단독 실행 — 언제든 확인용). 위반이 있으면 종료코드 1.
+  // 미확정 표시 + 자동 검증 절(미체크 0 · 통과 근거)을 함께 본다. 판정은 qaDocClean 참조.
   "check-qa"() {
-    const s = load();
-    const prov = listQaProvisionalMarkers(s);
-    if (prov.length > 0) {
-      const rel = path.relative(ROOT, qaDocPath(s));
-      process.stderr.write("✗ QA 문서 미확정(잠정) 표시:\n");
-      for (const h of prov) process.stderr.write(`    ${rel}:${h}\n`);
-      process.exit(1);
-    }
-    console.log("✓ QA 문서 확정됨 (잠정 표시 없음)");
+    if (!qaDocClean(load())) process.exit(1);
+    console.log("✓ QA 문서 확정됨 (미확정 표시 없음 · 자동 검증 절 채워짐)");
   },
 
   // 마크다운 링크·앵커 검사 (단독 실행 — 언제든 확인용). 깨진 링크가 있으면 종료코드 1.

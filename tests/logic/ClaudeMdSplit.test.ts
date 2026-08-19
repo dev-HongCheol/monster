@@ -350,14 +350,17 @@ describe('배달 — 전이 시점', () => {
     expect(stdout).toContain('BODY-user-verification');
   });
 
-  it('QA 확정 게이트에서 죽으면 배달하지 않는다', () => {
-    // pass는 allClean 이후에도 QA 잠정 태그 게이트에서 죽는다. 배달을 allClean 시점에
-    // 붙이면 전이하지도 않은 pass에서 user-verification 절차가 샌다.
+  it('allClean 뒤 게이트에서 죽으면 배달하지 않는다', () => {
+    // pass는 allClean 이후에도 게이트에서 죽는다. 배달을 allClean 시점에 붙이면 전이하지도 않은
+    // pass에서 user-verification 절차가 샌다.
+    //
+    // 게이트 둘 중 **정본 선언** 쪽으로 잰다. QA 확정 게이트는 2026-08-19부터 판정을 vitest에
+    // 맡기는데(F92·F93 — 로직 한 벌을 tests/helpers/QaDoc.ts에 두려고), 샌드박스에는 vitest가
+    // 설치돼 있지 않아 그 게이트로는 "죽었다"와 "못 돌렸다"가 구분되지 않는다.
     const box = makeSandbox({
       phase: 'verification',
       allChecksClean: true,
       qaProvisional: true,
-      canonSkipReason: '바꾼 명세 없음',
     });
     const { status, stdout } = runWf(box, ['pass', 'review']);
 
