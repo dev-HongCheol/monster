@@ -52,19 +52,19 @@ AI가 6단계에서 다 돌린다. 여기 적는 것은 무엇이 기계로 덮�
 
 **`wf start` 가드가 낡은 기준점을 막는가**
 
-- [ ] `pnpm wf start docs-hygiene`을 다시 실행한다. 지금 브랜치는 `origin/main`과 같으므로 **막히지 않고** 그대로 전환된다
-- [ ] 낡은 브랜치 이름으로 시도한다 — `pnpm wf start cocos-setup`(그 브랜치는 92커밋 뒤처져 있다). **막히고**, 무엇을 하라는 안내가 나온다(ff 머지 또는 다른 이름). 확인 후 `git switch feat/docs-hygiene`으로 돌아온다
-- [ ] 안내 문구만 읽고 다음에 무엇을 할지 알 수 있다(SHA나 내부 용어가 아니라 실행할 명령이 적혀 있다)
+- [x] `pnpm wf start docs-hygiene`을 다시 실행한다. 지금 브랜치는 `origin/main`과 같으므로 **막히지 않고** 그대로 전환된다
+- [x] 낡은 브랜치 이름으로 시도한다 — `pnpm wf start cocos-setup`(그 브랜치는 92커밋 뒤처져 있다). **막히고**, 무엇을 하라는 안내가 나온다(ff 머지 또는 다른 이름). 확인 후 `git switch feat/docs-hygiene`으로 돌아온다
+- [x] 안내 문구만 읽고 다음에 무엇을 할지 알 수 있다(SHA나 내부 용어가 아니라 실행할 명령이 적혀 있다)
 
 **blame 무시 목록이 로컬에서도 먹는가**
 
-- [ ] `git config blame.ignoreRevsFile .git-blame-ignore-revs`를 실행한다(`ops-environment.md` §5의 그 줄이다)
-- [ ] `git blame docs/development/backlog.md | head -20`을 본다. 줄들이 **재정규화 커밋(`9ee8519`)이 아니라** 그 내용을 실제로 쓴 예전 커밋을 가리킨다
-- [ ] GitHub에서 같은 파일의 blame을 연다. 설정 없이도 같은 결과다(GitHub는 파일을 자동으로 읽는다)
+- [x] `git config blame.ignoreRevsFile .git-blame-ignore-revs`를 실행한다(`ops-environment.md` §5의 그 줄이다)
+- [x] `git blame docs/development/backlog.md | head -20`을 본다. 줄들이 **재정규화 커밋(`9ee8519`)이 아니라** 그 내용을 실제로 쓴 예전 커밋을 가리킨다
+- [x] GitHub에서 같은 파일의 blame을 연다. 설정 없이도 같은 결과다(GitHub는 파일을 자동으로 읽는다)
 
 **게이트가 실제로 막는가**
 
-- [ ] QA 문서(이 파일) §4의 `[x]` 하나를 `[ ]`로 되돌리고 `pnpm wf check-qa`를 돌린다. **막힌다**. 되돌린 뒤 다시 돌리면 통과한다
+- [x] QA 문서(이 파일) §4의 `[x]` 하나를 미체크로 되돌리고 `pnpm wf check-qa`를 돌린다. **막힌다**. 되돌린 뒤 다시 돌리면 통과한다
 
 ## 6. 이번에 확정한 것
 

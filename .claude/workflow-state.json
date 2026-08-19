@@ -1,23 +1,19 @@
 {
   "feature": "docs-hygiene",
-  "phase": "user-verification",
+  "phase": "planning",
   "test_skipped": false,
   "test_skip_reason": null,
-  "ts_check_scope": "full",
-  "canon_updated": [
-    "docs/development/spec/docs-references.md",
-    "docs/development/spec/ops-environment.md",
-    "docs/development/workflow/verification.md"
-  ],
+  "ts_check_scope": null,
+  "canon_updated": [],
   "canon_skip_reason": null,
+  "qa_doc_fingerprint": null,
   "verification": {
-    "cso_done": true,
-    "ts_check_clean": true,
-    "lint_clean": true,
-    "code_review_clean": true
+    "cso_done": false,
+    "ts_check_clean": false,
+    "lint_clean": false,
+    "code_review_clean": false
   },
   "docs_delivered": [
-    "user-verification"
-  ],
-  "qa_doc_fingerprint": "2336e632b482d3e0"
+    "planning"
+  ]
 }
