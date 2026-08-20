@@ -13,7 +13,7 @@
 | `code-` | 코드 작성 규약 — 구조, 명명, 레이어, 언어별 규칙 |
 | `game-` | 게임 규칙 — 판정, 밸런스 규약처럼 구현이 지켜야 할 것 |
 | `docs-` | 문서 규약 — 문체, 용어 |
-| `ops-` | 도구·빌드·환경 |
+| `ops-` | 도구·빌드·환경 — 그 도구를 쓰는 조건도 포함한다 |
 
 **늘리려면 이 표를 먼저 고친다.** 아무나 새 접두사를 만들면 분류가 아니라 장식이 되어, 폴더를 훑는 것만으로 무엇이 있는지 보려던 목적이 사라진다. `wf canon`이 이 집합 밖의 접두사를 거부한다.
 
@@ -32,4 +32,5 @@
 | [`ops-build.md`](ops-build.md) | 빌드가 뭘 내놓고 어디에 올리나 |
 | [`ops-environment.md`](ops-environment.md) | 새 장비에 뭘 까나 |
 | [`ops-gbrain.md`](ops-gbrain.md) | 레포를 의미로 검색하려면 뭘 깔고 색인을 언제 갱신하나 |
+| [`ops-licensing.md`](ops-licensing.md) | 이 도구로 만든 것을 팔아도 되나 |
 | [`ops-skill-routing.md`](ops-skill-routing.md) | 이 상황에 어떤 스킬을 쓰나 |
