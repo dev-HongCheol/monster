@@ -3,8 +3,8 @@
  *
  * **파일명과 검증 대상이 어긋난다.** `wf`가 슬라이스 슬러그로 테스트 파일명을 강제하는데
  * (`workflow.mjs`의 `testFilePath`), 여기서 실제로 검증하는 것은 `CLAUDE.md` 본문이 아니라
- * **워크플로 절차 문서의 배달**이다 — phase↔문서 정합, 배달 로직, 그리고 문서가 다시 부푸는
- * 것을 막는 크기 예산 셋. 이름을 되돌리려면 `wf start`를 다시 쳐야 하고 그러면 슬라이스 상태가
+ * **워크플로 절차 문서의 배달**이다 — phase↔문서 정합, 배달 로직, 그리고 상시 읽는 문서가 다시
+ * 부푸는 것을 막는 의무 독서 예산. 이름을 되돌리려면 `wf start`를 다시 쳐야 하고 그러면 슬라이스 상태가
  * 초기화되므로, 이름은 그대로 두고 여기 적어 둔다.
  */
 
@@ -574,40 +574,80 @@ describe('배달 — 누락 처리', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4.5 크기 예산 — 재성장 차단
+// 4.5 의무 독서 예산 — 쪼개서는 통과할 수 없는 지표
 // ---------------------------------------------------------------------------
 
-describe('크기 예산 (재성장 차단)', () => {
-  // 자수는 UTF-8 문자열 길이, 줄 수는 그 문자열의 개행 분할 수로 잰다. PowerShell로 재면
-  // 한국어 문서의 자수가 약 1.18배 부풀고 빈 줄이 누락돼 값이 어긋난다.
+/**
+ * `CLAUDE.md` 지식 베이스 표에서 「항상 읽는다」로 표시된 정본의 경로를 뽑는다.
+ *
+ * 대상을 목록으로 박지 않고 표에서 읽는다. 새 정본에 그 표시를 붙이는 순간 예산에 자동으로
+ * 들어오게 하려는 것이다 — 목록을 손으로 들면 표시만 붙이고 목록을 잊는 경로가 생긴다.
+ */
+function alwaysReadDocs(claudeMd: string): string[] {
+  const found: string[] = [];
+  for (const line of claudeMd.split('\n')) {
+    if (!line.includes('항상 읽는다')) continue;
+    const m = /`(docs\/[^`]+\.md)`/.exec(line);
+    if (m) found.push(m[1]);
+  }
+  return found;
+}
+
+/** 「항상 읽는다」로 지정된 문서 전체의 자수 상한. 올리지 않고 덜어내는 것이 이 수의 요점이다. */
+const BUDGET_LIMIT = 38_000;
+
+describe('의무 독서 예산 (재성장 차단)', () => {
+  // 자수는 UTF-8 문자열 길이로 잰다. PowerShell로 재면 한국어 문서의 자수가 약 1.18배
+  // 부풀고 빈 줄이 누락돼 값이 어긋난다.
   const claudeMd = fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8');
+  const targets = alwaysReadDocs(claudeMd);
 
-  it('CLAUDE.md가 14,000자 이하다', () => {
-    // 컨텍스트 비용이 실제로 사는 곳이라 자수가 주 지표다. 분할 전 24,971자.
-    expect(claudeMd.length).toBeLessThanOrEqual(14_000);
+  it('「항상 읽는다」 대상을 셋 이상 잡는다', () => {
+    // 파서가 조용히 0건이 되면 아래 합계가 CLAUDE.md 하나만 재면서 초록을 유지한다.
+    // 표시 문구를 고치는 사람이 이 단언에서 먼저 걸리라고 바닥을 둔다. 현재 셋이고,
+    // 정당하게 줄일 때는 이 수도 함께 내린다.
+    expect(targets.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('CLAUDE.md가 240줄 이하다', () => {
-    // 이 파일은 한 줄이 200자를 넘는 곳이 30군데라 줄 수는 비용의 대리지표로 나쁘다.
-    // 공식 권장치 200줄은 잔류 목록의 산술상 도달 불가라 걸지 않는다. 분할 전 355줄.
-    expect(claudeMd.split('\n').length).toBeLessThanOrEqual(240);
+  it('대상 경로가 전부 실재한다', () => {
+    const missing = targets.filter((rel) => !fs.existsSync(path.join(ROOT, rel)));
+    expect(missing).toEqual([]);
   });
 
-  it('절차 문서가 개당 4,000자 이하다', () => {
-    const oversized = fs
-      .readdirSync(STEP_DOC_DIR)
-      .filter((f) => f.endsWith('.md'))
-      .map((f) => ({ f, size: fs.readFileSync(path.join(STEP_DOC_DIR, f), 'utf8').length }))
-      .filter((d) => d.size > 4_000);
-    expect(oversized).toEqual([]);
-  });
+  it('CLAUDE.md와 「항상 읽는다」 정본의 자수 합계가 38,000자 이하다', () => {
+    // **CLAUDE.md 하나가 아니라 합계를 재는 것이 이 단언의 전부다.** 2026-08-18에 종전의
+    // CLAUDE.md 자수 단언이 걸렸고(F81), 참조 규칙 절을 `spec/`으로 내보내 통과시켰다.
+    // 그때 CLAUDE.md는 2,280자 줄었지만 새 정본이 8,695자로 태어나면서 실제로 읽어야 하는
+    // 총량은 29,326자에서 37,845자가 됐다 — 감시하는 숫자는 내려가고 비용은 29% 올랐다.
+    // 합계로 재면 쪼개기가 통과 수단이 되지 못한다.
+    //
+    // 넘으면 문서를 나누지 말고 덜어낸다. 새 정본을 「항상 읽는다」로 올리려면 같은 분량을
+    // 어디선가 빼야 한다. 경위는 `sessions/2026-08-19-docs-guard-cut-plan.md` §4가 든다.
+    const sizes: [string, number][] = [
+      ['CLAUDE.md', claudeMd.length],
+      ...targets.map(
+        (rel) => [rel, fs.readFileSync(path.join(ROOT, rel), 'utf8').length] as [string, number],
+      ),
+    ];
+    const total = sizes.reduce((sum, [, chars]) => sum + chars, 0);
 
-  it('절차 문서 합계가 16,000자 이하다', () => {
-    const total = fs
-      .readdirSync(STEP_DOC_DIR)
-      .filter((f) => f.endsWith('.md'))
-      .reduce((sum, f) => sum + fs.readFileSync(path.join(STEP_DOC_DIR, f), 'utf8').length, 0);
-    expect(total).toBeLessThanOrEqual(16_000);
+    // 숫자를 그냥 비교하지 않고 리포트 문자열을 비교한다. `toBeLessThanOrEqual`은 실패하면
+    // 합계와 상한 둘만 보여 주는데, 그것을 본 사람의 첫 행동은 테스트 파일을 열어 주석을 읽는
+    // 것이 아니라 문서를 쪼개는 것이다 — 쪼개기는 이 단언이 막으려고 태어난 바로 그 통과
+    // 수단이다. 그래서 무엇을 해야 하는지와 어느 문서가 얼마나 큰지를 실패 메시지가 직접 든다.
+    // 같은 이유로 `DocLinks.test.ts`의 죽은 링크 단언도 배열 대신 문자열을 비교한다.
+    const report =
+      total <= BUDGET_LIMIT
+        ? ''
+        : [
+            `「항상 읽는다」 합계가 ${total}자로 상한 ${BUDGET_LIMIT}자를 ${total - BUDGET_LIMIT}자 넘었다.`,
+            ...sizes.map(([rel, chars]) => `  ${String(chars).padStart(6)}자  ${rel}`),
+            '',
+            '문서를 쪼개서는 통과할 수 없다 — 어느 문서든 실제로 덜어내야 한다.',
+            '새 정본을 「항상 읽는다」로 올리려면 같은 분량을 어디선가 빼라.',
+            '경위는 sessions/2026-08-19-docs-guard-cut-plan.md §4가 든다.',
+          ].join('\n');
+    expect(report).toBe('');
   });
 });
 
