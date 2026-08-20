@@ -10,7 +10,7 @@
 
 ## 백로그 확인 (필수)
 
-`docs/development/backlog.md`(게임)와 `docs/development/backlog-implement.md`(코드)를 **둘 다** 연다. 이번 슬라이스의 테마·영향 범위에 걸리는 항목 중 함께 처리하는 것이 합리적인 것을 골라 스코프에 넣고, 계획 문서에 "이 슬라이스가 닫는 백로그 항목"으로 ID와 함께 적는다.
+`docs/development/backlog.md`(게임)·`docs/development/backlog-implement.md`(코드)·`docs/development/backlog-docs.md`(문서)를 **셋 다** 연다. 이번 슬라이스의 테마·영향 범위에 걸리는 항목 중 함께 처리하는 것이 합리적인 것을 골라 스코프에 넣고, 계획 문서에 "이 슬라이스가 닫는 백로그 항목"으로 ID와 함께 적는다.
 
 아카이브(`backlog-archive.md`·`backlog-implement-archive.md`)는 **여기서 열지 않는다.** 지금 필요한 것은 열린 항목뿐이고, 아카이브는 완료 항목이라 조회 비용만 늘린다.
 

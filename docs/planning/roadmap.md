@@ -332,7 +332,7 @@ itch.io 출시 후 4주 데이터 수집:
 
 ## 13. 다음 액션 (Next Actions)
 
-> **슬라이스 단위 TODO는 이 절이 아니라 백로그가 든다** — [`backlog.md`](../development/backlog.md)(게임)와 [`backlog-implement.md`](../development/backlog-implement.md)(코드)가 정본이고, 이 절은 로드맵 수준의 큰 다음 걸음만 적는다. 아래 두 묶음은 2026-08-07에 다시 세운 것이다.
+> **슬라이스 단위 TODO는 이 절이 아니라 백로그가 든다** — [`backlog.md`](../development/backlog.md)(게임)·[`backlog-implement.md`](../development/backlog-implement.md)(코드)·[`backlog-docs.md`](../development/backlog-docs.md)(문서)가 정본이고, 이 절은 로드맵 수준의 큰 다음 걸음만 적는다. 아래 두 묶음은 2026-08-07에 다시 세운 것이다.
 
 ### 완료 (기록 보존)
 - [x] 로드맵 v0.2 합의 + 저장, 사용자 검토, PR 병합
@@ -350,7 +350,7 @@ itch.io 출시 후 4주 데이터 수집:
 
 **지금 이어서 볼 것 (2026-08-07 추가)**
 
-- `docs/development/backlog.md` · `backlog-implement.md` — 슬라이스를 가로지르는 TODO의 정본. §13이 큰 걸음만 적는 대신 실제 목록은 여기 있다
+- `docs/development/backlog.md` · `backlog-implement.md` · `backlog-docs.md` — 슬라이스를 가로지르는 TODO의 정본. §13이 큰 걸음만 적는 대신 실제 목록은 여기 있다
 - `docs/design/spec/art-direction.md` — 아트 방향(무엇을 왜 그렇게 그리는가)의 정본
 - `docs/design/spec/art-asset-spec.md` — 제작 규격(몇 px·어떤 피벗·어떤 파일명)
 - `docs/design/spec/art-generation-playbook.md` — 생성 실행(어떤 설정으로 뽑아 무엇으로 합격시키는가)

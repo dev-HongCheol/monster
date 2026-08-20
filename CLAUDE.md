@@ -76,7 +76,7 @@ docs/
 | 지금 단계에서 뭘 하나 | `docs/development/workflow/<phase>.md` — **절차의 정본.** `pnpm wf` 전이가 배달하고 `pnpm wf steps`로 다시 본다 |
 | 게임을 어떻게 만드나 | `docs/planning/` — 게임 디자인·컨셉·로드맵 |
 | 무엇을 왜 그리나, 몇 px로 뽑나, 어떤 프롬프트로 만드나 | `docs/design/spec/README.md`가 목록 — 아트 정본 셋이 각각 방향·규격·생성 실행을 든다 |
-| 다음에 뭘 하나 | `docs/development/backlog.md`(게임) + `backlog-implement.md`(코드) |
+| 다음에 뭘 하나 | `docs/development/backlog.md`(게임) + `backlog-implement.md`(코드) + `backlog-docs.md`(문서) |
 | 그 결정이 어느 슬라이스에서 났나 | `backlog-archive.md`·`backlog-implement-archive.md` — 세션 문서로 가는 실질 인덱스 |
 | 이 에러를 어떻게 고치나 | `docs/development/troubleshooting/` |
 | 그때 왜 그렇게 정했나 | `docs/development/sessions/`, `docs/decisions/` — **시점 기록이지 현재 명세가 아니다** |
@@ -84,7 +84,7 @@ docs/
 - `docs/development/sessions/` — 시스템별 설계 근거는 ADR이 아니라 대개 여기 `*-plan.md`에 있다. "지금 어떻게 되어 있나"는 위 정본에 묻고, 여기는 **왜 그렇게 됐나**를 되짚을 때만 연다. 뒤집힌 내용이 그대로 남아 있어도 정상이며 표시를 달지 않는다(`docs-references.md` §9). 파일명이 날짜로 시작하므로 정본 이력 줄의 날짜로 찾아 들어간다 — 정본은 여기로 링크하지 않는다
 - `docs/decisions/` — ADR. 횡단 규칙·플랫폼·프로세스 결정 위주다. 세션 문서와 같은 **결정 기록**이고 수명만 더 길다 — 결정이 뒤집혀도 기존 ADR을 고치지 않고, 새 ADR을 쓴 뒤 거기에 무엇을 반전시켰는지 적는다(ADR 006이 2026-07-22 결정을 그렇게 뒤집었다)
 - `docs/qa/` — 슬라이스별 시점 기록이라 코드와 어긋나면 코드 기준
-- **백로그 2분할** — 슬라이스를 가로지르는 차기 TODO의 정본. `backlog.md`=게임(콘텐츠·밸런스·게임필·UI/UX·메타), `backlog-implement.md`=코드(아키텍처·리팩터·타입·툴체인·성능·로버스트니스). **항목 ID(`F27`·`G1`·`B2`)는 영구하며 파일이 갈려도 따라간다 — 재번호 금지.** 운영 규칙·상태 어휘의 정본은 `backlog.md` 머리말. **슬라이스 시작 조회에는 아카이브를 열지 않는다** — 그때 필요한 것은 열린 항목뿐이다
+- **백로그 3분할** — 슬라이스를 가로지르는 차기 TODO의 정본. `backlog.md`=게임(콘텐츠·밸런스·게임필·UI/UX), `backlog-implement.md`=코드(아키텍처·리팩터·타입·성능), `backlog-docs.md`=문서(정본 구조·문서 규칙·검사 도구·색인). **항목 ID(`F27`·`G1`·`B2`)는 영구하며 파일이 갈려도 따라간다 — 재번호 금지.** 운영 규칙·상태 어휘의 정본은 `backlog.md` 머리말. **슬라이스 시작 조회에는 아카이브를 열지 않는다** — 그때 필요한 것은 열린 항목뿐이다
 
 **검색 라우팅 (gbrain 설치 시).** 찾을 대상의 **단어를 이미 아는** 검색은 Grep이 빠르고 정확하다. 반대로 **단어를 모르는** 검색(개념·증상·"예전에 왜 이렇게 했더라")은 gbrain 의미 검색을 먼저 쓴다 — 그 경우 Grep은 무관한 문서를 주거나 0건을 낸다. 심볼의 정의·참조 위치는 `code-def`·`code-refs`가 파일과 줄 범위를 바로 준다. **색인은 특정 커밋 기준이라 낡을 수 있다** — 검색 결과는 단서로만 쓰고 최종 판단은 현재 코드로 확인한다. **결과가 비었거나 엉뚱하면 없다고 결론짓기 전에 MCP `sources_status`로 `last_sync_at`·`last_commit`을 본다** — 낡은 색인은 침묵하지 않고 가장 비슷한 것을 그럴듯한 점수로 돌려주므로, 지연을 모르면 조용히 틀린 답을 믿게 된다. CLI는 `serve` 잠금에 막힌다(`spec/ops-gbrain.md` §6.2). 미설치 환경이면 그냥 Grep으로 진행한다.
 
@@ -149,7 +149,7 @@ planning → qa-setup → implementation → verification → user-verification 
 상세 절차는 `pnpm wf`가 phase 문서로 배달한다. 여기 있는 것은 **커맨드 순서**뿐이다.
 
 ```
-1~2 계획       wf start <feature> → 백로그 2종 확인 → /office-hours → /autoplan
+1~2 계획       wf start <feature> → 백로그 3종 확인 → /office-hours → /autoplan
                → sessions/<날짜>-<feature>-plan.md 작성 → 사용자 `계획 승인`
 3~4 QA·테스트  docs/qa/<feature>-test.md + tests/logic/<Feature>.test.ts(RED)
                → wf ready-impl (RED 게이트)
