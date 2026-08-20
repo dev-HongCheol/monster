@@ -58,7 +58,7 @@
 
 ### 폐기 — 문서 검사기 축소 (2026-08-19)
 
-아래 다섯은 **완료가 아니라 폐기**다. `feat/docs-guard-cut`이 검사기 셋(`CanonSpecMove`·`ArtCanonMove`·`CanonQuoteGuard`)과 크기 예산 단언 넷을 걷어내면서, 그 검사기들이 낳은 후속이라 전제가 함께 사라졌다. 판정 기준과 실측은 [`sessions/2026-08-19-docs-guard-cut-plan.md`](sessions/2026-08-19-docs-guard-cut-plan.md)가 든다 — 다시 만들고 싶어지면 거기 §2의 채택 기준을 먼저 통과시킨다.
+아래 다섯 중 **넷은 완료가 아니라 폐기**다(F90만 완료). `feat/docs-guard-cut`이 검사기 셋(`CanonSpecMove`·`ArtCanonMove`·`CanonQuoteGuard`)과 크기 예산 단언 넷을 걷어내면서, 그 검사기들이 낳은 후속이라 전제가 함께 사라졌다. 판정 기준과 실측은 [`sessions/2026-08-19-docs-guard-cut-plan.md`](sessions/2026-08-19-docs-guard-cut-plan.md)가 든다 — 다시 만들고 싶어지면 거기 §2의 채택 기준을 먼저 통과시킨다.
 
 - **F87** 자기 문서 절 인용이 가리키는 절이 맞는지 재는 검사 → **폐기.** 인용 형태 검사기의 확장이었고 본체가 나갔다. 인용 규칙 자체는 `spec/docs-writing-style.md`에 남아 코드 리뷰가 받는다.
 - **F88** 참조 규칙의 소급 적용(앵커 없는 참조 103곳·`정본:` 줄 없는 세션 62개) → **폐기.** 규칙을 하나 세울 때마다 과거 수백 곳이 위반이 되는 구조라 수렴하지 않는다. `spec/docs-references.md` §13이 이미 「신규부터」를 정해 뒀으므로 소급하지 않는 것이 규칙과도 맞고, 그 절의 소급 재고표도 목적이 사라져 함께 걷었다.

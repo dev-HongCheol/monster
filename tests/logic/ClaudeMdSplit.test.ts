@@ -3,8 +3,8 @@
  *
  * **파일명과 검증 대상이 어긋난다.** `wf`가 슬라이스 슬러그로 테스트 파일명을 강제하는데
  * (`workflow.mjs`의 `testFilePath`), 여기서 실제로 검증하는 것은 `CLAUDE.md` 본문이 아니라
- * **워크플로 절차 문서의 배달**이다 — phase↔문서 정합, 배달 로직, 그리고 문서가 다시 부푸는
- * 것을 막는 크기 예산 셋. 이름을 되돌리려면 `wf start`를 다시 쳐야 하고 그러면 슬라이스 상태가
+ * **워크플로 절차 문서의 배달**이다 — phase↔문서 정합, 배달 로직, 그리고 상시 읽는 문서가 다시
+ * 부푸는 것을 막는 의무 독서 예산. 이름을 되돌리려면 `wf start`를 다시 쳐야 하고 그러면 슬라이스 상태가
  * 초기화되므로, 이름은 그대로 두고 여기 적어 둔다.
  */
 
@@ -593,6 +593,9 @@ function alwaysReadDocs(claudeMd: string): string[] {
   return found;
 }
 
+/** 「항상 읽는다」로 지정된 문서 전체의 자수 상한. 올리지 않고 덜어내는 것이 이 수의 요점이다. */
+const BUDGET_LIMIT = 38_000;
+
 describe('의무 독서 예산 (재성장 차단)', () => {
   // 자수는 UTF-8 문자열 길이로 잰다. PowerShell로 재면 한국어 문서의 자수가 약 1.18배
   // 부풀고 빈 줄이 누락돼 값이 어긋난다.
@@ -620,10 +623,31 @@ describe('의무 독서 예산 (재성장 차단)', () => {
     //
     // 넘으면 문서를 나누지 말고 덜어낸다. 새 정본을 「항상 읽는다」로 올리려면 같은 분량을
     // 어디선가 빼야 한다. 경위는 `sessions/2026-08-19-docs-guard-cut-plan.md` §4가 든다.
-    const total =
-      claudeMd.length +
-      targets.reduce((sum, rel) => sum + fs.readFileSync(path.join(ROOT, rel), 'utf8').length, 0);
-    expect(total).toBeLessThanOrEqual(38_000);
+    const sizes: [string, number][] = [
+      ['CLAUDE.md', claudeMd.length],
+      ...targets.map(
+        (rel) => [rel, fs.readFileSync(path.join(ROOT, rel), 'utf8').length] as [string, number],
+      ),
+    ];
+    const total = sizes.reduce((sum, [, chars]) => sum + chars, 0);
+
+    // 숫자를 그냥 비교하지 않고 리포트 문자열을 비교한다. `toBeLessThanOrEqual`은 실패하면
+    // 합계와 상한 둘만 보여 주는데, 그것을 본 사람의 첫 행동은 테스트 파일을 열어 주석을 읽는
+    // 것이 아니라 문서를 쪼개는 것이다 — 쪼개기는 이 단언이 막으려고 태어난 바로 그 통과
+    // 수단이다. 그래서 무엇을 해야 하는지와 어느 문서가 얼마나 큰지를 실패 메시지가 직접 든다.
+    // 같은 이유로 `DocLinks.test.ts`의 죽은 링크 단언도 배열 대신 문자열을 비교한다.
+    const report =
+      total <= BUDGET_LIMIT
+        ? ''
+        : [
+            `「항상 읽는다」 합계가 ${total}자로 상한 ${BUDGET_LIMIT}자를 ${total - BUDGET_LIMIT}자 넘었다.`,
+            ...sizes.map(([rel, chars]) => `  ${String(chars).padStart(6)}자  ${rel}`),
+            '',
+            '문서를 쪼개서는 통과할 수 없다 — 어느 문서든 실제로 덜어내야 한다.',
+            '새 정본을 「항상 읽는다」로 올리려면 같은 분량을 어디선가 빼라.',
+            '경위는 sessions/2026-08-19-docs-guard-cut-plan.md §4가 든다.',
+          ].join('\n');
+    expect(report).toBe('');
   });
 });
 
