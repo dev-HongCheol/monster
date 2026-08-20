@@ -2,6 +2,7 @@
 
 - **작성일:** 2026-08-19
 - **브랜치:** `feat/docs-guard-cut`
+- **상태:** 완료
 - **정본:** [`spec/docs-writing-style.md`](../spec/docs-writing-style.md) 「정본이 정본을 인용할 때는 블록인용으로 쓴다」와 [`spec/docs-references.md`](../spec/docs-references.md) §12 — 인용 형식의 기계 강제를 걷어내고 규칙만 남긴다
 
 ---
