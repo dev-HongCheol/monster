@@ -1,15 +1,16 @@
 {
-  "feature": "docs-guard-cut",
-  "phase": "user-verification",
-  "test_skipped": true,
-  "test_skip_reason": "삭제 슬라이스라 신설 순수 로직이 없다. 검사기 셋을 지우고 크기 예산 단언 하나를 교체할 뿐이며, 삭제를 단언하는 피처 테스트를 만들면 이번에 지우는 CanonSpecMove·ArtCanonMove와 같은 과거-사건 단언이 하나 더 생긴다. 회귀는 기존 스위트(DocLinks 38건·ClaudeMdSplit 53건)가 받는다.",
+  "feature": "ai-matting",
+  "phase": "pr-ready",
+  "test_skipped": false,
+  "test_skip_reason": null,
   "ts_check_scope": "full",
   "canon_updated": [
-    "docs/development/spec/docs-references.md",
-    "docs/development/spec/docs-writing-style.md"
+    "docs/design/spec/art-asset-spec.md",
+    "docs/design/spec/art-generation-playbook.md",
+    "docs/development/spec/ops-licensing.md"
   ],
   "canon_skip_reason": null,
-  "qa_doc_fingerprint": "429027ee42707b4d",
+  "qa_doc_fingerprint": "649e22346d31bd50",
   "verification": {
     "cso_done": true,
     "ts_check_clean": true,
@@ -17,6 +18,6 @@
     "code_review_clean": true
   },
   "docs_delivered": [
-    "user-verification"
+    "pr-ready"
   ]
 }

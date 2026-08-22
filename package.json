@@ -22,9 +22,12 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
+    "@fal-ai/client": "^1.10.1",
     "@types/node": "^22.20.1",
+    "@types/pngjs": "^6.0.5",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.5",
+    "pngjs": "^7.0.0",
     "typescript": "5.8.2",
     "vitest": "^3.2.3"
   }

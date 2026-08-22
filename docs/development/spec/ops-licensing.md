@@ -4,7 +4,7 @@
 
 - **최초 작성:** 2026-08-20
 - **상태:** CONFIRMED
-- **이력:** 2026-08-20 — 신설
+- **이력:** 2026-08-20 — 신설 · 2026-08-22 배경 제거가 fal 매팅으로 옮겨 가 §2 표에서 `rembg` 행을 「과거에 쓴 것」으로 내리고 `bria/background/remove`를 「지금 쓰는 것」으로 세웠다. §2.1의 모델 명시 함정은 폴백용으로 남기되 실효 표시를 달았다
 
 ---
 
@@ -34,8 +34,9 @@
 | **fal.ai** (플랫폼) | 아트 생성 전반 | 이용약관 2026-07-31판이 적용된다. 상업 이용을 막는 조항은 없고, 제약은 §3에 모았다 | 2026-08-20 · [약관](https://fal.ai/legal/terms-of-service) |
 | **`openai/gpt-image-2`** · **`/edit`** | 플레이어 4방향 시트와 그 파생본 전부 | 모델 페이지 사양표의 License 칸이 `Commercial use via fal Partner agreement`. 편집 엔드포인트에도 같은 `Commercial use` 표시가 붙는다 | 2026-08-20 · [모델](https://fal.ai/models/openai/gpt-image-2) · [편집](https://fal.ai/models/openai/gpt-image-2/edit) |
 | **SDXL 1.0 base + 자체 LoRA** | `player_mage_bridge.png` 한 장(유료 전환 이전) | `openrail++`이고 자체 학습 LoRA를 배포하지 않으므로 게임에 걸리지 않는다. 원문 확인표는 §1이 가리키는 복구 매뉴얼이 든다 | 2026-07-21 |
-| **rembg** (로컬) | 위 한 장의 배경 제거 | 코드는 MIT지만 **모델 가중치는 각자 다른 라이선스**다. 이 장비가 받아 둔 것은 `u2net.onnx` 하나이고 그 출처인 [U-2-Net](https://github.com/xuebinqin/U-2-Net)은 Apache-2.0이라 상업 사용에 문제가 없다. **다만 아래 함정이 있다** | 2026-08-20 · [rembg](https://github.com/danielgatis/rembg) |
-| **fal 배경 제거 3종** | 앞으로 쓸 수 있는 대안 | `bria/background/remove` · `birefnet/v2` · `imageutils/rembg` 셋 다 모델 페이지에 `Commercial use` 표시가 붙는다. BRIA는 자체 배포판이 유료 계약을 요구하지만 fal 경유에는 그 조건이 붙지 않는다 | 2026-08-20 |
+| **rembg** (로컬) | **과거에 쓴 것** — `player_mage_bridge.png` 한 장의 배경 제거 | 코드는 MIT지만 **모델 가중치는 각자 다른 라이선스**다. 이 장비가 받아 둔 것은 `u2net.onnx` 하나이고 그 출처인 [U-2-Net](https://github.com/xuebinqin/U-2-Net)은 Apache-2.0이라 상업 사용에 문제가 없다. **다만 아래 함정이 있다.** 2026-08-22에 배경 제거가 fal 매팅으로 옮겨 가 이 경로는 더 쓰지 않지만, 근거를 대는 그 PNG가 아직 레포에 추적 중이라 행을 지우지 않는다 | 2026-08-20 · [rembg](https://github.com/danielgatis/rembg) |
+| **`bria/background/remove`** (fal) | **지금 쓰는 것** — 캐릭터 배경 제거 | 모델 페이지에 `Commercial use` 표시가 붙는다. BRIA는 자체 배포판이 유료 계약을 요구하지만 **fal 경유에는 그 조건이 붙지 않는다.** 후보 둘을 숫자로 견줘 2026-08-22에 채택했고, 판정 항목은 `art-generation-playbook.md` §8.5가 든다 | 2026-08-20 |
+| **fal 배경 제거 대안 2종** | 폴백 | `birefnet/v2` · `imageutils/rembg` 둘 다 모델 페이지에 `Commercial use` 표시가 붙는다. `birefnet/v2`는 품질 판정에서 떨어졌을 뿐 라이선스는 문제없다 | 2026-08-20 |
 | **Spine** | 리깅(아직 결제 전) | 에디터 라이선스가 런타임을 제품에 넣을 권한을 함께 준다 — 런타임은 별도 구매가 아니다. 재배포물에 라이선스와 저작권 고지를 포함해야 한다. 등급·요금은 §1이 가리키는 사양서가 든다 | 2026-08-20 · [런타임 라이선스](https://esotericsoftware.com/spine-runtimes-license) |
 | **Cocos Creator** | 엔진 | 게임 개발 목적의 사용이 무료이고 로열티가 없다. 사용자 서비스 약관이 유료화 시 사전 공지를 약속한다. 스플래시·크레딧 표기 의무 조항은 없고 상표 사용 제한만 있다 | 2026-08-20 · [약관](https://download.cocos.com/CocosUdc/agreement/Cocos_User_Service_Agreement_en_20220901.html) |
 | 폰트 · 사운드 | 아직 없다 | `game/assets/` 아래에 폰트 파일도 오디오 파일도 0개다. 고르는 시점에 이 표에 행이 붙는다 | 2026-08-20 |
@@ -47,7 +48,9 @@
 > Note that RMBG-2.0 is released under a BRIA license that requires a paid agreement for commercial use. Model weights carry their own licenses, independent of rembg's MIT license — check the linked source before using any model commercially.
 > — [rembg README](https://github.com/danielgatis/rembg) (2026-08-20 확인)
 
-이 기본값은 2026-08-17 커밋으로 바뀐 것이라, 그 전에 처리한 `player_mage_bridge.png`에는 소급되지 않는다. 앞으로 로컬 rembg를 쓸 때는 **`-m u2net`을 명시**한다. 명시하지 않으면 도구를 갱신한 날부터 유료 라이선스 모델로 처리되고, 결과 PNG만 봐서는 어느 모델이 만들었는지 구분할 수 없다.
+이 기본값은 2026-08-17 커밋으로 바뀐 것이라, 그 전에 처리한 `player_mage_bridge.png`에는 소급되지 않는다.
+
+**이 함정은 2026-08-22에 실효됐지만 절을 남긴다.** 배경 제거가 fal 매팅으로 옮겨 가 로컬 `rembg`를 부를 일이 없어졌기 때문이다. 그래도 지우지 않는 이유는 폴백으로 돌아올 수 있어서다 — 그때 로컬 rembg를 쓴다면 **`-m u2net`을 명시**한다. 명시하지 않으면 도구를 갱신한 날부터 유료 라이선스 모델로 처리되고, 결과 PNG만 봐서는 어느 모델이 만들었는지 구분할 수 없다.
 
 ## 3. 생성에 붙는 제약 — fal 경유
 
