@@ -14,14 +14,24 @@ export interface IRgbaImage {
   data: Uint8Array;
 }
 
-/** 알파를 성질이 다른 네 대역으로 가른 개수. 비율이 아니라 정수 픽셀 수다. */
+/** 알파를 성질이 다른 다섯 대역으로 가른 개수. 비율이 아니라 정수 픽셀 수다. */
 export interface IAlphaHistogram {
   /** 알파 0 — 완전 투명 */
   transparent: number;
   /** 알파 1~16 — 눈에는 안 보이지만 Cocos의 Trim을 무효로 만드는 잡음 */
   faint: number;
-  /** 알파 17~254 — 매팅이 머리카락 경계에서 만들어 내는 대역 */
+  /** 알파 17~200 — 매팅이 머리카락 경계에서 만들어 내는 대역. **모델을 가르는 값이다** */
   semi: number;
+  /**
+   * 알파 201~254 — 거의 불투명한데 255가 아닌 픽셀.
+   *
+   * `semi`와 **반드시 갈라 센다.** 합치면 「경계를 잘 딴 것」과 「내부가 255가 아닌 것」이
+   * 같은 숫자로 보인다. `bria`가 실제로 내부를 통째로 254로 내놓아 패널당 30,113~45,580px을
+   * 여기 쌓는데, 그건 `normalizeAlpha` 한 줄로 닫히는 양자화이지 매팅 품질이 아니다.
+   * 합쳐서 재면 진짜 경계 대역이 bria 3,490 대 birefnet 3,694로 birefnet이 넓은데도
+   * 51,580 대 11,535로 **뒤집혀** 보인다.
+   */
+  nearOpaque: number;
   /** 알파 255 — 완전 불투명 */
   opaque: number;
 }
@@ -61,17 +71,25 @@ const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 /**
  * 알파 대역별 픽셀 수를 센다.
  *
- * 16과 17을 가르는 자리가 이 함수에서 가장 중요하다. 16 이하는 후처리가 0으로 눌러 없애는
- * 잡음이고 17 이상은 남겨야 하는 경계라, 두 대역을 한 숫자로 합치면 잡음을 뱉는 모델과
- * 경계를 잘 딴 모델이 같은 점수로 보인다.
+ * **가르는 자리가 둘이고 이유가 서로 다르다.** 16과 17 사이는 「후처리가 0으로 눌러 없앨
+ * 잡음」과 「남겨야 하는 경계」를 가른다 — 합치면 잡음을 뱉는 모델과 경계를 잘 딴 모델이 같은
+ * 점수로 보인다. 200과 201 사이는 「매팅이 만든 경계」와 「내부의 양자화 어긋남」을 가른다 —
+ * 자세한 이유는 `nearOpaque` 주석에 있다.
  */
 export function alphaHistogram(img: IRgbaImage): IAlphaHistogram {
-  const out: IAlphaHistogram = { transparent: 0, faint: 0, semi: 0, opaque: 0 };
+  const out: IAlphaHistogram = {
+    transparent: 0,
+    faint: 0,
+    semi: 0,
+    nearOpaque: 0,
+    opaque: 0,
+  };
   for (let i = 3; i < img.data.length; i += 4) {
     const a = img.data[i];
     if (a === 0) out.transparent++;
     else if (a <= 16) out.faint++;
-    else if (a <= 254) out.semi++;
+    else if (a <= 200) out.semi++;
+    else if (a <= 254) out.nearOpaque++;
     else out.opaque++;
   }
   return out;

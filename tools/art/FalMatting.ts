@@ -67,6 +67,30 @@ export function loadFalKey(): string {
   );
 }
 
+/**
+ * 결과가 입력과 같은 크기인지 단언한다.
+ *
+ * 잘린 응답은 예외 없이 열리고 그림만 짧다 — PNG 디코더가 대개 지연 로딩이기 때문이다.
+ * 여기서 막지 않으면 판정이 잘린 그림을 재고, 숫자는 멀쩡해 보인다.
+ *
+ * @param source 어디서 온 바이트인지. 실패 메시지가 캐시와 응답을 구별해야 대응이 갈린다
+ * @throws 크기가 다르면
+ */
+function assertSameSize(
+  input: Uint8Array,
+  output: Uint8Array,
+  model: string,
+  source: string,
+): void {
+  const before = decodePng(input);
+  const after = decodePng(output);
+  if (before.width !== after.width || before.height !== after.height) {
+    throw new Error(
+      `${model} ${source}의 크기가 입력과 다르다: ${before.width}×${before.height} → ${after.width}×${after.height}`,
+    );
+  }
+}
+
 /** 캐시 파일명 — 모델과 입력 바이트가 같으면 같은 이름이 나온다. */
 function cacheKey(model: string, bytes: Uint8Array): string {
   const digest = createHash('sha256').update(bytes).digest('hex').slice(0, 16);
@@ -85,7 +109,12 @@ export async function matte(bytes: Uint8Array, model: string): Promise<IMatteRes
   fs.mkdirSync(CACHE_DIR, { recursive: true });
   const cachePath = path.join(CACHE_DIR, cacheKey(model, bytes));
   if (fs.existsSync(cachePath)) {
-    return { bytes: new Uint8Array(fs.readFileSync(cachePath)), cached: true, cachePath };
+    // 캐시본에도 같은 크기 단언을 건다. 캐시는 반쯤 쓰이다 만 파일일 수 있고 — 쓰는
+    // 도중에 프로세스가 죽으면 그대로 남는다 — 그 뒤로는 호출이 안 나가므로 **영원히**
+    // 잘린 그림으로 판정하게 된다. 호출 경로에만 단언을 걸면 그 상태를 못 잡는다.
+    const cached = new Uint8Array(fs.readFileSync(cachePath));
+    assertSameSize(bytes, cached, model, `캐시(${path.basename(cachePath)})`);
+    return { bytes: cached, cached: true, cachePath };
   }
 
   if (callsMade >= MAX_CALLS_PER_RUN) {
@@ -113,14 +142,7 @@ export async function matte(bytes: Uint8Array, model: string): Promise<IMatteRes
   if (!response.ok) throw new Error(`결과 내려받기 실패(${response.status}): ${url}`);
   const out = new Uint8Array(await response.arrayBuffer());
 
-  // 잘린 응답은 예외 없이 열리고 그림만 짧다. 여기서 막지 않으면 판정이 잘린 그림을 잰다.
-  const before = decodePng(bytes);
-  const after = decodePng(out);
-  if (before.width !== after.width || before.height !== after.height) {
-    throw new Error(
-      `${model}이 크기를 바꿨다: ${before.width}×${before.height} → ${after.width}×${after.height}`,
-    );
-  }
+  assertSameSize(bytes, out, model, '응답');
 
   fs.writeFileSync(cachePath, out);
   return { bytes: out, cached: false, cachePath };

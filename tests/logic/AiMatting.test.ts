@@ -5,10 +5,11 @@
  * 판정하게 만든다. 여기 있는 단언이 그 숫자의 정의다 — 어느 알파 대역을 세는지, 경계값을
  * 어느 쪽에 넣는지가 곧 판정 결과이므로 합성 픽스처로 못 박는다.
  *
- * 경계값을 특히 조심한다. 알파 16과 17이 갈리는 자리가 「희미한 알파」와 「반투명」을
- * 가르는데, 앞은 Cocos의 Trim을 무효로 만드는 잡음이고 뒤는 매팅이 머리카락 경계에서
- * 만들어 내는 값이다. 한 칸 어긋나면 성질이 정반대인 두 대역이 섞여, 잡음을 뱉는 모델과
- * 경계를 잘 딴 모델이 같은 점수로 보인다.
+ * 경계값을 특히 조심한다. **알파를 가르는 자리가 둘이고 둘 다 판정을 뒤집는다.** 16과 17
+ * 사이는 Cocos의 Trim을 무효로 만드는 잡음과 남겨야 할 경계를 가르고, 200과 201 사이는
+ * 매팅이 만든 경계와 모델 내부의 양자화 어긋남을 가른다. 어느 쪽이든 한 칸 밀리거나 두
+ * 대역이 합쳐지면 성질이 정반대인 값이 한 숫자로 섞여, 잡음을 뱉는 모델과 경계를 잘 딴
+ * 모델이 같은 점수로 보인다.
  *
  * 판정 함수가 PNG를 모르게 두는 이유는 디코딩과 판정이 같이 낡지 않게 하기 위해서다.
  * 판정은 RGBA 배열만 받고, 파일을 읽는 것은 `decodePng` 하나로 좁힌다.
@@ -47,7 +48,7 @@ const SAMPLE_PNG = 'game/assets/art/player/player_4dir_front.png';
 /**
  * 픽셀 목록으로 작은 RGBA 이미지를 만든다.
  * @param width 가로 픽셀 수
- * @param pixels `[r, g, b, a]` 네 칸씩 이어 붙인 목록. 길이가 `width`의 배수여야 한다
+ * @param pixels `[r, g, b, a]` 네 칸씩 이어 붙인 목록. 길이가 `width * 4`의 배수여야 한다
  */
 function image(width: number, pixels: number[]): IRgbaImage {
   const height = pixels.length / 4 / width;
@@ -59,23 +60,49 @@ function px(alpha: number): number[] {
   return [10, 20, 30, alpha];
 }
 
-describe('alphaHistogram — 알파를 성질이 다른 네 대역으로 가른다', () => {
-  it('0 / 1~16 / 17~254 / 255를 각각 센다', () => {
-    const img = image(6, [...px(0), ...px(1), ...px(16), ...px(17), ...px(254), ...px(255)]);
+describe('alphaHistogram — 알파를 성질이 다른 다섯 대역으로 가른다', () => {
+  it('0 / 1~16 / 17~200 / 201~254 / 255를 각각 센다', () => {
+    const img = image(7, [
+      ...px(0),
+      ...px(1),
+      ...px(16),
+      ...px(17),
+      ...px(200),
+      ...px(254),
+      ...px(255),
+    ]);
 
     expect(alphaHistogram(img)).toEqual({
       transparent: 1,
       faint: 2,
       semi: 2,
+      nearOpaque: 1,
       opaque: 1,
     });
   });
 
-  it('경계값 16은 희미한 알파이고 17은 반투명이다', () => {
+  it('경계값 16은 희미한 알파이고 17은 경계 대역이다', () => {
     expect(alphaHistogram(image(1, px(16))).faint).toBe(1);
     expect(alphaHistogram(image(1, px(16))).semi).toBe(0);
     expect(alphaHistogram(image(1, px(17))).faint).toBe(0);
     expect(alphaHistogram(image(1, px(17))).semi).toBe(1);
+  });
+
+  it('경계값 200은 경계 대역이고 201은 거의불투명이다', () => {
+    // 이 한 칸이 모델 판정을 뒤집는다. 둘을 합쳐 세면 `bria`가 내부에 쌓는 알파 254
+    // 30,113~45,580px이 경계 대역을 덮어써, 경계가 **더 얇은** 모델이 4배 두꺼워 보인다
+    // (진짜 경계는 bria 3,490 대 birefnet 3,694인데 합치면 51,580 대 11,535다).
+    expect(alphaHistogram(image(1, px(200))).semi).toBe(1);
+    expect(alphaHistogram(image(1, px(200))).nearOpaque).toBe(0);
+    expect(alphaHistogram(image(1, px(201))).semi).toBe(0);
+    expect(alphaHistogram(image(1, px(201))).nearOpaque).toBe(1);
+  });
+
+  it('경계값 254는 거의불투명이고 255는 불투명이다', () => {
+    expect(alphaHistogram(image(1, px(254))).nearOpaque).toBe(1);
+    expect(alphaHistogram(image(1, px(254))).opaque).toBe(0);
+    expect(alphaHistogram(image(1, px(255))).nearOpaque).toBe(0);
+    expect(alphaHistogram(image(1, px(255))).opaque).toBe(1);
   });
 });
 
@@ -220,7 +247,15 @@ describe('readPngSize — 디코딩 없이 헤더만 읽는다', () => {
   });
 
   it('PNG 서명이 아니면 던진다', () => {
-    expect(() => readPngSize(Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7, 8]))).toThrow();
+    // 길이는 충분히 주고 **서명만** 틀린 입력이어야 서명 검사를 실제로 지난다. 짧은 입력을
+    // 넣으면 앞의 길이 가드에서 먼저 던져, 서명 비교를 통째로 지워도 이 테스트가 초록이다.
+    const longEnough = new Uint8Array(32).fill(0x41);
+
+    expect(() => readPngSize(longEnough)).toThrow('PNG 서명이 아니다');
+  });
+
+  it('PNG를 담기엔 짧은 입력은 길이로 먼저 막는다', () => {
+    expect(() => readPngSize(Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7, 8]))).toThrow('짧다');
   });
 });
 
@@ -298,6 +333,26 @@ describe('panelColumns — 시트를 인물별로 가르는 열 구간', () => {
     expect(
       panelColumns(img, { background: [177, 176, 176], maxDistance: 12, minColumnPixels: 2 }),
     ).toEqual([{ from: 3, to: 8 }]);
+  });
+
+  it('전경이 기준과 정확히 같은 열은 인물 열로 센다', () => {
+    // `>=`인지 `>`인지가 갈리는 유일한 자리다. 인물 열에 4px, 잡음 열에 1px을 두고 기준을
+    // 2로 주면 4 > 2이고 1 < 2라 한 칸 어긋나도 결과가 같아, 경계가 안 걸린다.
+    const img = sheet(8, []);
+    for (let y = 0; y < 2; y++) img.data.set([20, 30, 40, 255], (y * 8 + 4) * 4);
+
+    expect(
+      panelColumns(img, { background: [177, 176, 176], maxDistance: 12, minColumnPixels: 2 }),
+    ).toEqual([{ from: 4, to: 4 }]);
+  });
+
+  it('전경이 기준보다 하나 적은 열은 배경으로 본다', () => {
+    const img = sheet(8, []);
+    img.data.set([20, 30, 40, 255], (0 * 8 + 4) * 4);
+
+    expect(
+      panelColumns(img, { background: [177, 176, 176], maxDistance: 12, minColumnPixels: 2 }),
+    ).toEqual([]);
   });
 });
 
@@ -392,6 +447,64 @@ describe('edgeHalo — 윤곽에 배경색이 섞인 띠가 둘러졌는지 잰�
 
     expect(edgeHalo(image(1, px(0)), BG)).toEqual({ left: empty, right: empty });
   });
+
+  it('여러 행 중 일부만 후광이면 비율이 그 몫으로 나온다', () => {
+    // **게이트가 읽는 값은 `ratio`다.** 한 행짜리 픽스처만 쓰면 `haloRows / rows`를
+    // `haloRows / img.height`로 바꿔도 초록이라, 분모가 「잴 수 있었던 행」인지 「전체
+    // 행」인지가 안 걸린다. 네 행 중 하나는 잴 수 없게 비워 둔다.
+    const opaque = (c: [number, number, number]): number[] => [...c, 255];
+    const clear = (): number[] => [0, 0, 0, 0];
+    const img = image(6, [
+      ...opaque(MIXED),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(MIXED),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...opaque(DARK),
+      ...clear(),
+      ...clear(),
+      ...clear(),
+      ...clear(),
+      ...clear(),
+      ...clear(),
+    ]);
+
+    // 잴 수 있는 행은 셋(넷째 줄은 전부 투명이라 빠진다), 그중 둘이 후광이다.
+    expect(edgeHalo(img, BG).left).toEqual({ rows: 3, haloRows: 2, ratio: 2 / 3 });
+  });
+
+  it('알파가 기준 이하인 가장자리는 윤곽으로 안 친다', () => {
+    // 기본 `minAlpha` 200이 실제로 걸리는지 본다. 픽스처 알파가 255 아니면 0이기만 하면
+    // 이 임계값을 무엇으로 바꿔도 결과가 같다.
+    const img = image(6, [
+      ...MIXED,
+      150, // 반투명한 후광색 — 윤곽에서 빠져야 한다
+      ...DARK,
+      255,
+      ...DARK,
+      255,
+      ...DARK,
+      255,
+      ...DARK,
+      255,
+      ...DARK,
+      255,
+    ]);
+
+    expect(edgeHalo(img, BG).left.haloRows).toBe(0);
+  });
 });
 
 describe('normalizeAlpha — 매팅 결과를 규격으로 누른다', () => {
@@ -404,12 +517,25 @@ describe('normalizeAlpha — 매팅 결과를 규격으로 누른다', () => {
     expect([...out.data.slice(4)]).toEqual([10, 20, 30, 255]);
   });
 
-  it('거의 불투명한 알파를 255로 올린다', () => {
+  it('기본값이 16/17 경계를 정확히 가른다', () => {
+    // 이 파일 머리말이 세워 둔 경계이고, 그것을 실제로 집행하는 코드가 여기다. 기본값을
+    // 명시로 넘기면 기본값이 안 걸리므로 인자 없이 부른다. `<=`를 `<`로 한 칸 밀면
+    // 알파 16짜리 잡음이 살아남아 Cocos의 Trim이 무효가 된다.
+    const img = image(2, [10, 20, 30, 16, 10, 20, 30, 17]);
+
+    const out = normalizeAlpha(img);
+
+    expect(out.data[3]).toBe(0);
+    expect(out.data[7]).toBe(17);
+  });
+
+  it('기본값이 254를 255로 올리고 253은 그대로 둔다', () => {
     // `bria`는 내부를 255가 아니라 254로 내놓는다. 흐린 매트가 아니라 양자화 어긋남이라
-    // 그대로 두면 스프라이트 전체가 아주 살짝 투명한 채로 출하된다.
+    // 그대로 두면 스프라이트 전체가 아주 살짝 투명한 채로 출하된다. 여기도 인자를 안
+    // 넘긴다 — 명시로 넘기면 기본값을 200으로 바꿔도 이 테스트가 통과한다.
     const img = image(2, [10, 20, 30, 254, 10, 20, 30, 253]);
 
-    const out = normalizeAlpha(img, { opaqueFrom: 254 });
+    const out = normalizeAlpha(img);
 
     expect(out.data[3]).toBe(255);
     expect(out.data[7]).toBe(253);
@@ -469,6 +595,37 @@ describe('alignToCanvas — 네 방향을 같은 캔버스·같은 발 밑선에
     expect(out.height).toBe(6);
     // 발 밑선은 y = 6 - 1 - 1 = 4, 발 중심은 x = 2로 옮겨진다.
     expect(out.data[(4 * 5 + 2) * 4 + 3]).toBe(255);
+  });
+
+  it('여백을 두면 세로로 넘칠 때 던진다 — 조용히 자르지 않는다', () => {
+    // 크기만 보던 가드가 통과시키던 자리다. 캐릭터 10 ≤ 캔버스 20이지만 발 밑선을 여백 15
+    // 위에 놓으면 머리 다섯 줄이 캔버스 밖으로 밀려나고, 종전 판은 그걸 말없이 버려
+    // **머리가 가로 직선으로 잘린 정상 PNG**를 내놓았다(실측 알파 10px → 5px).
+    const tall = image(1, Array.from({ length: 10 }, () => px(255)).flat());
+
+    expect(() => alignToCanvas(tall, { width: 20, height: 20, bottomMargin: 15 })).toThrow('세로');
+  });
+
+  it('발 중심에 맞췄을 때 가로로 넘치면 던진다', () => {
+    // 가로는 트림 상자가 아니라 **발 중심**을 캔버스 중앙에 맞춘다. 그래서 발이 한쪽으로
+    // 쏠려 있으면 트림 상자(폭 7)가 캔버스(폭 8)보다 좁은데도 반대쪽 머리카락이 넘친다.
+    // 크기만 보던 가드는 7 ≤ 8이라 통과시켰다.
+    const hair = [
+      ...px(255),
+      ...px(255),
+      ...px(255),
+      ...px(255),
+      ...px(255),
+      ...px(0),
+      ...px(0),
+      ...px(0),
+    ];
+    const foot = [...px(0), ...px(0), ...px(0), ...px(0), ...px(0), ...px(0), ...px(255), ...px(0)];
+    const img = image(8, [...hair, ...hair, ...foot]);
+
+    expect(() => alignToCanvas(img, { width: 8, height: 3, bottomMargin: 0, footRows: 1 })).toThrow(
+      '가로',
+    );
   });
 
   it('캐릭터가 캔버스보다 크면 던진다', () => {
