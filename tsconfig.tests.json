@@ -21,6 +21,10 @@
     "strict": true,
     "noEmit": true,
     "isolatedModules": true,
+    /* `tools/` 아래 도구는 `node --experimental-strip-types`로 직접 돌린다. Node의 ESM 해석기는
+       확장자를 생략한 상대 경로를 못 찾으므로 도구끼리는 `./X.ts`로 부르는데, tsc는 그걸
+       기본적으로 TS5097로 막는다. `noEmit`이라 컴파일 산출물의 경로가 어긋날 여지가 없다. */
+    "allowImportingTsExtensions": true,
     "forceConsistentCasingInFileNames": true,
     /* @types/node가 캐럿 범위라, 마이너 업그레이드가 선언 파일 에러를 들여오면 우리 코드와
        무관하게 게이트가 빨간불이 된다. 게임 프로젝트와 대칭을 맞춘다. */
@@ -28,6 +32,9 @@
   },
   "include": [
     "tests/**/*.ts",
+    /* 아트 파이프라인 도구. 게임도 테스트도 아니지만 `cc`를 import하지 않으므로 여기 속한다 —
+       biome만 지나가게 두면 타입이 검사 밖에서 낡는다. */
+    "tools/**/*.ts",
     "game/assets/scripts/logic/**/*.ts",
     "game/assets/scripts/data/**/*.ts"
   ]
