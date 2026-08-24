@@ -162,9 +162,10 @@
 | 1 | 보조 손을 오므려 배 앞 허리 높이로 | 0의 결과 | §5.4 | **부분 통과** — 보조 손은 맞고, 잠가 둔 셋이 흔들렸다(아래) |
 | 2 | 지팡이 손을 보조 손보다 앞으로 | 1의 결과 | §5.5 | **부분 통과** — 오른쪽은 맞고 왼쪽이 무너졌다 |
 | 3 | **왼쪽 패널을 오른쪽의 반전으로 채운다** | 2의 결과 | 유료 아님 — `MirrorPanel.ts` | **완료** — `4dir_bald_mirrored.png` |
-| 4 | 지팡이 없는 삭발 판 — 축 | 3의 결과 | 실행 지침 §8.2.2 축 | |
-| 5 | 지팡이 없는 옷+머리 판 | 4의 결과 | 실행 지침 §8.2.2 옷+머리 | |
-| 6 | 지팡이 없는 맨살 판 | 4의 결과 | 실행 지침 §8.2.2 맨살 | |
+| 4 | **왼쪽 뷰를 해부학 기준으로 — 보조 팔을 앞으로** | 3의 결과 | §5.7 | 대기 |
+| 5 | 지팡이 없는 삭발 판 — 축 | 4의 결과 | 실행 지침 §8.2.2 축 | |
+| 6 | 지팡이 없는 옷+머리 판 | 5의 결과 | 실행 지침 §8.2.2 옷+머리 | |
+| 7 | 지팡이 없는 맨살 판 | 5의 결과 | 실행 지침 §8.2.2 맨살 | |
 
 **유료 컷 여섯(약 $0.67)이고 인물은 그대로 유지된다.** 자세를 잡는 데 세 컷이 들었고, 네 번째 자리는 유료 회차 대신 반전으로 메웠다(§5.6). 자세를 잡는 데 세 컷이 든 것은 **한 컷에 하나씩만 바꿨기 때문**이고, 그 대신 매 컷이 통했다. 턴어라운드부터 도는 길도 값은 비슷한데 그쪽은 인물 동일성을 건다. 같은 값으로 턴어라운드부터 돌 수도 있었지만 그쪽은 인물 동일성을 걸므로, 값이 같다면 인물을 안 거는 쪽을 택한다. **앞 컷의 결과를 보기 전에는 다음 컷을 돌리지 않는다** — 축이 갈리면 뒤가 전부 갈린다.
 
@@ -345,6 +346,62 @@ no border, no text, no watermark. Only one character.
 
 산출물은 `art-source/player/2026-08-24/4dir_bald_mirrored.png`이고, 도구는 `tools/art/MirrorPanel.ts`다. 시트를 레포에 두는 것만으로는 모자라서 도구도 함께 둔다 — 검사망 밖의 스크립트가 사라진 전례가 실행 지침 §8.4에 있다.
 
+### 5.7 4번 지시문 — 왼쪽 뷰만 해부학 기준으로 (2026-08-25 사용자 결정)
+
+**역할 기준을 뒤집는다.** §6.2가 측면 두 장 모두 쥔 팔을 화면 가까운 쪽에 두기로 했는데, 그 배치에서는 **보조 손이 두 방향 모두 몸통 뒤로 들어가 안 보인다**. 실제로 3번 판이 그렇게 나왔다. 사용자가 보조장비도 화면에 서기를 원해, 무기와 보조장비를 **해부학적으로 같은 손에 고정**하고 방향에 따라 어느 쪽이 앞인지가 갈리게 한다 — 오른쪽 뷰는 지팡이가 앞, 왼쪽 뷰는 보조 손이 앞이다.
+
+**막힐 뻔한 자리는 먼저 확인했다.** 방향마다 그리기 순서를 따로 박을 수 있어야 하는데, Spine 공식 비교표 기준으로 Professional 전용은 메시·디폼·웨이트·물리 제약(그리고 IK)이고 **도프시트와 Skins는 Essential에 있다.** 방향별 애니메이션마다 Draw Order 키를 넣으면 된다. `F103`이 열어 둔 확인 항목이 여기서 닫힌다.
+
+**받아들인 대가 셋.**
+
+- **왼쪽 뷰에서 지팡이가 몸통 뒤로 간다.** 주무기가 그 방향에서 가려진다 — 「주무기를 화면 가까운 쪽에」와 맞바꾼 것이다.
+- **왼쪽 뷰의 지팡이 팔은 파츠가 부분적으로만 남는다.** 몸통에 가린 자리는 그려진 적이 없다(실행 지침 §2.0). 원래 시트는 **양쪽**이 그 상태였으므로 뷰 하나로 줄어든 셈이지만, 그 방향에서 그 팔을 앞으로 돌리는 애니메이션은 못 넣는다.
+- **좌우를 반전으로 메우는 길이 닫힌다.** 두 패널이 더 이상 거울상이 아니므로, 한쪽이 무너져도 §5.6처럼 공짜로 복구할 수 없다.
+
+```
+Using this exact same 4-view turnaround sheet as the reference, redraw the same
+character in the same four views — front view, back view, left side view, right
+side view — changing only the left side view.
+
+In the left side view her staff arm is currently the arm nearer to the viewer,
+so the staff stands in front of her body. Swap which arm is nearer. In the left
+side view her empty arm — the one whose hand is softly curled — is now the arm
+nearer to the viewer: that whole arm, from shoulder to hand, is drawn in front
+of her torso, complete and unbroken, and her softly curled hand is the frontmost
+part of her.
+
+In that same left side view her staff arm is now the far arm. It passes behind
+her torso, so her body covers the middle of that arm and covers most of that
+hand. The staff itself stays vertical and stays exactly where it is on the
+ground, and it stays clearly visible above and below her torso.
+
+Her empty hand keeps the same softly curled shape and the same waist height it
+has now: the fingers stay separated, the opening inside the curl stays open, and
+the hand is neither flat open nor a fist.
+
+The front view, the back view and the right side view do not change at all.
+
+Everything else must stay exactly the same: the same face and the same facial
+features, the same completely bald head with bare scalp skin and no hair at all,
+the same skin tone, the same clothes and their colors, the same fingerless
+gloves, the same boots, the same four-head-tall proportions, the same standing
+pose of her legs, the same scale, the same position inside the frame and the
+same ground line in all four views. Do not redraw her, do not resize her, do not
+move her, and do not lengthen or shorten her legs.
+
+All four views must stay the same size as each other, exactly as they are in the
+reference.
+
+She keeps her staff. Plain flat gray background, the same gray as the reference.
+Do not include any second staff, wand, rod, stick, sword, shield, weapon, tool,
+hat, hood, cap, headband, wig, fire, glow, particles or ground shadow. No frame,
+no border, no text, no watermark. Only one character.
+```
+
+**판정 넷.** 왼쪽 뷰에서 보조 손이 몸통 앞으로 나와 통째로 보이는가, 같은 뷰에서 지팡이가 몸통 뒤이면서 위아래로는 보이는가, 나머지 세 패널이 안 바뀌었는가, 네 인물의 크기가 그대로인가.
+
+**나머지 세 패널이 흔들리면 왼쪽만 떼어 붙인다.** 편집은 시트 전체를 다시 그리므로(실행 지침 §8.2.5) 지시 안 한 패널이 흔들릴 수 있다. 그때는 새 판을 통째로 쓰지 않고 왼쪽 패널만 3번 판에 옮겨 붙인다 — `MirrorPanel.ts`가 하는 일과 같은 종류이고, 크기가 1% 넘게 갈리면 붙이지 않고 다시 뽑는다.
+
 ## 6. 판정 항목 — 손에 세 줄을 새로 건다
 
 실행 지침 §5.4와 §7.2의 기존 항목은 그대로 돌린다. 여기에 손 쪽 조건 셋을 더한다. 지침 §8.2는 지금 「손이 펴지면 안 된다」 한 줄만 걸어 뒀는데, 목적이 v2 밑판이라면 그 한 줄로는 부족하다.
@@ -381,14 +438,16 @@ no border, no text, no watermark. Only one character.
 
 - **보조 손에도 장비를 들린다**(방패·책).
 - **그 보조장비를 손을 가리는 방패 형태로 통일한다** — 다른 캐릭터에도 범용으로 쓰려는 것이다. 방패가 손을 통째로 덮으므로 그 밑의 손 모양은 화면에 안 나오고, 위 문단이 남긴 「손가락 일부만 무기 앞으로 오는 자리가 없다」 미결이 보조 쪽에서는 닫힌다. **남는 것은 주무기 손 하나다.**
-- **주무기를 화면 가까운 쪽에 둔다** — 주무기가 보조장비보다 화려하고 크게 보여야 하는 물건이라, 몸에 가리는 자리에 세우면 그 값이 화면에서 사라진다. 현행 열두 장은 좌우 **둘 다 쥔 팔이 먼 쪽**이라, 이것이 다음 회차에서 실제로 바뀌는 항목이다.
+- **측면 두 장의 배치.** 2026-08-24에는 주무기를 두 방향 모두 화면 가까운 쪽에 두기로 했는데(주무기가 몸에 가리면 그 값이 사라진다는 이유), 실제로 뽑아 보니 그 배치가 **보조장비를 두 방향 모두 몸통 뒤로 보내 화면에서 지워 버렸다.** 2026-08-25에 해부학 기준으로 뒤집었다 — 무기와 보조장비를 같은 손에 고정하고, 방향에 따라 어느 쪽이 앞인지가 갈리게 한다(§5.7).
 - **방패는 판정에 안 들어간다** — 이름이 방어를 뜻하지만 피격 사각형은 `player.json` 고정값 그대로이고, 방패 쪽에서 오는 피해를 깎는 별도 판정도 두지 않는다.
 
 **앞뒤를 오가는 단위는 아이템이 아니라 팔 한 벌이다.** `팔(살)`·`소매`·`장갑`·`손`·`아이템`이 함께 움직여야 한다 — 아이템만 몸 앞으로 보내면 무기는 몸 앞인데 그것을 쥔 손은 몸 뒤라, 팔이 몸통을 관통한 그림이 된다.
 
-**그래서 슬롯을 해부학이 아니라 역할로 나눈다.** 측면 두 장에서 쥔 팔이 좌우 같은 쪽이면, 해부학적으로는 방향마다 다른 손이 무기를 들고 있는 셈이 된다. `왼팔`·`오른팔`로 이름 붙이면 방향마다 어느 슬롯에 무기가 붙는지가 갈리지만, `무기 팔`·`보조 팔`로 붙이면 그리기 순서가 방향과 무관하게 하나로 고정된다. 층 표를 실제로 그렇게 가르는 일은 리깅 슬라이스가 실물 파츠를 보고 하며, 그 미결은 백로그 `F103`이 든다.
+**슬롯은 해부학으로 나누고 그리기 순서를 방향마다 박는다(2026-08-25).** 무기가 늘 같은 손에 있으므로 `왼팔`·`오른팔`이 방향과 무관하게 같은 것을 가리키고, 대신 어느 팔이 앞인지가 방향마다 달라 Draw Order를 방향별 애니메이션에 키로 넣는다. 층 표를 실제로 가르는 일은 리깅 슬라이스가 실물 파츠를 보고 하며, 그 미결은 백로그 `F103`이 든다.
 
-**해부학 기준을 실제 시트로 놓고 견준 뒤 역할 기준을 유지했다(2026-08-24).** 방패가 늘 같은 팔에 붙는 참조 시트를 보면, 한쪽 측면에서는 방패가 온전히 보이지만 **반대쪽 측면은 역할 기준과 똑같이 몸 뒤**다. 얻는 것이 네 방향 중 하나뿐인데 대가로 그리기 순서를 방향마다 따로 박아야 하고, **그 순서 바꾸기가 Spine Essential에서 되는지는 아직 확인되지 않았다**(`F103`의 열린 항목). 안 되면 방향마다 별도 스킨으로 우회해야 해서 공수가 크게 뛴다. 대신 보조 손을 배 앞으로 올려(§5.4) **두 측면 모두에서** 방패 앞부분이 보이게 한다.
+**막힐 뻔한 자리는 먼저 확인했다.** `F103`이 「Draw Order가 Spine Essential에 있는지」를 열어 뒀는데, Spine에서 Professional 전용은 메시·디폼·웨이트·물리 제약과 IK이고 **도프시트와 Skins는 Essential에 있다**(2026-08-25 확인). 방향별 Draw Order 키도, v2 워드로브가 기대는 스킨도 이 등급에서 성립한다.
+
+**한때 역할 기준으로 갔다가 걷은 경위는 §5.7이 든다.** 2026-08-24에 측면 두 장 모두 쥔 팔을 앞에 두기로 했고 실제로 그렇게 뽑았는데, 그 배치가 보조장비를 두 방향 모두 지워 버렸다.
 
 **보조 손 모양도 같은 날 함께 정해졌다.** 살짝 오므린 모양으로 받는다. 처음에는 「v1 화면에서 어색하다」가 근거로 적혔고 그 근거만 보면 이 트랙의 기준이 아니지만(v1 외형은 스킨이 덮는다), **v2 근거가 따로 선다** — 그 손은 장갑 스킨이 얹히는 밑판이고, 보조장비를 안 든 상태로도 나오며, 파츠로 잘려 리깅에 들어간다. 활짝 편 손으로는 방패 손잡이를 쥔 모양이 안 되고, **손 모양은 리깅이 못 고친다**(위치는 팔 뼈를 돌려 만들지만 모양은 그림에 굳는다). 같은 이유로 손이 엉덩이나 몸통에 가려서도 안 된다 — 가려진 부분은 그려진 적이 없어 파츠에 구멍으로 남는다(실행 지침 §2.0).
 
