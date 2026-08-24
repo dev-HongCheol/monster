@@ -1,23 +1,22 @@
 {
-  "feature": "ai-matting",
-  "phase": "done",
+  "feature": "staff-layer",
+  "phase": "verification",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": "full",
   "canon_updated": [
     "docs/design/spec/art-asset-spec.md",
-    "docs/design/spec/art-generation-playbook.md",
-    "docs/development/spec/ops-licensing.md"
+    "docs/design/spec/art-generation-playbook.md"
   ],
   "canon_skip_reason": null,
-  "qa_doc_fingerprint": "649e22346d31bd50",
+  "qa_doc_fingerprint": "3c57c0bafe67ac03",
   "verification": {
     "cso_done": true,
     "ts_check_clean": true,
     "lint_clean": true,
-    "code_review_clean": true
+    "code_review_clean": false
   },
   "docs_delivered": [
-    "pr-ready"
+    "verification"
   ]
 }

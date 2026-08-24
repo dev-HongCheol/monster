@@ -4,7 +4,7 @@
 
 - **최초 작성:** 2026-08-05
 - **상태:** CONFIRMED — 플레이어 4방향에 대해 실행 가능. 나머지 카테고리는 §10에 차단 요인만 적혀 있다.
-- **이력:** 2026-08-06 유료 전환 확정(fal.ai Sandbox, 채택 모델 `openai/gpt-image-2/edit`) · 2026-08-07 후처리·실측 절(§8)과 배경 키잉 함정 둘 추가 · 2026-08-14 `docs/design/spec/`으로 이전하며 결정 기록 링크 17곳을 걷어내고 판정 관련 6곳을 판정 규칙 정본으로 재지정 · 2026-08-15 사양서·art-direction 인용 세 곳을 정리했다. §2.3의 사양서 §2.6 인용은 블록인용과 출처 줄로 옮겼고, 같은 절의 art-direction §6 인용과 §8.3의 사양서 §3.2 인용은 원문에 없는 요약이라 따옴표를 걷고 서술로 풀었다 · 2026-08-20 §8.1의 로컬 rembg 안내에 모델 명시 조건을 달았다(기본 모델이 유료 라이선스로 바뀌었다 — `ops-licensing.md` §2.1) · 2026-08-22 §8을 매팅 기준으로 다시 썼다. §8.1에서 로컬 rembg 안내를 걷고 단계를 7개에서 6개로 줄였으며(그에 맞춰 「§8.1의 5번」 참조 둘을 4번으로 고쳤다), §8.2는 「지팡이 분리」에서 「생성으로 걷는다」로 뜻이 뒤집혔고, §8.3.1 손수 키잉 함정 절을 지웠으며, §8.4의 사라진 파이썬 스크립트 본문을 레포 도구 표로 갈았고, §8.5 판정 항목을 새 지표에 맞췄다
+- **이력:** 2026-08-24 §8.2를 네 절로 갈랐다 — 손 판정 셋(§8.2.1), 편집 지시문 셋(§8.2.2), 받은 시트를 재는 항목(§8.2.3), v2 스킨에 같은 방식을 적용하는 원칙(§8.2.4)이다. §8.2.2의 방식이 「세 시트를 각각 편집한다」에서 **「삭발 판을 축으로 삼고 나머지 둘을 거기서 파생시킨다」**로 바뀌었다 — 앞 방식으로 받은 판이 네 방향 편차 24px로 떨어졌고, 밑판을 입력에 묶으니 3px로 내려왔다. 「맨살 판은 후처리로 지팡이를 뗄 수 있다」던 서술도 뒤집었다(어느 시트든 손이 지팡이를 쥐고 있다). §8.4 도구 표에 정렬 기준 `footBand`와 판정 지표 `footSpanCenterX`를 갈라 넣고 둘을 섞어 쓰지 말라는 경고를 달았으며, §8.7 표의 트림 전제를 같은 절 산문에 맞춰 캔버스 기준으로 고쳤고, §8.8의 z 순서를 「몸 뒤」에서 「항상 몸 앞」으로 바꿨다(자식 노드는 부모를 덮으므로 고를 수 있는 값이 아니다). §9에 매팅 캐시가 `art-source/`에 사는 이유를 더했다 · 2026-08-06 유료 전환 확정(fal.ai Sandbox, 채택 모델 `openai/gpt-image-2/edit`) · 2026-08-07 후처리·실측 절(§8)과 배경 키잉 함정 둘 추가 · 2026-08-14 `docs/design/spec/`으로 이전하며 결정 기록 링크 17곳을 걷어내고 판정 관련 6곳을 판정 규칙 정본으로 재지정 · 2026-08-15 사양서·art-direction 인용 세 곳을 정리했다. §2.3의 사양서 §2.6 인용은 블록인용과 출처 줄로 옮겼고, 같은 절의 art-direction §6 인용과 §8.3의 사양서 §3.2 인용은 원문에 없는 요약이라 따옴표를 걷고 서술로 풀었다 · 2026-08-20 §8.1의 로컬 rembg 안내에 모델 명시 조건을 달았다(기본 모델이 유료 라이선스로 바뀌었다 — `ops-licensing.md` §2.1) · 2026-08-22 §8을 매팅 기준으로 다시 썼다. §8.1에서 로컬 rembg 안내를 걷고 단계를 7개에서 6개로 줄였으며(그에 맞춰 「§8.1의 5번」 참조 둘을 4번으로 고쳤다), §8.2는 「지팡이 분리」에서 「생성으로 걷는다」로 뜻이 뒤집혔고, §8.3.1 손수 키잉 함정 절을 지웠으며, §8.4의 사라진 파이썬 스크립트 본문을 레포 도구 표로 갈았고, §8.5 판정 항목을 새 지표에 맞췄다
 
 ---
 
@@ -372,7 +372,7 @@ plain wooden staff without ornament
 
 | 칸 | 값 | 왜 |
 |---|---|---|
-| **Image Size / Aspect Ratio** | 세로가 긴 비율(3:4 등) | 캐릭터가 세로로 길다. 1:1로 뽑으면 좌우에 빈 공간이 생겨 인물이 작게 들어오고, 그만큼 해상도를 버린다 |
+| **Image Size / Aspect Ratio** | **1단계는** 세로가 긴 비율(3:4 등) | 캐릭터가 세로로 길다. 1:1로 뽑으면 좌우에 빈 공간이 생겨 인물이 작게 들어오고, 그만큼 해상도를 버린다. **4방향 시트와 그 시트를 고치는 편집 회차는 다르다** — 인물 넷이 나란히 서므로 시트 자체는 가로가 길고, 편집은 입력의 프레이밍을 그대로 유지해야 한다(§8.2.2) |
 | **Num Images** | 한 번에 최대치 | 같은 프롬프트로 여러 장 받아 고르는 단계라 호출을 나눌 이유가 없다 |
 | **Output Format** | PNG | 알파를 다루는 이후 단계 때문 |
 | **Enable Safety Checker / Safety Tolerance** | 기본값 | 건드릴 이유가 없다 |
@@ -582,7 +582,7 @@ Plain flat gray background.
 
 1단계의 정면 한 장을 넣으면 모델이 4방향을 **새로 구성**하므로 자세·크기·발 밑선이 어긋난다. C를 A가 아니라 B에서 뽑는 이유는 **위험한 변경(삭발)을 한 번만 하기 위해서**다 — 두 번 하면 실패 기회가 두 번이 된다.
 
-**포즈와 지팡이는 두 회차 모두 그대로 둔다.** 자세가 바뀌면 팔·다리 위치가 달라져 레이어를 겹칠 수 없다. 지팡이는 §8.2에서 잘라 내지만, 빼 버리면 쥔 손이 펴진 손으로 바뀌어 손 모양이 시트 사이에서 어긋난다.
+**포즈와 지팡이는 두 회차 모두 그대로 둔다.** 자세가 바뀌면 팔·다리 위치가 달라져 레이어를 겹칠 수 없다. 지팡이는 §8.2에서 따로 걷어내므로 여기서 빼지 않는다 — 여기서 빼면 쥔 손이 펴진 손으로 바뀌어 손 모양이 시트 사이에서 어긋난다.
 
 #### B — 옷은 그대로, 삭발
 
@@ -725,11 +725,187 @@ no watermark. Only one character.
 
 **그래서 지팡이 없는 몸은 시트를 하나 더 뽑아서 얻는다.** §7.3이 A→B(삭발)→C(맨살)로 가리는 것을 하나씩 걷어낸 것과 같은 수법이고, 지팡이가 그 셋 중 마지막 하나다. 확정된 시트를 입력에 넣고 지팡이만 지운 변형본을 편집으로 받는다.
 
-**판정 항목이 하나 붙는다 — 손이 쥔 모양 그대로여야 한다.** 지팡이가 사라졌다고 손이 펴져 나오면 나중에 지팡이 노드를 얹었을 때 쥐지 않고 통과하는 것처럼 보이고, 그때는 고칠 방법이 없다(§2.3). 나머지 판정은 §5.4와 §7.2를 그대로 돌린다.
+**맨살 판도 예외가 아니다(2026-08-23, 세 시트를 실제로 열어 확인).** 이 절의 첫 판은 지팡이가 몸에서 떨어져 서 있는 맨살 시트라면 세로 막대 하나만 떼면 된다고 적어 뒀는데, 그것은 「지팡이 **그림**을 뜯어내는 일」에는 맞고 「지팡이를 뺀 **몸**을 얻는 일」에는 틀렸다. **어느 시트든 손이 지팡이를 쥐고 있어서**, 지팡이가 차지한 열을 지우면 손가락이 함께 지워지기 때문이다. 앞쪽은 맨살 판에서 되고 뒤쪽은 세 시트 모두 안 된다.
 
-**지팡이 그림은 맨살 판에서 뜯는다.** 그 시트는 삭발이라 지팡이 위에 걸릴 머리카락이 없고, 지팡이가 몸에서 완전히 떨어져 서 있어 세로 막대 하나만 떼면 끝난다. 옷 입은 판에서 뜯을 이유가 없다. 한 장으로 시작하되, §7.2에서 네 방향의 지팡이가 굵기·길이·색이 눈에 띄게 다르면 네 장으로 나눈다.
+**지팡이 그림은 이미 뜯어 뒀다.** `game/assets/art/player/player_staff.png`가 그것이고, 395행 전부에서 가로로 끊긴 데 없이 온전하다. 네 방향의 지팡이가 굵기·길이·색이 눈에 띄게 다르면 네 장으로 나누기로 했으나 한 장으로 충분했다.
 
-이 작업의 실행은 백로그 **F67**이 든다 — 배선(§8.8)과 한 슬라이스로 묶인다.
+#### 8.2.1 판정 항목 — 손에 세 줄을 건다
+
+이 절의 첫 판은 「손이 펴지면 안 된다」 한 줄만 걸어 뒀는데, 뽑는 목적이 v2가 쓸 밑판이라면 그 한 줄로는 모자란다(2026-08-23). 나머지 판정은 §5.4와 §7.2를 그대로 돌리고, 여기에 셋을 더한다.
+
+- [ ] **쥔 오른손이 반쯤 열려 있다.** 지팡이를 지우라고 하면 모델이 손을 주먹으로 닫아 버릴 수 있는데, 닫힌 주먹이 나오면 v2에서 어떤 무기도 그 손을 통과하지 못한다. 반대로 펴져 버리면 무기를 얹었을 때 쥐지 않고 통과하는 것처럼 보인다(§2.3). 양쪽을 다 막는다
+- [ ] **손가락이 살아 있다.** 장갑이 핑거리스라 손가락이 밖으로 나와 있고, 맨살 판의 그 손가락이 v2 장갑 스킨의 밑판이 된다. 뭉치면 그 밑판이 없어진다
+- [ ] **손이 몸통이나 옷에 붙어 뭉개지지 않았다.** 리깅에서 손을 별도 파츠로 떼야 하므로 손과 이웃 부위 사이에 경계가 보여야 한다
+
+**첫 항목이 왜 「반쯤 열림」인지를 남겨 둔다.** v2에서 무기와 장갑이 각각 여러 종류가 되면 쥔 손 모양을 어디에 둘지가 갈리는데, 여기서 뽑는 손이 그 선택을 사실상 고정한다. 손 모양을 하나로 두고 무기가 그 위를 지나게 하면 텍스처가 스킨 × 손 2장이고, 무기마다 쥔 손을 따로 그리면 스킨 × 무기 × 손 2장이 된다 — 스킨 20개와 무기 10종을 가정하면 40장 대 400장이다. 그래서 손 모양을 고정하는 쪽으로 가고, 그러려면 손잡이가 들어갈 구멍이 손에 미리 뚫려 있어야 한다. **한계는 정직하게 적는다** — 손잡이 자체가 통나무처럼 굵은 무기를 넣고 싶어지면 그때는 손을 다시 뽑는다.
+
+#### 8.2.2 편집 지시문 셋 — 밑판을 입력으로 주고 그 위에 얹거나 벗긴다
+
+**참조 이미지를 한 장만 넣을 수 있다.** 밑판과 참조를 함께 주면 가장 정확하겠지만 그 자리가 없으므로, 이미지 한 장은 **몸**에 쓰고 나머지는 문장으로 기술한다. 아래 계보와 프롬프트가 그 제약 위에서 짜여 있다.
+
+**「지팡이를 지워라」로 세 시트를 각각 편집하면 안 된다.** 그 지시는 그림 전체를 다시 그리게 하는 형태라 모델이 몸까지 다시 잡는다. 실제로 그렇게 받은 옷 입은 판은 네 방향의 인물 세로가 478·497·501·502로 갈렸다 — 방향을 바꿀 때 캐릭터가 5% 커졌다 작아졌다 하는 값이다. 같은 지시문에 「the same scale in all four views」가 들어 있었는데도 듣지 않았다. **모델에게 지키라고 말하는 것보다 어길 여지를 없애는 편이 강하다.**
+
+**그래서 삭발 판 하나를 축으로 삼고 나머지 둘을 거기서 파생시킨다.**
+
+| | 입력에 붙이는 파일 | 지시 | 받는 파일 |
+|---|---|---|---|
+| **축** | 확정된 삭발 시트 | 지팡이만 지운다 | `4dir_bald_nostaff.png` |
+| **옷+머리** | 위에서 받은 `4dir_bald_nostaff.png` | 머리카락을 얹는다 | `4dir_dressed_nostaff.png` |
+| **맨살** | 위에서 받은 `4dir_bald_nostaff.png` | 옷과 신발을 벗긴다 | `4dir_skin_nostaff.png` |
+
+**축이 삭발 판인 이유는 그것이 가운데 층이기 때문이다.** 거기서 머리카락을 얹으면 옷 입은 판이 되고 옷을 벗기면 맨살 판이 되는데, 둘 다 §7.3의 사다리가 이미 성립을 확인한 편집이다. 반대로 맨살 판을 축으로 삼으면 옷과 신발을 **없던 자리에 발명**해야 해서, §7.3의 B가 「이 회차가 관문이다」라고 부른 난이도로 올라간다.
+
+**축을 하나 두면 층 관계가 따라온다.** 셋을 각각 자기 원본에서 편집하면 세 시트가 서로 모르는 채로 그려져, 밑판이어야 할 맨살 판이 오히려 가장 커지는 일이 난다 — 2026-08-06 세트와 첫 재시도가 둘 다 그랬고, 삭발 판이 부츠를 신고도 맨살 판보다 4~10px 낮았다. 같은 축에서 파생시키면 신발 두께만큼만 갈린다.
+
+##### 설정
+
+| 칸 | 값 |
+|---|---|
+| 엔드포인트 | `openai/gpt-image-2/edit` |
+| Aspect Ratio | **16:9** |
+| 시드 | 없음 |
+| 나오는 크기 | 1088×608 |
+| 컷당 실비 | $0.111 |
+
+**모델을 이것으로 고정하는 이유는 손이다.** 2026-08-06에 편집 후보 셋이 §7.2를 통과했는데 그중 이것만 네 방향 모두 지팡이와 쥔 손 모양이 정상이었고, 이 회차가 지키려는 것이 바로 그 손이다(§8.2.1).
+
+**비율이 아니라 크기를 맞춘다.** §4의 「세로가 긴 비율」은 1단계의 단일 인물 컷 이야기다. 4방향 시트는 인물 넷이 나란히 서므로 가로가 길고, 편집에서 비율을 바꾸면 모델이 프레임을 다시 잡아 네 인물의 위치와 크기가 함께 움직인다.
+
+**크기를 못 박는 이유는 후처리가 확대·축소를 안 하기 때문이다.** `alignToCanvas`는 평행 이동만 하므로 **시트 안의 인물 세로가 그대로 출하 캔버스의 트림 세로가 된다.** 캔버스 493에서 발 밑선 여백 3을 빼면 상한이 490이라, 시트가 크게 나오면 열두 장이 전부 정렬에서 멈춘다. 어긋났을 때 살 수 있는 여유는 `bottomMargin`을 3에서 1로 내리는 2px뿐이고, 그보다 크면 캔버스나 파이프라인을 고쳐야 하는 정본 변경이므로 거기서 멈추고 결정한다.
+
+**네거티브 프롬프트 칸은 어느 모델에도 없다.** 제외할 것은 지시문 본문 끝에 문장으로 들어 있다(§4.1).
+
+##### 축 — 삭발 판에서 지팡이만 지운다
+
+```
+Using this exact same 4-view turnaround sheet as the reference, redraw the same
+character in the same four views — front view, back view, left side view, right
+side view — removing only the staff.
+
+There is no staff anywhere in the image: no wooden shaft, no tip, no shadow of
+it, and no part of it behind her body. Wherever the staff used to cross her body
+or her head, draw what is behind it complete and unbroken. Her right hand keeps
+the exact same half-closed grip it has now, curled as if it were still holding a
+shaft as thick as the staff was: the fingers stay curled and stay separated from
+one another, the opening inside the grip stays open, and the hand neither closes
+into a fist nor opens flat. Her left hand keeps the exact same shape and the
+exact same position it has now.
+
+Everything else must stay exactly the same: the same face and the same facial
+features, the same completely bald head with bare scalp skin and no hair at all,
+the same skin tone, the same clothes and their colors, the same fingerless
+gloves, the same four-head-tall proportions, the same pose with the same arm
+positions, the same scale and the same ground line in all four views.
+
+Plain flat gray background. Do not include any staff, wand, rod, stick, sword,
+weapon, tool, hat, hood, cap, headband, wig, fire, glow, particles or ground
+shadow. No frame, no border, no text, no watermark. Only one character.
+```
+
+##### 옷+머리 — 축에 머리카락을 얹는다
+
+머리카락을 이미지로 못 주므로 문장으로 기술한다. **볼륨이 원본보다 줄어드는 것이 이 방식의 대가다** — v1은 96px로 표시되어 차이가 사실상 안 보이고 v2에서 머리카락은 갈아 끼울 레이어라, 그 대가를 받아들이고 몸의 정합을 택한다.
+
+```
+Using this exact same 4-view turnaround sheet as the reference, redraw the same
+character in the same four views — front view, back view, left side view, right
+side view — adding hair and changing nothing else.
+
+She now has long wavy scarlet hair, parted in the middle, with a fringe that
+splits to either side of her forehead. It falls over her shoulders and down her
+chest at the front, covers her whole back, and reaches down to her hips. The
+ends are wavy and taper into loose points.
+
+The hair rests on top of her scalp, so the top of her head rises only two or
+three pixels above where it is now, and it rises by that same small amount in
+all four views. Nothing below her chin moves.
+
+Everything else must stay exactly as it is in the reference. Keep her body, her
+face and facial features, her skin tone, her clothes and their colors, her
+fingerless gloves, her boots, her pose, her arm positions, her hand shapes, her
+scale, her position inside the frame and the line she stands on identical to the
+reference. Do not redraw her, do not resize her, do not move her, do not
+lengthen or shorten her legs, and do not change the size of her boots. Her feet
+stay exactly where they are.
+
+All four views must stay the same size as each other, exactly as they are in the
+reference.
+
+There is no staff anywhere in the image. Her right hand keeps the exact
+half-closed grip it has in the reference, with the opening inside the grip still
+open; it neither closes into a fist nor opens flat.
+
+Plain flat gray background, the same gray as the reference. Do not include any
+staff, wand, rod, stick, sword, weapon, tool, hat, hood, cap, headband, fire,
+glow, particles or ground shadow. No frame, no border, no text, no watermark.
+Only one character.
+```
+
+##### 맨살 — 축에서 옷과 신발을 벗긴다
+
+노출 범위는 §7.3의 표를 그대로 따른다. 신발을 벗으면 키가 줄어드는 것이 정상이고, **그 줄어드는 양이 네 방향에서 같아야** 층 관계가 선다.
+
+```
+Using this exact same 4-view turnaround sheet as the reference, redraw the same
+character in the same four views — front view, back view, left side view, right
+side view — changing only what she wears.
+
+She now wears minimal plain gray sportswear: a simple gray band across her chest
+and short gray shorts, and nothing else. Her arms, shoulders, upper chest, upper
+back, belly, waist, hips and thighs are all bare skin and covered by nothing.
+Her hands are bare skin with every finger drawn separately and she wears no
+gloves. She is barefoot, with no boots and no socks, and her toes are drawn.
+
+Because her boots are gone she now stands on her bare soles, so she becomes
+slightly shorter than in the reference — and shorter by that same small amount
+in all four views.
+
+Everything else must stay exactly as it is in the reference. Keep her body, her
+face and facial features, her bald head with bare scalp, her skin tone, her
+pose, her arm positions, her hand shapes, her scale and her position inside the
+frame identical to the reference. Do not redraw her, do not resize her, do not
+move her, and do not lengthen or shorten her legs.
+
+All four views must stay the same size as each other, exactly as they are in the
+reference.
+
+There is no staff anywhere in the image. Her right hand keeps the exact
+half-closed grip it has in the reference, with the opening inside the grip still
+open; it neither closes into a fist nor opens flat.
+
+Plain flat gray background, the same gray as the reference. Do not include any
+staff, wand, rod, stick, weapon, tool, glove, boot, shoe, sock, hat, hood, cap,
+headband, wig, fire, glow, particles or ground shadow. No frame, no border, no
+text, no watermark. Only one character.
+```
+
+**세 지시문이 무기 이름을 줄줄이 제외하는 이유**는 §7.3의 B가 모자·두건을 제외한 이유와 같다. 쥔 손 모양을 그대로 두라고 하면서 지팡이만 지우라고 하면, 모델은 빈손으로 무언가를 쥐고 있는 그림이 이상해 보여 **그 자리를 다른 물건으로 채우려 한다.**
+
+#### 8.2.3 받은 시트를 재는 항목 — 눈보다 먼저 자를 댄다
+
+§8.2.1이 손을 보는 항목이라면 여기는 **크기를 보는 항목**이다. 둘의 성격이 달라 절을 나눈다 — 손은 눈으로만 보이고, 크기는 눈으로 거의 안 보이는 대신 파이프라인을 멈춘다.
+
+- [ ] **크기가 입력과 같다**(1088×608). 다르면 손이 아무리 좋아도 그 회차는 못 쓴다
+- [ ] **인물 구간이 넷이고 사이가 16열 이상이다.** 여백 8로 자르므로 그보다 좁으면 옆 인물이 딸려 들어온다
+- [ ] **한 시트 안 네 방향의 인물 세로 편차가 5px 이내다.** 2026-08-06 세트가 2~5px이고, 떨어진 판이 24px이었다
+- [ ] **인물 세로가 490 이하다.** 캔버스 493에서 발 밑선 여백 3을 뺀 값이다
+- [ ] **축과의 세로 델타가 네 방향에서 균일하다**(편차 2px 이내). 옷+머리는 축과 0~2px 차이고, 맨살은 신발 두께만큼 작다. **부호가 뒤집혀 있으면 같은 몸이 아니다**
+
+**축과의 델타가 이 절에서 가장 중요한 항목이다.** 나머지는 한 시트 안에서 닫히지만 이것만 시트 사이를 본다. 어긋나면 v2에서 삭발 판에서 오린 옷을 맨살 판에 얹을 때 안 맞고, 그 사실은 파츠를 실제로 자를 때까지 드러나지 않는다.
+
+**축소본으로 판정하지 않는다.** 전체 시트를 축소해 보면 「손이 주먹으로 닫혔다」나 「측면에서 얼굴이 머리카락에 가렸다」로 잘못 읽기 쉽다 — 2026-08-24에 실제로 두 번 그랬고, 3배로 확대하니 둘 다 정상이었다. 손과 얼굴은 크롭해 확대한 뒤 본다.
+
+**배경이 단색이라는 보장이 없다.** 2026-08-24에 받은 맨살 시트는 위 176에서 아래 185로 밝아지는 세로 그라데이션이 있었고, 모서리 한 점을 배경으로 잡으니 인물 구간이 넷이 아니라 열한 개로 쪼개졌다. 이건 사람이 확인할 항목이 아니라 검출이 감당할 몫이라, `panelColumns`의 `rowBackground`가 행마다 배경을 다시 잡는다.
+
+#### 8.2.4 v2 스킨도 같은 방식으로 뽑는다
+
+여기서 세운 것은 지팡이 전용 수법이 아니다. **밑판을 이미지로 주고 그 위에 얹거나 벗기는 지시만 문장으로 준다** — 이 형태가 v2에서 스킨을 뽑을 때 그대로 쓰인다.
+
+스킨은 정의상 「같은 몸에 다른 겉모습」이므로 몸이 밑판과 어긋나면 상품이 성립하지 않는다. 스킨마다 따로 뽑으면 스무 벌이 스무 개의 몸을 갖게 되고, 장갑 스킨과 무기가 손 위치에서 어긋난다. 밑판을 입력으로 고정하면 그 문제가 생성 단계에서 닫힌다.
+
+**그때도 §8.2.3의 델타 항목을 건다.** 스킨이 밑판보다 커지는 것은 정상이지만(뾰족한 머리, 굽 높은 신발), **그 증가가 네 방향에서 균일해야** 방향을 바꿀 때 캐릭터가 흔들리지 않는다. 판정 자체는 그 증가에 딸려 움직이지 않는다 — 피격 크기는 `player.json`의 고정값이고 스킨이 무엇으로 바뀌든 그 값을 안 본다([판정 규칙](../../development/spec/game-combat.md) §3).
+
+이 작업의 실행은 백로그 **F67**이 들었고, 생성·교체 축은 `feat/staff-layer`에서 닫혔다. 배선(§8.8)은 리깅 슬라이스로 넘어가 열려 있다.
 
 ### 8.3 3번을 건너뛰면 무엇이 잘못되나
 
@@ -745,10 +921,14 @@ no watermark. Only one character.
 | Cocos의 Trim이 잘라낼 상자 | `trimBox` |
 | 배경색과 구별되지 않는 불투명 픽셀 | `backgroundLeak` |
 | 알파 0인 픽셀에 남은 색 | `residualBackgroundRgb` |
-| 네 방향을 잇는 발 밑선 | `footLineY` |
+| 알파가 있는 가장 아래 행 | `footLineY` |
+| **정렬 기준이 되는 발 띠 — 발 밑선과 발 중심** | `footBand`(`tools/art/Postprocess.ts`) |
+| 소품이 남았는지 보는 바깥 상자 중심 | `footSpanCenterX` |
 | **윤곽에 배경색이 섞인 띠 — 좌우를 따로** | `edgeHalo` |
 
 **수치는 비율이 아니라 정수 픽셀 수로 읽는다.** 두 자리 백분율로 "0.00%"라고 쓰면 캔버스 121,278px에서 열두 픽셀까지 통과해 버린다.
+
+> **`footBand`와 `footSpanCenterX`는 이름이 비슷하지만 반대 성질을 노린다. 섞어 쓰지 않는다.** 앞의 것은 정렬이 쓰는 기준이라 그림에 소품을 더 그려도 값이 안 움직여야 하고, 뒤의 것은 판정이 쓰는 지표라 소품이 있으면 움직여야 한다. 정렬에 뒤의 것을 쓰면 지팡이가 캐릭터가 서는 자리를 바꾸고, 판정에 앞의 것을 쓰면 지팡이가 남아 있어도 지표가 침묵한다.
 
 > **`edgeHalo`는 좌우를 따로 돌려준다. 합치지 않는다.** 한 숫자로 묶으면 깨끗한 쪽이 더러운 쪽을 희석해, 오른쪽 윤곽에만 회색 선이 그어진 결과가 절반 값으로 보인다. 실제로 왼쪽만 재던 판이 오른쪽 56%짜리 결과를 0.8%로 보고한 적이 있다(2026-08-22).
 
@@ -810,7 +990,7 @@ art-source/player/base/player_base_right.png
 - **`hurtboxHalfWidth`(현재 18)는 표시 가로가 아니라 몸통 폭에서 뽑는다.** 두 값의 출처가 다르다 — 아래 참고.
 - `hurtboxHalfHeight`(현재 44)는 세로 96을 유지하므로 그대로 두되, 머리끝까지 판정인 상태([백로그 F66](../../development/backlog.md) ③)를 그때 함께 볼지 판단한다.
 
-**표시 가로는 지팡이를 뺀 몸 기준으로 나온다.** 이건 부수 효과가 아니라 §2.3 분리의 직접적인 이득이다 — 지팡이가 구워져 있었다면 트림 폭이 지팡이까지 재서 표시 가로가 부풀고, 그 부푼 상자에 맞춰 `hurtboxHalfWidth`를 다시 잡는 순간 판정이 몸보다 넓어진다.
+**표시 가로는 지팡이를 뺀 몸 기준으로 나온다.** 이건 부수 효과가 아니라 §2.3 분리의 직접적인 이득이다 — 지팡이가 구워져 있었다면 그림 상자가 지팡이까지 재고, 그 부푼 상자에 맞춰 `hurtboxHalfWidth`를 다시 잡는 순간 판정이 몸보다 넓어진다. **다만 네 방향을 캔버스에 세우는 정렬은 이제 소품과 무관하다**(2026-08-23) — 정렬 기준은 발을 먼저 찾고 거기서만 재므로, 지팡이가 그려져 있든 없든 캐릭터가 서는 자리가 같다. 그 규칙의 정본은 `tools/art/Postprocess.ts`의 `footBand` JSDoc이다.
 
 #### 머리카락은 판정 기준이 아니다 (2026-08-06 사용자 결정)
 
@@ -831,7 +1011,7 @@ art-source/player/base/player_base_right.png
 
 | 값 | 무엇으로 잡나 |
 |---|---|
-| **표시 크기**(Content Size) | **트림 상자 종횡비.** 그림이 눌리거나 늘어나지 않게 하는 값이므로 머리카락을 포함해야 맞다 |
+| **표시 크기**(Content Size) | **노드 상자가 되는 쪽의 종횡비** — Trim을 껐으므로 캔버스다. 그림이 눌리거나 늘어나지 않게 하는 값이라 그린 것을 전부 포함해야 맞다 |
 | **`hurtboxHalfWidth`** | **몸통 폭.** 머리카락·지팡이·뻗은 손을 전부 뺀다 |
 
 **구체 수치는 아직 확정하지 않았다.** 몸통 20단위를 그대로 쓰면 반너비가 10이 되어 현재 18에서 거의 반으로 줄고, 이는 맞는 면적이 절반이 되는 밸런스 변경이다. 4방향 실측과 함께 [백로그 F66](../../development/backlog.md) ③과 묶어 본다.
@@ -843,10 +1023,20 @@ art-source/player/base/player_base_right.png
 | 값 | 개수 | 정하는 방법 |
 |---|---|---|
 | 지팡이 노드 위치 오프셋 | 방향당 하나(4개) | 몸 그림의 손 위치를 재서 맞춘다 |
-| z 순서(형제 순서) | 방향당 하나 | 기본은 몸 뒤 — 손이 지팡이 위에 와야 쥔 것처럼 읽히고, 잘라 낸 자리에 손이 가렸던 빈 구간이 남아 있어도 그 손에 가려진다. 뒷모습에서도 몸 뒤가 맞는지는 실물을 보고 정한다 |
+| z 순서(형제 순서) | — | **항상 몸 앞이다. 고를 수 있는 값이 아니다**(2026-08-23) — 아래 참고 |
 | 지팡이 표시 크기 | 1 | 지팡이 PNG의 트림 상자를 사양서 §3.2 계산으로 넣는다 |
 
 지팡이는 **플레이어의 자식 노드**이므로 부모의 Content Size를 건드리지 않고, 따라서 피해 판정은 그대로다([판정 규칙](../../development/spec/game-combat.md) §3). 지팡이가 몸 밖으로 뻗는 것은 의도된 상태다 — 장식은 판정 대상이 아니다.
+
+**그리고 그 자식 관계가 z 순서를 이미 정해 버린다.** Cocos 3.8 매뉴얼이 노드 트리의 렌더 순서를 이렇게 적는다.
+
+> Nodes lower in the list will occlude nodes higher in the list, and **child nodes will always cover their parent nodes.**
+>
+> — [Cocos Creator 3.8 매뉴얼, Node Tree](https://docs.cocos.com/creator/3.8/manual/en/concepts/scene/node-tree.html)
+
+형제 순서는 형제끼리만 정렬하는데, `Player` 노드는 몸 `cc.Sprite`를 자기 자신에 달고 있어 자식으로 넣은 지팡이는 언제나 몸 앞이다. 이 절의 첫 판은 기본을 「몸 뒤」로 적어 뒀는데 **구조적으로 낼 수 없는 값**이었다. 그 판이 든 근거 하나였던 「잘라 낸 자리에 손이 가렸던 빈 구간이 남아도 그 손에 가려진다」도 성립하지 않는다 — `player_staff.png`는 395행 전부에서 가로로 끊긴 데가 0개라 숨길 빈 구간이 없다. [`art-direction.md`](art-direction.md) §6의 층 표도 이미 지팡이를 신발·장갑보다 위에 두어 손 앞으로 잡아 뒀으므로, 「항상 몸 앞」으로 고치면 두 정본이 맞는다.
+
+**남은 미결이 하나 있다.** 그 층 표는 지팡이에 층 하나만 주므로 무기가 손 **전체** 앞이거나 뒤일 뿐이고, 손가락 일부만 무기 앞으로 오는 자리가 없다. 실제로 쥔 것처럼 보이려면 그 자리가 필요한지는 리깅 슬라이스가 실물 파츠를 보고 정한다.
 
 ---
 
@@ -869,6 +1059,8 @@ art-source/player/<생성일>/4dir_skin.png       2.5단계 맨살 시트
 ```
 
 같은 날 재시도본은 `4dir_skin_b.png`처럼 뒤에 글자를 붙인다. **다만 탈락본은 커밋하지 않는다** — 비교하고 버린 것까지 넣으면 git 히스토리가 되돌릴 수 없이 커진다(바이너리는 지워도 히스토리에 남는다). 비교 중인 파일은 `docs/temp/`에 두고, 그 폴더는 `.gitignore` 대상이다.
+
+**매팅 응답 캐시도 이 규약이 받는다**(2026-08-23). 후처리가 부르는 매팅 모델의 응답은 `art-source/matting-cache/`에 쌓이고 그 폴더는 `.gitignore` 대상이다. 커밋하지 않는다는 점은 `docs/temp/`와 같지만 **지웠을 때가 다르다** — 스크래치는 스크립트로 다시 만들면 그만이고 이 캐시는 다시 채우는 데 유료 호출이 든다. 그래서 「언제든 지워도 되는 것」과 같은 폴더에 두지 않고, 「뽑은 것을 잃지 않게 보관한다」가 지배하는 여기에 둔다.
 
 **Sandbox의 실행 이력이 이 일을 절반쯤 대신한다.** 왼쪽 패널에 과거 실행이 프롬프트·입력 이미지·비율·총비용·모델별 결과와 함께 쌓이므로, 아래 표의 대부분이 자동으로 남는다. 다만 **그것은 fal.ai 계정 안에 있는 기록이지 이 레포의 기록이 아니다.** 채택한 컷에 대해서는 아래를 레포 쪽(세션 문서나 PR 본문)에도 옮겨 적는다 — 계정이나 서비스가 사라지면 근거가 함께 사라진다.
 
