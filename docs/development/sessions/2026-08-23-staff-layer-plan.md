@@ -174,24 +174,32 @@
 
 ### 5.4 1번 지시문 — 보조 손
 
-**방패가 엉덩이 뒤에서 나오면 안 된다(2026-08-24 사용자 판단).** 지금 보조 손은 측면 두 장에서 엉덩이 뒤아래로 손가락을 편 채 있는데, 그 자리에 방패를 얹으면 방패가 몸 뒤에서 삐져나온 모양이 된다. **손을 엉덩이 앞쪽으로 조금 당겨** 방패의 앞부분이 몸 옆으로 보이게 한다 — 방패 전체가 보일 필요는 없고, 몸 뒤에 통째로 숨지만 않으면 된다.
+**방패가 엉덩이 뒤에서 나오면 안 된다(2026-08-24 사용자 판단).** 지금 보조 손은 측면 두 장에서 엉덩이 뒤아래로 손가락을 편 채 있는데, 그 자리에 방패를 얹으면 방패가 몸 뒤에서 삐져나온 모양이 된다. 방패 전체가 보일 필요는 없고 **몸 뒤에 통째로 숨지만 않으면 된다.**
+
+**높이는 참조 시트에서 가져왔다(2026-08-24 사용자 제시).** 방패를 든 캐릭터의 참조 시트는 팔을 늘어뜨리지 않고 **팔꿈치를 굽혀 손을 허리~배 높이**에 두고, 거기서 방패가 몸통 앞으로 나온다. 손이 엉덩이 높이에 있으면 방패가 허벅지에 걸려 방패를 든 자세로 안 읽힌다. **그리고 팔꿈치 각도는 그림에 굳는다** — 현재 층 표가 `팔(살)`을 한 파츠로 두므로 리깅이 팔을 회전시킬 수는 있어도 팔꿈치를 새로 굽히지는 못한다. 그래서 굽힌 자세를 여기서 받는다.
 
 ```
 Using this exact same 4-view turnaround sheet as the reference, redraw the same
 character in the same four views — front view, back view, left side view, right
-side view — changing only her empty hand and the forearm it belongs to.
+side view — changing only her empty arm and hand.
 
 Her empty hand is the hand that is not holding the staff. It currently hangs
-beside her hip with its fingers spread flat open, and in the two side views it
-sits behind her hip. In all four views her fingers are now softly curled, as if
-loosely holding a short handle, with a small opening left inside the curl. The
-fingers stay separated from one another. The hand is neither flat open with
-spread fingers nor closed into a fist.
+straight down beside her hip with its fingers spread flat open.
 
-In the left side view and in the right side view that empty hand also moves
-slightly forward, so that it rests beside the front of her hip instead of behind
-it. Her whole hand is visible and clear of her body, with no part of it hidden
-behind her hip or her thigh.
+In all four views she now bends that elbow and brings the forearm up and
+forward, so that the empty hand rests in front of her body at waist height,
+level with her belt. Her upper arm stays down against her side and only the
+forearm comes up. The forearm does not reach across to her other side.
+
+That hand's fingers are now softly curled, as if loosely holding a short
+horizontal handle, with a small opening left inside the curl. The fingers stay
+separated from one another. The hand is neither flat open with spread fingers
+nor closed into a fist.
+
+In the left side view and in the right side view that hand sits slightly in
+front of her belly, past the front edge of her torso, so that her whole hand is
+visible and clear of her body, with no part of it hidden behind her torso, her
+hip or her thigh.
 
 The staff and the arm that holds it do not change at all, in any of the four
 views.
@@ -200,9 +208,9 @@ Everything else must stay exactly the same: the same face and the same facial
 features, the same completely bald head with bare scalp skin and no hair at all,
 the same skin tone, the same clothes and their colors, the same fingerless
 gloves, the same boots, the same four-head-tall proportions, the same standing
-pose, the same scale, the same position inside the frame and the same ground
-line in all four views. Do not redraw her, do not resize her, do not move her,
-and do not lengthen or shorten her legs.
+pose of her legs, the same scale, the same position inside the frame and the
+same ground line in all four views. Do not redraw her, do not resize her, do not
+move her, and do not lengthen or shorten her legs.
 
 All four views must stay the same size as each other, exactly as they are in the
 reference.
@@ -213,7 +221,7 @@ hat, hood, cap, headband, wig, fire, glow, particles or ground shadow. No frame,
 no border, no text, no watermark. Only one character.
 ```
 
-**판정 셋만 본다.** 네 방향 모두에서 손가락이 오므려졌는가, 측면 두 장에서 손이 엉덩이에 안 가리고 통째로 보이는가, 그리고 지팡이 쪽 팔과 네 인물의 크기가 안 바뀌었는가.
+**판정 넷만 본다.** 네 방향 모두에서 팔꿈치가 굽어 손이 배 앞 허리 높이에 왔는가, 손가락이 오므려졌는가, 측면 두 장에서 손이 몸통 앞 실루엣 밖으로 나와 통째로 보이는가, 그리고 지팡이 쪽 팔과 네 인물의 크기가 안 바뀌었는가.
 
 ### 5.3 0번 시험 지시문
 
@@ -302,6 +310,8 @@ no border, no text, no watermark. Only one character.
 **앞뒤를 오가는 단위는 아이템이 아니라 팔 한 벌이다.** `팔(살)`·`소매`·`장갑`·`손`·`아이템`이 함께 움직여야 한다 — 아이템만 몸 앞으로 보내면 무기는 몸 앞인데 그것을 쥔 손은 몸 뒤라, 팔이 몸통을 관통한 그림이 된다.
 
 **그래서 슬롯을 해부학이 아니라 역할로 나눈다.** 측면 두 장에서 쥔 팔이 좌우 같은 쪽이면, 해부학적으로는 방향마다 다른 손이 무기를 들고 있는 셈이 된다. `왼팔`·`오른팔`로 이름 붙이면 방향마다 어느 슬롯에 무기가 붙는지가 갈리지만, `무기 팔`·`보조 팔`로 붙이면 그리기 순서가 방향과 무관하게 하나로 고정된다. 층 표를 실제로 그렇게 가르는 일은 리깅 슬라이스가 실물 파츠를 보고 하며, 그 미결은 백로그 `F103`이 든다.
+
+**해부학 기준을 실제 시트로 놓고 견준 뒤 역할 기준을 유지했다(2026-08-24).** 방패가 늘 같은 팔에 붙는 참조 시트를 보면, 한쪽 측면에서는 방패가 온전히 보이지만 **반대쪽 측면은 역할 기준과 똑같이 몸 뒤**다. 얻는 것이 네 방향 중 하나뿐인데 대가로 그리기 순서를 방향마다 따로 박아야 하고, **그 순서 바꾸기가 Spine Essential에서 되는지는 아직 확인되지 않았다**(`F103`의 열린 항목). 안 되면 방향마다 별도 스킨으로 우회해야 해서 공수가 크게 뛴다. 대신 보조 손을 배 앞으로 올려(§5.4) **두 측면 모두에서** 방패 앞부분이 보이게 한다.
 
 **보조 손 모양도 같은 날 함께 정해졌다.** 살짝 오므린 모양으로 받는다. 처음에는 「v1 화면에서 어색하다」가 근거로 적혔고 그 근거만 보면 이 트랙의 기준이 아니지만(v1 외형은 스킨이 덮는다), **v2 근거가 따로 선다** — 그 손은 장갑 스킨이 얹히는 밑판이고, 보조장비를 안 든 상태로도 나오며, 파츠로 잘려 리깅에 들어간다. 활짝 편 손으로는 방패 손잡이를 쥔 모양이 안 되고, **손 모양은 리깅이 못 고친다**(위치는 팔 뼈를 돌려 만들지만 모양은 그림에 굳는다). 같은 이유로 손이 엉덩이나 몸통에 가려서도 안 된다 — 가려진 부분은 그려진 적이 없어 파츠에 구멍으로 남는다(실행 지침 §2.0).
 
