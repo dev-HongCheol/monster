@@ -10,7 +10,12 @@
  * 때문이다. 규격이 바뀌면 여기만 고치고, 그 규격을 시험하는 것은 합성 픽스처면 된다.
  */
 
-import { alphaHistogram, type IRgbaImage, trimBox } from '../../tests/helpers/SpriteMetrics.ts';
+import {
+  alphaHistogram,
+  type IBox,
+  type IRgbaImage,
+  trimBox,
+} from '../../tests/helpers/SpriteMetrics.ts';
 import { footBand, type IFootBandOptions } from './Postprocess.ts';
 
 /** 열두 장이 모두 지켜야 하는 값. */
@@ -44,12 +49,46 @@ export interface IShippingSpec {
    * 여기서 먼저 잡아야 **어느 장이 얼마나 큰지**가 메시지에 남는다.
    */
   maxTrimHeight: number;
+  /**
+   * 서로 좌우 대칭이어야 하는 두 방향의 이름.
+   *
+   * 실행기가 쓰는 방향 이름을 규격이 들게 한 것은, 여기에 `left`·`right`를 박아 두면 방향
+   * 이름을 바꿀 때 판정이 조용히 아무 짝도 못 찾는 상태가 되기 때문이다. 짝을 못 찾으면
+   * 위반이 0건이라 화면에서는 통과와 구별되지 않는다.
+   */
+  mirrorDirections: readonly [string, string];
+  /**
+   * 좌우 두 장의 트림 가로가 서로 벗어나도 되는 비율.
+   *
+   * **정상 편차와 결함 사이가 넓어서 고르기 쉬운 값이다.** 실측에서 정상인 두 시트가 1.2%와
+   * 1.3%였고(옷 173/171 · 대머리 150/148), 팔 하나가 통째로 안 그려진 시트가 19%였다
+   * (맨살 110/131). 생성 모델이 좌우를 따로 그리므로 0을 요구하면 정상 산출물이 매번 막힌다.
+   */
+  mirrorWidthTolerance: number;
+  /**
+   * 같은 방향에서 시트끼리 트림 세로가 벗어나도 되는 비율.
+   *
+   * 세 시트는 같은 인물의 층이라 인물 크기가 같아야 한다. 관측된 정상 편차는 1% 이하였고
+   * (옷 480 · 대머리 485), 맨살만 6% 작게 그려진 것이 결함이었다(455). 정당한 차이로 남는
+   * 것은 맨발과 부츠의 밑창 두께뿐이라 넉넉히 잡아도 2.5% 안이므로, 그 사이인 4%로 둔다.
+   */
+  figureHeightTolerance: number;
 }
 
-/** 내보낼 한 장. `name`은 위반 메시지에 그대로 실린다. */
+/**
+ * 내보낼 한 장. `name`은 위반 메시지에 그대로 실린다.
+ *
+ * `sheet`와 `direction`을 따로 드는 것은 **장끼리 비교하는 판정이 짝을 찾아야** 하기 때문이다
+ * (`crossItemViolations`). 이름에서 뽑아 쓸 수도 있지만, 그러면 이름 짓는 규칙이 곧 판정의
+ * 입력이 되어 파일 이름을 바꾸는 순간 판정이 짝을 잃는다 — 그때 위반은 0건으로 나온다.
+ */
 export interface IShipItem {
   name: string;
   image: IRgbaImage;
+  /** 이 장을 낸 시트. 같은 값을 가진 장끼리 좌우 대칭을 잰다 */
+  sheet: string;
+  /** 이 장의 방향. 같은 값을 가진 장끼리 시트 간 인물 크기를 잰다 */
+  direction: string;
 }
 
 /**
@@ -101,6 +140,78 @@ export function specViolations(item: IShipItem, spec: IShippingSpec): string[] {
   return problems;
 }
 
+/** 두 값이 큰 쪽 기준으로 얼마나 벌어졌는가. 둘 다 0이면 0이다. */
+function spread(a: number, b: number): number {
+  const max = Math.max(a, b);
+  return max === 0 ? 0 : Math.abs(a - b) / max;
+}
+
+/** 트림 상자를 못 잡은 장은 `specViolations`가 이미 말하므로 여기서는 뺀다. */
+function boxed(items: readonly IShipItem[]): Array<{ item: IShipItem; box: IBox }> {
+  return items.flatMap((item) => {
+    const box = trimBox(item.image);
+    return box ? [{ item, box }] : [];
+  });
+}
+
+/**
+ * 장끼리 비교해야만 드러나는 어긋남을 찾는다. 빈 배열이면 통과다.
+ *
+ * **한 장씩 보는 판정으로는 못 잡는 결함이 있다.** 캔버스도 발 밑선도 발 중심도 규격 안인 두
+ * 장이, 서로 견주면 같은 인물이 아닌 경우다. 2026-08-24 리워크에서 실제로 둘이 나왔다 —
+ * 맨살 시트의 왼쪽 패널에서 지팡이 쥐던 팔이 통째로 안 그려졌고(트림 가로 110 대 131), 맨살
+ * 시트만 인물이 6% 작게 그려졌다(트림 세로 455 대 480·485). 열두 장이 전부 `specViolations`를
+ * 통과했고, 사람이 눈으로 볼 때까지 아무도 몰랐다.
+ *
+ * 재는 것이 둘이다.
+ *
+ * 1. **같은 시트의 좌우 트림 가로.** 좌우는 같은 인물을 반대에서 본 것이라 실루엣 폭이 비슷해야
+ *    한다. 한쪽 팔이 빠지면 그 폭만큼 갈린다.
+ * 2. **같은 방향의 시트 간 트림 세로.** 세 시트는 같은 인물의 층이고 `alignToCanvas`는 크기를
+ *    안 건드리므로, 시트 하나가 다른 배율로 그려지면 그대로 출하된다. 층 구조는 맨살 위에 옷을
+ *    얹는 것이라(`art-direction.md` §6) 몸이 작으면 소매가 팔을 안 덮는다.
+ *
+ * 방향을 가로질러 세로를 비교하지는 않는다. 정면과 측면은 실루엣이 달라 트림 세로도 다를 수
+ * 있고, 섞어 재면 정상 편차가 위반이 되어 사람이 판정을 끄게 된다.
+ */
+export function crossItemViolations(items: readonly IShipItem[], spec: IShippingSpec): string[] {
+  const problems: string[] = [];
+  const measured = boxed(items);
+
+  const [leftName, rightName] = spec.mirrorDirections;
+  const sheets = [...new Set(measured.map(({ item }) => item.sheet))];
+  for (const sheet of sheets) {
+    const ofSheet = measured.filter(({ item }) => item.sheet === sheet);
+    const left = ofSheet.find(({ item }) => item.direction === leftName);
+    const right = ofSheet.find(({ item }) => item.direction === rightName);
+    // 짝이 없으면 안 잰다. 실행기는 네 방향을 다 내지만 시험과 부분 실행은 한두 장만 넘긴다.
+    if (!left || !right) continue;
+    if (spread(left.box.width, right.box.width) <= spec.mirrorWidthTolerance) continue;
+    problems.push(
+      `${left.item.name}와 ${right.item.name}의 트림 가로가 ${left.box.width}와 ${right.box.width}로 갈렸다 ` +
+        `(서로 ${(spec.mirrorWidthTolerance * 100).toFixed(0)}% 안이어야 한다 — 한쪽 팔이 안 그려졌을 수 있다)`,
+    );
+  }
+
+  const directions = [...new Set(measured.map(({ item }) => item.direction))];
+  for (const direction of directions) {
+    const ofDirection = measured.filter(({ item }) => item.direction === direction);
+    if (ofDirection.length < 2) continue;
+    // 가장 큰 장과 가장 작은 장만 말한다. 셋 이상일 때 모든 짝을 늘어놓으면 문장이 늘어나기만
+    // 하고, 사람이 다시 뽑을 대상은 결국 양 끝 둘이다.
+    const sorted = [...ofDirection].sort((a, b) => a.box.height - b.box.height);
+    const low = sorted[0];
+    const high = sorted[sorted.length - 1];
+    if (spread(low.box.height, high.box.height) <= spec.figureHeightTolerance) continue;
+    problems.push(
+      `${direction} 방향의 인물 키가 시트마다 다르다: ${low.item.name} ${low.box.height} · ${high.item.name} ${high.box.height} ` +
+        `(서로 ${(spec.figureHeightTolerance * 100).toFixed(0)}% 안이어야 한다 — 한 시트가 다른 배율로 그려졌다)`,
+    );
+  }
+
+  return problems;
+}
+
 /**
  * 전부 통과할 때만 준 순서대로 쓴다.
  *
@@ -111,15 +222,22 @@ export function specViolations(item: IShipItem, spec: IShippingSpec): string[] {
  * 남으므로, **무엇이 남았는지를 예외 메시지가 이름으로 말한다.** 그게 없으면 사람이 열두
  * 장을 하나씩 열어 어느 것이 새 판인지 가려야 한다.
  *
+ * 돌리는 판정은 둘이다 — 한 장씩 보는 `specViolations`와 장끼리 견주는 `crossItemViolations`.
+ *
  * @param write 한 장을 실제로 내보내는 함수. 디스크를 만지는 것은 부르는 쪽의 몫이다
- * @throws 한 장이라도 규격에서 떨어지면(`write` 0번), 또는 `write`가 던지면(이미 쓴 것은 남는다)
+ * @throws 두 판정 중 하나라도 위반을 내면(`write` 0번), 또는 `write`가 던지면(이미 쓴 것은 남는다)
  */
 export function commitAll(
   items: readonly IShipItem[],
   spec: IShippingSpec,
   write: (item: IShipItem) => void,
 ): void {
-  const problems = items.flatMap((item) => specViolations(item, spec));
+  // 한 장씩 보는 판정과 장끼리 견주는 판정을 **여기서 함께** 돌린다. 실행기가 뒤쪽을 따로
+  // 부르는 구조면 부르는 것을 잊어도 아무 신호가 없어, 어긋난 열두 장이 조용히 나간다.
+  const problems = [
+    ...items.flatMap((item) => specViolations(item, spec)),
+    ...crossItemViolations(items, spec),
+  ];
   if (problems.length > 0) {
     throw new Error(`출하 규격에서 떨어진 장이 있어 아무것도 쓰지 않았다:\n${problems.join('\n')}`);
   }

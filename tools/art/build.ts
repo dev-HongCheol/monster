@@ -52,6 +52,11 @@ const SPEC: IShippingSpec = {
   // 자리를 판정이 어긋났다고 읽는다.
   centerX: (CANVAS.width - 1) / 2,
   maxTrimHeight: CANVAS.height - CANVAS.bottomMargin,
+  // 아래 셋은 장끼리 견주는 판정이 쓴다. 허용 비율의 근거는 `IShippingSpec`의 각 주석에 있고,
+  // 둘 다 2026-08-24 리워크에서 실제로 나온 결함과 정상 편차 사이에서 골랐다.
+  mirrorDirections: ['left', 'right'] as const,
+  mirrorWidthTolerance: 0.05,
+  figureHeightTolerance: 0.04,
 };
 
 /**
@@ -151,7 +156,7 @@ async function buildSheet(
       throw new Error(`${name} 정렬 실패: ${(err as Error).message}
     매팅 결과: ${result.cachePath}`);
     }
-    items.push({ name, image: aligned });
+    items.push({ name, sheet: sheet.prefix, direction: DIRECTIONS[i], image: aligned });
 
     console.log(`  ${DIRECTIONS[i].padEnd(5)} [${result.cached ? '캐시' : '호출'}] → ${name}`);
   }

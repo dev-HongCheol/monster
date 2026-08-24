@@ -4,7 +4,7 @@
 
 - **최초 작성:** 2026-08-05
 - **상태:** CONFIRMED — 플레이어 4방향에 대해 실행 가능. 나머지 카테고리는 §10에 차단 요인만 적혀 있다.
-- **이력:** 2026-08-24 §8.2를 네 절로 갈랐다 — 손 판정 셋(§8.2.1), 편집 지시문 셋(§8.2.2), 받은 시트를 재는 항목(§8.2.3), v2 스킨에 같은 방식을 적용하는 원칙(§8.2.4)이다. §8.2.2의 방식이 「세 시트를 각각 편집한다」에서 **「삭발 판을 축으로 삼고 나머지 둘을 거기서 파생시킨다」**로 바뀌었다 — 앞 방식으로 받은 판이 네 방향 편차 24px로 떨어졌고, 밑판을 입력에 묶으니 3px로 내려왔다. 「맨살 판은 후처리로 지팡이를 뗄 수 있다」던 서술도 뒤집었다(어느 시트든 손이 지팡이를 쥐고 있다). §8.4 도구 표에 정렬 기준 `footBand`와 판정 지표 `footSpanCenterX`를 갈라 넣고 둘을 섞어 쓰지 말라는 경고를 달았으며, §8.7 표의 트림 전제를 같은 절 산문에 맞춰 캔버스 기준으로 고쳤고, §8.8의 z 순서를 「몸 뒤」에서 「항상 몸 앞」으로 바꿨다(자식 노드는 부모를 덮으므로 고를 수 있는 값이 아니다). §9에 매팅 캐시가 `art-source/`에 사는 이유를 더했다 · 2026-08-06 유료 전환 확정(fal.ai Sandbox, 채택 모델 `openai/gpt-image-2/edit`) · 2026-08-07 후처리·실측 절(§8)과 배경 키잉 함정 둘 추가 · 2026-08-14 `docs/design/spec/`으로 이전하며 결정 기록 링크 17곳을 걷어내고 판정 관련 6곳을 판정 규칙 정본으로 재지정 · 2026-08-15 사양서·art-direction 인용 세 곳을 정리했다. §2.3의 사양서 §2.6 인용은 블록인용과 출처 줄로 옮겼고, 같은 절의 art-direction §6 인용과 §8.3의 사양서 §3.2 인용은 원문에 없는 요약이라 따옴표를 걷고 서술로 풀었다 · 2026-08-20 §8.1의 로컬 rembg 안내에 모델 명시 조건을 달았다(기본 모델이 유료 라이선스로 바뀌었다 — `ops-licensing.md` §2.1) · 2026-08-22 §8을 매팅 기준으로 다시 썼다. §8.1에서 로컬 rembg 안내를 걷고 단계를 7개에서 6개로 줄였으며(그에 맞춰 「§8.1의 5번」 참조 둘을 4번으로 고쳤다), §8.2는 「지팡이 분리」에서 「생성으로 걷는다」로 뜻이 뒤집혔고, §8.3.1 손수 키잉 함정 절을 지웠으며, §8.4의 사라진 파이썬 스크립트 본문을 레포 도구 표로 갈았고, §8.5 판정 항목을 새 지표에 맞췄다
+- **이력:** 2026-08-24(리워크) 첫 회차 산출물에서 결함 셋이 사람 검사로 나와 판정과 지시문을 함께 고쳤다. §8.2.1에 「네 방향 전부에서 쥔 손이 남아 있다」와 「네 방향 전부에 팔이 둘 다 있다」를 더했고(세 시트 모두 뒷모습에서만 쥔 손이 편 손으로 바뀌었고, 맨살 판 왼쪽에서 팔 하나가 어깨부터 사라졌다), 세 지시문 전부에 같은 두 문장을 영어로 박았다. §8.2.3에는 축과의 델타 항목이 눈으로 안 지켜진다는 실측(맨살 판이 6% 작았다)과 그것을 사후에 덮는 기계 관문을 적었다 · 2026-08-24 §8.2를 네 절로 갈랐다 — 손 판정 셋(§8.2.1), 편집 지시문 셋(§8.2.2), 받은 시트를 재는 항목(§8.2.3), v2 스킨에 같은 방식을 적용하는 원칙(§8.2.4)이다. §8.2.2의 방식이 「세 시트를 각각 편집한다」에서 **「삭발 판을 축으로 삼고 나머지 둘을 거기서 파생시킨다」**로 바뀌었다 — 앞 방식으로 받은 판이 네 방향 편차 24px로 떨어졌고, 밑판을 입력에 묶으니 3px로 내려왔다. 「맨살 판은 후처리로 지팡이를 뗄 수 있다」던 서술도 뒤집었다(어느 시트든 손이 지팡이를 쥐고 있다). §8.4 도구 표에 정렬 기준 `footBand`와 판정 지표 `footSpanCenterX`를 갈라 넣고 둘을 섞어 쓰지 말라는 경고를 달았으며, §8.7 표의 트림 전제를 같은 절 산문에 맞춰 캔버스 기준으로 고쳤고, §8.8의 z 순서를 「몸 뒤」에서 「항상 몸 앞」으로 바꿨다(자식 노드는 부모를 덮으므로 고를 수 있는 값이 아니다). §9에 매팅 캐시가 `art-source/`에 사는 이유를 더했다 · 2026-08-06 유료 전환 확정(fal.ai Sandbox, 채택 모델 `openai/gpt-image-2/edit`) · 2026-08-07 후처리·실측 절(§8)과 배경 키잉 함정 둘 추가 · 2026-08-14 `docs/design/spec/`으로 이전하며 결정 기록 링크 17곳을 걷어내고 판정 관련 6곳을 판정 규칙 정본으로 재지정 · 2026-08-15 사양서·art-direction 인용 세 곳을 정리했다. §2.3의 사양서 §2.6 인용은 블록인용과 출처 줄로 옮겼고, 같은 절의 art-direction §6 인용과 §8.3의 사양서 §3.2 인용은 원문에 없는 요약이라 따옴표를 걷고 서술로 풀었다 · 2026-08-20 §8.1의 로컬 rembg 안내에 모델 명시 조건을 달았다(기본 모델이 유료 라이선스로 바뀌었다 — `ops-licensing.md` §2.1) · 2026-08-22 §8을 매팅 기준으로 다시 썼다. §8.1에서 로컬 rembg 안내를 걷고 단계를 7개에서 6개로 줄였으며(그에 맞춰 「§8.1의 5번」 참조 둘을 4번으로 고쳤다), §8.2는 「지팡이 분리」에서 「생성으로 걷는다」로 뜻이 뒤집혔고, §8.3.1 손수 키잉 함정 절을 지웠으며, §8.4의 사라진 파이썬 스크립트 본문을 레포 도구 표로 갈았고, §8.5 판정 항목을 새 지표에 맞췄다
 
 ---
 
@@ -734,6 +734,8 @@ no watermark. Only one character.
 이 절의 첫 판은 「손이 펴지면 안 된다」 한 줄만 걸어 뒀는데, 뽑는 목적이 v2가 쓸 밑판이라면 그 한 줄로는 모자란다(2026-08-23). 나머지 판정은 §5.4와 §7.2를 그대로 돌리고, 여기에 셋을 더한다.
 
 - [ ] **쥔 오른손이 반쯤 열려 있다.** 지팡이를 지우라고 하면 모델이 손을 주먹으로 닫아 버릴 수 있는데, 닫힌 주먹이 나오면 v2에서 어떤 무기도 그 손을 통과하지 못한다. 반대로 펴져 버리면 무기를 얹었을 때 쥐지 않고 통과하는 것처럼 보인다(§2.3). 양쪽을 다 막는다
+- [ ] **네 방향 **전부**에서 쥔 손이 남아 있다.** 앞·측면만 보고 넘어가면 안 된다 — 2026-08-24 회차에서 **세 시트 모두 뒷모습에서만** 쥔 손이 손가락을 활짝 편 손으로 바뀌었고, 나머지 세 방향은 멀쩡했다. 뒤에서 보면 손이 몸에 가려 작게 나오므로 시트를 통으로 훑을 때 가장 먼저 놓치는 자리다
+- [ ] **네 방향 전부에 팔이 둘 다 있다.** 2026-08-24 회차의 맨살 판 왼쪽 패널에서 지팡이 쥐던 **팔이 손목이 아니라 어깨부터 통째로** 사라졌다. 팔 하나가 없으면 실루엣이 그 폭만큼 좁아지므로 출하 뒤에는 `crossItemViolations`가 좌우 트림 가로로 잡지만(110 대 131로 갈렸다), 유료 호출을 태우기 전에 여기서 잡는 편이 싸다
 - [ ] **손가락이 살아 있다.** 장갑이 핑거리스라 손가락이 밖으로 나와 있고, 맨살 판의 그 손가락이 v2 장갑 스킨의 밑판이 된다. 뭉치면 그 밑판이 없어진다
 - [ ] **손이 몸통이나 옷에 붙어 뭉개지지 않았다.** 리깅에서 손을 별도 파츠로 떼야 하므로 손과 이웃 부위 사이에 경계가 보여야 한다
 
@@ -791,6 +793,13 @@ one another, the opening inside the grip stays open, and the hand neither closes
 into a fist nor opens flat. Her left hand keeps the exact same shape and the
 exact same position it has now.
 
+This is true in all four views, and the back view is not an exception. In the
+back view her gripping hand is small and partly hidden behind her body, but it
+still shows the same half-closed grip — not an open hand with spread fingers.
+
+Both of her arms are drawn in every one of the four views. Neither arm is
+omitted, shortened, or hidden behind her body.
+
 Everything else must stay exactly the same: the same face and the same facial
 features, the same completely bald head with bare scalp skin and no hair at all,
 the same skin tone, the same clothes and their colors, the same fingerless
@@ -835,6 +844,14 @@ There is no staff anywhere in the image. Her right hand keeps the exact
 half-closed grip it has in the reference, with the opening inside the grip still
 open; it neither closes into a fist nor opens flat.
 
+This is true in all four views, and the back view is not an exception. In the
+back view her gripping hand is small and partly hidden behind her body, but it
+still shows the same half-closed grip — not an open hand with spread fingers.
+
+Both of her arms are drawn in every one of the four views. Neither arm is
+omitted, shortened, or hidden behind her body, and both keep the exact length
+and the exact position they have in the reference.
+
 Plain flat gray background, the same gray as the reference. Do not include any
 staff, wand, rod, stick, sword, weapon, tool, hat, hood, cap, headband, fire,
 glow, particles or ground shadow. No frame, no border, no text, no watermark.
@@ -873,6 +890,14 @@ There is no staff anywhere in the image. Her right hand keeps the exact
 half-closed grip it has in the reference, with the opening inside the grip still
 open; it neither closes into a fist nor opens flat.
 
+This is true in all four views, and the back view is not an exception. In the
+back view her gripping hand is small and partly hidden behind her body, but it
+still shows the same half-closed grip — not an open hand with spread fingers.
+
+Both of her arms are drawn in every one of the four views. Neither arm is
+omitted, shortened, or hidden behind her body, and both keep the exact length
+and the exact position they have in the reference.
+
 Plain flat gray background, the same gray as the reference. Do not include any
 staff, wand, rod, stick, weapon, tool, glove, boot, shoe, sock, hat, hood, cap,
 headband, wig, fire, glow, particles or ground shadow. No frame, no border, no
@@ -892,6 +917,8 @@ text, no watermark. Only one character.
 - [ ] **축과의 세로 델타가 네 방향에서 균일하다**(편차 2px 이내). 옷+머리는 축과 0~2px 차이고, 맨살은 신발 두께만큼 작다. **부호가 뒤집혀 있으면 같은 몸이 아니다**
 
 **축과의 델타가 이 절에서 가장 중요한 항목이다.** 나머지는 한 시트 안에서 닫히지만 이것만 시트 사이를 본다. 어긋나면 v2에서 삭발 판에서 오린 옷을 맨살 판에 얹을 때 안 맞고, 그 사실은 파츠를 실제로 자를 때까지 드러나지 않는다.
+
+**그리고 이 항목은 사람 눈으로 지켜지지 않는다는 것이 2026-08-24에 드러났다.** 그날 받은 맨살 판은 축보다 신발 두께가 아니라 **6%가 작았고**(인물 키 451 대 482, 머리 폭도 같은 비율로 작다), 세 시트를 나란히 놓고 눈으로 본 뒤에도 통과했다. 시트가 1088×608이라 화면에 맞춰 보면 30px 차이가 3px로 줄어들기 때문이다. 그래서 **출하 뒤에 기계가 한 번 더 잰다** — `crossItemViolations`가 같은 방향의 시트 간 트림 세로를 4% 안으로 요구하고(위 셋째·다섯째 항목을 사후에 덮는다), 좌우 트림 가로를 5% 안으로 요구한다(팔 누락). 관문이 뒤에 있다고 이 항목을 건너뛰지는 않는다 — 여기서 걸리면 유료 호출 열두 번을 안 태운다.
 
 **축소본으로 판정하지 않는다.** 전체 시트를 축소해 보면 「손이 주먹으로 닫혔다」나 「측면에서 얼굴이 머리카락에 가렸다」로 잘못 읽기 쉽다 — 2026-08-24에 실제로 두 번 그랬고, 3배로 확대하니 둘 다 정상이었다. 손과 얼굴은 크롭해 확대한 뒤 본다.
 

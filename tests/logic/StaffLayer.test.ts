@@ -24,6 +24,7 @@ import { decodePng } from '../../tools/art/PngCodec';
 import { alignToCanvas, footBand } from '../../tools/art/Postprocess';
 import {
   commitAll,
+  crossItemViolations,
   type IShipItem,
   type IShippingSpec,
   specViolations,
@@ -71,6 +72,9 @@ const SPEC: IShippingSpec = {
   baselineY: 489,
   centerX: 122.5,
   maxTrimHeight: 490,
+  mirrorDirections: ['left', 'right'],
+  mirrorWidthTolerance: 0.05,
+  figureHeightTolerance: 0.04,
 };
 
 function loadBytes(rel: string): Uint8Array {
@@ -418,35 +422,68 @@ describe('출하 규격 — 갈아 끼운 열두 장', () => {
   });
 });
 
-/** 규격을 지키는 최소 픽스처 — 발 다섯 줄만 서 있다. */
-function shippable(name: string): IShipItem {
+/**
+ * 규격을 지키는 최소 픽스처 — 발 다섯 줄만 서 있다.
+ *
+ * 시트와 방향을 받아 이름을 짓는 것은 **장끼리 비교하는 판정이 그 둘로 짝을 찾기** 때문이다.
+ * 이름만 받으면 픽스처가 어느 시트의 어느 방향인지 말할 수 없어 `crossItemViolations`를 시험할
+ * 입력을 못 만든다.
+ */
+function shippable(sheet: string, direction: string): IShipItem {
   const rows: Array<Array<[number, number]>> = Array.from({ length: SPEC.height }, () => EMPTY);
   for (let y = SPEC.baselineY - 4; y <= SPEC.baselineY; y++) rows[y] = [[113, 132]];
-  return { name, image: fromRuns(SPEC.width, rows) };
+  return { name: `${sheet}_${direction}`, sheet, direction, image: fromRuns(SPEC.width, rows) };
+}
+
+/**
+ * 발 다섯 줄 위에 몸통을 세운 픽스처 — 트림 상자의 가로·세로를 시험이 정한다.
+ *
+ * 발은 규격을 지나야 하므로 폭 20px·발 밑선 위 다섯 줄로 고정하고, 그 위에 원하는 크기의
+ * 덩어리를 얹어 트림 상자만 바꾼다. 발을 건드리지 않으므로 장끼리 비교하는 판정만 반응한다.
+ */
+function withFigure(
+  sheet: string,
+  direction: string,
+  figure: { width: number; height: number },
+): IShipItem {
+  const item = shippable(sheet, direction);
+  const top = SPEC.baselineY - 4 - figure.height;
+  const from = Math.round(SPEC.centerX) - Math.floor(figure.width / 2);
+  for (let y = top; y < top + figure.height; y++) {
+    for (let x = from; x < from + figure.width; x++) {
+      item.image.data.set([10, 20, 30, 255], (y * SPEC.width + x) * 4);
+    }
+  }
+  return item;
 }
 
 describe('specViolations — 어느 장의 무슨 값이 틀렸는지 말한다', () => {
   it('규격을 지키면 위반이 없다', () => {
-    expect(specViolations(shippable('front'), SPEC)).toEqual([]);
+    expect(specViolations(shippable('player_4dir', 'front'), SPEC)).toEqual([]);
   });
 
   it('캔버스가 다르면 이름과 잰 값이 문장에 든다', () => {
     // 위반 문장은 사람이 읽고 어느 장을 다시 뽑을지 정하는 자리다. 어느 장인지가 빠지면 열두
     // 장을 하나씩 열어 봐야 한다.
-    const item: IShipItem = { name: 'front', image: fromRuns(240, [[[0, 19]]]) };
+    const item: IShipItem = {
+      name: 'player_4dir_front',
+      sheet: 'player_4dir',
+      direction: 'front',
+      image: fromRuns(240, [[[0, 19]]]),
+    };
 
     expect(specViolations(item, SPEC).join('\n')).toMatch(/front[\s\S]*240/);
   });
 
   it('희미한 알파가 하나라도 있으면 위반이다', () => {
-    const item = shippable('back');
+    const item = shippable('player_4dir', 'back');
     item.image.data.set([10, 20, 30, 8], 0);
 
     expect(specViolations(item, SPEC)).toHaveLength(1);
   });
 
   it('발 밑선이 어긋나면 위반이다', () => {
-    const item = shippable('right');
+    const item = shippable('player_4dir', 'right');
     for (let x = 113; x <= 132; x++) {
       item.image.data.set([0, 0, 0, 0], (SPEC.baselineY * SPEC.width + x) * 4);
     }
@@ -461,7 +498,7 @@ describe('specViolations — 어느 장의 무슨 값이 틀렸는지 말한다'
     // 허용 폭 0.5는 조절값이 아니다 — `alignToCanvas`가 `dx`를 정수로 반올림하므로 중심이
     // 목표에서 최대 0.5까지 남는 것이 정상이고, 그보다 벗어났다면 반올림이 아니라 기준이
     // 어긋난 것이다.
-    const item = shippable('front');
+    const item = shippable('player_4dir', 'front');
     for (let y = SPEC.baselineY - 4; y <= SPEC.baselineY; y++) {
       for (let x = 113; x <= 132; x++) item.image.data.set([0, 0, 0, 0], (y * SPEC.width + x) * 4);
       for (let x = 133; x <= 152; x++) {
@@ -477,7 +514,7 @@ describe('specViolations — 어느 장의 무슨 값이 틀렸는지 말한다'
     // 실제 출하본 열두 장이 122.5~123.0으로 나오므로, 0.5를 위반으로 잡으면 정상 산출물이
     // 통째로 막힌다.
     // 발을 한 칸 넓혀 중심을 122.5에서 123.0으로 민다. 폭이 21px이라 굵기 기준은 그대로 넘는다.
-    const item = shippable('back');
+    const item = shippable('player_4dir', 'back');
     for (let y = SPEC.baselineY - 4; y <= SPEC.baselineY; y++) {
       item.image.data.set([10, 20, 30, 255], (y * SPEC.width + 133) * 4);
     }
@@ -491,7 +528,12 @@ describe('specViolations — 어느 장의 무슨 값이 틀렸는지 말한다'
     // 넘기게 한다.
     const rows: Array<Array<[number, number]>> = Array.from({ length: SPEC.height }, () => EMPTY);
     for (let y = SPEC.baselineY - 4; y <= SPEC.baselineY; y++) rows[y] = [[120, 125]];
-    const item: IShipItem = { name: 'left', image: fromRuns(SPEC.width, rows) };
+    const item: IShipItem = {
+      name: 'player_4dir_left',
+      sheet: 'player_4dir',
+      direction: 'left',
+      image: fromRuns(SPEC.width, rows),
+    };
 
     // 굵기 6px짜리 발은 기본 기준(20)으로는 안 잡히고, 규격이 기준을 내려 주면 잡힌다.
     expect(specViolations(item, SPEC).join('\n')).toContain('발');
@@ -501,7 +543,7 @@ describe('specViolations — 어느 장의 무슨 값이 틀렸는지 말한다'
   it('트림 세로가 상한을 넘으면 위반이다', () => {
     // 발 밑선이 여백 3 위에 제대로 섰는데도 걸릴 수 있다. 정렬이 소품을 모르게 된 뒤로는 발보다
     // 아래로 내려온 소품이 발 밑선을 안 밀지만, 그 소품도 캔버스 안에 들어가야 하기 때문이다.
-    const item = shippable('left');
+    const item = shippable('player_4dir', 'left');
     for (let x = 113; x <= 132; x++) {
       item.image.data.set([10, 20, 30, 255], (0 * SPEC.width + x) * 4);
     }
@@ -517,11 +559,19 @@ describe('commitAll — 한 장이라도 떨어지면 아무것도 안 쓴다', 
   it('전부 통과하면 준 순서대로 쓴다', () => {
     const written: string[] = [];
 
-    commitAll([shippable('front'), shippable('back'), shippable('left')], SPEC, (item) => {
-      written.push(item.name);
-    });
+    commitAll(
+      [
+        shippable('player_4dir', 'front'),
+        shippable('player_4dir', 'back'),
+        shippable('player_4dir', 'left'),
+      ],
+      SPEC,
+      (item) => {
+        written.push(item.name);
+      },
+    );
 
-    expect(written).toEqual(['front', 'back', 'left']);
+    expect(written).toEqual(['player_4dir_front', 'player_4dir_back', 'player_4dir_left']);
   });
 
   it('한 장이 규격에서 떨어지면 쓰기가 0번 불린다', () => {
@@ -529,12 +579,21 @@ describe('commitAll — 한 장이라도 떨어지면 아무것도 안 쓴다', 
     // 파이프라인 산물이 되면 어느 것이 기준인지 알 방법이 없고, 화면에서는 방향을 바꿀 때만
     // 드러난다. 그래서 판정을 전부 먼저 돌리고 한 장이라도 떨어지면 손을 뗀다.
     const written: string[] = [];
-    const bad: IShipItem = { name: 'left', image: fromRuns(240, [[[0, 19]]]) };
+    const bad: IShipItem = {
+      name: 'player_4dir_left',
+      sheet: 'player_4dir',
+      direction: 'left',
+      image: fromRuns(240, [[[0, 19]]]),
+    };
 
     expect(() =>
-      commitAll([shippable('front'), shippable('back'), bad], SPEC, (item) => {
-        written.push(item.name);
-      }),
+      commitAll(
+        [shippable('player_4dir', 'front'), shippable('player_4dir', 'back'), bad],
+        SPEC,
+        (item) => {
+          written.push(item.name);
+        },
+      ),
     ).toThrow('left');
     expect(written).toEqual([]);
   });
@@ -547,22 +606,155 @@ describe('commitAll — 한 장이라도 떨어지면 아무것도 안 쓴다', 
     const written: string[] = [];
 
     expect(() =>
-      commitAll([shippable('front'), shippable('back'), shippable('left')], SPEC, (item) => {
-        if (item.name === 'left') throw new Error('EBUSY');
-        written.push(item.name);
-      }),
+      commitAll(
+        [
+          shippable('player_4dir', 'front'),
+          shippable('player_4dir', 'back'),
+          shippable('player_4dir', 'left'),
+        ],
+        SPEC,
+        (item) => {
+          if (item.name === 'player_4dir_left') throw new Error('EBUSY');
+          written.push(item.name);
+        },
+      ),
     ).toThrow(/front[\s\S]*back/);
-    expect(written).toEqual(['front', 'back']);
+    expect(written).toEqual(['player_4dir_front', 'player_4dir_back']);
   });
 
   it('떨어진 장이 여럿이면 전부 말한다', () => {
     // 하나만 말하고 멈추면 고치고 다시 돌릴 때마다 다음 하나가 나와, 유료 호출이 든 실행을 그
     // 횟수만큼 되풀이하게 된다.
     const items: IShipItem[] = [
-      { name: 'front', image: fromRuns(240, [[[0, 19]]]) },
-      { name: 'back', image: fromRuns(200, [[[0, 19]]]) },
+      {
+        name: 'player_4dir_front',
+        sheet: 'player_4dir',
+        direction: 'front',
+        image: fromRuns(240, [[[0, 19]]]),
+      },
+      {
+        name: 'player_4dir_back',
+        sheet: 'player_4dir',
+        direction: 'back',
+        image: fromRuns(200, [[[0, 19]]]),
+      },
     ];
 
     expect(() => commitAll(items, SPEC, () => {})).toThrow(/front[\s\S]*back/);
+  });
+});
+
+describe('crossItemViolations — 한 장만 봐서는 못 잡는 어긋남', () => {
+  /**
+   * 세 시트가 같은 인물을 같은 크기로 그린, 어긋남 없는 열두 장.
+   *
+   * 인물 크기를 시트마다 조금씩 다르게 둔 것은 **정상 편차를 통과시키는지도 함께 재기**
+   * 위해서다. 실측에서 옷 입은 판과 대머리 판이 트림 세로 480과 485로 1% 안에 들었고, 판정이
+   * 그 정도를 위반으로 잡으면 정상 산출물이 통째로 막힌다.
+   */
+  function healthySet(): IShipItem[] {
+    const items: IShipItem[] = [];
+    for (const [sheet, h] of [
+      ['player_4dir', 480],
+      ['player_bald', 485],
+      ['player_base', 470],
+    ] as const) {
+      for (const [direction, w] of [
+        ['front', 216],
+        ['back', 218],
+        ['left', 173],
+        ['right', 171],
+      ] as const) {
+        items.push(withFigure(sheet, direction, { width: w, height: h }));
+      }
+    }
+    return items;
+  }
+
+  it('세 시트가 같은 크기로 그려졌으면 위반이 없다', () => {
+    expect(crossItemViolations(healthySet(), SPEC)).toEqual([]);
+  });
+
+  it('한 시트의 좌우 트림 가로가 크게 다르면 위반이다', () => {
+    // 실측한 결함이 이것이다 — 맨살 시트의 왼쪽 패널에서 지팡이 쥐던 팔이 통째로 안 그려져
+    // 트림 가로가 110과 131로 갈렸다(19% 차). 한 장씩 보는 판정은 둘 다 규격 안이라 통과시킨다.
+    const items = healthySet().map((item) =>
+      item.name === 'player_base_left'
+        ? withFigure('player_base', 'left', { width: 110, height: 470 })
+        : item,
+    );
+
+    const problems = crossItemViolations(items, SPEC);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('player_base_left');
+    expect(problems[0]).toContain('player_base_right');
+  });
+
+  it('좌우가 조금 다른 것은 위반이 아니다', () => {
+    // 옷 입은 판이 173과 171로 1.2% 갈려 있다. 생성 모델이 두 장을 따로 그리므로 완전한 대칭은
+    // 애초에 안 나오고, 0을 요구하면 정상 산출물이 매번 막힌다.
+    expect(crossItemViolations(healthySet(), SPEC)).toEqual([]);
+  });
+
+  it('시트끼리 인물 키가 다르면 위반이다', () => {
+    // 실측한 결함이 이것이다 — 맨살 시트만 6% 작게 그려져 출하본 트림 세로가 455 대 480·485로
+    // 갈렸다. `alignToCanvas`는 평행 이동만 하므로 이 차이가 그대로 출하된다. 층 구조는 맨살
+    // 위에 옷을 얹는 것이라, 몸이 작으면 소매가 팔을 안 덮는다.
+    const items = healthySet().map((item) =>
+      item.sheet === 'player_base'
+        ? withFigure('player_base', item.direction, { width: 200, height: 450 })
+        : item,
+    );
+
+    // 네 방향 전부가 걸린다 — 한 방향만 말하면 나머지 셋을 고치고 다시 돌릴 때 또 나온다.
+    expect(crossItemViolations(items, SPEC)).toHaveLength(4);
+    expect(crossItemViolations(items, SPEC)[0]).toContain('front');
+  });
+
+  it('다른 방향끼리는 키를 비교하지 않는다', () => {
+    // 정면과 측면은 실루엣이 달라 트림 세로도 다를 수 있다. 방향을 섞어 재면 정상 편차가 위반이
+    // 되고, 그러면 사람이 판정을 끄게 된다.
+    const items = [
+      withFigure('player_4dir', 'front', { width: 216, height: 480 }),
+      withFigure('player_4dir', 'left', { width: 173, height: 300 }),
+    ];
+
+    expect(crossItemViolations(items, SPEC)).toEqual([]);
+  });
+
+  it('짝이 없는 방향은 대칭을 안 잰다', () => {
+    // 실행기가 네 방향을 다 내지만, 시험과 부분 실행은 한두 장만 넘길 수 있다. 짝이 없다고
+    // 위반으로 잡으면 그 쓰임이 통째로 막힌다.
+    const items = [withFigure('player_4dir', 'left', { width: 110, height: 480 })];
+
+    expect(crossItemViolations(items, SPEC)).toEqual([]);
+  });
+
+  it('위반 문장이 잰 값을 든다', () => {
+    // 사람이 이 문장만 보고 어느 시트를 다시 뽑을지 정한다. 값이 없으면 결국 열두 장을 열어
+    // 눈으로 재게 된다.
+    const items = healthySet().map((item) =>
+      item.name === 'player_base_left'
+        ? withFigure('player_base', 'left', { width: 110, height: 470 })
+        : item,
+    );
+
+    expect(crossItemViolations(items, SPEC)[0]).toMatch(/110[\s\S]*171|171[\s\S]*110/);
+  });
+
+  it('commitAll이 이 판정도 함께 돌린다', () => {
+    // **여기서 안 돌리면 판정이 있으나 마나다.** 실행기가 따로 부르는 구조면 부르는 것을 잊어도
+    // 아무 신호가 없고, 어긋난 열두 장이 조용히 나간다.
+    const written: string[] = [];
+    const items = healthySet().map((item) =>
+      item.name === 'player_base_left'
+        ? withFigure('player_base', 'left', { width: 110, height: 470 })
+        : item,
+    );
+
+    expect(() => commitAll(items, SPEC, (item) => written.push(item.name))).toThrow(
+      'player_base_left',
+    );
+    expect(written).toEqual([]);
   });
 });
