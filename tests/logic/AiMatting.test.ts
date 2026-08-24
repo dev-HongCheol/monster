@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { decodePng, encodePng } from '../../tools/art/PngCodec';
 import { alignToCanvas, normalizeAlpha } from '../../tools/art/Postprocess';
-import { cropColumns, panelColumns } from '../../tools/art/SheetCrop';
+import { assertPanelGaps, cropColumns, panelColumns } from '../../tools/art/SheetCrop';
 import {
   alphaHistogram,
   backgroundLeak,
@@ -452,6 +452,51 @@ describe('cropColumns — 찾은 구간을 패널 이미지로 떼어 낸다', (
     const panel = cropColumns(img, { from: 0, to: 3 }, { margin: 5 });
 
     expect(panel.width).toBe(4);
+  });
+});
+
+describe('assertPanelGaps — 여백을 붙여 잘라도 옆 인물이 안 딸려 오는지 본다', () => {
+  it('필요한 여유와 정확히 같은 간격은 통과한다', () => {
+    // 필요한 여유는 `margin + 2`다. 왼쪽 인물의 크롭이 `margin`만큼 더 뻗고, `panelColumns`가
+    // 오른쪽 인물의 가장 바깥 한두 열을 구간 밖에 남기기 때문이다.
+    expect(() =>
+      assertPanelGaps(
+        [
+          { from: 0, to: 9 },
+          { from: 20, to: 29 },
+        ],
+        8,
+        'sheet.png',
+      ),
+    ).not.toThrow();
+  });
+
+  it('하나 좁은 간격은 막는다', () => {
+    expect(() =>
+      assertPanelGaps(
+        [
+          { from: 0, to: 9 },
+          { from: 19, to: 29 },
+        ],
+        8,
+        'sheet.png',
+      ),
+    ).toThrow();
+  });
+
+  it('어느 시트의 몇 번째 사이가 얼마나 좁은지 말한다', () => {
+    // 유료 호출 앞에서 멈추는 메시지라, 사람이 어느 시트를 다시 뽑을지 여기서 정한다.
+    const columns = [
+      { from: 0, to: 9 },
+      { from: 40, to: 49 },
+      { from: 55, to: 64 },
+    ];
+
+    expect(() => assertPanelGaps(columns, 8, '4dir_skin.png')).toThrow(/4dir_skin\.png.*2번과 3번/);
+  });
+
+  it('구간이 하나뿐이면 볼 사이가 없다', () => {
+    expect(() => assertPanelGaps([{ from: 0, to: 9 }], 8, 'sheet.png')).not.toThrow();
   });
 });
 

@@ -124,13 +124,16 @@
 
 AI가 `verification` 단계에서 돌린다. 여기 적는 것은 무엇이 기계로 덮이는지를 사용자가 알기 위해서다.
 
-> **통과 근거 (GREEN 통과, 2026-08-24):** 피처 120/120 · 전체 스위트 982/983(스킵 1) · 타입체크 범위 `full` · biome 종료코드 0 · `build.ts` 과금 호출 12회로 열두 장 교체 완료.
+> **통과 근거 (GREEN 통과, 2026-08-24 · 코드리뷰 반영 후 재검증):** 피처 125/125 · 전체 스위트 991/992(스킵 1) · 타입체크 범위 `full` · biome 종료코드 0 · `build.ts` 과금 호출 12회로 열두 장 교체 완료.
+>
+> 코드리뷰가 Important 셋을 냈고 전부 실측으로 재현돼 고쳤다([리뷰 문서](staff-layer-review-issues.md)). 핵심은 `footBand`가 발 띠 창 밖으로 하강했을 때 **캔버스 정중앙을 발 중심인 양 돌려주던 것**과, 그것을 잡을 수 있었던 유일한 관문인 출하 규격이 정작 **발 중심을 안 재던 것**이다. 고친 뒤 캐시로 실행기를 다시 돌려(과금 0회) 새 규격 항목까지 열두 장 전부 통과하는 것을 확인했다.
 
 - [x] `pnpm vitest run tests/logic/StaffLayer.test.ts` — 피처 테스트 전부 통과
 - [x] `pnpm vitest run` — 전체 스위트. `StaffLayer.test.ts`가 추가된 만큼만 늘고 나머지가 그대로여야 한다
 - [x] `pnpm typecheck` — 범위가 `full`이어야 한다. `logic-only`면 `approve-pr`이 막힌다
 - [x] `pnpm check` — biome 종료코드 0
 - [x] `pnpm wf check-links` · `check-docs` · `check-qa` · `check-meta`
+- [x] `node --experimental-strip-types tools/art/build.ts --dry-run` — 리뷰 반영 뒤 캐시로 재실행. 과금 0회, 규격 판정 열두 장 통과
 - [x] `node --experimental-strip-types tools/art/build.ts` — 열두 장을 실제로 내보내고 규격 판정이 전부 통과하는가. **과금된 호출이 12회를 넘지 않는가**를 출력에서 확인한다
 
 **정렬 회귀는 실제 PNG로 잰다.** `StaffLayer.test.ts`가 현행·교체본 열두 장을 디스크에서 읽어 발 밑선과 발 중심을 재고, 같은 열두 장에 `player_staff.png`를 합성한 판과 값이 **정확히 같은지**를 단언한다. 허용 폭을 두지 않는 이유는 값이 조금이라도 움직이면 그것이 곧 소품이 판정에 샌 것이기 때문이다.

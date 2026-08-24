@@ -24,7 +24,7 @@ import { callsUsed, matte } from './FalMatting.ts';
 import { assertNodeVersion } from './NodeVersion.ts';
 import { decodePng, encodePng } from './PngCodec.ts';
 import { alignToCanvas, normalizeAlpha } from './Postprocess.ts';
-import { cropColumns, type IColumnRange, panelColumns } from './SheetCrop.ts';
+import { assertPanelGaps, cropColumns, panelColumns } from './SheetCrop.ts';
 import { commitAll, type IShipItem, type IShippingSpec } from './Shipping.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -48,6 +48,9 @@ const SPEC: IShippingSpec = {
   width: CANVAS.width,
   height: CANVAS.height,
   baselineY: CANVAS.height - 1 - CANVAS.bottomMargin,
+  // `alignToCanvas`가 발 중심을 맞추는 자리와 같은 식이어야 한다. 둘이 갈리면 정렬이 세운
+  // 자리를 판정이 어긋났다고 읽는다.
+  centerX: (CANVAS.width - 1) / 2,
   maxTrimHeight: CANVAS.height - CANVAS.bottomMargin,
 };
 
@@ -91,26 +94,18 @@ function cornerBackground(img: IRgbaImage): [number, number, number] {
 }
 
 /**
- * 여백을 붙여 잘라도 옆 인물이 안 딸려 오는지 확인한다.
+ * 시트를 읽어 네 인물 구간을 확인한다 — **유료 호출 앞에 오는 싼 검사다.**
  *
- * 딸려 오면 매팅이 인물 둘을 한 장에서 따고, 그러면 정렬이 두 사람의 발을 한 덩어리로 재서
- * 캐릭터가 가로로 크게 밀린다. 출력 PNG는 멀쩡해 보이므로 여기서 안 막으면 사람이 열두 장을
- * 눈으로 볼 때까지 안 드러난다.
+ * 세 시트를 전부 이걸 지난 뒤에야 매팅 루프를 돈다. 시트마다 「검사 → 매팅 4회」를 되풀이하면
+ * 셋째 시트가 떨어질 때 앞 여덟 번을 이미 태운 뒤다. 캐시가 있어 다시 돌릴 때 과금이 0이긴
+ * 하지만, 비싼 것 앞에 싼 검사를 두는 것이 이 파일이 곳곳에서 지키는 순서다.
  *
- * @throws 두 구간 사이가 여백 두 몫보다 좁으면
+ * @throws 시트가 없거나, 인물 구간이 넷이 아니거나, 여백을 붙여 자르면 옆 인물이 딸려 오면
  */
-function assertPanelsClear(sheet: string, columns: IColumnRange[], margin: number): void {
-  for (let i = 1; i < columns.length; i++) {
-    const gap = columns[i].from - columns[i - 1].to - 1;
-    if (gap >= margin * 2) continue;
-    throw new Error(
-      `${sheet}의 ${i}번과 ${i + 1}번 인물 사이가 ${gap}열뿐이라 여백 ${margin}로 자르면 겹친다`,
-    );
-  }
-}
-
-/** 시트 한 장을 네 방향 출하물로 만든다. 방향당 유료 호출 한 번이다. */
-async function buildSheet(sheet: (typeof SHEETS)[number], sheetDir: string): Promise<IShipItem[]> {
+function readSheet(
+  sheet: (typeof SHEETS)[number],
+  sheetDir: string,
+): { img: IRgbaImage; columns: ReturnType<typeof panelColumns> } {
   const sheetPath = path.join(ROOT, sheetDir, sheet.file);
   if (!fs.existsSync(sheetPath)) {
     throw new Error(`시트가 없다: ${path.join(sheetDir, sheet.file)}`);
@@ -124,9 +119,19 @@ async function buildSheet(sheet: (typeof SHEETS)[number], sheetDir: string): Pro
       `${sheet.file}에서 인물 구간이 ${DIRECTIONS.length}개가 아니라 ${columns.length}개다`,
     );
   }
-  assertPanelsClear(sheet.file, columns, CROP_MARGIN);
+  assertPanelGaps(columns, CROP_MARGIN, sheet.file);
 
-  console.log(`\n■ ${sheet.file} — ${img.width}×${img.height}, 배경 (${background.join(',')})`);
+  console.log(`■ ${sheet.file} — ${img.width}×${img.height}, 배경 (${background.join(',')})`);
+  return { img, columns };
+}
+
+/** 시트 한 장을 네 방향 출하물로 만든다. 방향당 유료 호출 한 번이다. */
+async function buildSheet(
+  sheet: (typeof SHEETS)[number],
+  img: IRgbaImage,
+  columns: ReturnType<typeof panelColumns>,
+): Promise<IShipItem[]> {
+  console.log(`\n■ ${sheet.file}`);
 
   const items: IShipItem[] = [];
   for (let i = 0; i < DIRECTIONS.length; i++) {
@@ -159,10 +164,17 @@ async function main(): Promise<void> {
   const sheetDir = args.includes('--sheets')
     ? args[args.indexOf('--sheets') + 1]
     : DEFAULT_SHEET_DIR;
-  if (!sheetDir) throw new Error('--sheets 뒤에 폴더를 적는다');
+  // 값이 없거나 다음 플래그를 먹은 경우를 함께 막는다. `--sheets --dry-run`을 그냥 받으면
+  // `--dry-run`이 폴더 이름이 되고 모의 실행도 안 켜진다.
+  if (!sheetDir || sheetDir.startsWith('--')) throw new Error('--sheets 뒤에 폴더를 적는다');
+
+  // 세 시트를 먼저 다 읽고 구간을 확인한 뒤에야 유료 호출을 시작한다.
+  const sheets = SHEETS.map((sheet) => ({ sheet, ...readSheet(sheet, sheetDir) }));
 
   const items: IShipItem[] = [];
-  for (const sheet of SHEETS) items.push(...(await buildSheet(sheet, sheetDir)));
+  for (const { sheet, img, columns } of sheets) {
+    items.push(...(await buildSheet(sheet, img, columns)));
+  }
 
   // 판정을 전부 먼저 돌리고 통과할 때만 쓴다. `--dry-run`은 그 쓰기만 안 하는 것이라, 규격
   // 판정은 실제 실행과 똑같이 지난다 — 판정을 건너뛰면 미리 보는 값어치가 없다.

@@ -65,7 +65,13 @@ const BODY_SHEETS = [
 const STAFF = 'game/assets/art/player/player_staff.png';
 
 /** 출하 규격 — `alignToCanvas`가 강제하는 캔버스·발 밑선과 계획 §2.2가 잰 트림 세로 상한. */
-const SPEC: IShippingSpec = { width: 246, height: 493, baselineY: 489, maxTrimHeight: 490 };
+const SPEC: IShippingSpec = {
+  width: 246,
+  height: 493,
+  baselineY: 489,
+  centerX: 122.5,
+  maxTrimHeight: 490,
+};
 
 function loadBytes(rel: string): Uint8Array {
   return new Uint8Array(fs.readFileSync(path.join(ROOT, rel)));
@@ -227,6 +233,27 @@ describe('footBand — 발을 먼저 찾고 거기서만 잰다', () => {
     for (let x = 0; x < 40; x++) img.data.set([10, 20, 30, 16], x * 4);
 
     expect(footBand(img, { minRunWidth: 20 })?.baselineY).toBe(1);
+  });
+
+  it('발에 이어진 것이 발 띠보다 길게 내려가도 발 중심을 잃지 않는다', () => {
+    // **이 판이 조용히 틀린 값을 내던 자리다.** 발 띠 창은 바닥에서 위로 `rows`줄인데 발을
+    // 찾은 굵은 행은 그 창 안에 있다는 보장이 없었다 — 발에 이어져 아래로 늘어진 것이
+    // `rows`줄보다 길면 씨앗이 창 밖으로 밀려나 띠가 통째로 비고, 그러면 `from`이 캔버스 폭,
+    // `to`가 -1인 채 반환돼 **중심이 캔버스 정중앙으로 나온다.** 예외도 null도 아니라
+    // `alignToCanvas`가 그 값을 그대로 써서 발이 아니라 캔버스를 기준으로 세운다.
+    //
+    // 발이 캔버스 중앙에서 벗어난 픽스처여야 그 둘이 갈린다 — 발 중심 13.5, 캔버스 중앙 19.5다.
+    const img = fromRuns(40, [
+      [[4, 23]],
+      ...Array.from({ length: 12 }, () => [[9, 11]] as Array<[number, number]>),
+    ]);
+
+    expect(footBand(img, { minRunWidth: 20 })).toEqual({
+      baselineY: 12,
+      centerX: 13.5,
+      from: 4,
+      to: 23,
+    });
   });
 
   it('굵은 줄이 하나도 없으면 null이다', () => {
@@ -427,6 +454,50 @@ describe('specViolations — 어느 장의 무슨 값이 틀렸는지 말한다'
     expect(specViolations(item, SPEC)).toHaveLength(1);
   });
 
+  it('발 중심이 캔버스 중앙에서 벗어나면 위반이다', () => {
+    // **이 슬라이스가 통째로 매달린 값인데 관문이 안 재고 있었다.** 정렬이 어떤 이유로든
+    // 가로를 놓치면 「전부 통과할 때만 쓴다」가 그것을 그냥 지나보낸다.
+    //
+    // 허용 폭 0.5는 조절값이 아니다 — `alignToCanvas`가 `dx`를 정수로 반올림하므로 중심이
+    // 목표에서 최대 0.5까지 남는 것이 정상이고, 그보다 벗어났다면 반올림이 아니라 기준이
+    // 어긋난 것이다.
+    const item = shippable('front');
+    for (let y = SPEC.baselineY - 4; y <= SPEC.baselineY; y++) {
+      for (let x = 113; x <= 132; x++) item.image.data.set([0, 0, 0, 0], (y * SPEC.width + x) * 4);
+      for (let x = 133; x <= 152; x++) {
+        item.image.data.set([10, 20, 30, 255], (y * SPEC.width + x) * 4);
+      }
+    }
+
+    expect(specViolations(item, SPEC)).toHaveLength(1);
+    expect(specViolations(item, SPEC)[0]).toContain('발 중심');
+  });
+
+  it('반올림이 남긴 0.5는 위반이 아니다', () => {
+    // 실제 출하본 열두 장이 122.5~123.0으로 나오므로, 0.5를 위반으로 잡으면 정상 산출물이
+    // 통째로 막힌다.
+    // 발을 한 칸 넓혀 중심을 122.5에서 123.0으로 민다. 폭이 21px이라 굵기 기준은 그대로 넘는다.
+    const item = shippable('back');
+    for (let y = SPEC.baselineY - 4; y <= SPEC.baselineY; y++) {
+      item.image.data.set([10, 20, 30, 255], (y * SPEC.width + 133) * 4);
+    }
+
+    expect(specViolations(item, SPEC)).toEqual([]);
+  });
+
+  it('발을 어떻게 찾을지를 규격이 정한다', () => {
+    // 정렬과 판정이 서로 다른 기준으로 발을 찾으면 「A로 세우고 B로 잰다」가 되어, 통과한
+    // 출하물이 실제로는 다른 자리에 서 있을 수 있다. 규격이 그 인자를 들어 실행기가 한 곳에서
+    // 넘기게 한다.
+    const rows: Array<Array<[number, number]>> = Array.from({ length: SPEC.height }, () => EMPTY);
+    for (let y = SPEC.baselineY - 4; y <= SPEC.baselineY; y++) rows[y] = [[120, 125]];
+    const item: IShipItem = { name: 'left', image: fromRuns(SPEC.width, rows) };
+
+    // 굵기 6px짜리 발은 기본 기준(20)으로는 안 잡히고, 규격이 기준을 내려 주면 잡힌다.
+    expect(specViolations(item, SPEC).join('\n')).toContain('발');
+    expect(specViolations(item, { ...SPEC, foot: { minRunWidth: 6 } })).toEqual([]);
+  });
+
   it('트림 세로가 상한을 넘으면 위반이다', () => {
     // 발 밑선이 여백 3 위에 제대로 섰는데도 걸릴 수 있다. 정렬이 소품을 모르게 된 뒤로는 발보다
     // 아래로 내려온 소품이 발 밑선을 안 밀지만, 그 소품도 캔버스 안에 들어가야 하기 때문이다.
@@ -466,6 +537,22 @@ describe('commitAll — 한 장이라도 떨어지면 아무것도 안 쓴다', 
       }),
     ).toThrow('left');
     expect(written).toEqual([]);
+  });
+
+  it('쓰기가 도중에 던지면 이미 쓴 장을 이름으로 말한다', () => {
+    // **규격 판정은 원자성을 지키지만 쓰기 자체는 못 지킨다.** 이 워크플로는 사용자가 Cocos를
+    // 열어 둔 채로 돌리는 것을 전제하는데, Windows에서 에디터가 임포트 중인 PNG를 잡고 있으면
+    // 덮어쓰기가 `EBUSY`로 떨어진다. 그때 앞서 쓴 것은 남으므로, 무엇이 남았는지를 사람이
+    // 알아야 되돌릴 수 있다.
+    const written: string[] = [];
+
+    expect(() =>
+      commitAll([shippable('front'), shippable('back'), shippable('left')], SPEC, (item) => {
+        if (item.name === 'left') throw new Error('EBUSY');
+        written.push(item.name);
+      }),
+    ).toThrow(/front[\s\S]*back/);
+    expect(written).toEqual(['front', 'back']);
   });
 
   it('떨어진 장이 여럿이면 전부 말한다', () => {

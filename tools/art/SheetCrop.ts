@@ -85,6 +85,32 @@ export function cropColumns(
   return { width, height: img.height, data };
 }
 
+/**
+ * 여백을 붙여 잘라도 옆 인물이 안 딸려 오는지 확인한다.
+ *
+ * 딸려 오면 매팅이 인물 둘을 한 장에서 따고, 그러면 정렬이 두 사람의 발을 한 덩어리로 재서
+ * 캐릭터가 가로로 크게 밀린다. 출력 PNG는 멀쩡해 보이므로 여기서 안 막으면 사람이 열두 장을
+ * 눈으로 볼 때까지 안 드러난다.
+ *
+ * **필요한 여유는 `margin`이 아니라 `margin + 2`다.** 왼쪽 인물의 크롭이 구간 오른끝에서
+ * `margin`만큼 더 뻗으므로 그것만으로는 `gap >= margin`이면 되는데, `panelColumns`가 내는
+ * 구간은 「전경 픽셀이 기준 개수 이상인 열」의 범위라 오른쪽 인물의 가장 바깥 한두 열이
+ * 구간 **밖**에 남는다(첫 시트에서 여덟 경계 중 셋이 그랬다). 그 두 열이 간격 안에 있으므로
+ * 두 몫을 더 받는다.
+ *
+ * @throws 두 구간 사이가 `margin + 2`보다 좁으면
+ */
+export function assertPanelGaps(columns: IColumnRange[], margin: number, sheet: string): void {
+  const needed = margin + 2;
+  for (let i = 1; i < columns.length; i++) {
+    const gap = columns[i].from - columns[i - 1].to - 1;
+    if (gap >= needed) continue;
+    throw new Error(
+      `${sheet}의 ${i}번과 ${i + 1}번 인물 사이가 ${gap}열뿐이다 (여백 ${margin}로 자르려면 ${needed}열 이상)`,
+    );
+  }
+}
+
 /** 픽셀 하나가 배경색에서 얼마나 떨어졌는지. 제곱 거리를 그대로 쓴다(제곱근 생략). */
 function distanceSq(
   data: Uint8Array,
@@ -97,8 +123,8 @@ function distanceSq(
   return dr * dr + dg * dg + db * db;
 }
 
-/** 행마다 캔버스 왼쪽 끝과 오른쪽 끝에서 뽑은 배경색 두 벌. */
-function rowBackgrounds(img: {
+/** 행마다 캔버스 왼쪽 끝과 오른쪽 끝 픽셀의 바이트 오프셋. 색은 부르는 쪽이 읽는다. */
+function rowEdgeOffsets(img: {
   width: number;
   height: number;
   data: Uint8Array;
@@ -125,7 +151,7 @@ export function panelColumns(
 ): IColumnRange[] {
   const maxDistanceSq = opts.maxDistance * opts.maxDistance;
   const minPixels = opts.minColumnPixels ?? 1;
-  const edges = opts.rowBackground ? rowBackgrounds(img) : null;
+  const edges = opts.rowBackground ? rowEdgeOffsets(img) : null;
 
   /** 이 픽셀이 그 행의 배경에서 충분히 먼가. 양 끝을 쓸 때는 **둘 다에서** 멀어야 한다. */
   const isForeground = (offset: number, y: number): boolean => {

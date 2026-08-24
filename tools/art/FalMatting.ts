@@ -34,7 +34,7 @@ const CACHE_DIR = path.join(ROOT, 'art-source/matting-cache');
  *
  * `birefnet/v2`가 compute second 과금이라 장당 단가가 미리 정해져 있지 않다. 상한이 없으면
  * 루프 하나가 잘못 돌 때 실질 한도가 계정 잔액뿐이 된다. 판정에 필요한 호출은 패널 3장 ×
- * 모델 2종 = 6회이고, 전량 재처리도 13장 × 1종 = 13회다.
+ * 모델 2종 = 6회이고, 전량 재처리도 시트 3장 × 4방향 = 12회다(지팡이 PNG는 실행기가 안 건드린다).
  */
 const MAX_CALLS_PER_RUN = 30;
 
