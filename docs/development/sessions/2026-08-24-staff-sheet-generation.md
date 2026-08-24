@@ -37,7 +37,7 @@
 
 **지시문 셋의 정본은 실행 지침 §8.2.2다.** 아래는 그 현재 판이고, 정본이 고쳐지면 이 절도 함께 고친다 — 두 곳이 갈리면 정본이 이긴다.
 
-**현행 열두 장은 아래 문단 넷이 붙기 전 판으로 나왔다.** 뒷모습에서도 쥔 손을 유지하라는 문단과 네 방향 전부에 팔이 둘 다 있어야 한다는 문단이 §7의 결함을 보고 들어갔고, 쥔 팔이 화면 가까운 쪽이라는 문단과 빈 손이 오므린 모양이라는 문단이 양손 장비 결정을 보고 뒤따랐다. 넷 다 다음 회차부터 듣는다. 옷+머리 지시문에서는 반대로 「삭발되기 전 머리색과 같은 진홍색」 한 문장이 빠졌다 — 이 회차의 입력 계보에만 뜻이 통하는 말이라 정본에 남길 수 없다.
+**현행 열두 장은 아래 문단 다섯이 붙기 전 판으로 나왔다.** 뒷모습에서도 쥔 손을 유지하라는 문단과 네 방향 전부에 팔이 둘 다 있어야 한다는 문단이 §7의 결함을 보고 들어갔고, 쥔 팔이 화면 가까운 쪽이라는 문단과 빈 손이 오므린 모양이라는 문단이 양손 장비 결정을 보고 뒤따랐다. 넷 다 다음 회차부터 듣는다. 옷+머리 지시문에서는 반대로 「삭발되기 전 머리색과 같은 진홍색」 한 문장이 빠졌다 — 이 회차의 입력 계보에만 뜻이 통하는 말이라 정본에 남길 수 없다.
 
 ### 2.1 `bald` — 원본에서 지팡이만 지운다
 
@@ -68,6 +68,9 @@ In the left and right side views the arm that holds the staff in the reference
 is the arm nearer to the viewer, drawn in front of her torso, and it stays
 there. Do not move it behind her torso and do not give the grip to her other
 arm.
+
+That gripping hand also stays further forward than her other hand, exactly as
+in the reference: no part of her reaches further forward than it does.
 
 Her other hand is empty and its fingers stay softly curled, exactly as they are
 in the reference: not flat open with spread fingers, and not closed into a fist.
@@ -129,6 +132,9 @@ half-closed — is the arm nearer to the viewer, drawn in front of her torso,
 exactly as in the reference. Do not move it behind her torso and do not give the
 grip to her other arm.
 
+That gripping hand also stays further forward than her other hand, exactly as
+in the reference: no part of her reaches further forward than it does.
+
 Her other hand is empty and its fingers stay softly curled, exactly as they are
 in the reference: not flat open with spread fingers, and not closed into a fist.
 
@@ -182,6 +188,9 @@ In the left and right side views her gripping arm — the one whose hand is
 half-closed — is the arm nearer to the viewer, drawn in front of her torso,
 exactly as in the reference. Do not move it behind her torso and do not give the
 grip to her other arm.
+
+That gripping hand also stays further forward than her other hand, exactly as
+in the reference: no part of her reaches further forward than it does.
 
 Her other hand is empty and its fingers stay softly curled, exactly as they are
 in the reference: not flat open with spread fingers, and not closed into a fist.

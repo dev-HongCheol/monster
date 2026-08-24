@@ -159,12 +159,13 @@
 | # | 무엇 | 입력 | 지시문 | 상태 |
 |---|---|---|---|---|
 | 0 | 측면 두 장의 쥔 팔을 앞으로 (지팡이 든 채) | `2026-08-06/4dir_bald.png` | §5.3 | **통과** — `2026-08-24/4dir_bald_armfront.png` |
-| 1 | 보조 손을 오므리고 엉덩이 앞으로 | 0의 결과 | §5.4 | 대기 |
-| 2 | 지팡이 없는 삭발 판 — 축 | 1의 결과 | 실행 지침 §8.2.2 축 | |
-| 3 | 지팡이 없는 옷+머리 판 | 2의 결과 | 실행 지침 §8.2.2 옷+머리 | |
-| 4 | 지팡이 없는 맨살 판 | 2의 결과 | 실행 지침 §8.2.2 맨살 | |
+| 1 | 보조 손을 오므려 배 앞 허리 높이로 | 0의 결과 | §5.4 | **통과** — 자세는 맞고, 대신 지팡이가 뒤로 밀렸다 |
+| 2 | 지팡이 손을 보조 손보다 앞으로 | 1의 결과 | §5.5 | 대기 |
+| 3 | 지팡이 없는 삭발 판 — 축 | 2의 결과 | 실행 지침 §8.2.2 축 | |
+| 4 | 지팡이 없는 옷+머리 판 | 3의 결과 | 실행 지침 §8.2.2 옷+머리 | |
+| 5 | 지팡이 없는 맨살 판 | 3의 결과 | 실행 지침 §8.2.2 맨살 | |
 
-**다섯 컷(약 $0.56)이고 인물은 그대로 유지된다.** 같은 값으로 턴어라운드부터 돌 수도 있었지만 그쪽은 인물 동일성을 걸므로, 값이 같다면 인물을 안 거는 쪽을 택한다. **앞 컷의 결과를 보기 전에는 다음 컷을 돌리지 않는다** — 축이 갈리면 뒤가 전부 갈린다.
+**여섯 컷(약 $0.67)이고 인물은 그대로 유지된다.** 자세를 잡는 데 세 컷이 든 것은 **한 컷에 하나씩만 바꿨기 때문**이고, 그 대신 매 컷이 통했다. 턴어라운드부터 도는 길도 값은 비슷한데 그쪽은 인물 동일성을 건다. 같은 값으로 턴어라운드부터 돌 수도 있었지만 그쪽은 인물 동일성을 걸므로, 값이 같다면 인물을 안 거는 쪽을 택한다. **앞 컷의 결과를 보기 전에는 다음 컷을 돌리지 않는다** — 축이 갈리면 뒤가 전부 갈린다.
 
 #### 0번 결과 — 정본의 「불가능」이 실측에서 뒤집혔다
 
@@ -267,6 +268,55 @@ no border, no text, no watermark. Only one character.
 ```
 
 **설정은 편집 회차의 값을 그대로 쓴다** — `openai/gpt-image-2/edit`, Aspect Ratio 16:9, 나오는 크기 1088×608(실행 지침 §8.2.2). 크기가 커지면 뒤의 셋이 전부 정렬에서 멈춘다.
+
+### 5.5 2번 지시문 — 지팡이 손을 앞으로
+
+**보조 손을 앞으로 낸 대가로 순서가 뒤집혔다(2026-08-24 사용자 확인).** 1번에서 보조 손이 배 앞으로 나오면서, 측면 두 장에서 **그 손이 지팡이 손보다 앞에 서게 됐다.** 그대로 두면 보조 손에 얹힌 방패가 지팡이를 가려, §6.2가 「주무기를 화면 가까운 쪽에 둔다」로 얻으려던 것이 다시 사라진다.
+
+**그래서 앞뒤 관계를 명시적으로 못 박는다.** 「쥔 팔이 가까운 쪽」만으로는 부족하다 — 그것은 몸통과의 앞뒤(그리기 순서)를 정할 뿐이고, 여기서 필요한 것은 **두 손 사이의 앞뒤**다. 지팡이가 인물의 가장 앞에 서고 다른 어떤 부위도 그보다 앞으로 나오지 않는다는 것을 기준으로 삼는다.
+
+```
+Using this exact same 4-view turnaround sheet as the reference, redraw the same
+character in the same four views — front view, back view, left side view, right
+side view — changing only the arm that holds the staff.
+
+In the left side view and in the right side view her staff arm hangs at the
+middle of her body, so the staff now stands level with or behind her other hand.
+In both of these two views move that whole staff arm forward, toward the
+direction she is facing, until the staff is the frontmost thing about her:
+the staff stands clearly in front of her other hand, there is visible empty
+space between the staff and that other hand, and no part of her reaches further
+forward than the staff.
+
+Her staff arm stays the arm nearer to the viewer and stays drawn in front of her
+torso, complete and unbroken from shoulder to hand. Her elbow stays nearly
+straight, the staff stays vertical, and she keeps holding it at the same height
+on the shaft as now.
+
+Her other arm and hand do not change at all: that elbow stays bent, that forearm
+stays up, and that hand stays in front of her belly at waist height with its
+fingers softly curled.
+
+The front view and the back view do not change at all.
+
+Everything else must stay exactly the same: the same face and the same facial
+features, the same completely bald head with bare scalp skin and no hair at all,
+the same skin tone, the same clothes and their colors, the same fingerless
+gloves, the same boots, the same four-head-tall proportions, the same standing
+pose of her legs, the same scale, the same position inside the frame and the
+same ground line in all four views. Do not redraw her, do not resize her, do not
+move her, and do not lengthen or shorten her legs.
+
+All four views must stay the same size as each other, exactly as they are in the
+reference.
+
+She keeps her staff. Plain flat gray background, the same gray as the reference.
+Do not include any second staff, wand, rod, stick, sword, shield, weapon, tool,
+hat, hood, cap, headband, wig, fire, glow, particles or ground shadow. No frame,
+no border, no text, no watermark. Only one character.
+```
+
+**판정 셋만 본다.** 측면 두 장에서 지팡이가 보조 손보다 앞에 서고 둘 사이가 떨어져 있는가, 보조 손과 다리 자세가 안 바뀌었는가, 네 인물의 크기가 그대로인가.
 
 ## 6. 판정 항목 — 손에 세 줄을 새로 건다
 
