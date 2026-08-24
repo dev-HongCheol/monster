@@ -7,6 +7,7 @@
   "canon_updated": [
     "docs/design/spec/art-asset-spec.md",
     "docs/design/spec/art-generation-playbook.md",
+    "docs/development/spec/docs-references.md",
     "docs/development/spec/game-combat.md"
   ],
   "canon_skip_reason": null,
