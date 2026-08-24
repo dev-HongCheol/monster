@@ -156,16 +156,64 @@
 
 #### 순서 — 한 컷을 먼저 돌리고 갈린다
 
-| # | 무엇 | 입력 | 지시문 |
-|---|---|---|---|
-| 0 | **시험 — 측면 두 장의 쥔 팔을 앞으로** (지팡이 든 채) | `2026-08-06/4dir_bald.png` | 아래 §5.3 |
-| 1 | 지팡이 없는 삭발 판 — 축 | 0의 결과 | 실행 지침 §8.2.2 축 |
-| 2 | 지팡이 없는 옷+머리 판 | 1의 결과 | 실행 지침 §8.2.2 옷+머리 |
-| 3 | 지팡이 없는 맨살 판 | 1의 결과 | 실행 지침 §8.2.2 맨살 |
+| # | 무엇 | 입력 | 지시문 | 상태 |
+|---|---|---|---|---|
+| 0 | 측면 두 장의 쥔 팔을 앞으로 (지팡이 든 채) | `2026-08-06/4dir_bald.png` | §5.3 | **통과** — `2026-08-24/4dir_bald_armfront.png` |
+| 1 | 보조 손을 오므리고 엉덩이 앞으로 | 0의 결과 | §5.4 | 대기 |
+| 2 | 지팡이 없는 삭발 판 — 축 | 1의 결과 | 실행 지침 §8.2.2 축 | |
+| 3 | 지팡이 없는 옷+머리 판 | 2의 결과 | 실행 지침 §8.2.2 옷+머리 | |
+| 4 | 지팡이 없는 맨살 판 | 2의 결과 | 실행 지침 §8.2.2 맨살 | |
 
-0번이 통과하면 **네 컷(약 $0.45)으로 끝나고 인물이 그대로 유지된다.** 0번이 떨어지면 그때 실행 지침 §7.1의 턴어라운드부터 다섯 컷을 돌고(약 $0.56, 누적 $0.67), 그 경우 인물 동일성을 새로 확인해야 한다. 어느 쪽이든 **0번 결과를 보기 전에는 1번을 돌리지 않는다** — 축이 갈리면 뒤가 전부 갈린다.
+**다섯 컷(약 $0.56)이고 인물은 그대로 유지된다.** 같은 값으로 턴어라운드부터 돌 수도 있었지만 그쪽은 인물 동일성을 걸므로, 값이 같다면 인물을 안 거는 쪽을 택한다. **앞 컷의 결과를 보기 전에는 다음 컷을 돌리지 않는다** — 축이 갈리면 뒤가 전부 갈린다.
 
-**0번의 판정은 하나다.** 좌·우 두 패널에서 쥔 팔이 몸통 **앞으로** 겹쳐 보이고, 어깨부터 손까지 끊긴 데 없이 이어져 있는가. 그 외에는 앞·뒤 두 패널이 안 바뀌었는지와 네 인물의 크기가 그대로인지만 본다.
+#### 0번 결과 — 정본의 「불가능」이 실측에서 뒤집혔다
+
+좌·우 두 패널 모두 쥔 팔이 몸통 앞으로 나왔고, 앞·뒤 두 패널은 그대로였다. **팔의 앞뒤는 자세라 편집으로 못 바꾼다**는 것이 실행 지침 §2.0을 근거로 §7.1·§7.2·§8.2.1에 세 번 적혀 있었는데, 한 컷에 통했다. 갈린 지점은 **모델이 참고할 그림이 같은 시트 안에 있느냐**다 — 팔은 앞·뒤 패널에 온전히 그려져 있어 옮겨 그리면 되지만, 천옷 밑의 살이나 머리카락 밑의 어깨는 네 패널 어디에도 없다. 그 경계를 실행 지침 §2.0에 적고 세 자리의 「못 바꾼다」를 걷었다.
+
+**보조 손은 이 컷에서 안 고쳐졌다.** 지시문이 「반대쪽 팔은 먼 쪽에 그대로 둔다」로만 적혀 있어 손가락을 편 채 엉덩이 뒤에 남았고, 그래서 1번이 붙는다.
+
+### 5.4 1번 지시문 — 보조 손
+
+**방패가 엉덩이 뒤에서 나오면 안 된다(2026-08-24 사용자 판단).** 지금 보조 손은 측면 두 장에서 엉덩이 뒤아래로 손가락을 편 채 있는데, 그 자리에 방패를 얹으면 방패가 몸 뒤에서 삐져나온 모양이 된다. **손을 엉덩이 앞쪽으로 조금 당겨** 방패의 앞부분이 몸 옆으로 보이게 한다 — 방패 전체가 보일 필요는 없고, 몸 뒤에 통째로 숨지만 않으면 된다.
+
+```
+Using this exact same 4-view turnaround sheet as the reference, redraw the same
+character in the same four views — front view, back view, left side view, right
+side view — changing only her empty hand and the forearm it belongs to.
+
+Her empty hand is the hand that is not holding the staff. It currently hangs
+beside her hip with its fingers spread flat open, and in the two side views it
+sits behind her hip. In all four views her fingers are now softly curled, as if
+loosely holding a short handle, with a small opening left inside the curl. The
+fingers stay separated from one another. The hand is neither flat open with
+spread fingers nor closed into a fist.
+
+In the left side view and in the right side view that empty hand also moves
+slightly forward, so that it rests beside the front of her hip instead of behind
+it. Her whole hand is visible and clear of her body, with no part of it hidden
+behind her hip or her thigh.
+
+The staff and the arm that holds it do not change at all, in any of the four
+views.
+
+Everything else must stay exactly the same: the same face and the same facial
+features, the same completely bald head with bare scalp skin and no hair at all,
+the same skin tone, the same clothes and their colors, the same fingerless
+gloves, the same boots, the same four-head-tall proportions, the same standing
+pose, the same scale, the same position inside the frame and the same ground
+line in all four views. Do not redraw her, do not resize her, do not move her,
+and do not lengthen or shorten her legs.
+
+All four views must stay the same size as each other, exactly as they are in the
+reference.
+
+She keeps her staff. Plain flat gray background, the same gray as the reference.
+Do not include any second staff, wand, rod, stick, sword, shield, weapon, tool,
+hat, hood, cap, headband, wig, fire, glow, particles or ground shadow. No frame,
+no border, no text, no watermark. Only one character.
+```
+
+**판정 셋만 본다.** 네 방향 모두에서 손가락이 오므려졌는가, 측면 두 장에서 손이 엉덩이에 안 가리고 통째로 보이는가, 그리고 지팡이 쪽 팔과 네 인물의 크기가 안 바뀌었는가.
 
 ### 5.3 0번 시험 지시문
 
