@@ -4,10 +4,14 @@
  * 배경 제거가 끝난 그림은 아직 스프라이트가 아니다. 잡음 알파를 눌러야 Cocos의 Trim이
  * 제 일을 하고, 네 방향을 같은 캔버스·같은 발 밑선에 세워야 방향을 바꿀 때 캐릭터가
  * 제자리에 선다. 그 두 가지가 여기 있다.
+ *
+ * 세우는 쪽이 기준을 어디서 잡는가가 이 파일의 어려운 부분이고, 그래서 `footBand`가 따로
+ * 서 있다. 요구는 하나다 — **소품은 판정에 영향을 주지 않는다.** 그림에 지팡이를 더 그렸다고
+ * 캐릭터가 서는 자리가 달라지면 안 된다.
  */
 
 import type { IRgbaImage } from '../../tests/helpers/SpriteMetrics.ts';
-import { footLineY, trimBox } from '../../tests/helpers/SpriteMetrics.ts';
+import { trimBox } from '../../tests/helpers/SpriteMetrics.ts';
 
 /** `normalizeAlpha`의 임계값. */
 export interface INormalizeOptions {
@@ -15,6 +19,35 @@ export interface INormalizeOptions {
   faintUpTo?: number;
   /** 이 값 이상의 알파를 255로 올린다. 기본 254 */
   opaqueFrom?: number;
+}
+
+/** `footBand`가 무엇을 발로 볼지. */
+export interface IFootBandOptions {
+  /**
+   * 한 행에서 이만큼 이어지면 발로 본다. 기본 20.
+   *
+   * **이 값은 「발은 굵고 소품은 가늘다」에 기댄다.** 첫 캐릭터의 발이 발 밑선 근처에서 20~28px로
+   * 이어지고 지팡이 막대는 아래 여덟 줄에서 6~12px이라 그 사이가 비어 있다. 발 밑선 근처에서
+   * 이 값을 넘는 소품이 오면 그것을 발로 착각하므로, 밑동이 굵은 무기를 들리게 되면 양쪽을 다시
+   * 재서 이 값을 옮겨야 한다.
+   */
+  minRunWidth?: number;
+  /** 발 밑선에서 위로 몇 줄까지 발 띠로 볼지. 기본 8 */
+  rows?: number;
+  /** 이 값 이하의 알파는 없는 것으로 본다. 기본 16 */
+  faintUpTo?: number;
+}
+
+/** 캐릭터가 딛고 선 자리. 좌표는 전부 픽셀 인덱스다. */
+export interface IFootBand {
+  /** 발 밑선 — 발에서 이어지는 가장 아래 행 */
+  baselineY: number;
+  /** 발 띠의 가로 중심 */
+  centerX: number;
+  /** 발 띠의 왼끝 */
+  from: number;
+  /** 발 띠의 오른끝 */
+  to: number;
 }
 
 /** `alignToCanvas`가 놓을 자리. */
@@ -25,8 +58,14 @@ export interface IAlignOptions {
   height: number;
   /** 발 밑선과 캔버스 아래 끝 사이에 남길 픽셀 수 */
   bottomMargin: number;
-  /** 발 중심을 잴 때 아래에서부터 볼 줄 수. 기본 8 */
-  footRows?: number;
+  /** 발을 어떻게 찾을지. 생략하면 `footBand`의 기본값 */
+  foot?: IFootBandOptions;
+}
+
+/** 한 행에서 이어지는 구간. 양끝을 포함한다. */
+interface IRun {
+  from: number;
+  to: number;
 }
 
 /**
@@ -60,34 +99,123 @@ export function normalizeAlpha(img: IRgbaImage, opts: INormalizeOptions = {}): I
   return { width: img.width, height: img.height, data };
 }
 
+/** 한 행에서 알파가 임계값을 넘는 구간을 왼쪽부터 모은다. */
+function rowRuns(img: IRgbaImage, y: number, faintUpTo: number): IRun[] {
+  const runs: IRun[] = [];
+  let start = -1;
+
+  for (let x = 0; x < img.width; x++) {
+    const on = img.data[(y * img.width + x) * 4 + 3] > faintUpTo;
+    if (on && start < 0) start = x;
+    else if (!on && start >= 0) {
+      runs.push({ from: start, to: x - 1 });
+      start = -1;
+    }
+  }
+  if (start >= 0) runs.push({ from: start, to: img.width - 1 });
+
+  return runs;
+}
+
+/** 두 구간이 가로로 겹치는가. 한 칸만 걸쳐도 겹친 것으로 본다. */
+function overlaps(a: IRun, b: IRun): boolean {
+  return a.from <= b.to && b.from <= a.to;
+}
+
 /**
- * 아래쪽 몇 줄의 불투명 픽셀 가로 중심 — 캐릭터가 실제로 딛고 선 자리다.
+ * 캐릭터가 딛고 선 자리를 잰다 — **그림에 무엇이 더 그려져 있든 같은 값이 나와야 한다.**
  *
- * 트림 상자의 중심을 못 쓰는 이유는 머리카락이 비대칭이기 때문이다. 첫 캐릭터에서 측면
- * 두 장의 트림 상자가 머리카락 때문에 23px씩 반대 방향으로 밀렸고, 그 중심에 맞춰 세우면
- * 좌우를 오갈 때 캐릭터가 가로로 미끄러진다.
+ * 기준이 둘 있고 둘 다 쓰지 못한 이유가 다르다. **트림 상자의 중심**은 머리카락이 비대칭이라
+ * 못 쓴다 — 첫 캐릭터의 측면 두 장이 머리카락 때문에 23px씩 반대 방향으로 밀렸고, 그 중심에
+ * 맞춰 세우면 좌우를 오갈 때 캐릭터가 가로로 미끄러진다. **아래 여덟 줄의 바깥 상자**는 그
+ * 문제를 피하지만 소품에 걸린다 — 상자는 그 띠 안에 있는 것이 굵은 발인지 6px짜리 막대인지
+ * 가리지 않으므로, 지팡이가 발치에 서 있기만 해도 중심이 여덟 픽셀 밀리고 지팡이 끝이 발보다
+ * 아래로 내려오면 그것이 발 밑선 노릇을 한다. 그러면 **그림에 무엇을 더 그렸느냐가 캐릭터가
+ * 서는 자리를 바꾼다**(2026-08-23 사용자 지적).
  *
- * @param rows 아래에서부터 몇 줄을 볼지. 발만 들어올 만큼 얇게 잡는다
- * @returns 불투명 픽셀이 없으면 `null`
+ * 그래서 발을 먼저 찾고 거기서만 잰다. 순서가 셋이다.
+ *
+ * 1. **굵은 줄이 있는 가장 아래 행을 찾는다.** 한 행에서 `minRunWidth` 이상 이어지는 구간이
+ *    있으면 그것은 발이다. 지팡이 막대는 그 절반에 못 미쳐 후보에 안 든다.
+ * 2. **거기서 겹치며 아래로 따라 내려간 행이 발 밑선이다.** 굵은 행에서 멈추면 안 되는데,
+ *    발끝이 안티에일리어싱으로 가늘어져 굵기 기준에 안 걸리기 때문이다. 네 장의 가늘어진
+ *    정도가 서로 다르면 방향을 바꿀 때 캐릭터가 세로로 튄다.
+ * 3. **발 띠 안에서 굵은 구간과 이어 붙는 것만 모아 중심을 잰다.** 손이 지팡이를 쥐고 있어
+ *    그림 전체로는 몸과 지팡이가 한 덩어리지만, 발 띠 안에서는 둘이 떨어져 있어 갈린다.
+ *
+ * 씨앗은 굵은 구간이되 거기서 이어지는 것은 굵기를 다시 묻지 않는다. 발가락처럼 굵은 줄에서
+ * 갈라져 나온 가는 구간을 떨구면 발 띠가 좁아져 중심이 도로 밀린다.
+ *
+ * 알파 `faintUpTo` 이하를 없는 것으로 보는 것은 이 함수가 「불투명 픽셀」을 잰다고 말하기
+ * 때문이다. 알파 1~16은 `normalizeAlpha`가 0으로 누르기로 한 잡음이고 실행기에서 정렬은 그
+ * 정규화 **뒤에** 오므로, 규칙을 이름에 맞춰도 출하물은 달라지지 않는다.
+ *
+ * @returns 굵은 줄이 하나도 없어 발을 못 찾으면 `null`
  */
-export function footCenterX(img: IRgbaImage, rows: number): number | null {
-  const bottom = footLineY(img);
-  if (bottom === null) return null;
+export function footBand(img: IRgbaImage, opts: IFootBandOptions = {}): IFootBand | null {
+  const minRunWidth = opts.minRunWidth ?? 20;
+  const rows = opts.rows ?? 8;
+  const faintUpTo = opts.faintUpTo ?? 16;
+  const isThick = (run: IRun): boolean => run.to - run.from + 1 >= minRunWidth;
 
-  const top = Math.max(0, bottom - rows + 1);
-  let minX = img.width;
-  let maxX = -1;
+  let thickRowY = -1;
+  for (let y = img.height - 1; y >= 0; y--) {
+    if (rowRuns(img, y, faintUpTo).some(isThick)) {
+      thickRowY = y;
+      break;
+    }
+  }
+  if (thickRowY < 0) return null;
 
-  for (let y = top; y <= bottom; y++) {
-    for (let x = 0; x < img.width; x++) {
-      if (img.data[(y * img.width + x) * 4 + 3] === 0) continue;
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
+  let baselineY = thickRowY;
+  let chain = rowRuns(img, thickRowY, faintUpTo).filter(isThick);
+  while (baselineY + 1 < img.height) {
+    const next = rowRuns(img, baselineY + 1, faintUpTo).filter((run) =>
+      chain.some((c) => overlaps(c, run)),
+    );
+    if (next.length === 0) break;
+    baselineY++;
+    chain = next;
+  }
+
+  // 발 띠 안의 굵은 구간을 씨앗으로 잡고, 이웃 행과 겹치는 것을 너비 우선으로 이어 붙인다.
+  // 한 번 훑는 것으로는 모자라다 — 씨앗보다 위에 있는 구간이 그보다 더 위의 구간을 다시
+  // 끌어오므로, 이어짐이 멎을 때까지 따라가야 발가락 끝까지 회수된다.
+  const top = Math.max(0, baselineY - rows + 1);
+  const band: IRun[][] = [];
+  for (let y = top; y <= baselineY; y++) band.push(rowRuns(img, y, faintUpTo));
+
+  const taken = band.map((runs) => runs.map(isThick));
+  const queue: Array<[number, number]> = [];
+  taken.forEach((flags, i) => {
+    flags.forEach((flag, j) => {
+      if (flag) queue.push([i, j]);
+    });
+  });
+
+  while (queue.length > 0) {
+    const [i, j] = queue.pop() as [number, number];
+    for (const k of [i - 1, i + 1]) {
+      if (k < 0 || k >= band.length) continue;
+      band[k].forEach((run, m) => {
+        if (taken[k][m] || !overlaps(run, band[i][j])) return;
+        taken[k][m] = true;
+        queue.push([k, m]);
+      });
     }
   }
 
-  if (maxX < 0) return null;
-  return (minX + maxX) / 2;
+  let from = img.width;
+  let to = -1;
+  band.forEach((runs, i) => {
+    runs.forEach((run, j) => {
+      if (!taken[i][j]) return;
+      if (run.from < from) from = run.from;
+      if (run.to > to) to = run.to;
+    });
+  });
+
+  return { baselineY, centerX: (from + to) / 2, from, to };
 }
 
 /**
@@ -103,21 +231,20 @@ export function footCenterX(img: IRgbaImage, rows: number): number | null {
  * 크기만 보던 판은 둘 다 통과시켰고, 넘친 픽셀은 아래 두 `continue`가 말없이 버렸다 —
  * 예외도 경고도 없이 **머리가 자로 그은 듯 잘린 정상 PNG**가 나온다.
  *
- * @throws 불투명 픽셀이 없어 기준을 못 잡거나, 밀고 나면 캐릭터가 캔버스를 벗어나면
+ * @throws 발을 못 찾아 기준을 잡을 수 없거나, 밀고 나면 캐릭터가 캔버스를 벗어나면
  */
 export function alignToCanvas(img: IRgbaImage, opts: IAlignOptions): IRgbaImage {
   const box = trimBox(img);
-  const foot = footCenterX(img, opts.footRows ?? 8);
-  const bottom = footLineY(img);
-  if (!box || foot === null || bottom === null) {
-    throw new Error('불투명 픽셀이 없어 정렬 기준을 잡을 수 없다');
+  const foot = footBand(img, opts.foot);
+  if (!box || foot === null) {
+    throw new Error('발을 찾지 못해 정렬 기준을 잡을 수 없다');
   }
 
   // 발 밑선이 갈 자리와 발 중심이 갈 자리를 먼저 정하고, 그 차이만큼 통째로 민다.
-  // 가로 중앙을 `width / 2`가 아니라 `(width - 1) / 2`로 잡는다 — `footCenterX`가 픽셀
+  // 가로 중앙을 `width / 2`가 아니라 `(width - 1) / 2`로 잡는다 — `footBand`가 픽셀
   // 인덱스로 답하므로 같은 좌표계여야 한다. 폭 5인 캔버스의 가운데 픽셀은 2이지 2.5가 아니다.
-  const dy = opts.height - 1 - opts.bottomMargin - bottom;
-  const dx = Math.round((opts.width - 1) / 2 - foot);
+  const dy = opts.height - 1 - opts.bottomMargin - foot.baselineY;
+  const dx = Math.round((opts.width - 1) / 2 - foot.centerX);
 
   const top = box.y + dy;
   const left = box.x + dx;

@@ -20,7 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { decodePng, encodePng } from '../../tools/art/PngCodec';
-import { alignToCanvas, footCenterX, normalizeAlpha } from '../../tools/art/Postprocess';
+import { alignToCanvas, normalizeAlpha } from '../../tools/art/Postprocess';
 import { cropColumns, panelColumns } from '../../tools/art/SheetCrop';
 import {
   alphaHistogram,
@@ -346,6 +346,57 @@ describe('panelColumns — 시트를 인물별로 가르는 열 구간', () => {
     ).toEqual([{ from: 4, to: 4 }]);
   });
 
+  /**
+   * 배경에 세로 그라데이션을 준 시트. 위에서 아래로 `span`만큼 밝아진다.
+   *
+   * 생성 시트의 배경이 단색이라는 보장이 없다 — 2026-08-24에 받은 맨살 시트가 위 176에서
+   * 아래 185로 밝아졌다.
+   */
+  function gradientSheet(width: number, band: [number, number], span: number): IRgbaImage {
+    const height = 20;
+    const data = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      const g = 170 + Math.round((span * y) / (height - 1));
+      for (let x = 0; x < width; x++) data.set([g, g, g, 255], (y * width + x) * 4);
+      for (let x = band[0]; x <= band[1]; x++) data.set([20, 30, 40, 255], (y * width + x) * 4);
+    }
+    return { width, height, data };
+  }
+
+  it('세로 그라데이션 위에서는 단색 기준이 아래쪽 배경을 인물로 읽는다', () => {
+    // 이것이 고장 난 모습이다. 좌상 모서리 하나를 배경으로 잡으면 아래쪽 배경이 그 색에서
+    // 멀어져 전경으로 잡히고, 그러면 인물 사이의 빈 열이 사라져 **구간 넷이 하나로 붙는다.**
+    // 실제 시트에서는 반대로 구간이 열한 개로 쪼개졌는데, 어느 쪽이든 호출부의 「넷이어야
+    // 한다」 검사에 걸려 실행기가 멈춘다.
+    const img = gradientSheet(16, [4, 7], 40);
+
+    expect(panelColumns(img, { background: [170, 170, 170], maxDistance: 12 })).toEqual([
+      { from: 0, to: 15 },
+    ]);
+  });
+
+  it('행마다 배경을 다시 잡으면 그라데이션 위에서도 인물 구간만 낸다', () => {
+    // 배경은 행마다 캔버스 양 끝에서 다시 잡는다. 인물이 캔버스 끝까지 오는 시트는 없으므로
+    // 그 두 점은 언제나 배경이고, 세로로 변하는 밝기를 그대로 따라간다.
+    const img = gradientSheet(16, [4, 7], 40);
+
+    expect(
+      panelColumns(img, { background: [170, 170, 170], maxDistance: 12, rowBackground: true }),
+    ).toEqual([{ from: 4, to: 7 }]);
+  });
+
+  it('행마다 배경을 잡아도 단색 시트의 답은 그대로다', () => {
+    // 옵션을 켠 것만으로 기존 시트의 판정이 달라지면 안 된다 — 달라지면 이미 뽑아 둔 열두
+    // 장의 크롭 위치가 조용히 밀린다.
+    const img = sheet(20, [
+      [2, 5],
+      [10, 14],
+    ]);
+    const opts = { background: [177, 176, 176] as [number, number, number], maxDistance: 12 };
+
+    expect(panelColumns(img, { ...opts, rowBackground: true })).toEqual(panelColumns(img, opts));
+  });
+
   it('전경이 기준보다 하나 적은 열은 배경으로 본다', () => {
     const img = sheet(8, []);
     img.data.set([20, 30, 40, 255], (0 * 8 + 4) * 4);
@@ -550,32 +601,6 @@ describe('normalizeAlpha — 매팅 결과를 규격으로 누른다', () => {
   });
 });
 
-describe('footCenterX — 캐릭터가 실제로 서 있는 가로 위치', () => {
-  it('가장 아래 몇 줄의 불투명 픽셀 중심을 낸다', () => {
-    // 머리카락이 비대칭이라 트림 상자 중심은 쓸 수 없다. 발은 캐릭터가 실제로 딛는 자리다.
-    const img = image(6, [
-      ...px(255),
-      ...px(255),
-      ...px(0),
-      ...px(0),
-      ...px(0),
-      ...px(0), // 머리카락이 왼쪽으로 쏠린 줄
-      ...px(0),
-      ...px(0),
-      ...px(0),
-      ...px(255),
-      ...px(255),
-      ...px(0), // 발이 있는 줄
-    ]);
-
-    expect(footCenterX(img, 1)).toBe(3.5);
-  });
-
-  it('불투명 픽셀이 없으면 null이다', () => {
-    expect(footCenterX(image(2, [...px(0), ...px(0)]), 1)).toBeNull();
-  });
-});
-
 describe('alignToCanvas — 네 방향을 같은 캔버스·같은 발 밑선에 세운다', () => {
   it('발 밑선을 지정한 여백 위에 놓고 발 중심을 가로 중앙에 맞춘다', () => {
     const img = image(4, [
@@ -589,7 +614,12 @@ describe('alignToCanvas — 네 방향을 같은 캔버스·같은 발 밑선에
       ...px(0),
     ]);
 
-    const out = alignToCanvas(img, { width: 5, height: 6, bottomMargin: 1 });
+    const out = alignToCanvas(img, {
+      width: 5,
+      height: 6,
+      bottomMargin: 1,
+      foot: { minRunWidth: 1 },
+    });
 
     expect(out.width).toBe(5);
     expect(out.height).toBe(6);
@@ -603,7 +633,9 @@ describe('alignToCanvas — 네 방향을 같은 캔버스·같은 발 밑선에
     // **머리가 가로 직선으로 잘린 정상 PNG**를 내놓았다(실측 알파 10px → 5px).
     const tall = image(1, Array.from({ length: 10 }, () => px(255)).flat());
 
-    expect(() => alignToCanvas(tall, { width: 20, height: 20, bottomMargin: 15 })).toThrow('세로');
+    expect(() =>
+      alignToCanvas(tall, { width: 20, height: 20, bottomMargin: 15, foot: { minRunWidth: 1 } }),
+    ).toThrow('세로');
   });
 
   it('발 중심에 맞췄을 때 가로로 넘치면 던진다', () => {
@@ -623,14 +655,21 @@ describe('alignToCanvas — 네 방향을 같은 캔버스·같은 발 밑선에
     const foot = [...px(0), ...px(0), ...px(0), ...px(0), ...px(0), ...px(0), ...px(255), ...px(0)];
     const img = image(8, [...hair, ...hair, ...foot]);
 
-    expect(() => alignToCanvas(img, { width: 8, height: 3, bottomMargin: 0, footRows: 1 })).toThrow(
-      '가로',
-    );
+    expect(() =>
+      alignToCanvas(img, {
+        width: 8,
+        height: 3,
+        bottomMargin: 0,
+        foot: { minRunWidth: 1, rows: 1 },
+      }),
+    ).toThrow('가로');
   });
 
   it('캐릭터가 캔버스보다 크면 던진다', () => {
     const img = image(4, [...px(255), ...px(255), ...px(255), ...px(255)]);
 
-    expect(() => alignToCanvas(img, { width: 2, height: 2, bottomMargin: 0 })).toThrow();
+    expect(() =>
+      alignToCanvas(img, { width: 2, height: 2, bottomMargin: 0, foot: { minRunWidth: 1 } }),
+    ).toThrow();
   });
 });

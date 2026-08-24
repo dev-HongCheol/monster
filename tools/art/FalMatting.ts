@@ -17,8 +17,17 @@ import { decodePng } from './PngCodec.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-/** 받은 PNG를 두는 자리. `docs/temp/`는 `.gitignore` 대상이라 결과물이 커밋되지 않는다. */
-const CACHE_DIR = path.join(ROOT, 'docs/temp/matting-cache');
+/**
+ * 받은 PNG를 두는 자리. `.gitignore` 대상이라 결과물이 커밋되지 않는다.
+ *
+ * **`docs/temp/`에 두지 않는다.** 그 폴더의 규칙은 「비교하고 버린 것을 두는 스크래치」라
+ * 언제든 통째로 지워도 되는 자리인데, 이 캐시는 지우면 **재생성에 실제로 돈이 든다.** 규칙과
+ * 실물이 어긋난 채로 두면 폴더를 청소한 사람이 그 사실을 모르는 채로 과금을 되살린다.
+ *
+ * 대신 `art-source/` 아래에 둔다. 그 폴더를 지배하는 규약이 「뽑은 것을 잃지 않게 보관한다」라,
+ * 여기 있는 것이 무엇인지와 왜 함부로 지우면 안 되는지가 자리로 드러난다.
+ */
+const CACHE_DIR = path.join(ROOT, 'art-source/matting-cache');
 
 /**
  * 한 번 실행에서 허용하는 최대 호출 수.
