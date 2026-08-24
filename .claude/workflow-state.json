@@ -9,7 +9,7 @@
     "docs/design/spec/art-generation-playbook.md"
   ],
   "canon_skip_reason": null,
-  "qa_doc_fingerprint": "e0f330e8c87548b7",
+  "qa_doc_fingerprint": "ad44800f5b3ab3e1",
   "verification": {
     "cso_done": true,
     "ts_check_clean": true,

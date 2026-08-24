@@ -677,7 +677,8 @@ describe('crossItemViolations — 한 장만 봐서는 못 잡는 어긋남', ()
 
   it('한 시트의 좌우 트림 가로가 크게 다르면 위반이다', () => {
     // 실측한 결함이 이것이다 — 맨살 시트의 왼쪽 패널에서 지팡이 쥐던 팔이 통째로 안 그려져
-    // 트림 가로가 110과 131로 갈렸다(19% 차). 한 장씩 보는 판정은 둘 다 규격 안이라 통과시킨다.
+    // 트림 가로가 110과 131로 갈렸다 — `spread`가 큰 쪽으로 나누므로 16.0%다. 한 장씩 보는
+    // 판정은 둘 다 규격 안이라 통과시킨다.
     const items = healthySet().map((item) =>
       item.name === 'player_base_left'
         ? withFigure('player_base', 'left', { width: 110, height: 470 })
