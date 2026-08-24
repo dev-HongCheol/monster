@@ -142,21 +142,75 @@
 
 받은 시트는 §9의 규약대로 `art-source/player/2026-08-23/`에 `4dir_dressed_nostaff.png`·`4dir_bald_nostaff.png`·`4dir_skin_nostaff.png`로 보관하고, 채택 컷마다 엔드포인트 전체 경로·프롬프트 전문·시드·설정·레퍼런스 경로 다섯을 같은 폴더의 기록에 남긴다.
 
-### 5.2 다시 뽑는다 — 2단계 턴어라운드부터 (2026-08-24 리워크)
+### 5.2 다시 뽑는다 — 팔을 옮기는 한 컷을 먼저 시험한다 (2026-08-24 리워크)
 
-첫 회차 산출물이 §6.1의 결함 넷을 안고 있고, 같은 날 정해진 양손 장비 요구가 손 위치를 바꿔 놓았다(§6.2). **둘 다 자세라서 편집으로는 못 고친다**(실행 지침 §2.0 — 한 번도 생성된 적 없는 부위는 편집으로 발명되지 않는다). 그래서 지팡이 없는 변형본 셋만 다시 받는 부분 재생성이 성립하지 않고, 2단계 4방향 턴어라운드부터 다시 돈다.
+**다시 뽑는 이유는 v2 층 구조 셋과 사용자 요청 하나다.** 맨살 판이 6% 작아 소매가 팔을 안 덮고(§6.1), 뒷모습의 쥔 손이 펴져 무기가 통과하지 못하며, 맨살 판에 팔이 하나 없어 파츠가 안 나온다. 여기에 **측면 두 장에서 지팡이 쥔 팔을 앞으로 당겨 지팡이가 방패보다 먼저 보이게 한다**는 요청이 얹힌다(2026-08-24 사용자). **v1 화면에서 어색한 것은 판정에 넣지 않는다** — 지금 뽑는 것은 스킨을 얹을 v2 최종본이고, 그 기준으로 서지 않는 항목은 회차를 돌릴 이유가 못 된다.
+
+**그래서 빈 손 모양은 이번 회차의 목표에서 뺀다.** v2에서 그 손은 방패가 통째로 덮어 화면에 안 나오므로(§6.2), 오므린 모양을 받으려고 유료 회차를 돌리지 않는다. 다음 캐릭터의 턴어라운드에서 공짜로 받으면 된다.
+
+#### 무엇이 걸려 있나 — 인물 동일성
+
+팔의 앞뒤를 바꾸려면 실행 지침 §7.1의 4방향 턴어라운드부터 다시 돌아야 한다는 것이 지금 정본의 입장이다(§2.0 — 몸통에 가려 그려진 적 없는 팔은 편집으로 발명되지 않는다). **그런데 그 길은 인물을 건다.** fal.ai는 재현을 보장하지 않으므로(§9), 4방향을 다시 구성하면 지금 열두 장과 미세하게 다른 인물이 나올 수 있다. 반면 기존 시트를 레퍼런스로 받는 편집은 인물을 그대로 유지한다.
+
+**그 정본의 입장은 아직 시험된 적이 없다.** §2.0이 실제로 확인한 것은 지팡이·옷·머리카락이 **가린 자리**를 편집으로 못 되살린다는 것이고, 「팔을 몸통 앞으로 옮긴다」는 그 사례에 들어맞는지 아직 재 보지 않았다. 한 컷이 $0.111이므로 재 보는 값이 싸다.
+
+#### 순서 — 한 컷을 먼저 돌리고 갈린다
 
 | # | 무엇 | 입력 | 지시문 |
 |---|---|---|---|
-| 1 | 4방향 턴어라운드 (지팡이 든 채) | 1단계 정면 베이스 | 실행 지침 §7.1 |
-| 2 | 삭발 시트 | 1의 결과 | 실행 지침 §7.3 B |
-| 3 | 지팡이 없는 삭발 판 — 축 | 2의 결과 | 실행 지침 §8.2.2 축 |
-| 4 | 지팡이 없는 옷+머리 판 | 3의 결과 | 실행 지침 §8.2.2 옷+머리 |
-| 5 | 지팡이 없는 맨살 판 | 3의 결과 | 실행 지침 §8.2.2 맨살 |
+| 0 | **시험 — 측면 두 장의 쥔 팔을 앞으로** (지팡이 든 채) | `2026-08-06/4dir_bald.png` | 아래 §5.3 |
+| 1 | 지팡이 없는 삭발 판 — 축 | 0의 결과 | 실행 지침 §8.2.2 축 |
+| 2 | 지팡이 없는 옷+머리 판 | 1의 결과 | 실행 지침 §8.2.2 옷+머리 |
+| 3 | 지팡이 없는 맨살 판 | 1의 결과 | 실행 지침 §8.2.2 맨살 |
 
-다섯 컷이고 컷당 $0.111이라 실비가 약 $0.56이다. **§7.3의 C(지팡이 든 맨살 판)는 뽑지 않는다** — 맨살 시트를 축에서 파생시키는 방식으로 갈아타면서(§5) 쓰이지 않게 됐고, `build.ts`가 요구하는 것도 `*_nostaff.png` 셋뿐이다.
+0번이 통과하면 **네 컷(약 $0.45)으로 끝나고 인물이 그대로 유지된다.** 0번이 떨어지면 그때 실행 지침 §7.1의 턴어라운드부터 다섯 컷을 돌고(약 $0.56, 누적 $0.67), 그 경우 인물 동일성을 새로 확인해야 한다. 어느 쪽이든 **0번 결과를 보기 전에는 1번을 돌리지 않는다** — 축이 갈리면 뒤가 전부 갈린다.
 
-**다섯 컷을 한 세션에서 받는 이유는 §5와 같다.** 그리고 이번에는 1·2번도 같은 세션에 들어간다 — 손 모양과 팔의 앞뒤가 1번에서 정해지고 나머지 넷이 그것을 유지만 하므로, 1번이 갈리면 뒤가 전부 갈린다.
+**0번의 판정은 하나다.** 좌·우 두 패널에서 쥔 팔이 몸통 **앞으로** 겹쳐 보이고, 어깨부터 손까지 끊긴 데 없이 이어져 있는가. 그 외에는 앞·뒤 두 패널이 안 바뀌었는지와 네 인물의 크기가 그대로인지만 본다.
+
+### 5.3 0번 시험 지시문
+
+**한 번에 하나만 바꾼다.** §3이 「지팡이를 지워라」로 몸까지 흔들렸던 회차를 들고 있으므로, 팔을 옮기는 일과 지팡이를 지우는 일을 한 컷에 겹치지 않는다. 지팡이는 든 채로 두고 팔만 옮긴다.
+
+```
+Using this exact same 4-view turnaround sheet as the reference, redraw the same
+character in the same four views — front view, back view, left side view, right
+side view — changing only which arm holds the staff in the two side views.
+
+In the left side view and in the right side view the staff is currently held by
+the arm further from the viewer, so that arm and the staff are partly hidden
+behind her torso. In both of these two views the staff is now held by the arm
+nearer to the viewer instead. That whole near arm — shoulder, upper arm, elbow,
+forearm and hand — is drawn in front of her torso, complete and unbroken, with
+no part of it hidden behind her body, and the staff it holds is fully visible in
+front of her. Her other arm stays on the far side with its hand empty.
+
+The front view and the back view do not change at all.
+
+The gripping hand keeps the exact same half-closed shape it has now: the fingers
+stay curled and stay separated from one another, the opening inside the grip
+stays open, and the hand neither closes into a fist nor opens flat.
+
+Both of her arms are drawn in every one of the four views. Neither arm is
+omitted or shortened.
+
+Everything else must stay exactly the same: the same face and the same facial
+features, the same completely bald head with bare scalp skin and no hair at all,
+the same skin tone, the same clothes and their colors, the same fingerless
+gloves, the same boots, the same four-head-tall proportions, the same standing
+pose, the same scale, the same position inside the frame and the same ground
+line in all four views. Do not redraw her, do not resize her, do not move her,
+and do not lengthen or shorten her legs.
+
+All four views must stay the same size as each other, exactly as they are in the
+reference.
+
+She keeps her staff. Plain flat gray background, the same gray as the reference.
+Do not include any second staff, wand, rod, stick, sword, shield, weapon, tool,
+hat, hood, cap, headband, wig, fire, glow, particles or ground shadow. No frame,
+no border, no text, no watermark. Only one character.
+```
+
+**설정은 편집 회차의 값을 그대로 쓴다** — `openai/gpt-image-2/edit`, Aspect Ratio 16:9, 나오는 크기 1088×608(실행 지침 §8.2.2). 크기가 커지면 뒤의 셋이 전부 정렬에서 멈춘다.
 
 ## 6. 판정 항목 — 손에 세 줄을 새로 건다
 
@@ -201,7 +255,7 @@
 
 **그래서 슬롯을 해부학이 아니라 역할로 나눈다.** 측면 두 장에서 쥔 팔이 좌우 같은 쪽이면, 해부학적으로는 방향마다 다른 손이 무기를 들고 있는 셈이 된다. `왼팔`·`오른팔`로 이름 붙이면 방향마다 어느 슬롯에 무기가 붙는지가 갈리지만, `무기 팔`·`보조 팔`로 붙이면 그리기 순서가 방향과 무관하게 하나로 고정된다. 층 표를 실제로 그렇게 가르는 일은 리깅 슬라이스가 실물 파츠를 보고 하며, 그 미결은 백로그 `F103`이 든다.
 
-**빈 손 모양도 같은 날 함께 정해졌다.** 현행 시트의 빈 손이 활짝 펴져 있어 v1 화면에서 어색하다는 판단이 나왔고, 살짝 오므린 모양으로 받기로 했다. 이 손은 v1에서 시전 손으로 그대로 화면에 나가고 v2에서는 그 위에 방패가 얹히는데, 오므린 모양이 두 쓰임을 다 받는다.
+**빈 손 모양도 같은 날 함께 정해졌지만, 그것 때문에 다시 뽑지는 않는다.** 활짝 편 손이 v1 화면에서 어색하다는 판단에서 나온 요구인데, **v1 화면의 어색함은 이 트랙의 판정 기준이 아니다** — 지금 뽑는 것은 스킨을 얹을 v2 최종본이고, v2에서 그 손은 방패가 통째로 덮어 화면에 안 나온다. 그래서 오므린 모양은 다음 캐릭터의 턴어라운드에서 공짜로 받을 항목으로 두고(실행 지침 §7.1), 이 캐릭터를 위해 유료 회차를 돌리지 않는다.
 
 ## 7. 무엇을 만드나 — 정렬 함수 손질과 출하 실행기
 
