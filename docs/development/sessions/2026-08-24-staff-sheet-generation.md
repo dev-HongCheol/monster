@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-08-24
 - **브랜치:** `feat/staff-layer`
-- **상태:** 진행 중 — 이 회차의 시트로 열두 장을 교체했지만(`build.ts`), 뒤이은 사용자 검증이 결함 넷을 찾아 셋은 시트를 다시 뽑아야 닫힌다(`F104`). 아래 §4와 §7은 그 검증 결과를 반영해 고쳤다
+- **상태:** 진행 중 — 이 회차의 시트로 열두 장을 교체했지만(`build.ts`), 뒤이은 사용자 검증이 결함 넷을 찾아 셋은 시트를 다시 뽑아야 닫히고, 그 재생성이 같은 슬라이스 안에서 이어진다(계획 §5.2). 아래 §4와 §7은 그 검증 결과를 반영해 고쳤다
 - **계획:** [`2026-08-23-staff-layer-plan.md`](2026-08-23-staff-layer-plan.md) §5·§6
 - **정본:** [`art-generation-playbook.md`](../../design/spec/art-generation-playbook.md) §8.2 — 이 회차에서 확정한 생성 방식(밑판을 입력으로 주고 그 위에 얹거나 벗긴다)과 손 판정 셋, 받은 시트를 재는 항목이 그리로 갔다. 배경이 단색이 아닐 수 있다는 사실은 코드가 든다 — `tools/art/SheetCrop.ts`의 `rowBackground` 주석이다
 - **실비:** $0.333 (`openai/gpt-image-2/edit` × 3회, 컷당 $0.111). 실패한 회차 둘이 여기 포함된다
@@ -37,7 +37,7 @@
 
 **지시문 셋의 정본은 실행 지침 §8.2.2다.** 아래는 그 현재 판이고, 정본이 고쳐지면 이 절도 함께 고친다 — 두 곳이 갈리면 정본이 이긴다.
 
-**현행 열두 장은 마지막 두 문단이 붙기 전 판으로 나왔다.** 뒷모습에서도 쥔 손을 유지하라는 문단과 네 방향 전부에 팔이 둘 다 있어야 한다는 문단이 §7의 결함을 보고 나중에 들어갔고, 그래서 그 결함 둘은 시트를 다시 뽑을 때 닫힌다. 옷+머리 지시문에서는 반대로 「삭발되기 전 머리색과 같은 진홍색」 한 문장이 빠졌다 — 이 회차의 입력 계보에만 뜻이 통하는 말이라 정본에 남길 수 없다.
+**현행 열두 장은 아래 문단 넷이 붙기 전 판으로 나왔다.** 뒷모습에서도 쥔 손을 유지하라는 문단과 네 방향 전부에 팔이 둘 다 있어야 한다는 문단이 §7의 결함을 보고 들어갔고, 쥔 팔이 화면 가까운 쪽이라는 문단과 빈 손이 오므린 모양이라는 문단이 양손 장비 결정을 보고 뒤따랐다. 넷 다 다음 회차부터 듣는다. 옷+머리 지시문에서는 반대로 「삭발되기 전 머리색과 같은 진홍색」 한 문장이 빠졌다 — 이 회차의 입력 계보에만 뜻이 통하는 말이라 정본에 남길 수 없다.
 
 ### 2.1 `bald` — 원본에서 지팡이만 지운다
 
@@ -63,6 +63,14 @@ still shows the same half-closed grip — not an open hand with spread fingers.
 
 Both of her arms are drawn in every one of the four views. Neither arm is
 omitted, shortened, or hidden behind her body.
+
+In the left and right side views the arm that holds the staff in the reference
+is the arm nearer to the viewer, drawn in front of her torso, and it stays
+there. Do not move it behind her torso and do not give the grip to her other
+arm.
+
+Her other hand is empty and its fingers stay softly curled, exactly as they are
+in the reference: not flat open with spread fingers, and not closed into a fist.
 
 Everything else must stay exactly the same: the same face and the same facial
 features, the same completely bald head with bare scalp skin and no hair at all,
@@ -116,6 +124,14 @@ Both of her arms are drawn in every one of the four views. Neither arm is
 omitted, shortened, or hidden behind her body, and both keep the exact length
 and the exact position they have in the reference.
 
+In the left and right side views her gripping arm — the one whose hand is
+half-closed — is the arm nearer to the viewer, drawn in front of her torso,
+exactly as in the reference. Do not move it behind her torso and do not give the
+grip to her other arm.
+
+Her other hand is empty and its fingers stay softly curled, exactly as they are
+in the reference: not flat open with spread fingers, and not closed into a fist.
+
 Plain flat gray background, the same gray as the reference. Do not include any
 staff, wand, rod, stick, sword, weapon, tool, hat, hood, cap, headband, fire,
 glow, particles or ground shadow. No frame, no border, no text, no watermark.
@@ -161,6 +177,14 @@ still shows the same half-closed grip — not an open hand with spread fingers.
 Both of her arms are drawn in every one of the four views. Neither arm is
 omitted, shortened, or hidden behind her body, and both keep the exact length
 and the exact position they have in the reference.
+
+In the left and right side views her gripping arm — the one whose hand is
+half-closed — is the arm nearer to the viewer, drawn in front of her torso,
+exactly as in the reference. Do not move it behind her torso and do not give the
+grip to her other arm.
+
+Her other hand is empty and its fingers stay softly curled, exactly as they are
+in the reference: not flat open with spread fingers, and not closed into a fist.
 
 Plain flat gray background, the same gray as the reference. Do not include any
 staff, wand, rod, stick, weapon, tool, glove, boot, shoe, sock, hat, hood, cap,
@@ -236,6 +260,6 @@ text, no watermark. Only one character.
 - **인물 동일성** — 눈 모양·눈 색·턱선이 원본과 일치하고 좌·우 3/4 각도가 유지됐다
 - **`skin` 왼쪽 패널에 팔이 하나 없다.** 지팡이를 쥐던 팔이 손목이 아니라 **어깨부터 통째로** 빠져 있는데, 이 회차는 팔의 존재 자체를 세는 항목을 안 돌려 그대로 통과시켰다
 
-**이 절이 통과시킨 것 넷이 뒤에 사용자 검증에서 걸렸다.** 위의 쥔 손과 팔 누락, §4의 6% 축소, 그리고 출하본 두 장의 눈 흰자 투명이다. 넷 다 이 회차의 눈검사와 자동 검증을 지난 뒤에 사람 눈이 찾았고, 셋은 시트를 다시 뽑아야 닫힌다(`F104`). 실측·처방·아직 안 고친 것은 [`staff-layer-test.md`](../../qa/staff-layer-test.md) §7이 든다.
+**이 절이 통과시킨 것 넷이 뒤에 사용자 검증에서 걸렸다.** 위의 쥔 손과 팔 누락, §4의 6% 축소, 그리고 출하본 두 장의 눈 흰자 투명이다. 넷 다 이 회차의 눈검사와 자동 검증을 지난 뒤에 사람 눈이 찾았고, 셋은 시트를 다시 뽑아야 닫힌다 — 그 회차가 이 슬라이스 안에서 바로 이어진다(계획 §5.2). 실측·처방·아직 안 고친 것은 [`staff-layer-test.md`](../../qa/staff-layer-test.md) §7이 든다.
 
 **축소본으로 판정하면 안 된다.** 이 회차에서 두 번 오독했다. 전체 시트를 축소해 보고 「손이 주먹으로 닫혔다」와 「측면에서 얼굴이 머리카락에 가려졌다」로 읽었는데, 3배로 확대하니 둘 다 정상이었다. 손과 얼굴은 **크롭해서 확대한 뒤** 본다.
