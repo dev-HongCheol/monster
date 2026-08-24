@@ -162,10 +162,11 @@
 | 1 | 보조 손을 오므려 배 앞 허리 높이로 | 0의 결과 | §5.4 | **부분 통과** — 보조 손은 맞고, 잠가 둔 셋이 흔들렸다(아래) |
 | 2 | 지팡이 손을 보조 손보다 앞으로 | 1의 결과 | §5.5 | **부분 통과** — 오른쪽은 맞고 왼쪽이 무너졌다 |
 | 3 | **왼쪽 패널을 오른쪽의 반전으로 채운다** | 2의 결과 | 유료 아님 — `MirrorPanel.ts` | **완료** — `4dir_bald_mirrored.png` |
-| 4 | **왼쪽 뷰를 해부학 기준으로 — 보조 팔을 앞으로** | 3의 결과 | §5.7 | 대기 |
-| 5 | 지팡이 없는 삭발 판 — 축 | 4의 결과 | 실행 지침 §8.2.2 축 | |
-| 6 | 지팡이 없는 옷+머리 판 | 5의 결과 | 실행 지침 §8.2.2 옷+머리 | |
-| 7 | 지팡이 없는 맨살 판 | 5의 결과 | 실행 지침 §8.2.2 맨살 | |
+| 4 | 왼쪽 뷰를 해부학 기준으로 — 보조 팔을 앞으로 | 3의 결과 | §5.7 | **부분 통과** — 배치는 맞고 지팡이가 등 뒤로 떨어졌다 |
+| 5 | 왼쪽 뷰의 지팡이를 몸 옆에 붙인다 | 4의 결과 | §5.8 | 대기 |
+| 6 | 지팡이 없는 삭발 판 — 축 | 5의 결과 | 실행 지침 §8.2.2 축 | |
+| 7 | 지팡이 없는 옷+머리 판 | 6의 결과 | 실행 지침 §8.2.2 옷+머리 | |
+| 8 | 지팡이 없는 맨살 판 | 6의 결과 | 실행 지침 §8.2.2 맨살 | |
 
 **유료 컷 여섯(약 $0.67)이고 인물은 그대로 유지된다.** 자세를 잡는 데 세 컷이 들었고, 네 번째 자리는 유료 회차 대신 반전으로 메웠다(§5.6). 자세를 잡는 데 세 컷이 든 것은 **한 컷에 하나씩만 바꿨기 때문**이고, 그 대신 매 컷이 통했다. 턴어라운드부터 도는 길도 값은 비슷한데 그쪽은 인물 동일성을 건다. 같은 값으로 턴어라운드부터 돌 수도 있었지만 그쪽은 인물 동일성을 걸므로, 값이 같다면 인물을 안 거는 쪽을 택한다. **앞 컷의 결과를 보기 전에는 다음 컷을 돌리지 않는다** — 축이 갈리면 뒤가 전부 갈린다.
 
@@ -401,6 +402,67 @@ no border, no text, no watermark. Only one character.
 **판정 넷.** 왼쪽 뷰에서 보조 손이 몸통 앞으로 나와 통째로 보이는가, 같은 뷰에서 지팡이가 몸통 뒤이면서 위아래로는 보이는가, 나머지 세 패널이 안 바뀌었는가, 네 인물의 크기가 그대로인가.
 
 **나머지 세 패널이 흔들리면 왼쪽만 떼어 붙인다.** 편집은 시트 전체를 다시 그리므로(실행 지침 §8.2.5) 지시 안 한 패널이 흔들릴 수 있다. 그때는 새 판을 통째로 쓰지 않고 왼쪽 패널만 3번 판에 옮겨 붙인다 — `MirrorPanel.ts`가 하는 일과 같은 종류이고, 크기가 1% 넘게 갈리면 붙이지 않고 다시 뽑는다.
+
+### 5.8 5번 지시문 — 왼쪽 뷰의 지팡이를 몸 옆에 붙인다
+
+4번은 배치를 요구대로 냈다 — 왼쪽 뷰에서 보조 팔이 앞으로 오고 지팡이 팔이 뒤로 갔다. 다만 **지팡이가 몸에서 떨어져 등 뒤에 섰다.** 몸과 지팡이 사이에 빈 공간이 있고 쥔 손이 엉덩이 위에 얹혀서, 지팡이를 옆에 짚은 것이 아니라 **등 뒤로 들고 있는** 그림이 됐다.
+
+**오른쪽 뷰와 견주면 어긋남이 분명하다.** 그쪽은 지팡이가 몸에 붙어 몸통과 겹치는데, 왼쪽만 떨어져 있다. 실행 지침 §7.1의 프롬프트도 「지팡이를 네 방향 모두에서 세로로, 몸 가까이」로 적어 뒀다 — 먼 쪽으로 보내는 것과 몸에서 떼는 것은 다른 일인데 4번 지시문이 그 둘을 안 갈랐다.
+
+```
+Using this exact same 4-view turnaround sheet as the reference, redraw the same
+character in the same four views — front view, back view, left side view, right
+side view — changing only the staff and the staff arm in the left side view.
+
+In the left side view she is holding the staff out behind her back: there is a
+gap of empty background between the staff and her body, and her staff hand sits
+on top of her hip. Bring the staff back against her side. In that view the staff
+stands vertical directly beside her body and overlaps her torso and her hip,
+just as close to her body as it is in the right side view.
+
+Her body is in front of that arm, so her torso and her hip cover her staff hand
+and cover the middle of the staff. Only the part of the staff above her shoulder
+and the part below her hip stay visible.
+
+Her near arm — the one whose hand is softly curled in front of her belly — does
+not change at all, and it stays the frontmost part of her.
+
+The front view, the back view and the right side view do not change at all.
+
+Everything else must stay exactly the same: the same face and the same facial
+features, the same completely bald head with bare scalp skin and no hair at all,
+the same skin tone, the same clothes and their colors, the same fingerless
+gloves, the same boots, the same four-head-tall proportions, the same standing
+pose of her legs, the same scale, the same position inside the frame and the
+same ground line in all four views. Do not redraw her, do not resize her, do not
+move her, and do not lengthen or shorten her legs.
+
+All four views must stay the same size as each other, exactly as they are in the
+reference.
+
+She keeps her staff. Plain flat gray background, the same gray as the reference.
+Do not include any second staff, wand, rod, stick, sword, shield, weapon, tool,
+hat, hood, cap, headband, wig, fire, glow, particles or ground shadow. No frame,
+no border, no text, no watermark. Only one character.
+```
+
+**판정 셋.** 왼쪽 뷰에서 지팡이가 몸에 붙어 몸통과 겹치는가, 몸이 쥔 손을 덮는가, 나머지 세 패널과 크기가 그대로인가.
+
+### 5.9 누적 축소가 7%에 다다랐다 — 마지막에 한 번 되돌린다
+
+편집 회차마다 인물이 줄어드는 것은 실행 지침 §8.2.5가 든다. 이 슬라이스의 누적치는 이렇다.
+
+| 시트 | 패널별 인물 세로 | 원본 대비 |
+|---|---|---|
+| 원본 `4dir_bald` | 486 / 484 / 483 / 482 | — |
+| 3번 반전(축) | 465 / 462 / 461 / 461 | −4.3% |
+| 4번 해부학 | 453 / 447 / 446 / 446 | **−6.8%** |
+
+**그대로 두면 게임 화면의 플레이어가 그만큼 작아진다.** 캔버스 246×493은 안 바뀌므로 그 안의 인물이 작아지면 표시도 작아진다. 지금 출하돼 있는 열두 장이 480~485이라 6~7% 차이는 눈에 띈다.
+
+**되돌리는 자리는 후처리다.** 시트 셋을 받은 뒤 `build.ts`에 넣기 전에 목표 인물 키(현행 출하본 기준 482 근처)로 맞춘다. **확대 흔적은 화면에 안 남는다** — 캔버스 493이 표시 세로 96으로 5배 축소되므로, 7% 확대에서 생기는 보간은 그 축소에 묻힌다. `alignToCanvas`의 「평행 이동만 한다」는 불변식은 건드리지 않고, 시트 준비 단계에 별도 조각으로 둔다.
+
+**컷을 더 돌리기 전에 정할 필요는 없다.** 정규화는 마지막 시트 셋에 한 번 걸면 되고, 그때까지 회차가 몇 번 더 줄어도 같은 한 번으로 덮인다.
 
 ## 6. 판정 항목 — 손에 세 줄을 새로 건다
 
