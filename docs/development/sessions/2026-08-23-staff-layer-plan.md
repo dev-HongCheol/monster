@@ -159,7 +159,7 @@
 | # | 무엇 | 입력 | 지시문 | 상태 |
 |---|---|---|---|---|
 | 0 | 측면 두 장의 쥔 팔을 앞으로 (지팡이 든 채) | `2026-08-06/4dir_bald.png` | §5.3 | **통과** — `2026-08-24/4dir_bald_armfront.png` |
-| 1 | 보조 손을 오므려 배 앞 허리 높이로 | 0의 결과 | §5.4 | **통과** — 자세는 맞고, 대신 지팡이가 뒤로 밀렸다 |
+| 1 | 보조 손을 오므려 배 앞 허리 높이로 | 0의 결과 | §5.4 | **부분 통과** — 보조 손은 맞고, 잠가 둔 셋이 흔들렸다(아래) |
 | 2 | 지팡이 손을 보조 손보다 앞으로 | 1의 결과 | §5.5 | 대기 |
 | 3 | 지팡이 없는 삭발 판 — 축 | 2의 결과 | 실행 지침 §8.2.2 축 | |
 | 4 | 지팡이 없는 옷+머리 판 | 3의 결과 | 실행 지침 §8.2.2 옷+머리 | |
@@ -275,6 +275,13 @@ no border, no text, no watermark. Only one character.
 
 **그래서 앞뒤 관계를 명시적으로 못 박는다.** 「쥔 팔이 가까운 쪽」만으로는 부족하다 — 그것은 몸통과의 앞뒤(그리기 순서)를 정할 뿐이고, 여기서 필요한 것은 **두 손 사이의 앞뒤**다. 지팡이가 인물의 가장 앞에 서고 다른 어떤 부위도 그보다 앞으로 나오지 않는다는 것을 기준으로 삼는다.
 
+**1번이 잠가 둔 자리 둘도 여기서 함께 되돌린다.** 지시문이 「지팡이와 그 팔은 어느 방향에서도 안 바뀐다」로 잠갔는데도 둘이 따라 움직였다.
+
+- **뒷모습에서 지팡이가 손을 떠났다.** 보조 손을 올릴 때 쥔 손도 함께 허리로 올라갔고, 지팡이는 옛 자리에 남아 **혼자 서 있는 막대**가 됐다. 실행 지침 §8.2.1의 「네 방향 전부에서 쥔 손이 남아 있다」가 잡는 자리인데, 이번에는 손 모양이 아니라 손과 물건의 연결이 끊겼다.
+- **네 방향 모두에서 두 손이 붙었다.** 둘 다 허리 높이로 모이면서 측면 두 장에서는 거의 겹친다. 그대로 두면 §8.2.1의 「손이 뭉개지지 않았다」에 걸리고, 리깅에서 두 손을 각각 파츠로 못 뗀다.
+
+**한 컷으로 함께 잡는 이유는 대상이 하나이기 때문이다.** 셋 다 지팡이 쥔 팔의 위치 문제라, 「팔을 앞으로」와 「팔이 지팡이를 다시 쥐게」는 같은 팔에 대한 한 가지 지시로 묶인다.
+
 ```
 Using this exact same 4-view turnaround sheet as the reference, redraw the same
 character in the same four views — front view, back view, left side view, right
@@ -293,11 +300,20 @@ torso, complete and unbroken from shoulder to hand. Her elbow stays nearly
 straight, the staff stays vertical, and she keeps holding it at the same height
 on the shaft as now.
 
+In the back view her staff hand has let go of the staff, so the staff now stands
+on its own beside her. Put it back into her hand: in the back view her staff
+hand holds the shaft again, with the shaft passing through her curled fingers,
+and the staff stays vertical and stays where it is on the ground.
+
+In every one of the four views there is clear empty background space between her
+two hands. They do not touch and they do not overlap, and the outline of each
+hand is complete and visible on its own.
+
 Her other arm and hand do not change at all: that elbow stays bent, that forearm
 stays up, and that hand stays in front of her belly at waist height with its
 fingers softly curled.
 
-The front view and the back view do not change at all.
+The front view does not change.
 
 Everything else must stay exactly the same: the same face and the same facial
 features, the same completely bald head with bare scalp skin and no hair at all,
@@ -316,7 +332,7 @@ hat, hood, cap, headband, wig, fire, glow, particles or ground shadow. No frame,
 no border, no text, no watermark. Only one character.
 ```
 
-**판정 셋만 본다.** 측면 두 장에서 지팡이가 보조 손보다 앞에 서고 둘 사이가 떨어져 있는가, 보조 손과 다리 자세가 안 바뀌었는가, 네 인물의 크기가 그대로인가.
+**판정 다섯을 본다.** 측면 두 장에서 지팡이가 보조 손보다 앞에 서고 둘 사이가 떨어져 있는가, 뒷모습에서 지팡이가 손에 쥐어져 있는가, 네 방향 모두 두 손이 서로 안 겹치는가, 보조 손과 다리 자세가 안 바뀌었는가, 네 인물의 크기가 그대로인가.
 
 ## 6. 판정 항목 — 손에 세 줄을 새로 건다
 
