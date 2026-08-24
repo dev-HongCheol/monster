@@ -35,9 +35,9 @@
 
 ## 2. 프롬프트 전문
 
-**여기 적힌 것은 이 회차에 실제로 보낸 문자열이고, 다음에 그대로 쓸 문장이 아니다.** 이 시트로 만든 열두 장이 레포에 들어가 있는데 fal.ai는 재현을 보장하지 않으므로(실행 지침 §9), 그 열두 장이 어떤 지시로 나왔는지를 아는 길은 이 전문뿐이다. 그래서 정본이 뒤에 고쳐져도 여기는 보낸 그대로 둔다 — 고치면 열두 장의 출처가 사라지고, 첫 판이 왜 떨어졌는지를 지시문의 형태로 설명하는 §3도 근거를 잃는다.
+**지시문 셋의 정본은 실행 지침 §8.2.2다.** 아래는 그 현재 판이고, 정본이 고쳐지면 이 절도 함께 고친다 — 두 곳이 갈리면 정본이 이긴다.
 
-**정본은 이 회차 뒤에 세 지시문 전부에 두 문단을 더했다.** §7이 뒤늦게 찾은 결함 둘을 다음 회차에서 막는 문장이다 — 뒷모습에서도 쥔 손이 반쯤 열린 채여야 한다는 것과, 네 방향 전부에 팔이 둘 다 그려져야 한다는 것이다(옷+머리·맨살 쪽은 팔의 길이와 위치까지 묶는다). 옷+머리 지시문에서는 반대로 문장 하나가 빠졌다 — 「삭발되기 전 머리색과 같은 진홍색」은 이 회차의 입력 계보에만 뜻이 통하는 말이라 정본에 남길 수 없다. **다음 회차는 이 절이 아니라 실행 지침 §8.2.2를 연다**(`F104`).
+**현행 열두 장은 마지막 두 문단이 붙기 전 판으로 나왔다.** 뒷모습에서도 쥔 손을 유지하라는 문단과 네 방향 전부에 팔이 둘 다 있어야 한다는 문단이 §7의 결함을 보고 나중에 들어갔고, 그래서 그 결함 둘은 시트를 다시 뽑을 때 닫힌다. 옷+머리 지시문에서는 반대로 「삭발되기 전 머리색과 같은 진홍색」 한 문장이 빠졌다 — 이 회차의 입력 계보에만 뜻이 통하는 말이라 정본에 남길 수 없다.
 
 ### 2.1 `bald` — 원본에서 지팡이만 지운다
 
@@ -56,6 +56,13 @@ shaft as thick as the staff was: the fingers stay curled and stay separated from
 one another, the opening inside the grip stays open, and the hand neither closes
 into a fist nor opens flat. Her left hand keeps the exact same shape and the
 exact same position it has now.
+
+This is true in all four views, and the back view is not an exception. In the
+back view her gripping hand is small and partly hidden behind her body, but it
+still shows the same half-closed grip — not an open hand with spread fingers.
+
+Both of her arms are drawn in every one of the four views. Neither arm is
+omitted, shortened, or hidden behind her body.
 
 Everything else must stay exactly the same: the same face and the same facial
 features, the same completely bald head with bare scalp skin and no hair at all,
@@ -80,8 +87,7 @@ side view — adding hair and changing nothing else.
 She now has long wavy scarlet hair, parted in the middle, with a fringe that
 splits to either side of her forehead. It falls over her shoulders and down her
 chest at the front, covers her whole back, and reaches down to her hips. The
-ends are wavy and taper into loose points. The scarlet is the same deep red as
-her hair was before she was drawn bald.
+ends are wavy and taper into loose points.
 
 The hair rests on top of her scalp, so the top of her head rises only two or
 three pixels above where it is now, and it rises by that same small amount in
@@ -101,6 +107,14 @@ reference.
 There is no staff anywhere in the image. Her right hand keeps the exact
 half-closed grip it has in the reference, with the opening inside the grip still
 open; it neither closes into a fist nor opens flat.
+
+This is true in all four views, and the back view is not an exception. In the
+back view her gripping hand is small and partly hidden behind her body, but it
+still shows the same half-closed grip — not an open hand with spread fingers.
+
+Both of her arms are drawn in every one of the four views. Neither arm is
+omitted, shortened, or hidden behind her body, and both keep the exact length
+and the exact position they have in the reference.
 
 Plain flat gray background, the same gray as the reference. Do not include any
 staff, wand, rod, stick, sword, weapon, tool, hat, hood, cap, headband, fire,
@@ -139,6 +153,14 @@ reference.
 There is no staff anywhere in the image. Her right hand keeps the exact
 half-closed grip it has in the reference, with the opening inside the grip still
 open; it neither closes into a fist nor opens flat.
+
+This is true in all four views, and the back view is not an exception. In the
+back view her gripping hand is small and partly hidden behind her body, but it
+still shows the same half-closed grip — not an open hand with spread fingers.
+
+Both of her arms are drawn in every one of the four views. Neither arm is
+omitted, shortened, or hidden behind her body, and both keep the exact length
+and the exact position they have in the reference.
 
 Plain flat gray background, the same gray as the reference. Do not include any
 staff, wand, rod, stick, weapon, tool, glove, boot, shoe, sock, hat, hood, cap,
