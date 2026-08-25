@@ -41,9 +41,9 @@ const MODELS = ['fal-ai/bria/background/remove', 'fal-ai/birefnet/v2'];
  * 패널 순서는 생성 프롬프트가 정한 front · back · left · right다.
  */
 const PANELS = [
-  { sheet: '4dir_dressed', column: 0, label: '옷 입은 판 front' },
-  { sheet: '4dir_bald', column: 3, label: '삭발 판 right' },
-  { sheet: '4dir_skin', column: 0, label: '맨살 판 front' },
+  { sheet: '4dir_dressed_nostaff', column: 0, label: '옷 입은 판 front' },
+  { sheet: '4dir_bald_nostaff', column: 3, label: '삭발 판 right' },
+  { sheet: '4dir_skin_nostaff', column: 0, label: '맨살 판 front' },
 ];
 
 /** 배경색은 캔버스 왼쪽 위 모서리에서 뽑는다 — 인물이 거기까지 오는 시트는 없다. */
@@ -96,8 +96,9 @@ function measure(img: IRgbaImage, bg: readonly [number, number, number]): string
     `후광 좌${percent(halo.left.ratio)} 우${percent(halo.right.ratio)}`,
     // 지팡이가 남았는지를 보는 지표다. 정렬은 발만 보는 `footBand`를 쓰므로 지팡이가 남아도
     // 정렬 값이 안 움직인다 — 그래서 「소품이 있는가」는 소품에 민감한 바깥 상자로 따로 재야
-    // 한다. 통과선을 코드에 안 박는 이유는 그 선을 세울 근거가 매팅 캐시의 원본 패널뿐이고
-    // 그 패널이 레포에 없어서다. 숫자만 찍고 어느 쪽이 지팡이인지는 사람이 눈으로 가른다.
+    // 한다. 통과선을 코드에 안 박는 이유는 채택본이 지팡이 없는 판이라 이 지표가 늘 0 근처를
+    // 찍기 때문이다 — 선을 세울 표본이 한쪽뿐이다. 숫자만 찍고 소품이 남았는지는 사람이 눈으로
+    // 가른다.
     `발중심차 ${footCenterDrift(img).toFixed(1).padStart(5)}`,
   ].join('  ');
 }
@@ -106,7 +107,10 @@ async function main(): Promise<void> {
   let failures = 0;
 
   for (const panel of PANELS) {
-    const sheetPath = path.join(ROOT, `art-source/player/2026-08-06/${panel.sheet}.png`);
+    // 채택본이 사는 자리를 본다(사양서 §9.1.1). 채택본이 갈리면 입력 해시가 달라져 캐시가
+    // 미스가 되고 판정 여섯 번이 다시 과금되므로, **모델을 다시 고를 때만 돌린다** — 지금
+    // 결정은 닫혀 있어서(`bria`) 이 실행기는 그때까지 쉰다.
+    const sheetPath = path.join(ROOT, `art-source/player/${panel.sheet}.png`);
     const sheet = decodePng(fs.readFileSync(sheetPath));
     const bg = cornerBackground(sheet);
 

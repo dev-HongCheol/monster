@@ -86,7 +86,7 @@ fal은 자사 호스팅 애플리케이션이 만든 매체 전부에 두 가지
 > Every piece of media generated through fal's hosted applications is signed with Content Credentials (C2PA) — an open, industry-standard cryptographic signature — and embedded with an invisible watermark.
 > — [fal.ai Verify](https://fal.ai/verify) (2026-08-20 확인)
 
-레포에서 실제로 확인된 것은 이렇다. `art-source/player/2026-08-06/`에 내려받아 둔 원본 넉 장은 전부 PNG의 C2PA 매니페스트 청크(`caBX`)를 달고 있고, 배경을 지우고 잘라 낸 뒤의 산출물과 게임에 실린 PNG에는 그 청크가 없다. **후처리와 재저장이 C2PA 서명을 벗겨 낸다.**
+레포에서 실제로 확인된 것은 이렇다. `art-source/player/`에 내려받아 둔 채택 시트 석 장은 전부 PNG의 C2PA 매니페스트 청크(`caBX`)를 달고 있고, 배경을 지우고 잘라 낸 뒤의 산출물과 게임에 실린 PNG에는 그 청크가 없다. **후처리와 재저장이 C2PA 서명을 벗겨 낸다.**
 
 **비가시 워터마크가 후처리를 견디는지는 확인되지 않았다.** 픽셀에 실리는 방식이라 메타데이터와 달리 크롭·재저장을 통과할 수 있지만, 우리 쪽에서 검출할 수단이 없다. 확인되지 않았다는 사실 자체를 여기 적어 둔다 — 살아 있다면 배포본이 AI 생성물로 검출 가능하다는 뜻이고, 그것은 §6의 고지 의무와 같은 방향이라 불리하지 않다.
 

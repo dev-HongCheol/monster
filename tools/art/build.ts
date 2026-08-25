@@ -12,7 +12,7 @@
  * node --experimental-strip-types tools/art/build.ts [--sheets <폴더>] [--dry-run]
  * ```
  *
- * `--sheets`는 시트 셋이 있는 폴더이고 기본값은 이번에 뽑은 판이다. `--dry-run`은 매팅까지
+ * `--sheets`는 시트 셋이 있는 폴더이고 기본값은 채택본이 사는 자리다. `--dry-run`은 매팅까지
  * 돌리고 규격 판정 결과만 찍는다 — 캐시가 차 있으면 과금 없이 규격을 미리 볼 수 있다.
  */
 
@@ -29,8 +29,14 @@ import { commitAll, type IShipItem, type IShippingSpec } from './Shipping.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-/** 시트 셋을 찾을 기본 폴더. `--sheets`로 다른 판을 가리킬 수 있다. */
-const DEFAULT_SHEET_DIR = 'art-source/player/2026-08-23';
+/**
+ * 시트 셋을 찾을 기본 폴더 — **채택본이 사는 자리 하나**다. `--sheets`로 다른 판을 가리킬 수 있다.
+ *
+ * 회차별 폴더를 두지 않는 이유는 폐기된 회차를 아무도 입력으로 쓰지 않기 때문이다. 채택하면
+ * 이 자리를 덮어쓰고, 그러면 여기 있는 것이 항상 지금 게임이 딛고 선 판이 된다 —
+ * 어느 폴더가 현재인지를 사람이 기억하지 않아도 된다.
+ */
+const DEFAULT_SHEET_DIR = 'art-source/player';
 
 /** 채택 매팅 모델. 후보 둘을 패널 셋에 돌려 고른 결과이고 근거는 `judge.ts`가 낸 표에 있다. */
 const MATTING_MODEL = 'fal-ai/bria/background/remove';

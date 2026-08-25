@@ -25,7 +25,7 @@
 | `tools/art/FalMatting.ts` | 매팅 캐시를 `docs/temp/`에서 `art-source/matting-cache/`로 옮긴다(`F102` ⑤). 앞 폴더의 규칙이 「언제든 지워도 되는 스크래치」인데 이 캐시는 지우면 재생성에 실제로 돈이 든다 | 옮긴 자리가 `.gitignore`에 잡히는가 · 캐시 파일명 규칙이 그대로라 이전 캐시가 계속 맞는가 |
 | `game/assets/art/player/player_4dir_{front,back,left,right}.png` | 지팡이 없는 시트에서 다시 뽑은 그림으로 교체 | 캔버스 246×493 · 발 밑선 489 · 희미한 알파 0px · 트림 세로 490 이하 |
 | `art-source/player/base/player_{bald,base}_{front,back,left,right}.png` | 같은 실행기로 함께 교체(여덟 장) | 위와 같음. 이 여덟은 v2 파츠 컷의 입력이라 규격이 같아야 한다 |
-| `art-source/player/2026-08-23/` (신규) | 받은 시트 셋 원본과 생성 기록 | 채택 컷마다 엔드포인트·프롬프트 전문·시드·설정·레퍼런스 다섯이 남았는가 |
+| `art-source/player/` 시트 셋 (신규) | 받은 시트 셋 원본과 생성 기록 | 채택 컷마다 엔드포인트·프롬프트 전문·시드·설정·레퍼런스 다섯이 남았는가 |
 | `docs/design/spec/art-generation-playbook.md` | §8.2에 손 조건 셋과 지팡이를 지우는 편집 지시문 셋을 붙인다 · §8.7 표의 Trim 전제를 캔버스 기준으로 · §8.8의 그리기 순서를 「몸 뒤」에서 「항상 몸 앞」으로 | 절 앵커를 가리키는 인바운드 링크가 안 깨지는가 · 정본이 세션 기록으로 링크를 안 거는가 |
 | `docs/design/spec/art-asset-spec.md` | §3.2 표시 크기 계산을 캔버스 기준으로 · §3.3을 「소품은 정렬에 영향을 주지 않는다」로 다시 쓴다 | 위와 같음 |
 | `docs/development/backlog*.md` | `F102` ②⑤⑥을 닫고 ①의 서술을 고쳐 남긴다 · `F67`은 배선 축만 열어 둔다 · v2 무기별 쥔 손 정책을 새 항목으로 세운다 | 항목 ID가 안 바뀌는가 · `F67`이 통째로 닫히지 **않았는가** |
