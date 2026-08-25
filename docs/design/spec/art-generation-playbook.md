@@ -4,7 +4,7 @@
 
 - **최초 작성:** 2026-08-05
 - **상태:** CONFIRMED — 플레이어 4방향에 대해 실행 가능. 나머지 카테고리는 §10에 차단 요인만 적혀 있다.
-- **이력:** 2026-08-25(해부학 기준) 측면 두 장의 배치를 역할 기준에서 **해부학 기준**으로 뒤집었다. 역할 기준은 보조장비를 두 방향 모두 몸통 뒤로 보내 화면에서 지워 버렸다. §7.1 프롬프트와 §7.2·§8.2.1 판정을 방향별로 고쳤고, Draw Order와 Skins가 Spine Essential에 있다는 확인을 함께 적었다. §8.2.5의 반전 보수는 좌우가 거울상인 대상에만 남는다 · 2026-08-24(편집 회차의 대가) §8.2.5를 신설했다. 편집이 시트 전체를 다시 그려 인물 크기가 4~5% 줄고 지시 안 한 패널이 흔들린다는 실측을 적고, 좌우 두 패널을 유료 회차 대신 반전으로 채우는 길(`MirrorPanel.ts`)을 세웠다 · 2026-08-24(앞뒤 기준) 「쥔 팔이 화면 가까운 쪽」이 몸통과의 앞뒤만 정한다는 것이 드러나 §7.1·§7.2·§8.2.1·§8.2.2에 **두 손 사이의 앞뒤**를 더했다. 보조 손을 배 앞으로 올렸더니 그 손이 지팡이보다 앞에 서 버렸다 · 2026-08-24(편집 한계 실측) 측면 두 장의 쥔 팔을 몸통 앞으로 옮기는 편집이 한 컷에 성공해, §2.0에 「시트 어디에도 없는 것」과 「이 패널에서만 가려진 것」의 경계를 그었다. 그에 맞춰 §7.1·§7.2·§8.2.1의 「팔의 앞뒤는 편집으로 못 바꾼다」를 걷었다 · 2026-08-24(판정 기준) §7.1의 빈 손 요구가 이미 확정된 인물을 다시 뽑을 이유가 못 된다는 것을 달았다 — 플레이어 아트는 v2 최종본 기준으로 판정하고 v1 화면의 어색함은 기준에 넣지 않는다는 사용자 결정이다 · 2026-08-24(지시문 손 요구) §8.2.2의 편집 지시문 셋에 쥔 팔이 화면 가까운 쪽이라는 문단과 빈 손이 오므린 모양이라는 문단을 박았다. §7.1이 받아 온 값을 편집이 유지하게 만드는 자리이고, 포괄 문장으로는 안 지켜진다는 것이 같은 날 확인됐다 · 2026-08-24(양손 장비) 측면 두 장의 지팡이 쥔 팔을 화면 **가까운 쪽**으로, 빈 손을 **살짝 오므린 모양**으로 요구하도록 §7.1 프롬프트와 §7.2·§8.2.1 판정을 고쳤다(종전 산출물은 좌우 둘 다 먼 쪽이었다 — 주무기가 몸에 가리고, 좌우가 같은 쪽이어야 슬롯을 역할로 부를 수 있다). §8.8에는 보조 손에 들릴 방패도 판정 밖이라는 것과, 그 방패가 손을 가리는 형태로 통일되며 층 표 미결의 절반이 닫힌 것을 적었다 · 2026-08-24(리워크) 첫 회차 산출물에서 결함 셋이 사람 검사로 나와 판정과 지시문을 함께 고쳤다. §8.2.1에 「네 방향 전부에서 쥔 손이 남아 있다」와 「네 방향 전부에 팔이 둘 다 있다」를 더했고(세 시트 모두 뒷모습에서만 쥔 손이 편 손으로 바뀌었고, 맨살 판 왼쪽에서 팔 하나가 어깨부터 사라졌다), 세 지시문 전부에 같은 두 문장을 영어로 박았다. §8.2.3에는 축과의 델타 항목이 눈으로 안 지켜진다는 실측(맨살 판이 6% 작았다)과 그것을 사후에 덮는 기계 관문을 적었다 · 2026-08-24 §8.2를 네 절로 갈랐다 — 손 판정 셋(§8.2.1), 편집 지시문 셋(§8.2.2), 받은 시트를 재는 항목(§8.2.3), v2 스킨에 같은 방식을 적용하는 원칙(§8.2.4)이다. §8.2.2의 방식이 「세 시트를 각각 편집한다」에서 **「삭발 판을 축으로 삼고 나머지 둘을 거기서 파생시킨다」**로 바뀌었다 — 앞 방식으로 받은 판이 네 방향 편차 24px로 떨어졌고, 밑판을 입력에 묶으니 3px로 내려왔다. 「맨살 판은 후처리로 지팡이를 뗄 수 있다」던 서술도 뒤집었다(어느 시트든 손이 지팡이를 쥐고 있다). §8.4 도구 표에 정렬 기준 `footBand`와 판정 지표 `footSpanCenterX`를 갈라 넣고 둘을 섞어 쓰지 말라는 경고를 달았으며, §8.7 표의 트림 전제를 같은 절 산문에 맞춰 캔버스 기준으로 고쳤고, §8.8의 z 순서를 「몸 뒤」에서 「항상 몸 앞」으로 바꿨다(자식 노드는 부모를 덮으므로 고를 수 있는 값이 아니다). §9에 매팅 캐시가 `art-source/`에 사는 이유를 더했다 · 2026-08-06 유료 전환 확정(fal.ai Sandbox, 채택 모델 `openai/gpt-image-2/edit`) · 2026-08-07 후처리·실측 절(§8)과 배경 키잉 함정 둘 추가 · 2026-08-14 `docs/design/spec/`으로 이전하며 결정 기록 링크 17곳을 걷어내고 판정 관련 6곳을 판정 규칙 정본으로 재지정 · 2026-08-15 사양서·art-direction 인용 세 곳을 정리했다. §2.3의 사양서 §2.6 인용은 블록인용과 출처 줄로 옮겼고, 같은 절의 art-direction §6 인용과 §8.3의 사양서 §3.2 인용은 원문에 없는 요약이라 따옴표를 걷고 서술로 풀었다 · 2026-08-20 §8.1의 로컬 rembg 안내에 모델 명시 조건을 달았다(기본 모델이 유료 라이선스로 바뀌었다 — `ops-licensing.md` §2.1) · 2026-08-22 §8을 매팅 기준으로 다시 썼다. §8.1에서 로컬 rembg 안내를 걷고 단계를 7개에서 6개로 줄였으며(그에 맞춰 「§8.1의 5번」 참조 둘을 4번으로 고쳤다), §8.2는 「지팡이 분리」에서 「생성으로 걷는다」로 뜻이 뒤집혔고, §8.3.1 손수 키잉 함정 절을 지웠으며, §8.4의 사라진 파이썬 스크립트 본문을 레포 도구 표로 갈았고, §8.5 판정 항목을 새 지표에 맞췄다
+- **이력:** 2026-08-26(프롬프트 전문 폐기) 지시문 일곱 벌(§5.1·§7.1·§7.3 B·C·§8.2.2 셋)의 전문을 걷고 **그 지시문이 담아야 하는 것**만 남겼다. 시드를 안 쓰고 2단계부터는 앞 회차의 이미지를 입력으로 넣는 방식이라 문장을 보관해도 같은 그림이 안 나오고, 재현 단위는 프롬프트가 아니라 `art-source/`의 이미지다. §3.1의 인물 고정 문장은 글자 그대로 복사하는 값이라 남기고 폐기된 템플릿만 걷었다 · 2026-08-26 §9의 보관 경로에서 생성일 폴더를 걷었다(사양서 §9.1.1과 같은 결정) · 2026-08-25(해부학 기준) 측면 두 장의 배치를 역할 기준에서 **해부학 기준**으로 뒤집었다. 역할 기준은 보조장비를 두 방향 모두 몸통 뒤로 보내 화면에서 지워 버렸다. §7.1 프롬프트와 §7.2·§8.2.1 판정을 방향별로 고쳤고, Draw Order와 Skins가 Spine Essential에 있다는 확인을 함께 적었다. §8.2.5의 반전 보수는 좌우가 거울상인 대상에만 남는다 · 2026-08-24(편집 회차의 대가) §8.2.5를 신설했다. 편집이 시트 전체를 다시 그려 인물 크기가 4~5% 줄고 지시 안 한 패널이 흔들린다는 실측을 적고, 좌우 두 패널을 유료 회차 대신 반전으로 채우는 길(`MirrorPanel.ts`)을 세웠다 · 2026-08-24(앞뒤 기준) 「쥔 팔이 화면 가까운 쪽」이 몸통과의 앞뒤만 정한다는 것이 드러나 §7.1·§7.2·§8.2.1·§8.2.2에 **두 손 사이의 앞뒤**를 더했다. 보조 손을 배 앞으로 올렸더니 그 손이 지팡이보다 앞에 서 버렸다 · 2026-08-24(편집 한계 실측) 측면 두 장의 쥔 팔을 몸통 앞으로 옮기는 편집이 한 컷에 성공해, §2.0에 「시트 어디에도 없는 것」과 「이 패널에서만 가려진 것」의 경계를 그었다. 그에 맞춰 §7.1·§7.2·§8.2.1의 「팔의 앞뒤는 편집으로 못 바꾼다」를 걷었다 · 2026-08-24(판정 기준) §7.1의 빈 손 요구가 이미 확정된 인물을 다시 뽑을 이유가 못 된다는 것을 달았다 — 플레이어 아트는 v2 최종본 기준으로 판정하고 v1 화면의 어색함은 기준에 넣지 않는다는 사용자 결정이다 · 2026-08-24(지시문 손 요구) §8.2.2의 편집 지시문 셋에 쥔 팔이 화면 가까운 쪽이라는 문단과 빈 손이 오므린 모양이라는 문단을 박았다. §7.1이 받아 온 값을 편집이 유지하게 만드는 자리이고, 포괄 문장으로는 안 지켜진다는 것이 같은 날 확인됐다 · 2026-08-24(양손 장비) 측면 두 장의 지팡이 쥔 팔을 화면 **가까운 쪽**으로, 빈 손을 **살짝 오므린 모양**으로 요구하도록 §7.1 프롬프트와 §7.2·§8.2.1 판정을 고쳤다(종전 산출물은 좌우 둘 다 먼 쪽이었다 — 주무기가 몸에 가리고, 좌우가 같은 쪽이어야 슬롯을 역할로 부를 수 있다). §8.8에는 보조 손에 들릴 방패도 판정 밖이라는 것과, 그 방패가 손을 가리는 형태로 통일되며 층 표 미결의 절반이 닫힌 것을 적었다 · 2026-08-24(리워크) 첫 회차 산출물에서 결함 셋이 사람 검사로 나와 판정과 지시문을 함께 고쳤다. §8.2.1에 「네 방향 전부에서 쥔 손이 남아 있다」와 「네 방향 전부에 팔이 둘 다 있다」를 더했고(세 시트 모두 뒷모습에서만 쥔 손이 편 손으로 바뀌었고, 맨살 판 왼쪽에서 팔 하나가 어깨부터 사라졌다), 세 지시문 전부에 같은 두 문장을 영어로 박았다. §8.2.3에는 축과의 델타 항목이 눈으로 안 지켜진다는 실측(맨살 판이 6% 작았다)과 그것을 사후에 덮는 기계 관문을 적었다 · 2026-08-24 §8.2를 네 절로 갈랐다 — 손 판정 셋(§8.2.1), 편집 지시문 셋(§8.2.2), 받은 시트를 재는 항목(§8.2.3), v2 스킨에 같은 방식을 적용하는 원칙(§8.2.4)이다. §8.2.2의 방식이 「세 시트를 각각 편집한다」에서 **「삭발 판을 축으로 삼고 나머지 둘을 거기서 파생시킨다」**로 바뀌었다 — 앞 방식으로 받은 판이 네 방향 편차 24px로 떨어졌고, 밑판을 입력에 묶으니 3px로 내려왔다. 「맨살 판은 후처리로 지팡이를 뗄 수 있다」던 서술도 뒤집었다(어느 시트든 손이 지팡이를 쥐고 있다). §8.4 도구 표에 정렬 기준 `footBand`와 판정 지표 `footSpanCenterX`를 갈라 넣고 둘을 섞어 쓰지 말라는 경고를 달았으며, §8.7 표의 트림 전제를 같은 절 산문에 맞춰 캔버스 기준으로 고쳤고, §8.8의 z 순서를 「몸 뒤」에서 「항상 몸 앞」으로 바꿨다(자식 노드는 부모를 덮으므로 고를 수 있는 값이 아니다). §9에 매팅 캐시가 `art-source/`에 사는 이유를 더했다 · 2026-08-06 유료 전환 확정(fal.ai Sandbox, 채택 모델 `openai/gpt-image-2/edit`) · 2026-08-07 후처리·실측 절(§8)과 배경 키잉 함정 둘 추가 · 2026-08-14 `docs/design/spec/`으로 이전하며 결정 기록 링크 17곳을 걷어내고 판정 관련 6곳을 판정 규칙 정본으로 재지정 · 2026-08-15 사양서·art-direction 인용 세 곳을 정리했다. §2.3의 사양서 §2.6 인용은 블록인용과 출처 줄로 옮겼고, 같은 절의 art-direction §6 인용과 §8.3의 사양서 §3.2 인용은 원문에 없는 요약이라 따옴표를 걷고 서술로 풀었다 · 2026-08-20 §8.1의 로컬 rembg 안내에 모델 명시 조건을 달았다(기본 모델이 유료 라이선스로 바뀌었다 — `ops-licensing.md` §2.1) · 2026-08-22 §8을 매팅 기준으로 다시 썼다. §8.1에서 로컬 rembg 안내를 걷고 단계를 7개에서 6개로 줄였으며(그에 맞춰 「§8.1의 5번」 참조 둘을 4번으로 고쳤다), §8.2는 「지팡이 분리」에서 「생성으로 걷는다」로 뜻이 뒤집혔고, §8.3.1 손수 키잉 함정 절을 지웠으며, §8.4의 사라진 파이썬 스크립트 본문을 레포 도구 표로 갈았고, §8.5 판정 항목을 새 지표에 맞췄다
 
 ---
 
@@ -35,7 +35,7 @@
 1. [Sandbox](https://fal.ai/sandbox)를 연다. **로그인 상태여야 한다** — 비로그인은 모델이 2종으로 잠긴다.
 2. 작업을 **`Text To Image`**로 둔다(기본값).
 3. 모델은 **기본 세트 `State of the Art` 그대로 쓴다.** Seedream 5.0 Pro와 nano-banana-2가 이미 들어 있어 고쳐 고를 필요가 없다. 5종 1회에 약 $0.37. **한 모델만 고르지 않는다** — 어느 모델이 이 캐릭터에서 되는지 모르는 게 지금 상태이고, Sandbox의 존재 이유가 그걸 한 번에 재는 것이다.
-4. **[§5.1의 프롬프트](#51-프롬프트)를 통째로 복사**해 붙인다. `[HAIR]`·`[TUNIC_COLOR]` 같은 대괄호를 색으로 채운다 — 채우는 제약은 [§3.2](#32-빈칸을-채울-때의-제약)에 있다.
+4. **[§5.1의 요구사항](#51-프롬프트)과 [§5.2의 출처 표](#52-각-지시가-어디서-왔는가)를 만족하는 지시문을 쓴다.** 색은 §3.1의 인물 고정 문장에서 가져오고, 채우는 제약은 [§3.2](#32-빈칸을-채울-때의-제약)에 있다.
 5. **Aspect Ratio를 세로가 긴 비율**로 둔다([§4](#4-공통-설정-sandbox-화면-기준)). `1x`는 2 이상으로.
 6. Run 전에 **`Est. $` 표시를 확인**하고 실행한다. **하루 35장까지는 무료**이므로 초반 몇 회는 비용이 안 나갈 수 있다.
 7. **색 조합을 3~4개로 바꿔 3~4회 반복**한다. **모델 세트는 바꾸지 않는다** — 회차마다 모델이 달라지면 색을 비교하는 건지 모델을 비교하는 건지 알 수 없게 된다. 매회 모델별 결과가 나란히 나오므로, 컷만이 아니라 **어느 모델이 이 캐릭터를 잘 그리는지도 여기서 정해진다.**
@@ -51,7 +51,7 @@
 
 12. 같은 Sandbox에서 작업을 **`Edit Multi Images`**로 바꾸고, 고른 정면 컷을 **입력 이미지로 올린다.**
 13. 모델을 **세 개** 고른다 — `fal-ai/nano-banana-2/edit`, `fal-ai/nano-banana-pro/edit`, `fal-ai/bytedance/seedream/v5/lite/edit`. 4방향은 v3가 두 번 실패한 지점이므로 한 모델에 걸지 않는다. **`Sets` → `Edit Sets`로 이 셋을 묶어 저장해 두면** 재시도할 때마다 다시 고르지 않아도 되고 회차 간 비교도 성립한다.
-14. **[§7.1의 지시문](#71-프롬프트)**을 붙이고 Run.
+14. **[§7.1의 요구사항](#71-프롬프트)**을 담은 지시문을 쓰고 Run.
 15. [§7.2로 판정한다](#72-판정--여기가-유료-전환의-확정-지점이다). **앞의 두 항목(뒷모습에 얼굴 없음 / 네 장이 같은 인물)을 통과한 모델이 하나라도 있으면 유료 전환 확정**이고 백로그 F62가 닫힌다.
 16. **통과한 네 장과 그 모델 이름을 나에게 준다.**
 
@@ -59,8 +59,8 @@
 
 **4방향이 통과한 그 화면에서 이어서** 한다. 모델도 §7을 통과한 것을 그대로 쓴다 — 인물 동일성을 유지하는 능력이 방금 확인된 모델이기 때문이다.
 
-17. **B 시트 — 옷은 그대로, 삭발.** 통과한 4방향 시트(A)를 입력에 둔 채 [§7.3](#73-베이스-시트-두-장)의 B 지시문으로 Run한다. **이 회차가 관문이다** — 머리카락을 없애는 것이 인물 동일성을 흔들 유일한 큰 변경이라, 얼굴이 A와 같은 인물인지부터 본다.
-18. **C 시트 — 옷만 최소 운동복으로.** 이번엔 **B를 입력으로** 넣고 C 지시문으로 Run한다. A가 아니라 B에서 뽑는 이유는 위험한 변경(삭발)을 한 번만 하기 위해서다.
+17. **B 시트 — 옷은 그대로, 삭발.** 통과한 4방향 시트(A)를 입력에 둔 채 [§7.3](#73-베이스-시트-두-장)의 B 요구사항으로 지시문을 써서 Run한다. **이 회차가 관문이다** — 머리카락을 없애는 것이 인물 동일성을 흔들 유일한 큰 변경이라, 얼굴이 A와 같은 인물인지부터 본다.
+18. **C 시트 — 옷만 최소 운동복으로.** 이번엔 **B를 입력으로** 넣고 C 요구사항으로 Run한다. A가 아니라 B에서 뽑는 이유는 위험한 변경(삭발)을 한 번만 하기 위해서다.
 19. **세 시트를 나에게 준다.** B와 C는 **v1 화면에 안 나가고** v2 워드로브(F61)와 리깅(F59)의 밑판이 된다. 왜 지금 뽑아야 하는지는 [§2.4](#24-베이스는-맨살이다--옷은-전부-그-위의-레이어다)에 있다 — 인물이 확정된 이 세션을 놓치면 되찾을 수단이 없다.
 
 > **시트가 왜 셋인가.** 가리는 것이 셋이라서다 — 옷, 머리카락, 지팡이. **가리는 것을 하나씩 걷어낸 변형본을 뽑으면, 그 아래 층이 인페인팅이 아니라 실제로 그려진 상태로 확보된다.**
@@ -270,7 +270,7 @@ v2 모듈 슬롯 목록([백로그 F61](../../development/backlog.md))의 모자
 
 분리한다고 해서 몸을 맨손으로 뽑으면 안 된다. 지팡이 없이 생성하면 손이 쥔 모양으로 나오지 않고 펴진 채 나오는데, 거기에 지팡이를 얹으면 쥐지 않고 통과하는 것처럼 보인다. 그래서 **지팡이를 든 채로 생성하되 몸에 붙여 세로로** 들게 한다 — 세로로 세우는 근거는 판정 중심이 아니라(그건 레이어 분리가 이미 풀었다) **가리는 면적을 줄이는 것**이고, 적게 가릴수록 잘라 낸 뒤 채울 자리가 적다.
 
-절차는 세 곳에 나뉘어 있다. 프롬프트는 **§5.1**, 컷을 통과시킬 판정 항목은 **§5.4**, 파츠 컷에서 잘라 내고 그 자리를 채우는 것은 **§8.2**다. 배선에 필요한 값(방향별 위치 오프셋·z 순서·표시 크기)과 정하는 방법은 **§8.8**에 있다.
+절차는 세 곳에 나뉘어 있다. 지시문 요구사항은 **§5.1**, 컷을 통과시킬 판정 항목은 **§5.4**, 파츠 컷에서 잘라 내고 그 자리를 채우는 것은 **§8.2**다. 배선에 필요한 값(방향별 위치 오프셋·z 순서·표시 크기)과 정하는 방법은 **§8.8**에 있다.
 
 ### 2.4 베이스는 맨살이다 — 옷은 전부 그 위의 레이어다
 
@@ -305,7 +305,7 @@ F61의 원래 설계는 **"베이스는 알몸이 아니라 항상 기본 복장
 
 필요한 것은 알몸이 아니라 **노출 최대치를 커버하는 살**이다. 그 최대치는 "어떤 옷을 입힐 것인가"를 뒤집어 센다 — 어깨 전체·배·등·허벅지·발이다.
 
-옷별 대응표와 프롬프트, 그리고 첫 시도에서 이 셈을 틀렸던 기록(어깨·배·등을 빠뜨려 탱크톱이 나왔다)은 **§7.3**에 있다. 실행은 그쪽이 정본이다.
+옷별 대응표와 지시문 요구사항, 그리고 첫 시도에서 이 셈을 틀렸던 기록(어깨·배·등을 빠뜨려 탱크톱이 나왔다)은 **§7.3**에 있다. 실행은 그쪽이 정본이다.
 
 #### 대가 셋
 
@@ -342,18 +342,6 @@ plain wooden staff without ornament
 
 피부는 처음에 `warm tan skin`으로 잡았다가 사용자 결정으로 바꿨다 — 어두운 배경 위에 뜨는 대비가 art-direction §6의 요구에 더 맞기 때문이다. `short sleeves`는 취향이 아니라 §2.4 때문에 못 박았다. 반팔이면 아래팔이 맨살로 그려져, 맨살 베이스에서 어깨·위팔을 다룰 때 같은 그림 안에 살색 레퍼런스가 있다.
 
-<details>
-<summary>확정 전 템플릿 (히스토리)</summary>
-
-```
-young woman fire mage, [HAIR], [EYES], [SKIN],
-short tunic in [TUNIC_COLOR], pants in [PANTS_COLOR],
-ankle boots in [BOOTS_COLOR], fingerless gloves in [GLOVES_COLOR],
-plain wooden staff without ornament
-```
-
-</details>
-
 ### 3.2 빈칸을 채울 때의 제약
 
 - **색은 불 원소 주조색 범위 안에서 고른다** — 따뜻한 적·갈·주황(art-direction §6).
@@ -386,7 +374,7 @@ plain wooden staff without ornament
 
 **§1.2의 모델 어느 것에도 네거티브 칸이 없다 — 전부 Prompt 하나만 받는다.** 로컬 SDXL에서 쓰던 별도 네거티브 목록을 넣을 자리가 없으므로, 제외할 것을 **본문 안에 자연어 문장으로** 적는다("Do not include: ...").
 
-여기서 프롬프트 형식 자체가 바뀐다. 이 모델들은 태그 나열이 아니라 **지시를 읽는 쪽**이다 — Seedream 5.0 Pro는 "deep-thinking prompt understanding"을, Nano Banana 계열은 Gemini 기반의 자연어 이해를 내세운다. 그래서 §5.1의 프롬프트는 쉼표로 이어 붙인 키워드 나열이 아니라 **문단으로 쓴 지시문**이다. SDXL 습관대로 태그를 늘어놓으면 이 모델들에서는 오히려 손해다.
+여기서 프롬프트 형식 자체가 바뀐다. 이 모델들은 태그 나열이 아니라 **지시를 읽는 쪽**이다 — Seedream 5.0 Pro는 "deep-thinking prompt understanding"을, Nano Banana 계열은 Gemini 기반의 자연어 이해를 내세운다. 그래서 §5.1이 요구하는 것도 쉼표로 이어 붙인 키워드 나열이 아니라 **문단으로 쓴 지시문**이다. SDXL 습관대로 태그를 늘어놓으면 이 모델들에서는 오히려 손해다.
 
 **제외 문장에는 *배치*가 아니라 *물건*을 적는다.** "지팡이를 비스듬히 들지 마라" 같은 배치 부정은 잘 듣지 않고, 자칫 지팡이 자체를 흐린다. 배치는 항상 "이렇게 해라" 쪽에서 지시한다. (사양서 §6.3이 `spine friendly` 같은 파이프라인 용어를 뺀 것과 같은 이유 — 모델이 해석하는 개념이어야 한다.)
 
@@ -398,50 +386,9 @@ plain wooden staff without ornament
 
 ### 5.1 프롬프트
 
-**아래가 채택 컷을 낸 확정 프롬프트다**(2026-08-06, 3회차). 세 회차에 걸쳐 무엇을 왜 고쳤는지는 그날의 실행 기록이 든다.
+**프롬프트 전문은 이 문서가 들지 않는다(2026-08-26).** 문장을 보관해도 그것만으로는 같은 그림이 안 나오기 때문이다 — 이 파이프라인은 시드를 안 쓰고, 2단계부터는 앞 회차의 **이미지를 입력으로** 넣고 「이것만 바꿔라」로 진행한다. 그래서 재현 단위는 프롬프트가 아니라 이미지이고, 그 이미지는 `art-source/`가 든다(사양서 §9.1.1).
 
-```
-A full-body character reference sheet in anime cel-shaded style, front view,
-facing the viewer.
-
-Proportions are the most important requirement: she is drawn in chibi
-proportions, exactly four heads tall — not two heads tall, not realistic adult
-proportions. Her head is large and round and takes up one quarter of her total
-height. Her arms and legs are short. Keep the face in normal anime style, not
-overly simplified.
-
-Character: a young woman fire mage, long scarlet hair, amber eyes, fair and pale
-skin. She wears a short tunic with short sleeves in bright cream orange,
-separate pants in dark brown, ankle boots in medium leather brown, and
-fingerless gloves in dark brick red.
-
-Tunic length is a strict requirement: the hem of the tunic ends at her waist,
-clearly above her hips. Her hips and her thighs are not covered by the tunic.
-The pants are fully visible from the waist all the way down to the boots — the
-tunic must not hide her hips, her thighs or her knees.
-
-Pose: she has exactly two arms and exactly two hands. One hand grips a plain
-wooden staff with no ornament; that arm is held slightly away from her torso
-with the elbow almost straight, and the staff stands vertically close beside her
-body without crossing in front of it. Her other arm is held away from her body
-at about forty-five degrees, and that hand is open and empty. She stands still
-and faces forward. Both feet are fully visible. Her body is centered in the
-frame. The staff must be clearly visible.
-
-Style: bold clean outlines, two to three tone cel shading, warm red and orange
-palette. The tunic, the pants and the boots must each be a clearly different
-brightness so they read as separate pieces. Plain flat neutral gray background,
-even lighting.
-
-Do not include: no dress, no tunic-dress, no skirt, no long shirt covering the
-hips or the thighs. No background scenery, landscape, sky, sunset, clouds,
-horizon or room. No ground shadow, no cast shadow, no reflection under her feet.
-No extra arm, no extra hand, no floating hand. No hat, hood, cloak, cape, long
-robe or floor-length dress. No bare midriff or crop top. No fire, flames, glow,
-particles, magic aura or glowing gems anywhere in the image. No armor, jewelry
-or ornaments. No action pose. Do not crop the legs or the feet. No frame, no
-border, no text, no watermark. Only one character.
-```
+**대신 프롬프트가 반드시 담아야 하는 것을 남긴다.** 아래 셋과 §5.2의 출처 표가 그 목록이고, 새로 쓸 때는 그 둘을 만족하는지로 검사한다.
 
 **세 대목이 손대면 안 되는 자리다.**
 
@@ -538,22 +485,7 @@ Aspect Ratio는 네 방향이 가로로 늘어설 시트이므로 **가로가 �
 
 ### 7.1 프롬프트
 
-```
-Using this exact character, create a 4-view turnaround sheet:
-front view, back view, left side view, right side view.
-Keep the identical outfit, hair, staff, colors and proportions in every view.
-The back view must show the back of the head with no face visible.
-Keep the tunic hem at the same height and the boots at the same height in all four views.
-Keep the staff vertical and close to the body in all four views.
-The staff is held in the same hand in all four views and never changes hands.
-In each side view the arm nearer to the viewer is drawn in front of the torso, complete and
-unbroken, and whatever that arm holds is fully visible in front of her body; the far arm
-passes behind her torso.
-The other hand is empty and relaxed with the fingers softly curled — not flat open, not a fist.
-That empty hand is held in front of her belly at waist height with the elbow bent, clear of her hip.
-Same scale and same ground line across all four views.
-Plain flat gray background.
-```
+**여기도 전문 대신 요구사항만 든다(§5.1과 같은 이유).** 아래 대목들이 지시문에 반드시 들어가야 하는 것이고, 통과 여부는 §7.2가 판정한다.
 
 `back view must show the back of the head with no face visible`를 문장으로 박는 이유는 v3가 정확히 그 지점에서 실패했기 때문이다 — 요구를 명시하지 않으면 모델이 3/4 각도로 타협하고 얼굴이 그대로 남는다.
 
@@ -621,27 +553,6 @@ Plain flat gray background.
 
 **이 회차가 관문이다.** 머리카락이 이 캐릭터의 폭을 70% 차지하고 있어서, 없애면 모델이 얼굴까지 다시 그릴 여지가 크다. 옷을 바꾸는 것과는 난이도가 다르다.
 
-```
-Using this exact same 4-view turnaround sheet as the reference, redraw the same
-character in the same four views — front view, back view, left side view, right
-side view — changing only her hair.
-
-She now has no hair at all: her head is completely bald and her scalp is bare
-skin. There is no hair on her head, no hair falling over her shoulders, and no
-hair on her back. Her ears, her neck, her shoulders, her upper chest and her
-upper back are all fully visible and covered by nothing. Keep her eyebrows and
-her eyelashes.
-
-Everything else must stay exactly the same: the same face and the same facial
-features, the same skin tone, the same clothes and their colors, the same staff
-held the same way in the same position, the same four-head-tall proportions, the
-same pose with the same arm positions, the same scale and the same ground line
-in all four views.
-
-Plain flat gray background. Do not include any hat, hood, cap, headband, wig,
-cloak, robe, armor, jewelry, fire, glow, particles or ground shadow. No frame,
-no border, no text, no watermark. Only one character.
-```
 
 **모자·두건·가발을 제외 목록에 넣은 이유**가 있다. 머리카락을 지우라고 하면 모델이 그 자리를 **다른 것으로 덮으려 한다** — 빈 머리가 이상해 보이기 때문이다.
 
@@ -670,30 +581,6 @@ no border, no text, no watermark. Only one character.
 
 어깨를 전면 노출하는 데는 이유가 하나 더 있다. **어깨가 살로 이어져 있으면 팔 파츠를 어깨 어디서든 자를 수 있다.** 천 이음매가 있으면 자르는 선이 거기 묶이고, 나중에 소매 긴 옷을 입혔을 때 이음매 둘이 겹쳐 보인다.
 
-```
-Using this exact same 4-view turnaround sheet as the reference, redraw the same
-character in the same four views — front view, back view, left side view, right
-side view — changing only the clothing.
-
-She now wears minimal light gray athletic wear: a strapless band top that covers
-only her chest, and short athletic shorts that end high on the upper thigh.
-There are no straps over her shoulders.
-
-All of the following must be bare skin: her shoulders, her collarbones, her
-whole arms, her entire midriff including the navel, her upper back, and her
-thighs down to the knee. She wears no boots and no gloves: her feet and her
-hands are bare.
-
-Everything else must stay exactly the same: the same face, the same hair with
-the same hair silhouette, the same skin tone, the same four-head-tall
-proportions, the same pose with the same arm positions, the same staff held the
-same way in the same position, the same scale and the same ground line in all
-four views.
-
-Plain flat gray background. Do not include any hat, hood, cloak, robe, armor,
-jewelry, fire, glow, particles or ground shadow. No frame, no border, no text,
-no watermark. Only one character.
-```
 
 **`athletic wear`·`band top`처럼 운동복 어휘로 쓴다.** 4등신 캐릭터에 노출을 늘리는 요청이라 콘텐츠 필터에 걸릴 여지가 있는데, 운동 의류로 읽히면 통과 가능성이 높고 목적은 똑같이 달성한다. 그래도 거부되면 **직전 맨살 시트를 입력으로 넣고 "상의만 어깨끈 없는 형태로"만 지시**하는 작은 편집으로 우회한다.
 
@@ -816,163 +703,17 @@ no watermark. Only one character.
 
 ##### 축 — 삭발 판에서 지팡이만 지운다
 
-```
-Using this exact same 4-view turnaround sheet as the reference, redraw the same
-character in the same four views — front view, back view, left side view, right
-side view — removing only the staff.
-
-There is no staff anywhere in the image: no wooden shaft, no tip, no shadow of
-it, and no part of it behind her body. Wherever the staff used to cross her body
-or her head, draw what is behind it complete and unbroken. Her right hand keeps
-the exact same half-closed grip it has now, curled as if it were still holding a
-shaft as thick as the staff was: the fingers stay curled and stay separated from
-one another, the opening inside the grip stays open, and the hand neither closes
-into a fist nor opens flat. Her left hand keeps the exact same shape and the
-exact same position it has now.
-
-This is true in all four views, and the back view is not an exception. In the
-back view her gripping hand is small and partly hidden behind her body, but it
-still shows the same half-closed grip — not an open hand with spread fingers.
-
-Both of her arms are drawn in every one of the four views. Neither arm is
-omitted, shortened, or hidden behind her body.
-
-In the left and right side views the arm that holds the staff in the reference
-is the arm nearer to the viewer, drawn in front of her torso, and it stays
-there. Do not move it behind her torso and do not give the grip to her other
-arm.
-
-That gripping hand also stays further forward than her other hand, exactly as
-in the reference: no part of her reaches further forward than it does.
-
-Her other hand is empty and its fingers stay softly curled, exactly as they are
-in the reference: not flat open with spread fingers, and not closed into a fist.
-
-Everything else must stay exactly the same: the same face and the same facial
-features, the same completely bald head with bare scalp skin and no hair at all,
-the same skin tone, the same clothes and their colors, the same fingerless
-gloves, the same four-head-tall proportions, the same pose with the same arm
-positions, the same scale and the same ground line in all four views.
-
-Plain flat gray background. Do not include any staff, wand, rod, stick, sword,
-weapon, tool, hat, hood, cap, headband, wig, fire, glow, particles or ground
-shadow. No frame, no border, no text, no watermark. Only one character.
-```
+지시문이 요구하는 것은 셋이다. **지팡이가 어디에도 없을 것**(자루·끝·그림자·몸 뒤로 지나가는 부분까지), **지팡이가 가리던 자리를 뒤에 있는 것으로 온전히 채울 것**, 그리고 **쥔 손이 지금 모양 그대로일 것**이다. 마지막 것이 이 회차의 목적이라 아래 세 문단이 그것만 다시 못 박는다.
 
 ##### 옷+머리 — 축에 머리카락을 얹는다
 
 머리카락을 이미지로 못 주므로 문장으로 기술한다. **볼륨이 원본보다 줄어드는 것이 이 방식의 대가다** — v1은 96px로 표시되어 차이가 사실상 안 보이고 v2에서 머리카락은 갈아 끼울 레이어라, 그 대가를 받아들이고 몸의 정합을 택한다.
 
-```
-Using this exact same 4-view turnaround sheet as the reference, redraw the same
-character in the same four views — front view, back view, left side view, right
-side view — adding hair and changing nothing else.
-
-She now has long wavy scarlet hair, parted in the middle, with a fringe that
-splits to either side of her forehead. It falls over her shoulders and down her
-chest at the front, covers her whole back, and reaches down to her hips. The
-ends are wavy and taper into loose points.
-
-The hair rests on top of her scalp, so the top of her head rises only two or
-three pixels above where it is now, and it rises by that same small amount in
-all four views. Nothing below her chin moves.
-
-Everything else must stay exactly as it is in the reference. Keep her body, her
-face and facial features, her skin tone, her clothes and their colors, her
-fingerless gloves, her boots, her pose, her arm positions, her hand shapes, her
-scale, her position inside the frame and the line she stands on identical to the
-reference. Do not redraw her, do not resize her, do not move her, do not
-lengthen or shorten her legs, and do not change the size of her boots. Her feet
-stay exactly where they are.
-
-All four views must stay the same size as each other, exactly as they are in the
-reference.
-
-There is no staff anywhere in the image. Her right hand keeps the exact
-half-closed grip it has in the reference, with the opening inside the grip still
-open; it neither closes into a fist nor opens flat.
-
-This is true in all four views, and the back view is not an exception. In the
-back view her gripping hand is small and partly hidden behind her body, but it
-still shows the same half-closed grip — not an open hand with spread fingers.
-
-Both of her arms are drawn in every one of the four views. Neither arm is
-omitted, shortened, or hidden behind her body, and both keep the exact length
-and the exact position they have in the reference.
-
-In the left and right side views her gripping arm — the one whose hand is
-half-closed — is the arm nearer to the viewer, drawn in front of her torso,
-exactly as in the reference. Do not move it behind her torso and do not give the
-grip to her other arm.
-
-That gripping hand also stays further forward than her other hand, exactly as
-in the reference: no part of her reaches further forward than it does.
-
-Her other hand is empty and its fingers stay softly curled, exactly as they are
-in the reference: not flat open with spread fingers, and not closed into a fist.
-
-Plain flat gray background, the same gray as the reference. Do not include any
-staff, wand, rod, stick, sword, weapon, tool, hat, hood, cap, headband, fire,
-glow, particles or ground shadow. No frame, no border, no text, no watermark.
-Only one character.
-```
+요구는 둘이다. **머리카락은 두피 위에 얹히므로 정수리가 두세 픽셀만 올라가고 그 양이 네 방향에서 같을 것**, 그리고 **턱 아래로는 아무것도 안 움직일 것**이다.
 
 ##### 맨살 — 축에서 옷과 신발을 벗긴다
 
 노출 범위는 §7.3의 표를 그대로 따른다. 신발을 벗으면 키가 줄어드는 것이 정상이고, **그 줄어드는 양이 네 방향에서 같아야** 층 관계가 선다.
-
-```
-Using this exact same 4-view turnaround sheet as the reference, redraw the same
-character in the same four views — front view, back view, left side view, right
-side view — changing only what she wears.
-
-She now wears minimal plain gray sportswear: a simple gray band across her chest
-and short gray shorts, and nothing else. Her arms, shoulders, upper chest, upper
-back, belly, waist, hips and thighs are all bare skin and covered by nothing.
-Her hands are bare skin with every finger drawn separately and she wears no
-gloves. She is barefoot, with no boots and no socks, and her toes are drawn.
-
-Because her boots are gone she now stands on her bare soles, so she becomes
-slightly shorter than in the reference — and shorter by that same small amount
-in all four views.
-
-Everything else must stay exactly as it is in the reference. Keep her body, her
-face and facial features, her bald head with bare scalp, her skin tone, her
-pose, her arm positions, her hand shapes, her scale and her position inside the
-frame identical to the reference. Do not redraw her, do not resize her, do not
-move her, and do not lengthen or shorten her legs.
-
-All four views must stay the same size as each other, exactly as they are in the
-reference.
-
-There is no staff anywhere in the image. Her right hand keeps the exact
-half-closed grip it has in the reference, with the opening inside the grip still
-open; it neither closes into a fist nor opens flat.
-
-This is true in all four views, and the back view is not an exception. In the
-back view her gripping hand is small and partly hidden behind her body, but it
-still shows the same half-closed grip — not an open hand with spread fingers.
-
-Both of her arms are drawn in every one of the four views. Neither arm is
-omitted, shortened, or hidden behind her body, and both keep the exact length
-and the exact position they have in the reference.
-
-In the left and right side views her gripping arm — the one whose hand is
-half-closed — is the arm nearer to the viewer, drawn in front of her torso,
-exactly as in the reference. Do not move it behind her torso and do not give the
-grip to her other arm.
-
-That gripping hand also stays further forward than her other hand, exactly as
-in the reference: no part of her reaches further forward than it does.
-
-Her other hand is empty and its fingers stay softly curled, exactly as they are
-in the reference: not flat open with spread fingers, and not closed into a fist.
-
-Plain flat gray background, the same gray as the reference. Do not include any
-staff, wand, rod, stick, weapon, tool, glove, boot, shoe, sock, hat, hood, cap,
-headband, wig, fire, glow, particles or ground shadow. No frame, no border, no
-text, no watermark. Only one character.
-```
 
 **세 지시문 전부가 쥔 팔의 앞뒤와 빈 손 모양을 다시 못 박는다.** 둘 다 §7.1이 턴어라운드에서 받아 오는 값이라 편집은 「유지」만 하면 되는데, 유지가 저절로 되지 않는다는 것이 2026-08-24에 드러났다 — 「같은 자세, 같은 팔 위치」라는 포괄 문장이 들어 있는데도 세 시트 모두 뒷모습의 쥔 손이 편 손으로 바뀌었다. **포괄 문장은 모델이 안 지키고, 이름을 불러 준 것만 지킨다.** 둘 다 자세라서 편집으로 되돌릴 수 없으므로(§2.0), 여기서 놓치면 2단계부터 다시 뽑는다.
 
@@ -1172,12 +913,14 @@ art-source/player/base/player_base_right.png
 **내려받은 것은 레포의 `art-source/`에 넣는다**(사양서 §9.1.1).
 
 ```
-art-source/player/<생성일>/front_pick.png      1단계 채택 정면 컷
-art-source/player/<생성일>/4dir_dressed.png    2단계 4방향 시트
-art-source/player/<생성일>/4dir_skin.png       2.5단계 맨살 시트
+art-source/player/front_pick.png      1단계 채택 정면 컷
+art-source/player/4dir_dressed.png    2단계 4방향 시트
+art-source/player/4dir_skin.png       2.5단계 맨살 시트
 ```
 
-같은 날 재시도본은 `4dir_skin_b.png`처럼 뒤에 글자를 붙인다. **다만 탈락본은 커밋하지 않는다** — 비교하고 버린 것까지 넣으면 git 히스토리가 되돌릴 수 없이 커진다(바이너리는 지워도 히스토리에 남는다). 비교 중인 파일은 `docs/temp/`에 두고, 그 폴더는 `.gitignore` 대상이다.
+**회차별 폴더를 쌓지 않고 채택본 한 벌만 둔다(2026-08-26).** 새 회차를 채택하면 같은 이름을 덮어쓴다 — 폐기된 회차를 다시 입력으로 쓰는 일이 없고, 폴더가 늘면 어느 것이 현재인지를 사람이 기억해야 하기 때문이다. `tools/art/build.ts`가 이 자리를 기본 입력으로 본다.
+
+**탈락본은 커밋하지 않는다.** 비교하고 버린 것까지 넣으면 git 히스토리가 되돌릴 수 없이 커진다(바이너리는 지워도 히스토리에 남는다). 비교 중인 파일은 `docs/temp/`에 두고, 그 폴더는 `.gitignore` 대상이다.
 
 **매팅 응답 캐시도 이 규약이 받는다**(2026-08-23). 후처리가 부르는 매팅 모델의 응답은 `art-source/matting-cache/`에 쌓이고 그 폴더는 `.gitignore` 대상이다. 커밋하지 않는다는 점은 `docs/temp/`와 같지만 **지웠을 때가 다르다** — 스크래치는 스크립트로 다시 만들면 그만이고 이 캐시는 다시 채우는 데 유료 호출이 든다. 그래서 「언제든 지워도 되는 것」과 같은 폴더에 두지 않고, 「뽑은 것을 잃지 않게 보관한다」가 지배하는 여기에 둔다.
 
