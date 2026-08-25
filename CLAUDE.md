@@ -9,6 +9,7 @@ docs/
 ├── planning/               # 기획 (게임 디자인, 컨셉, 로드맵)
 ├── design/                 # 디자인 (아트 디렉션, UI/UX, 에셋 파이프라인)
 │   ├── spec/               # 디자인 정본 (art-·ui- 접두사)
+│   ├── review/             # 외부 검토용 — 정본을 모아 자립시킨 설명 문서
 │   └── mockups/            # 확정 목업 HTML + 렌더 이미지 (결정 기록 아님)
 ├── development/            # 개발 (정본·절차·세션 기록)
 │   ├── spec/               # 개발 정본 (code-·game-·docs-·ops- 접두사)
