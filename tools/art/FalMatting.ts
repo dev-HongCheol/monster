@@ -17,15 +17,24 @@ import { decodePng } from './PngCodec.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-/** 받은 PNG를 두는 자리. `docs/temp/`는 `.gitignore` 대상이라 결과물이 커밋되지 않는다. */
-const CACHE_DIR = path.join(ROOT, 'docs/temp/matting-cache');
+/**
+ * 받은 PNG를 두는 자리. `.gitignore` 대상이라 결과물이 커밋되지 않는다.
+ *
+ * **`docs/temp/`에 두지 않는다.** 그 폴더의 규칙은 「비교하고 버린 것을 두는 스크래치」라
+ * 언제든 통째로 지워도 되는 자리인데, 이 캐시는 지우면 **재생성에 실제로 돈이 든다.** 규칙과
+ * 실물이 어긋난 채로 두면 폴더를 청소한 사람이 그 사실을 모르는 채로 과금을 되살린다.
+ *
+ * 대신 `art-source/` 아래에 둔다. 그 폴더를 지배하는 규약이 「뽑은 것을 잃지 않게 보관한다」라,
+ * 여기 있는 것이 무엇인지와 왜 함부로 지우면 안 되는지가 자리로 드러난다.
+ */
+const CACHE_DIR = path.join(ROOT, 'art-source/matting-cache');
 
 /**
  * 한 번 실행에서 허용하는 최대 호출 수.
  *
  * `birefnet/v2`가 compute second 과금이라 장당 단가가 미리 정해져 있지 않다. 상한이 없으면
  * 루프 하나가 잘못 돌 때 실질 한도가 계정 잔액뿐이 된다. 판정에 필요한 호출은 패널 3장 ×
- * 모델 2종 = 6회이고, 전량 재처리도 13장 × 1종 = 13회다.
+ * 모델 2종 = 6회이고, 전량 재처리도 시트 3장 × 4방향 = 12회다(지팡이 PNG는 실행기가 안 건드린다).
  */
 const MAX_CALLS_PER_RUN = 30;
 

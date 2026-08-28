@@ -27,6 +27,19 @@ export interface IPanelColumnsOptions {
    * 구간을 쪼갠다. 그러면 패널이 넷이 아니라 수십 개로 나온다.
    */
   minColumnPixels?: number;
+  /**
+   * 배경을 행마다 캔버스 양 끝에서 다시 잡을지. 기본 false.
+   *
+   * **켜면 `background`를 안 본다.** 생성 시트의 배경이 단색이라는 보장이 없기 때문이다 —
+   * 2026-08-24에 받은 맨살 시트는 위 176에서 아래 185로 밝아지는 세로 그라데이션이 있었고,
+   * 모서리 한 점을 배경으로 잡으니 아래쪽 배경이 그 색에서 거리 22까지 멀어져 **전경으로**
+   * 잡혔다. 그러면 인물 구간이 넷이 아니라 열한 개로 쪼개져 호출부가 시트를 통째로 거부한다.
+   *
+   * 행의 양 끝을 쓰는 이유는 인물이 캔버스 끝까지 오는 시트가 없기 때문이다. 그 두 점은
+   * 언제나 배경이므로, 세로로 변하는 밝기를 그대로 따라간다. 한쪽만 쓰지 않는 것은 가로
+   * 그라데이션이 섞였을 때 반대쪽이 어긋나기 때문이고, 양쪽 다에서 먼 픽셀만 전경으로 센다.
+   */
+  rowBackground?: boolean;
 }
 
 /** `cropColumns`의 여백 설정. */
@@ -72,6 +85,32 @@ export function cropColumns(
   return { width, height: img.height, data };
 }
 
+/**
+ * 여백을 붙여 잘라도 옆 인물이 안 딸려 오는지 확인한다.
+ *
+ * 딸려 오면 매팅이 인물 둘을 한 장에서 따고, 그러면 정렬이 두 사람의 발을 한 덩어리로 재서
+ * 캐릭터가 가로로 크게 밀린다. 출력 PNG는 멀쩡해 보이므로 여기서 안 막으면 사람이 열두 장을
+ * 눈으로 볼 때까지 안 드러난다.
+ *
+ * **필요한 여유는 `margin`이 아니라 `margin + 2`다.** 왼쪽 인물의 크롭이 구간 오른끝에서
+ * `margin`만큼 더 뻗으므로 그것만으로는 `gap >= margin`이면 되는데, `panelColumns`가 내는
+ * 구간은 「전경 픽셀이 기준 개수 이상인 열」의 범위라 오른쪽 인물의 가장 바깥 한두 열이
+ * 구간 **밖**에 남는다(첫 시트에서 여덟 경계 중 셋이 그랬다). 그 두 열이 간격 안에 있으므로
+ * 두 몫을 더 받는다.
+ *
+ * @throws 두 구간 사이가 `margin + 2`보다 좁으면
+ */
+export function assertPanelGaps(columns: IColumnRange[], margin: number, sheet: string): void {
+  const needed = margin + 2;
+  for (let i = 1; i < columns.length; i++) {
+    const gap = columns[i].from - columns[i - 1].to - 1;
+    if (gap >= needed) continue;
+    throw new Error(
+      `${sheet}의 ${i}번과 ${i + 1}번 인물 사이가 ${gap}열뿐이다 (여백 ${margin}로 자르려면 ${needed}열 이상)`,
+    );
+  }
+}
+
 /** 픽셀 하나가 배경색에서 얼마나 떨어졌는지. 제곱 거리를 그대로 쓴다(제곱근 생략). */
 function distanceSq(
   data: Uint8Array,
@@ -82,6 +121,19 @@ function distanceSq(
   const dg = data[offset + 1] - bg[1];
   const db = data[offset + 2] - bg[2];
   return dr * dr + dg * dg + db * db;
+}
+
+/** 행마다 캔버스 왼쪽 끝과 오른쪽 끝 픽셀의 바이트 오프셋. 색은 부르는 쪽이 읽는다. */
+function rowEdgeOffsets(img: {
+  width: number;
+  height: number;
+  data: Uint8Array;
+}): Array<[number, number]> {
+  const offsets: Array<[number, number]> = [];
+  for (let y = 0; y < img.height; y++) {
+    offsets.push([y * img.width * 4, (y * img.width + img.width - 1) * 4]);
+  }
+  return offsets;
 }
 
 /**
@@ -99,6 +151,27 @@ export function panelColumns(
 ): IColumnRange[] {
   const maxDistanceSq = opts.maxDistance * opts.maxDistance;
   const minPixels = opts.minColumnPixels ?? 1;
+  const edges = opts.rowBackground ? rowEdgeOffsets(img) : null;
+
+  /** 이 픽셀이 그 행의 배경에서 충분히 먼가. 양 끝을 쓸 때는 **둘 다에서** 멀어야 한다. */
+  const isForeground = (offset: number, y: number): boolean => {
+    if (!edges) return distanceSq(img.data, offset, opts.background) >= maxDistanceSq;
+    const [left, right] = edges[y];
+    const bgLeft: [number, number, number] = [
+      img.data[left],
+      img.data[left + 1],
+      img.data[left + 2],
+    ];
+    const bgRight: [number, number, number] = [
+      img.data[right],
+      img.data[right + 1],
+      img.data[right + 2],
+    ];
+    return (
+      distanceSq(img.data, offset, bgLeft) >= maxDistanceSq &&
+      distanceSq(img.data, offset, bgRight) >= maxDistanceSq
+    );
+  };
 
   const ranges: IColumnRange[] = [];
   let start = -1;
@@ -106,7 +179,7 @@ export function panelColumns(
   for (let x = 0; x < img.width; x++) {
     let foreground = 0;
     for (let y = 0; y < img.height; y++) {
-      if (distanceSq(img.data, (y * img.width + x) * 4, opts.background) >= maxDistanceSq) {
+      if (isForeground((y * img.width + x) * 4, y)) {
         foreground++;
         if (foreground >= minPixels) break;
       }

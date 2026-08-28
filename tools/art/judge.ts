@@ -16,11 +16,13 @@ import {
   backgroundLeak,
   edgeHalo,
   footLineY,
+  footSpanCenterX,
   type IRgbaImage,
   residualBackgroundRgb,
   trimBox,
 } from '../../tests/helpers/SpriteMetrics.ts';
 import { callsUsed, matte } from './FalMatting.ts';
+import { assertNodeVersion } from './NodeVersion.ts';
 import { decodePng, encodePng } from './PngCodec.ts';
 import { cropColumns, panelColumns } from './SheetCrop.ts';
 
@@ -39,14 +41,29 @@ const MODELS = ['fal-ai/bria/background/remove', 'fal-ai/birefnet/v2'];
  * 패널 순서는 생성 프롬프트가 정한 front · back · left · right다.
  */
 const PANELS = [
-  { sheet: '4dir_dressed', column: 0, label: '옷 입은 판 front' },
-  { sheet: '4dir_bald', column: 3, label: '삭발 판 right' },
-  { sheet: '4dir_skin', column: 0, label: '맨살 판 front' },
+  { sheet: '4dir_dressed_nostaff', column: 0, label: '옷 입은 판 front' },
+  { sheet: '4dir_bald_nostaff', column: 3, label: '삭발 판 right' },
+  { sheet: '4dir_skin_nostaff', column: 0, label: '맨살 판 front' },
 ];
 
 /** 배경색은 캔버스 왼쪽 위 모서리에서 뽑는다 — 인물이 거기까지 오는 시트는 없다. */
 function cornerBackground(img: IRgbaImage): [number, number, number] {
   return [img.data[0], img.data[1], img.data[2]];
+}
+
+/**
+ * 띠 폭을 8에서 32로 넓혔을 때 발 중심이 움직이는 거리.
+ *
+ * 발만 서 있으면 두 띠가 같은 것을 감싸므로 값이 거의 0이고, 발 옆에 기울어 선 소품이 있으면
+ * 넓은 띠가 그 소품을 더 멀리까지 물어 값이 벌어진다.
+ *
+ * @returns 알파가 있는 픽셀이 없어 잴 수 없으면 `-1`
+ */
+function footCenterDrift(img: IRgbaImage): number {
+  const near = footSpanCenterX(img, 8);
+  const far = footSpanCenterX(img, 32);
+  if (near === null || far === null) return -1;
+  return Math.abs(near - far);
 }
 
 /** 한 장을 계획 §3.1의 항목으로 재서 한 줄로 만든다. */
@@ -67,11 +84,22 @@ function measure(img: IRgbaImage, bg: readonly [number, number, number]): string
     `거의불투명 ${String(hist.nearOpaque).padStart(6)}`,
     `트림 ${boxText.padEnd(16)}`,
     `발밑 ${String(footLineY(img) ?? -1).padStart(4)}`,
-    `알파0색 (${residual.mean.join(',')})`.padEnd(20),
+    // 평균만 찍으면 「배경 회색이 남았다」와 「캐릭터 색이 섞여 남았다」가 같은 회색으로
+    // 보인다 — 반대색이 섞이면 평균이 가운데로 모이기 때문이다. 무채색 비율을 함께 찍어야
+    // 그 둘이 갈린다.
+    `알파0색 (${residual.mean.join(',')}) 무채${(residual.achromaticRatio * 100).toFixed(0)}%`.padEnd(
+      26,
+    ),
     `배경색불투명 ${String(leak).padStart(5)}`,
     // 좌우를 따로 찍는다. 합치면 깨끗한 쪽이 더러운 쪽을 희석해, 한쪽 윤곽에만 회색 선이
     // 그어진 결과가 절반 값으로 보인다 — 실제로 `birefnet`이 그렇게 통과할 뻔했다.
     `후광 좌${percent(halo.left.ratio)} 우${percent(halo.right.ratio)}`,
+    // 지팡이가 남았는지를 보는 지표다. 정렬은 발만 보는 `footBand`를 쓰므로 지팡이가 남아도
+    // 정렬 값이 안 움직인다 — 그래서 「소품이 있는가」는 소품에 민감한 바깥 상자로 따로 재야
+    // 한다. 통과선을 코드에 안 박는 이유는 채택본이 지팡이 없는 판이라 이 지표가 늘 0 근처를
+    // 찍기 때문이다 — 선을 세울 표본이 한쪽뿐이다. 숫자만 찍고 소품이 남았는지는 사람이 눈으로
+    // 가른다.
+    `발중심차 ${footCenterDrift(img).toFixed(1).padStart(5)}`,
   ].join('  ');
 }
 
@@ -79,7 +107,10 @@ async function main(): Promise<void> {
   let failures = 0;
 
   for (const panel of PANELS) {
-    const sheetPath = path.join(ROOT, `art-source/player/2026-08-06/${panel.sheet}.png`);
+    // 채택본이 사는 자리를 본다(사양서 §9.1.1). 채택본이 갈리면 입력 해시가 달라져 캐시가
+    // 미스가 되고 판정 여섯 번이 다시 과금되므로, **모델을 다시 고를 때만 돌린다** — 지금
+    // 결정은 닫혀 있어서(`bria`) 이 실행기는 그때까지 쉰다.
+    const sheetPath = path.join(ROOT, `art-source/player/${panel.sheet}.png`);
     const sheet = decodePng(fs.readFileSync(sheetPath));
     const bg = cornerBackground(sheet);
 
@@ -94,7 +125,7 @@ async function main(): Promise<void> {
     // 인물 바깥 한두 열이 붙고 떨어지는 것으로 뒤집히지 않는다.
     //
     // 반대로 **출하물을 뽑을 때는 반드시 여백을 준다.** 그 이유는 `ICropColumnsOptions`의
-    // `margin` 주석에 있고, 그 실행기는 교체 슬라이스(F67)가 붙인다.
+    // `margin` 주석에 있고, 그렇게 뽑는 실행기가 `build.ts`다.
     const cropped = cropColumns(sheet, columns[panel.column]);
     const croppedPng = encodePng(cropped);
 
@@ -125,26 +156,6 @@ async function main(): Promise<void> {
     console.error(`✗ 실패한 호출 ${failures}건 — 위 [실패] 줄을 본다.`);
     process.exitCode = 1;
   }
-}
-
-/**
- * 이 도구가 요구하는 Node 최소 버전.
- *
- * `--experimental-strip-types`로 `.ts`를 그대로 돌리는데 그 플래그가 22.6에 들어왔고,
- * `File` 전역(업로드에 쓴다)도 20부터다. **이 프로젝트는 장비 둘을 오간다** — 낮은 Node가
- * 깔린 쪽에서 돌리면 스트립이 문법 오류로 죽거나 `File is not defined`가 뜨는데, 둘 다
- * 원인이 Node 버전이라는 것이 메시지에 안 드러난다.
- */
-const MIN_NODE_MAJOR = 22;
-const MIN_NODE_MINOR = 6;
-
-function assertNodeVersion(): void {
-  const [major, minor] = process.versions.node.split('.').map(Number);
-  if (major > MIN_NODE_MAJOR || (major === MIN_NODE_MAJOR && minor >= MIN_NODE_MINOR)) return;
-  throw new Error(
-    `Node ${MIN_NODE_MAJOR}.${MIN_NODE_MINOR} 이상이 필요하다 (지금 ${process.versions.node}) — ` +
-      '`--experimental-strip-types`가 그 버전부터 있다.',
-  );
 }
 
 try {

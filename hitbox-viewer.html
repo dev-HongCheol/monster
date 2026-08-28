@@ -174,7 +174,7 @@
         <div class="row"><span class="name">반너비<small>hurtboxHalfWidth</small></span>
           <input type="range" id="halfW" min="2" max="40" step="1" value="18"><span class="val" id="halfW-v">18</span></div>
         <div class="row"><span class="name">반높이<small>hurtboxHalfHeight</small></span>
-          <input type="range" id="halfH" min="2" max="50" step="1" value="30"><span class="val" id="halfH-v">30</span></div>
+          <input type="range" id="halfH" min="2" max="50" step="1" value="44"><span class="val" id="halfH-v">44</span></div>
         <label class="toggle"><input type="checkbox" id="showMove" checked> 이동·벽 충돌 원 표시</label>
         <div class="row move"><span class="name">반지름<small>collisionRadius</small></span>
           <input type="range" id="moveR" min="2" max="40" step="1" value="25"><span class="val" id="moveR-v">25</span></div>
@@ -194,8 +194,8 @@
   <div class="group">
     <div class="label">스프라이트 표시 크기 (contentSize)</div>
     <div class="card">
-      <div class="row dim"><span class="name">가로</span><input type="range" id="csW" min="16" max="160" step="1" value="50"><span class="val" id="csW-v">50</span></div>
-      <div class="row dim"><span class="name">세로</span><input type="range" id="csH" min="16" max="200" step="1" value="64"><span class="val" id="csH-v">64</span></div>
+      <div class="row dim"><span class="name">가로</span><input type="range" id="csW" min="16" max="160" step="1" value="48"><span class="val" id="csW-v">48</span></div>
+      <div class="row dim"><span class="name">세로</span><input type="range" id="csH" min="16" max="200" step="1" value="96"><span class="val" id="csH-v">96</span></div>
       <div class="row dim"><span class="name">확대</span><input type="range" id="zoom" min="2" max="16" step="0.5" value="7"><span class="val" id="zoom-v">7×</span></div>
     </div>
   </div>
@@ -229,21 +229,23 @@
 </main>
 
 <script>
-const DEFAULT_IMG = "game/assets/art/player/player_mage_bridge.png";
+// 브릿지 스프라이트는 최종 4방향 아트로 대체돼 사라졌다. 기본 이미지가 없는 파일을 가리키면
+// 뷰어가 열자마자 오류 상태로 뜨고 매번 「파일 선택」을 해야 한다.
+const DEFAULT_IMG = "game/assets/art/player/player_4dir_front.png";
 const $ = (id) => document.getElementById(id);
 
-// 대상별 프리셋(현재 data JSON 값)
+// 대상별 프리셋 — `main.scene`의 Content Size와 `player.json`의 값이다(2026-08-24 실측).
 const PRESET = {
-  player:  { csW: 50, csH: 64 },
+  player:  { csW: 48, csH: 96 },
   monster: { csW: 50, csH: 50 },
 };
 
 const state = {
   mode: "player",
-  halfW: 18, halfH: 30, moveR: 25, pickR: 50,
+  halfW: 18, halfH: 44, moveR: 25, pickR: 50,
   showMove: true, showPickup: false,
   monR: 25,
-  csW: 50, csH: 64, zoom: 7,
+  csW: 48, csH: 96, zoom: 7,
 };
 
 // ---- 이미지 로드 ----

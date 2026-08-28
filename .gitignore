@@ -26,6 +26,9 @@ node_modules/
 # 보관할 원본은 art-source/에 넣는다 (docs/design/spec/art-asset-spec.md §9.1)
 docs/temp/
 
+# 매팅 응답 캐시 — 지우면 재생성에 유료 호출이 든다(FalMatting.ts의 CACHE_DIR 주석)
+art-source/matting-cache/
+
 # API 키 — fal.ai 아트 파이프라인이 읽는다. 샘플은 `.env.example`로 추적하고
 # 값이 든 `.env`만 막는다. 새면 남이 이 계정의 크레딧을 쓸 수 있다.
 .env

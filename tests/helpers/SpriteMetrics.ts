@@ -206,6 +206,44 @@ export function footLineY(img: IRgbaImage): number | null {
   return null;
 }
 
+/**
+ * 아래 몇 줄의 알파 있는 픽셀을 감싸는 바깥 상자의 가로 중심 — **정렬 기준이 아니라 판정 지표다.**
+ *
+ * 둘의 차이가 이 함수의 존재 이유다. 정렬은 캐릭터가 딛고 선 자리를 재는 일이라 그림에 무엇을
+ * 더 그렸는지에 흔들리면 안 되고, 그래서 `alignToCanvas`는 발을 먼저 찾는 `footBand`를 쓴다.
+ * 반대로 「이 시트에 지팡이가 남았는가」를 물을 때는 흔들리는 쪽이 필요하다 — 바깥 상자는 띠
+ * 안의 것이 발인지 막대인지 가리지 않으므로, 소품이 있으면 띠 폭을 바꿀 때 값이 함께 움직인다.
+ *
+ * **그래서 이 함수는 `Postprocess.ts`가 아니라 여기 있다.** 후처리는 출하물을 만드는 자리이고
+ * 여기는 만들어진 것을 재는 자리인데, 이 값은 재기만 하고 출하물을 한 픽셀도 바꾸지 않는다.
+ * 섞어 두면 다음 사람이 정렬이 이 값을 본다고 읽는다.
+ *
+ * 알파 임계값을 안 걸고 `> 0`으로 보는 것은 `footLineY`와 같은 이유다 — 판정은 잡음을 누르기
+ * 전 원본에 대고 재야 잡음을 뱉는 쪽이 드러난다.
+ *
+ * @param rows 아래에서부터 볼 줄 수
+ * @returns 알파가 있는 픽셀이 하나도 없으면 `null`
+ */
+export function footSpanCenterX(img: IRgbaImage, rows: number): number | null {
+  const bottom = footLineY(img);
+  if (bottom === null) return null;
+
+  const top = Math.max(0, bottom - rows + 1);
+  let minX = img.width;
+  let maxX = -1;
+
+  for (let y = top; y <= bottom; y++) {
+    for (let x = 0; x < img.width; x++) {
+      if (img.data[(y * img.width + x) * 4 + 3] === 0) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+    }
+  }
+
+  if (maxX < 0) return null;
+  return (minX + maxX) / 2;
+}
+
 /** 윤곽 한쪽의 후광 측정치. `ratio`는 잰 행 중 후광이 있는 행의 비율이다. */
 export interface IEdgeHalo {
   /** 가장자리와 안쪽을 둘 다 잴 수 있었던 행 수 */
