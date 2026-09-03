@@ -1,0 +1,41 @@
+{
+  "locked_at": "2026-08-31T19:40:00",
+  "views": {
+    "front": {
+      "source_file": "F:\\ai\\ComfyUI\\output\\front_matte_green\\d35_00002_.png",
+      "sha256": "39f7dc197235abbb5497de6c8b5bdfd8fb648779bd7711b8b8827a6e7eebeac4",
+      "width": 832,
+      "height": 1216,
+      "format": "PNG"
+    },
+    "back": {
+      "source_file": "F:\\ai\\ComfyUI\\output\\master_back_clean_neck\\d35_00001_.png",
+      "sha256": "ba1cd4d34886c122b5c090b944a81ead58926b86d81c1f5a8fdb2518aadde8c7",
+      "width": 832,
+      "height": 1216,
+      "format": "PNG"
+    },
+    "left": {
+      "source_file": "F:\\ai\\ComfyUI\\output\\master_corrected_left\\d35_00001_.png",
+      "sha256": "2d6925f088df1dd02a65ab644ae785424b592cce7990132c12f68f29c512d225",
+      "width": 832,
+      "height": 1216,
+      "format": "PNG"
+    },
+    "right": {
+      "source_file": "F:\\ai\\ComfyUI\\output\\master_corrected_right\\d35_00001_.png",
+      "sha256": "459bc118cd306e752b8c6466c51c11496a77963db88ca8ae38bc785333784bbf",
+      "width": 832,
+      "height": 1216,
+      "format": "PNG"
+    }
+  },
+  "staff_master_front": {
+    "file": "staff_master_front.png",
+    "sha256": "3d005e6ec04796691c43db47c2e2576d6ece948c08bd3570ceee65c6739e390c",
+    "width": 887,
+    "height": 1774,
+    "locked_at": "2026-08-31T12:04:38Z",
+    "description": "Ornate Blue Crystal Staff Design Master (Official Reference)"
+  }
+}

@@ -303,6 +303,188 @@ export function edgeHalo(
   return { left: scan(1), right: scan(-1) };
 }
 
+/** `maskedRegionDelta`가 마스크 밖에서 찾아낸 차이. */
+export interface IMaskedRegionDelta {
+  /** 네 채널 중 하나라도 다른 픽셀 수 */
+  differing: number;
+  /** 그중 첫 픽셀의 좌표(위에서 아래, 왼쪽에서 오른쪽 순). 차이가 없으면 `null` */
+  firstAt: { x: number; y: number } | null;
+}
+
+/**
+ * 마스크가 열지 않은 자리에서 두 이미지가 픽셀 단위로 같은지 센다.
+ *
+ * 인페인팅은 잠재 공간을 거쳐 VAE로 돌아오므로 **지시하지 않은 자리도 미세하게 다시
+ * 그려진다.** 그래서 그래프 끝에 `ImageCompositeMasked`를 놓아 마스크 밖을 원본에서
+ * 덮어쓰는데, 그게 실제로 걸렸는지는 눈으로 안 보인다 — 차이가 채널당 한둘이라 화면에서는
+ * 같은 그림이다. 이 함수가 그 자리를 대신 본다.
+ *
+ * **근사가 아니라 0을 요구한다.** 파츠는 「얹기 전」과 「얹은 뒤」의 뺄셈으로 떼어 내므로,
+ * 마스크 밖에 1이라도 차이가 남으면 그 차이가 파츠 레이어에 얼룩으로 딸려 온다. 몇 px까지는
+ * 봐준다고 정해 두면 넘겼는지를 회차마다 다시 판단해야 하고, 얼룩이 눈에 보일 때는 이미
+ * 레이어가 여러 장 쌓인 뒤다.
+ *
+ * **알파가 0인 자리만 「마스크 밖」으로 본다.** 반투명한 자리는 합성이 원본과 결과를 비율로
+ * 섞으라고 지시한 자리라 원본과 달라지는 것이 정상이고, 그것까지 세면 제대로 도는 그래프가
+ * 실패로 나온다. 대신 마스크를 통째로 옅게 칠하면 셀 자리가 없어져 **0이 공허하게 나오므로**,
+ * QA 문서가 「마스크 안은 실제로 다시 그려졌다」를 사람이 보는 항목으로 함께 세워 둔다.
+ *
+ * @param mask 알파 255가 「모델이 칠해도 되는 자리」다
+ * @throws 세 이미지의 크기가 하나라도 어긋나면. 어긋난 채로 0을 돌려주면 「얼렸다」는 거짓 통과가 된다
+ */
+export function maskedRegionDelta(
+  a: IRgbaImage,
+  b: IRgbaImage,
+  mask: IRgbaImage,
+): IMaskedRegionDelta {
+  if (
+    a.width !== b.width ||
+    a.height !== b.height ||
+    a.width !== mask.width ||
+    a.height !== mask.height
+  ) {
+    throw new Error(
+      `세 이미지의 크기가 다르다: ${a.width}×${a.height} · ${b.width}×${b.height} · ${mask.width}×${mask.height}`,
+    );
+  }
+
+  let differing = 0;
+  let firstAt: { x: number; y: number } | null = null;
+
+  for (let y = 0; y < a.height; y++) {
+    for (let x = 0; x < a.width; x++) {
+      const i = (y * a.width + x) * 4;
+      if (mask.data[i + 3] !== 0) continue;
+      if (
+        a.data[i] === b.data[i] &&
+        a.data[i + 1] === b.data[i + 1] &&
+        a.data[i + 2] === b.data[i + 2] &&
+        a.data[i + 3] === b.data[i + 3]
+      ) {
+        continue;
+      }
+
+      differing++;
+      if (firstAt === null) firstAt = { x, y };
+    }
+  }
+
+  return { differing, firstAt };
+}
+
+/**
+ * 배경색 한 점. 알파가 없는 원본에서 전경을 가를 기준이다.
+ *
+ * 이 파일의 다른 함수가 배경색을 `[r, g, b]` 튜플로 받는 것과 모양이 다른데, 그쪽은 시트
+ * 상수를 그대로 넘기는 자리고 여기는 회차마다 사람이 정한 값을 적어 넣는 자리다 — 이름이
+ * 붙어 있으면 세 숫자의 순서를 잘못 적는 사고가 안 난다.
+ */
+export interface IRgb {
+  r: number;
+  g: number;
+  b: number;
+}
+
+/**
+ * 배경색에서 충분히 먼 픽셀을 모두 감싸는 사각형 — 알파가 없는 생성 원본의 인물 상자다.
+ *
+ * `trimBox`가 이미 있는데 따로 두는 이유는 **재는 시점에 알파가 없기** 때문이다. 갓 생성한
+ * PNG는 배경 위에 통짜로 불투명해서 `trimBox`는 네 장 모두 캔버스 전체를 돌려주고, 그러면
+ * 기하 게이트가 아무것도 안 재고 통과한다 — 계산은 규칙대로 했는데 판정만 없는 상태가 된다.
+ *
+ * **색 키잉을 배경 제거에 쓰는 것은 2026-08-20에 폐기됐지만, 재는 것은 다르다.** 제거는
+ * 인물을 뚫으면 그림이 망가지지만, 상자는 몇 px 어긋나도 4% 허용차 판정을 안 바꾼다.
+ * `tools/art/SheetCrop.ts`의 `panelColumns`가 같은 이유로 같은 방식을 쓴다.
+ *
+ * @param bg 그 회차의 배경색
+ * @param tolerance 배경색까지의 거리가 이 값 **이하**면 배경으로 본다. 생성물의 배경은 완전한 단색이 아니라 얼룩이 있고, 그 얼룩을 전경으로 세면 상자가 캔버스 전체가 된다
+ * @returns 배경에서 먼 픽셀이 하나도 없으면 `null`
+ */
+export function chromaBox(img: IRgbaImage, bg: IRgb, tolerance: number): IBox | null {
+  const toleranceSq = tolerance * tolerance;
+  let minX = img.width;
+  let minY = img.height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      const i = (y * img.width + x) * 4;
+      const dr = img.data[i] - bg.r;
+      const dg = img.data[i + 1] - bg.g;
+      const db = img.data[i + 2] - bg.b;
+      if (dr * dr + dg * dg + db * db <= toleranceSq) continue;
+
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+
+  if (maxX < 0) return null;
+  return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
+/** 네 뷰의 기하가 서로 얼마나 어긋나는가. 앞 셋은 비율, `footLine`만 픽셀 수다. */
+export interface IViewGeometrySpread {
+  /** 인물 세로의 편차 비율 */
+  height: number;
+  /** 인물 가로의 편차 비율 */
+  width: number;
+  /** 종횡비(가로 ÷ 세로)의 편차 비율 */
+  aspect: number;
+  /** 발 밑선이 가장 아래인 장과 가장 위인 장의 차 (px) */
+  footLine: number;
+}
+
+/**
+ * 값 넷이 벌어진 폭을 중앙값으로 나눈다.
+ *
+ * **나누는 값이 최대도 최소도 아닌 이유는 넷 중 하나만 튀는 것이 이 게이트가 잡으려는
+ * 모양이기 때문이다.** 셋이 400이고 하나가 440일 때 알고 싶은 것은 「기준에서 10% 벌어졌다」인데,
+ * 최대(440)로 나누면 9.1%가 나오고 최소(400)로 나누면 10%가 나온다 — 같은 크기의 어긋남이
+ * 튄 방향에 따라 다른 점수를 받아서, 크게 튄 회차가 작게 튄 회차보다 관대하게 판정된다.
+ * 중앙값은 튄 한 장이 기준을 못 끌고 가므로 양쪽이 같은 점수를 받는다.
+ *
+ * @param values 넷이어야 한다 — 호출부가 이미 개수를 확인한 뒤 부른다
+ */
+function spreadRatio(values: number[]): number {
+  const sorted = [...values].sort((l, r) => l - r);
+  const median = (sorted[1] + sorted[2]) / 2;
+  return (sorted[3] - sorted[0]) / median;
+}
+
+/**
+ * 네 방향 View의 상자를 견줘 서로 얼마나 어긋났는지 낸다.
+ *
+ * **네 장을 따로 생성하면 한 시트가 주던 상호 참조가 사라진다.** 한 이미지 안에 네 방향을
+ * 함께 그릴 때는 모델이 옆 패널을 보고 크기를 맞추는데, 방향별로 나눠 뽑으면 그 참조가
+ * 없어서 회차마다 인물이 조금씩 다른 크기로 나온다. 그 자리를 이 값이 메운다.
+ *
+ * **세로와 발 밑선만 재면 부족하다.** 그 둘이 같아도 가로가 다르면 체형이 다른 인물이고,
+ * 세로와 가로가 같은 비율로 커지는 드리프트는 앞 둘 다 못 잡는다 — 종횡비가 그 둘을 가른다.
+ * 맨몸에 삭발이면 의상 단서가 없어서 육안으로는 더 안 걸린다.
+ *
+ * **발 밑선만 비율이 아니라 픽셀 수다.** 정렬은 평행 이동으로 맞추는 값이라 「몇 % 어긋났나」는
+ * 뜻이 없고 「몇 px 내려야 하나」가 필요하다.
+ *
+ * @param boxes 네 방향의 인물 상자. 알파가 없는 원본이면 `chromaBox`가, 배경을 지운 뒤면 `trimBox`가 준다
+ * @throws 네 장이 아니면. 세 장으로 판정하면 빠진 방향이 조용히 통과한다
+ */
+export function viewGeometrySpread(boxes: IBox[]): IViewGeometrySpread {
+  if (boxes.length !== 4) throw new Error(`네 장이어야 한다: ${boxes.length}장을 받았다`);
+
+  const footLines = boxes.map((b) => b.y + b.height);
+
+  return {
+    height: spreadRatio(boxes.map((b) => b.height)),
+    width: spreadRatio(boxes.map((b) => b.width)),
+    aspect: spreadRatio(boxes.map((b) => b.width / b.height)),
+    footLine: Math.max(...footLines) - Math.min(...footLines),
+  };
+}
+
 /**
  * PNG의 IHDR에서 가로·세로만 읽는다 — 압축을 풀지 않는다.
  *
