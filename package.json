@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "wf": "node .claude/workflow.mjs",
+    "comfy": "powershell -ExecutionPolicy Bypass -File ./tools/run-comfyui.ps1",
     "typecheck": "node .claude/typecheck.mjs",
     "test": "vitest",
     "test:run": "vitest run",
