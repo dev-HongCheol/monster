@@ -9,7 +9,7 @@
     "docs/development/spec/ops-licensing.md"
   ],
   "canon_skip_reason": null,
-  "qa_doc_fingerprint": "f4afe6e0f3d3c7d9",
+  "qa_doc_fingerprint": "b29b47633396286b",
   "verification": {
     "cso_done": true,
     "ts_check_clean": true,
