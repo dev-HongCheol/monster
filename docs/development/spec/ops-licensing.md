@@ -4,7 +4,7 @@
 
 - **최초 작성:** 2026-08-20
 - **상태:** CONFIRMED
-- **이력:** 2026-08-20 — 신설 · 2026-08-22 배경 제거가 fal 매팅으로 옮겨 가 §2 표에서 `rembg` 행을 「과거에 쓴 것」으로 내리고 `bria/background/remove`를 「지금 쓰는 것」으로 세웠다. §2.1의 모델 명시 함정은 폴백용으로 남기되 실효 표시를 달았다
+- **이력:** 2026-08-20 — 신설 · 2026-08-22 배경 제거가 fal 매팅으로 옮겨 가 §2 표에서 `rembg` 행을 「과거에 쓴 것」으로 내리고 `bria/background/remove`를 「지금 쓰는 것」으로 세웠다. §2.1의 모델 명시 함정은 폴백용으로 남기되 실효 표시를 달았다 · 2026-09-14 §2 표에 플레이어 3D 경로가 쓰는 도구 셋(VRoid Studio · VRM Add-on for Blender · Quaternius Universal Animation Library)을 더했다. VRoid는 원문을 직접 열지 못해 「미확인」으로 올렸다
 
 ---
 
@@ -39,6 +39,9 @@
 | **fal 배경 제거 대안 2종** | 폴백 | `birefnet/v2` · `imageutils/rembg` 둘 다 모델 페이지에 `Commercial use` 표시가 붙는다. `birefnet/v2`는 품질 판정에서 떨어졌을 뿐 라이선스는 문제없다 | 2026-08-20 |
 | **Spine** | 리깅(아직 결제 전) | 에디터 라이선스가 런타임을 제품에 넣을 권한을 함께 준다 — 런타임은 별도 구매가 아니다. 재배포물에 라이선스와 저작권 고지를 포함해야 한다. 등급·요금은 §1이 가리키는 사양서가 든다 | 2026-08-20 · [런타임 라이선스](https://esotericsoftware.com/spine-runtimes-license) |
 | **Cocos Creator** | 엔진 | 게임 개발 목적의 사용이 무료이고 로열티가 없다. 사용자 서비스 약관이 유료화 시 사전 공지를 약속한다. 스플래시·크레딧 표기 의무 조항은 없고 상표 사용 제한만 있다 | 2026-08-20 · [약관](https://download.cocos.com/CocosUdc/agreement/Cocos_User_Service_Agreement_en_20220901.html) |
+| **VRoid Studio** | 플레이어 3D 마스터(`.vrm`) — 3D 경로 시험 | 만든 모델을 상업적으로 써도 된다고 공식 FAQ가 밝힌다. **다만 원문을 직접 연 기록이 없다** — pixiv 도움말이 자동 조회를 막는다. 그래서 확인 칸을 「미확인」으로 두고, 생산에 쓰기 전에 사람이 원문을 열어 날짜를 채운다. 모델마다 내보낼 때 VRM 메타데이터에 이용 조건을 적는데, 지금 `art-source/`의 `character.vrm`은 상업 이용이 `personalNonProfit`(개인 비영리)로 나가 있다. 판매할 게임에 쓰는 모델은 이 값을 허용으로 바꿔 내보낸다. 다른 제작자의 텍스처·헤어·VRM을 들이면 조건이 따로 붙으므로, 받기 전에 이 표에 행을 붙인다 | **미확인** · [FAQ](https://vroid.pixiv.help/hc/en-us/articles/4405813333657-Can-I-use-the-models-created-with-VRoid-Studio-Stable-Ver-for-commercial-purposes) |
+| **VRM Add-on for Blender** | `.vrm`을 Blender로 들여오기 — `tools/blender/` | MIT와 GPL-3.0 가운데 골라 쓰는 이중 라이선스다. Blender 안에서 도구로만 쓰고 게임에 싣지 않으므로 게임 쪽에 붙는 의무가 없다. 판을 고정하는 방법은 `tools/blender/README.md`가 든다 | 2026-09-11 · [확장 페이지](https://extensions.blender.org/add-ons/vrm/) |
+| **Quaternius Universal Animation Library** | 걷기 모션 원본 — `tools/blender/`가 리타게팅한다 | CC0 1.0(퍼블릭 도메인 헌정)이라 표기 의무도 재배포 제한도 없다. 그래서 받은 파일을 라이선스 파일과 함께 `art-source/`에 커밋한다 | 2026-09-14 · 동봉 `License.txt` · [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
 | 폰트 · 사운드 | 아직 없다 | `game/assets/` 아래에 폰트 파일도 오디오 파일도 0개다. 고르는 시점에 이 표에 행이 붙는다 | 2026-08-20 |
 
 ### 2.1 rembg를 쓸 때는 모델을 명시한다
