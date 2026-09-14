@@ -41,6 +41,14 @@ blender --background --python-exit-code 1 --python tools/blender/smoke.py -- --o
 **`--python-exit-code`가 `--python`보다 앞에 온다.** Blender는 인자를 적힌 순서대로 처리하므로
 뒤에 두면 스크립트가 이미 실행된 뒤에 설정돼 예외가 종료 코드에 실리지 않는다.
 
+**게이트 0b·0c·2는 규격 값을 인자로 받는다.** 캔버스와 발·머리 행(`--width`·`--height`·`--foot-row`·`--head-row`)의 주인은 `tests/helpers/FrameSet.ts`의 `PLAYER_FRAME_SPEC`이고, 실행기가 거기서 넘긴다. 스크립트에는 기본값이 없어서 빠지면 `spec-args`로 실패한다. 값을 스크립트에도 적어 두면 한쪽만 고쳤을 때 굽기와 판정이 조용히 갈리기 때문이다.
+
+**굽지 않고 이미 있는 산출물만 다시 잴 수 있다.** `--judge-only`를 붙이면 Blender를 부르지 않고 게이트 표의 출력 자리에 있는 파일을 판정한다. 게임 폴더에 프레임을 덮어 넣은 뒤 그 세트를 다시 재는 데 쓴다(아래 「출하 프레임 다시 굽기」).
+
+```bash
+node --experimental-strip-types tools/blender/gate.ts 2 --judge-only
+```
+
 ## 종료 코드를 믿지 않는다
 
 `blender --background --python`은 스크립트가 예외를 던져도 종료 코드 0을 낸다. 트레이스백은
@@ -60,21 +68,26 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 `--python-exit-code`도 `try/except`도 발화하지 않는데, 그 모양이 막으려는 조용한 실패와
 정확히 같다.
 
+**Blender가 멈추면 실행기가 끊는다.** EEVEE가 GPU 컨텍스트에서 멈추면 Blender는 죽지도 끝나지도
+않으므로, 실행기가 20분을 기다린 뒤 끊고 그 사실을 말한다. 판정 줄이 없는 실패와 달리 끝나지 않은
+것이므로, 같은 명령을 `--background` 없이 돌려 어디서 멈추는지 본다.
+
 ## 실패 코드
 
 | 코드 | 무엇이 안 됐나 | 다음에 뭘 하나 | 찍는 곳 |
 |---|---|---|---|
-| `blender-version` | Blender 버전이 허용 범위 밖이다 | 메시지가 기대 범위와 실측 버전을 둘 다 담는다. 4.2~5.2 안의 판을 깐다 | `smoke.py` |
-| `eevee-missing` | 엔진 목록에 EEVEE 식별자가 없다 | 메시지의 실제 목록을 본다. 그 목록에 있는 이름을 `EEVEE_CANDIDATES`에 더한다 | `smoke.py` |
-| `output-path` | 출력 경로에 쓸 수 없다. 디렉터리를 못 만들거나, 출하 아트 아래거나, 렌더 뒤 파일이 없다 | 메시지의 절대 경로를 본다. 출하 아트 아래로는 어떤 경우에도 쓰지 않는다 | `smoke.py` |
-| `unexpected` | 위 어디에도 안 들어가는 파이썬 예외 | 메시지에 예외 타입과 원문이 담긴다. 같은 명령을 `--background` 없이 손으로 돌려 본다 | `smoke.py` |
+| `blender-version` | Blender 버전이 허용 범위 밖이다 | 메시지가 기대 범위와 실측 버전을 둘 다 담는다. 4.2~5.2 안의 판을 깐다 | `smoke.py` · `_common.py` |
+| `eevee-missing` | 엔진 목록에 EEVEE 식별자가 없다 | 메시지의 실제 목록을 본다. 그 목록에 있는 이름을 `EEVEE_CANDIDATES`에 더한다 | `smoke.py` · `_common.py` |
+| `output-path` | 출력 경로에 쓸 수 없다. 디렉터리를 못 만들거나, 출하 아트 아래거나, `--out`이 빠졌거나, 렌더 뒤 파일이 없거나, **이미 있는 프레임 파일을 덮으려 했다** | 메시지의 절대 경로를 본다. 출하 아트 아래로는 어떤 경우에도 쓰지 않는다. 프레임을 다시 굽는 중이면 아래 「출하 프레임 다시 굽기」를 따른다 | `smoke.py` · `_common.py` · `import_vrm.py` · `retarget_render.py` |
+| `unexpected` | 위 어디에도 안 들어가는 파이썬 예외 | 메시지에 예외 타입과 원문이 담긴다. 같은 명령을 `--background` 없이 손으로 돌려 본다 | `smoke.py` · `_common.py` |
 | `no-gate-line` | stdout에 판정 줄이 하나도 없다 | 실행기가 stderr 꼬리를 함께 찍는다. GPU·드라이버 쪽을 먼저 본다 | `gate.ts` |
-| `bad-gate-payload` | `GATE_OK`의 JSON을 읽을 수 없다 | 굽기는 끝났는데 보고가 깨진 것이다. 파이썬 쪽 `gate_ok` 호출을 본다 | `gate.ts` |
+| `bad-gate-payload` | `GATE_OK`의 JSON을 읽을 수 없거나 `GATE_FAIL`에 실패 코드가 없다 | 굽기는 끝났는데 보고가 깨진 것이다. 파이썬 쪽 `gate_ok`·`gate_fail` 호출을 본다 | `gate.ts` |
+| `spec-args` | 규격 인자(`--width`·`--height`·`--foot-row`·`--head-row`)가 빠졌거나 정수가 아니다 | 실행기(`gate.ts`)를 거쳐 부른다. 손으로 부를 때는 `PLAYER_FRAME_SPEC`의 값을 그대로 준다 | `_common.py` |
 | `vrm-addon-missing` | VRM 임포터 확장이 켜져 있지 않거나 `poll()`이 거부한다 | 확장을 켜고 다시 돌린다. `read_factory_settings`가 사용자 설치 확장을 떨어뜨리므로 스크립트가 초기화 뒤 다시 켠다 | `_common.py` |
-| `vrm-path` | `.vrm` 경로가 없거나, 임포트가 실패했거나, 골격·메시가 없다 | VRoid에서 **VRM 1.0**으로 감축 없이 다시 내보낸다 | `_common.py` |
+| `vrm-path` | `.vrm` 경로가 없거나(`--vrm`이 빠진 경우 포함), 임포트가 실패했거나, 골격·메시가 없다 | VRoid에서 **VRM 1.0**으로 감축 없이 다시 내보낸다 | `_common.py` · `import_vrm.py` · `retarget_render.py` |
 | `camera-framing` | 인물 높이가 0이거나, 발·머리 행을 하나만 줬거나, 두 행 사이로 키를 맞춘 배율에서 인물 폭이 여백 안에 안 들어온다 | 높이가 0이면 임포트가 메시를 실제로 들여왔는지 본다. 폭이 넘치면 메시지의 픽셀 폭을 보고 팔 자세(`BASE_ARM_POSE`)나 의상 폭을 줄인다 — 배율을 줄여 맞추면 인물이 출하 아트보다 작아진다 | `_common.py` |
-| `motion-path` | 모션 파일이 없거나, 형식을 모르거나, 아마추어가 없다 | glb·gltf·fbx만 받는다. 경로를 확인한다 | `retarget_render.py` |
-| `motion-action` | 그 이름의 액션이 없거나 길이가 0이다 | 메시지가 걷기로 보이는 액션 이름을 함께 준다. `--action`에 그것을 넘긴다 | `retarget_render.py` |
+| `motion-path` | 모션 파일이 없거나(`--motion`이 빠진 경우 포함), 형식을 모르거나, 아마추어가 없다 | glb·gltf·fbx만 받는다. 경로를 확인한다 | `retarget_render.py` |
+| `motion-action` | 그 이름의 액션이 없거나, 길이가 0이거나, `--frames`가 1 이상의 정수가 아니다 | 메시지가 걷기로 보이는 액션 이름을 함께 준다. `--action`에 그것을 넘긴다 | `retarget_render.py` |
 | `retarget-bone` | 대응표의 본을 한쪽 골격에서 못 찾았거나, `SWING_CHAIN`이 적은 부모가 모션 골격의 실제 부모와 다르다 | 못 찾았으면 메시지가 그쪽을 `모션:`·`대상:` 접두어로 말하니 `BONE_MAP`을 그 이름에 맞춘다. 부모가 다르면 메시지가 실제 부모 이름을 말하니 `SWING_CHAIN`을 그 이름에 맞춘다 | `retarget_render.py` |
 
 **메시지에 실측값을 박는다.** 「버전이 맞지 않는다」가 아니라 「기대 4.2~5.2, 지금 4.1.2」로
@@ -88,7 +101,7 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | 파일 | 무엇 | 상태 |
 |---|---|---|
 | `smoke.py` | 게이트 0a. **독립이다** — VRM 애드온도 모델도 사용자의 시작 파일도 쓰지 않는다 | 있음 |
-| `gate.ts` | 실행기. Blender를 부르고 판정 줄을 뽑고 구워진 PNG를 재서 한 줄로 찍는다 | 있음 |
+| `gate.ts` | 실행기. Blender를 부르고 판정 줄을 뽑고 구워진 PNG를 재서 한 줄로 찍는다. `--judge-only`면 굽지 않고 이미 있는 산출물만 잰다 | 있음 |
 | `_common.py` | VRM 임포트 · 카메라 프레이밍 · 렌더 설정. **plumbing이 `smoke.py`와 두 벌인 것은 의도한 것이고** 이유는 그 파일 첫머리에 있다 | 있음 |
 | `import_vrm.py` | 게이트 0b | 있음 |
 | `retarget_render.py` | 게이트 0c와 2. 모션을 입히고 프레임을 굽는다. 본 대응표와 관절별 흔들림 비율(`SWING_SCALE`)을 든다 | 있음 |
@@ -99,8 +112,26 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 실패로 보고되고, 그러면 「여기서 막히면 VRoid를 설치하지 않는다」는 규칙이 조용히 깨진다. 되돌릴
 비용이 가장 작은 지점을 지나친 채로 캐릭터 작업에 들어가게 된다.
 
-**뒤 세 파일을 미리 쓰지 않은 것도 같은 이유다.** 게이트 0a가 통과한 뒤에 붙인다. 미리 써 두면
-게이트 순서가 문서에만 남고 도구에는 없는 상태가 된다.
+## 출하 프레임 다시 굽기
+
+게이트 2를 그대로 다시 돌리면 `output-path`로 멈춘다. 렌더 스크립트가 이미 있는 파일을 덮지 않기
+때문이고, 이 거부는 일부러 둔 것이다. 편집 게이트 훅이 아트 PNG를 막지 않으므로, 덮어쓰기를
+허용하면 게임에 실린 프레임이 바뀐 것을 아무도 모른 채 넘어갈 수 있다.
+
+그래서 다시 구울 때는 스크래치에 먼저 굽고, 판정을 통과한 것만 게임 폴더에 넣는다.
+
+1. `node --experimental-strip-types tools/blender/gate.ts 0c`로 `docs/temp/3d-gate/walk/`에 굽고
+   판정을 통과시킨다. 이 게이트는 스크래치 폴더에 남은 옛 PNG를 알아서 치운다.
+2. 통과한 PNG 여덟 장을 `game/assets/test-3d-gate/`의 같은 이름 파일 위에 **덮어쓴다.** 지우고 새로
+   넣지 않는다. `.meta`가 uuid를 들고 있어서 함께 지워지면 `walk.anim`의 프레임 참조가 전부 끊기는데,
+   Cocos가 켜진 채로 PNG를 지우면 Cocos가 그 `.meta`까지 지울 수 있다.
+3. `node --experimental-strip-types tools/blender/gate.ts 2 --judge-only`로 게임 폴더의 세트를 다시
+   판정한다. 덮어쓴 파일에는 판정 줄이 없으므로, 이 단계를 빼면 게임에 실린 세트는 아무도 재지 않는다.
+4. 비교 시트에 쓰는 장(`walk_0006`)의 인물 크기나 위치가 바뀌었으면 `sheet.ts`의 얼굴 가림 사각형을
+   다시 재고 `sheet.ts`로 시트를 다시 만든다. 가림막은 원본마다 손으로 잰 상수라, 안 고치면 얼굴이
+   드러나거나 엉뚱한 자리를 가린 시트가 나온다.
+
+Cocos가 꺼져 있어 `.meta`를 확실히 남길 수 있으면, 게임 폴더의 PNG만 지우고 `gate.ts 2`를 돌려도 된다.
 
 ## 산출물이 가는 곳
 

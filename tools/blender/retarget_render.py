@@ -29,26 +29,6 @@ import _common as common  # noqa: E402
 from math import radians  # noqa: E402
 from mathutils import Euler, Quaternion, Vector  # noqa: E402
 
-# 출하 규격. `art-asset-spec.md` §12가 실측으로 닫은 값이다.
-CANVAS_WIDTH = 246
-CANVAS_HEIGHT = 493
-
-# 인물의 가장 낮은 점이 놓일 행. **`tests/helpers/FrameSet.ts`의 `PLAYER_FRAME_SPEC`과 같은
-# 값이어야 한다.** 파이썬이 TS를 import할 수 없어 생긴 복사본이라, 한쪽을 고치면 다른 쪽도
-# 함께 고친다. 어긋나면 프레임은 정상으로 구워지는데 판정만 전부 떨어진다.
-FOOT_LINE_Y = 489
-
-# 인물의 가장 높은 점이 놓일 행. 출하된 2D 정면(`player_4dir_front.png`)을 `normalizeAlpha`를
-# 거쳐 재면 머리카락 꼭대기가 2행이다(2026-09-14 실측, 뒷모습은 3행).
-#
-# **발 밑선만으로는 크기가 안 맞는다.** 게임은 3D 프레임과 출하 아트를 똑같이 48×96 상자에
-# 넣으므로, 캔버스를 덜 채운 쪽이 화면에서 작게 보인다. 이 값 없이 구운 판은 머리 꼭대기가
-# 33~40행이라 키가 2D의 92%였고, 사용자가 Cocos 테스트 씬에서 눈으로 작다고 봤다.
-#
-# 여덟 장의 상자를 합쳐 한 번에 맞추므로 이 행에 닿는 것은 머리가 가장 높이 뜬 장뿐이고, 나머지
-# 장은 몇 px 아래에 선다. 프레임마다 맞추지 않는 이유는 이 파일 첫머리에 있다.
-HEAD_LINE_Y = 2
-
 # 모션 쪽(Quaternius, Unreal 이름 체계) → VRoid 쪽(`J_Bip_*`) 대응.
 #
 # 두 열 다 2026-09-11에 실측으로 얻었다 — 모션은 `UAL1_Standard.glb`의 본 65개, VRoid는
@@ -154,9 +134,8 @@ SWING_CHAIN = {
 # 캐릭터가 옷에 따라 다른 자세로 걷게 된다. 그래서 반대로 **자세를 하나로 박고 옷이 거기 맞게**
 # 한다. 이 값은 프로젝트 전체에 하나뿐이고 옷과 무관하다.
 #
-# 노리는 모습은 `docs/temp/sample.png`다. 양팔을 팔꿈치에서 굽혀 몸에서 띄우고, 오른손은 가슴
-# 높이로 들어 지팡이를 쥐어도 얼굴과 최소한으로 겹치게, 왼손은 배꼽 높이에 두어 보조 무기를
-# 들 자리를 낸다.
+# 노리는 모습은 이렇다. 양팔을 팔꿈치에서 굽혀 몸에서 띄우고, 오른손은 가슴 높이로 들어 지팡이를
+# 쥐어도 얼굴과 최소한으로 겹치게, 왼손은 배꼽 높이에 두어 보조 무기를 들 자리를 낸다.
 #
 # **VRoid 정지 자세는 정확한 T 포즈다.** 2026-09-11 실측으로 팔 본이 정확히 ±X를 향하고
 # 세로 성분이 0이었다. A 포즈로 짐작하고 35도만 돌렸다가 팔이 수평으로 뻗은 채 나왔다 —
@@ -173,13 +152,14 @@ SWING_CHAIN = {
 #
 # `J_Bip_L_*`이 캐릭터 자신의 왼쪽이고 정면 그림에서는 오른쪽에 보인다.
 BASE_ARM_POSE = {
-    # 캐릭터의 오른팔 — 가슴 높이. 지팡이를 드는 쪽이라 팔꿈치를 더 접는다.
-    # Y값을 -75도에서 -58도로 수정하여 통 큰 하의/치마 및 소매 클리핑을 방지하고 바깥 공간을 확보한다.
+    # 캐릭터의 오른팔 — 가슴 높이. 지팡이를 드는 쪽이라 팔꿈치를 더 접는다. Y가 -58도라 팔이
+    # 수직(-90도)에서 32도 벌어지는데, 이 벌림이 폭 넓은 하의와 부푼 소매에 손이 박히지 않을
+    # 여유다. -75도로는 그 여유가 모자라 손이 옷 안으로 들어갔다.
     'J_Bip_R_UpperArm': (-10.0, -58.0, 0.0),
     'J_Bip_R_LowerArm': (-105.0, -58.0, 0.0),
     'J_Bip_R_Hand': (-105.0, -58.0, 0.0),
-    # 캐릭터의 왼팔 — 배꼽 높이. 보조 무기를 드는 자리라 조금 낮다.
-    # Y값을 +75도에서 +58도로 수정하여 몸통/하의 바깥으로 팔을 띄운다.
+    # 캐릭터의 왼팔 — 배꼽 높이. 보조 무기를 드는 자리라 조금 낮다. Y는 오른팔과 같은 이유로
+    # 수직(90도)에서 32도 벌어진 58도다.
     'J_Bip_L_UpperArm': (-10.0, 58.0, 0.0),
     'J_Bip_L_LowerArm': (-80.0, 58.0, 0.0),
     'J_Bip_L_Hand': (-80.0, 58.0, 0.0),
@@ -192,6 +172,11 @@ BASE_POSE_ORDER = 'YXZ'
 # VRoid 휴머노이드 골격의 T-포즈 기준 손가락 로컬 회전(Euler XYZ, 도)이다.
 # 네 손가락(Index, Middle, Ring, Little)은 손바닥 쪽으로 구부리고,
 # 엄지(Thumb)는 검지 바깥쪽을 감싸쥐도록 안쪽으로 모은다.
+#
+# 계획에 없던 추가라 근거를 적는다. 축 방향(오른손은 Z+, 왼손은 Z-가 손바닥 쪽)은 렌더로 확인했다 —
+# 2026-09-14 `walk_0006`의 두 손을 네 배로 확대해 네 손가락이 손바닥 쪽으로 말린 주먹인 것을 봤다.
+# 엄지가 검지 바깥을 감싸는지는 이 캔버스 크기에서 가려내지 못했다. 부호가 반대면 같은 각도만큼
+# 손등 쪽으로 젖혀진다.
 BASE_FINGER_POSE = {}
 
 # 오른손 네 손가락 (손바닥 쪽으로 굽힘: Z+)
@@ -272,11 +257,13 @@ def align_source_to_target(source, target):
     """
     모션 골격을 대상 골격의 크기와 자리에 맞춘다.
 
-    맞추지 않으면 `Copy Location`이 의미를 잃는다. 모션 쪽은 사람 키(약 1.8m) 기준이고 이
-    캐릭터는 4등신으로 민 1.1m라, 절대 위치를 그대로 받으면 허리가 머리 위로 올라간다.
+    **배율이 필요한 이유.** `retarget_bake`는 루트(허리)에 모션 루트가 정지 위치에서 움직인 양을
+    월드 좌표로 더한다. 모션 쪽은 사람 키(약 1.8m) 기준이고 이 캐릭터는 4등신으로 민 1.1m라,
+    배율을 안 맞추면 그 이동량이 사람 키 기준으로 남아 오르내림과 좌우 흔들림이 키에 비해 과장된다.
 
-    배율을 맞춘 뒤 두 골격의 **루트 본 정지 위치**가 겹치도록 평행 이동한다. 루트끼리 맞추는
-    이유는 걷기의 상하 흔들림이 그 본을 기준으로 표현되기 때문이다.
+    배율을 맞춘 뒤 두 골격의 **루트 본 정지 위치**가 겹치도록 평행 이동한다. `retarget_bake`는
+    위치의 차이만 옮기므로 이 평행 이동은 구운 결과를 바꾸지 않는다 — 두 골격이 같은 자리에 서
+    있어 Blender에서 장면을 열었을 때 겹쳐 보일 뿐이다.
     """
     factor = armature_height(target) / armature_height(source)
     source.scale = (factor, factor, factor)
@@ -446,7 +433,7 @@ def sample_frames(action, count):
     걷기 한 주기에서 고르게 뽑은 프레임 번호.
 
     마지막 프레임을 빼는 이유는 루프이기 때문이다. 첫 프레임과 같은 자세라, 넣으면 그 쌍이
-    이웃 프레임 차이 검사에 걸리고 재생에서도 한 박자 멈춘 것처럼 보인다.
+    `frameSetIntegrity`의 루프 이음새 검사에 걸리고 재생에서도 한 박자 멈춘 것처럼 보인다.
     """
     start, end = action.frame_range
     span = end - start
@@ -510,7 +497,7 @@ def main():
     motion_path = common.parse_arg(args, 'motion')
     out_dir = common.parse_arg(args, 'out')
     action_name = common.parse_arg(args, 'action', 'Walk_Loop')
-    frame_count = int(common.parse_arg(args, 'frames', '8'))
+    raw_frames = common.parse_arg(args, 'frames', '8')
     prefix = common.parse_arg(args, 'prefix', 'walk')
     # 게이트 이름을 인자로 받는다. 이 스크립트는 0c와 2 둘 다에 쓰이는데 차이는 어디에 굽느냐
     # 뿐이라, 이름을 박아 두면 게이트 2의 판정 줄이 자기를 0c라고 보고한다.
@@ -519,9 +506,53 @@ def main():
     # 안쪽으로 말려도 「소매만 보인다」로 끝난다.
     view = common.parse_arg(args, 'view', 'front')
 
-    for name, value in (('vrm', vrm_path), ('motion', motion_path), ('out', out_dir)):
+    # 빠진 경로 인자는 그 경로가 가리키는 대상의 실패 코드로 보고한다. README의 실패 코드 표가
+    # 코드마다 다음 할 일을 적어 두었으므로, 전부 `output-path`로 접으면 `.vrm` 경로가 빠진
+    # 실패에 「출력 경로를 본다」를 안내하게 된다.
+    for name, value, code in (
+        ('vrm', vrm_path, 'vrm-path'),
+        ('motion', motion_path, 'motion-path'),
+        ('out', out_dir, 'output-path'),
+    ):
         if not value:
-            raise common.GateError('output-path', '`-- --{0} <경로>`를 받지 못했다'.format(name))
+            raise common.GateError(code, '`-- --{0} <경로>`를 받지 못했다'.format(name))
+
+    # 0장을 받으면 굽기가 아무것도 안 하고 지나가 상자 계산에서 「메시가 없다」로 떨어진다. 원인이
+    # 인자인데 모델을 의심하게 되므로 여기서 멈춘다.
+    try:
+        frame_count = int(raw_frames)
+    except ValueError:
+        frame_count = 0
+    if frame_count < 1:
+        raise common.GateError(
+            'motion-action', '--frames는 1 이상의 정수여야 한다 (받은 값 {0})'.format(raw_frames)
+        )
+
+    # 캔버스와 발·머리 행은 `gate.ts`가 `PLAYER_FRAME_SPEC`에서 넘긴다. 스크립트에 복사해 두지
+    # 않는 이유는 `common.parse_int_arg`에 적었다.
+    canvas_width = common.parse_int_arg(args, 'width')
+    canvas_height = common.parse_int_arg(args, 'height')
+    foot_row = common.parse_int_arg(args, 'foot-row')
+    head_row = common.parse_int_arg(args, 'head-row')
+
+    # 쓸 자리를 무거운 임포트와 굽기 **전에** 전부 확인한다. 프레임마다 굽고 나서 확인하면, 3번
+    # 파일만 남아 있을 때 1·2번을 새로 쓴 뒤 실패해서 새 프레임과 옛 프레임이 섞인 세트가 추적
+    # 폴더에 남는다.
+    planned = []
+    for index in range(1, frame_count + 1):
+        # 자리수를 채운다. `walk_1`·`walk_10`·`walk_2`는 사전순이 어긋나 사람이 클립에 그대로
+        # 잘못된 순서로 넣게 되고, 그 결과인 덜컥거림은 「3D 느낌」으로 오분류된다.
+        name = '{0}_{1:04d}.png'.format(prefix, index)
+        path = common.assert_output_path(os.path.join(out_dir, name))
+        # 이미 있는 파일은 덮지 않는다. 편집 게이트 훅은 `game/assets/scripts/**/*.ts`만 보므로
+        # 이 스크립트가 PNG를 덮어써도 어느 phase에서도 막히지 않는다. 그 자리에 `.meta`가 남아
+        # 있으면 Cocos가 새 PNG를 조용히 다시 임포트해서, 게임에 실린 프레임이 바뀐 것을 아무도
+        # 모른 채 넘어간다. 다시 구우려면 PNG만 지우고 `.meta`는 남긴다 — `.meta`가 uuid를 들고
+        # 있어서 함께 지우면 `walk.anim`의 프레임 참조가 전부 끊긴다. Cocos가 켜져 있을 때 쓰는
+        # 절차는 README의 「출하 프레임 다시 굽기」에 있다.
+        if os.path.exists(path):
+            raise common.GateError('output-path', '이미 있는 파일을 덮지 않는다: {0}'.format(path))
+        planned.append(path)
 
     common.assert_version()
     engine = common.pick_eevee()
@@ -558,25 +589,14 @@ def main():
 
     lo, hi = union_bounds(frames)
     camera = common.setup_camera(
-        lo, hi, CANVAS_WIDTH, CANVAS_HEIGHT, foot_row=FOOT_LINE_Y, head_row=HEAD_LINE_Y, view=view
+        lo, hi, canvas_width, canvas_height, foot_row=foot_row, head_row=head_row, view=view
     )
     common.setup_lights()
 
     written = []
-    for index, frame in enumerate(frames, start=1):
-        # 자리수를 채운다. `walk_1`·`walk_10`·`walk_2`는 사전순이 어긋나 사람이 클립에 그대로
-        # 잘못된 순서로 넣게 되고, 그 결과인 덜컥거림은 「3D 느낌」으로 오분류된다.
-        name = '{0}_{1:04d}.png'.format(prefix, index)
-        path = common.assert_output_path(os.path.join(out_dir, name))
-        # 이미 있는 파일은 덮지 않는다. 편집 게이트 훅은 `game/assets/scripts/**/*.ts`만 보므로
-        # 이 스크립트가 PNG를 덮어써도 어느 phase에서도 막히지 않는다. 그 자리에 `.meta`가 남아
-        # 있으면 Cocos가 새 PNG를 조용히 다시 임포트해서, 게임에 실린 프레임이 바뀐 것을 아무도
-        # 모른 채 넘어간다. 다시 구우려면 PNG만 지우고 `.meta`는 남긴다 — `.meta`가 uuid를 들고
-        # 있어서 함께 지우면 `walk.anim`의 프레임 참조가 전부 끊긴다.
-        if os.path.exists(path):
-            raise common.GateError('output-path', '이미 있는 파일을 덮지 않는다: {0}'.format(path))
+    for frame, path in zip(frames, planned):
         bpy.context.scene.frame_set(frame)
-        common.setup_render(engine, CANVAS_WIDTH, CANVAS_HEIGHT, path)
+        common.setup_render(engine, canvas_width, canvas_height, path)
         common.render_still(path)
         written.append(path.replace('\\', '/'))
 
@@ -593,11 +613,15 @@ def main():
             'frames': frames,
             'frame_count': len(frames),
             'height_m': round(hi.z - lo.z, 4),
-            'width_m': round(hi.x - lo.x, 4),
+            # 화면 가로를 채우는 폭이다. 정면은 좌우(X), 측면 진단 렌더는 앞뒤(Y)가 화면 가로라서,
+            # 좌우 폭을 그대로 보고하면 측면 렌더에서 프레이밍과 맞지 않는 값이 찍힌다.
+            'width_m': round((hi.x - lo.x) if view == 'front' else (hi.y - lo.y), 4),
             'ortho_scale': round(camera.data.ortho_scale, 4),
             'written': written,
-            'width': CANVAS_WIDTH,
-            'height': CANVAS_HEIGHT,
+            'width': canvas_width,
+            'height': canvas_height,
+            'foot_row': foot_row,
+            'head_row': head_row,
         }
     )
 

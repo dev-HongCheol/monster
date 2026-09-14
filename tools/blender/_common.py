@@ -25,8 +25,13 @@ MAX_VERSION = (5, 2)
 # EEVEE 식별자를 하드코딩하지 않는 이유는 `smoke.py`에 적었다. 5.2 실측은 `BLENDER_EEVEE`다.
 EEVEE_CANDIDATES = ('BLENDER_EEVEE_NEXT', 'BLENDER_EEVEE')
 
+# 레포 뿌리. 이 파일이 있는 `tools/blender/`에서 두 단계 위다. 출하 아트 경로를 상대 경로로 두면
+# Blender를 띄운 작업 디렉터리를 기준으로 풀려서, 다른 폴더에서 부르는 순간 출하 아트를 가리키지
+# 못하고 아래 거부가 조용히 꺼진다.
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # 출하 아트가 있는 곳. 이 아래로는 어떤 경우에도 쓰지 않는다.
-SHIPPED_ART_DIR = os.path.join('game', 'assets', 'art')
+SHIPPED_ART_DIR = os.path.join(REPO_ROOT, 'game', 'assets', 'art')
 
 
 class GateError(Exception):
@@ -76,6 +81,26 @@ def parse_arg(args, name, default=None):
     if index >= len(args):
         return default
     return args[index]
+
+
+def parse_int_arg(args, name):
+    """
+    `--<name> <정수>`를 읽는다. 없거나 정수가 아니면 `spec-args`로 실패한다.
+
+    **기본값을 두지 않는다.** 이 함수로 읽는 것은 캔버스와 발·머리 행 같은 규격 값이고, 그 주인은
+    `tests/helpers/FrameSet.ts`의 `PLAYER_FRAME_SPEC`이다. `gate.ts`가 거기서 넘기는데, 스크립트에
+    기본값을 두면 그것이 곧 복사본이 되어 한쪽만 고쳤을 때 굽기와 판정이 조용히 갈린다. 발 밑선이
+    어긋나면 판정이 떨어져 드러나지만, 머리 행처럼 판정이 약한 값은 아무도 모른 채 넘어간다.
+    """
+    raw = parse_arg(args, name)
+    if raw is None:
+        raise GateError(
+            'spec-args', '`-- --{0} <정수>`를 받지 못했다 — gate.ts를 거쳐 부른다'.format(name)
+        )
+    try:
+        return int(raw)
+    except ValueError:
+        raise GateError('spec-args', '--{0}이 정수가 아니다 (받은 값 {1})'.format(name, raw))
 
 
 def assert_version():
@@ -139,10 +164,31 @@ def assert_vrm_import_operator():
         )
 
 
+def is_under(path, directory):
+    """
+    `path`가 `directory` 자신이거나 그 아래인지 본다.
+
+    **경로를 문자열로 견주지 않는다.** 윈도우는 대소문자를 가리지 않아 `Game\\Assets\\Art`도 같은
+    폴더이고, 정션이나 심볼릭 링크를 거치면 겉 경로가 전혀 다르다. 문자열 포함으로 재면 둘 다
+    통과해서 출하 아트를 덮는다. 그래서 링크를 푼 실제 경로를 운영체제의 대소문자 규칙으로 맞춘 뒤
+    공통 조상을 견준다.
+
+    **`smoke.py`에 같은 함수가 한 벌 더 있다.** 그 파일이 이 모듈을 import하지 않는 이유는 이 파일
+    첫머리에 있다. 한쪽을 고치면 다른 쪽도 본다.
+    """
+    target = os.path.normcase(os.path.realpath(path))
+    root = os.path.normcase(os.path.realpath(directory))
+    try:
+        return os.path.commonpath([target, root]) == root
+    except ValueError:
+        # 드라이브가 다르면 공통 조상이 없고, 그러면 아래일 수도 없다.
+        return False
+
+
 def assert_output_path(path):
     """출력 경로를 쓸 수 있는지 확인하고, 출하 아트 아래면 거부한다."""
     absolute = os.path.abspath(path)
-    if SHIPPED_ART_DIR.replace('\\', '/') in absolute.replace('\\', '/'):
+    if is_under(absolute, SHIPPED_ART_DIR):
         raise GateError('output-path', '출하 아트 아래로는 쓰지 않는다: {0}'.format(absolute))
 
     parent = os.path.dirname(absolute)
@@ -250,8 +296,9 @@ def setup_camera(
 
     @param width_px 렌더 가로 픽셀
     @param height_px 렌더 세로 픽셀
-    @param margin 여백의 비율. 0.04면 4%씩 여유가 생긴다. `foot_row`·`head_row`를 주지 않으면
-        사방에 두고, 주면 가로 양쪽에만 둔다
+    @param margin 여백의 비율. 캔버스가 아니라 **인물 크기**에 곱하므로 0.04면 인물 폭(과 높이)의
+        4%씩 양쪽에 여유가 생긴다. `foot_row`·`head_row`를 주지 않으면 사방에 두고, 주면 가로
+        양쪽에만 둔다
     @param foot_row 인물의 **가장 낮은 점**이 놓일 픽셀 행(위에서부터 0). `None`이면 세로
         가운데에 맞춘다. 출하 규격의 발 밑선에 맞추려면 이 값을 준다 — 가운데 맞춤으로 구우면
         발 밑선이 프레이밍에 따라 아무 데나 잡혀 규격 판정이 성립하지 않는다. **`head_row`와
@@ -314,13 +361,12 @@ def setup_camera(
     data.type = 'ORTHO'
     data.ortho_scale = need
 
-    # 세로 중심을 정한다. `foot_row`를 주면 가장 낮은 점이 그 행에 오도록 카메라를 올린다.
-    # 세로로 덮는 실제 높이는 긴 변이 세로일 때만 `ortho_scale`과 같으므로 나눠 계산한다.
+    # 세로 중심을 정한다. `foot_row`를 주면 가장 낮은 점이 그 행의 픽셀 중심에 오도록 카메라를
+    # 올린다. 픽셀 하나의 월드 크기는 두 행으로 배율을 정할 때 구한 `per_pixel`을 그대로 쓴다 —
+    # `need`에서 거꾸로 다시 구하면 같은 값을 두 경로로 얻게 되어, 한쪽만 고쳤을 때 어긋난다.
     if foot_row is None:
         center_z = center.z
     else:
-        covered = need if height_px >= width_px else need * height_px / width_px
-        per_pixel = covered / height_px
         center_z = lo.z + (foot_row - (height_px - 1) / 2.0) * per_pixel
 
     camera = bpy.data.objects.new('GateCamera', data)

@@ -11,6 +11,7 @@
  * 여기로 모았고, 그 대가로 판정이 Blender 버전을 안 탄다.
  *
  * 돌리는 법: `node --experimental-strip-types tools/blender/gate.ts 0a`
+ * 굽지 않고 이미 있는 산출물만 다시 재려면 `--judge-only`를 붙인다.
  * Blender 실행 파일은 환경 변수 `BLENDER`로 준다. 자세한 것은 `README.md`에 있다.
  */
 
@@ -48,10 +49,49 @@ interface IGateSpec {
 /**
  * 발 밑선이 기준에서 위로 벗어나도 되는 픽셀 수.
  *
- * 걷기에서 디딘 발이 프레임마다 몇 px 오르내리는 것은 정상이므로 0으로 잡을 수 없다. 초기값과
- * 그 근거는 `docs/qa/blender-3d-gate-test.md` §4.2에 있고, 첫 렌더의 실제 분포를 보고 확정한다.
+ * 걷기에서 디딘 발이 프레임마다 몇 px 오르내리는 것은 정상이므로 0으로 잡을 수 없다. 12로 확정한
+ * 근거는 `docs/qa/blender-3d-gate-test.md` §4.2에 있다. 머리 행까지 고정해 인물이 1.067배 커진
+ * 판(2026-09-14)은 발이 가장 높이 뜬 장이 479행이라 하한 477까지 여유가 2px뿐이어서, 걷기를
+ * 바꾸면 이 폭에 먼저 걸릴 수 있다.
  */
 const FOOT_LINE_TOLERANCE = 12;
+
+/**
+ * 굽는 프레임 파일 이름의 접두어.
+ *
+ * 렌더 스크립트에 `--prefix`로 넘기고, `--judge-only`가 같은 이름으로 파일 목록을 만든다. 두 곳에
+ * 따로 적으면 한쪽만 바뀌었을 때 판정 모드가 없는 파일을 찾아 「파일이 없다」로 떨어진다.
+ */
+const FRAME_PREFIX = 'walk';
+
+/**
+ * 규격 캔버스에 굽는 게이트가 파이썬에 넘기는 인자.
+ *
+ * 값의 주인은 `PLAYER_FRAME_SPEC`이다. 파이썬이 TS를 import할 수 없다고 스크립트에 값을 복사해
+ * 두면, 한쪽만 고쳤을 때 프레임은 멀쩡히 구워지는데 판정만 떨어지거나, 판정이 약한 값은 조용히
+ * 어긋난다. 그래서 스크립트는 기본값 없이 이 인자를 받고, 못 받으면 `spec-args`로 실패한다.
+ */
+const CANVAS_ARGS = [
+  { flag: '--width', value: String(PLAYER_FRAME_SPEC.width) },
+  { flag: '--height', value: String(PLAYER_FRAME_SPEC.height) },
+];
+
+/** 프레임을 굽는 게이트가 캔버스에 더해 넘기는 인자 — 발·머리 행과 파일 이름 접두어. */
+const FRAME_ARGS = [
+  ...CANVAS_ARGS,
+  { flag: '--foot-row', value: String(PLAYER_FRAME_SPEC.footLineY) },
+  { flag: '--head-row', value: String(PLAYER_FRAME_SPEC.headLineY) },
+  { flag: '--prefix', value: FRAME_PREFIX },
+];
+
+/**
+ * Blender 한 번을 기다리는 상한(밀리초).
+ *
+ * EEVEE가 GPU 컨텍스트에서 멈추면 Blender가 죽지도 끝나지도 않는다. 상한이 없으면 실행기가 영원히
+ * 기다려서, 사람은 느린 것인지 멈춘 것인지 가를 수 없다. 게이트 0c 한 번이 2026-09-14에 10분
+ * 안에 끝났으므로 두 배인 20분으로 둔다.
+ */
+const BLENDER_TIMEOUT_MS = 20 * 60 * 1000;
 
 /**
  * 게이트 표. 앞 게이트가 통과한 뒤에 다음 줄을 붙여 왔다.
@@ -73,6 +113,7 @@ const GATES: Record<string, IGateSpec> = {
     extraArgs: [
       { flag: '--vrm', repoPath: 'art-source/player/2026-09-11-3d-gate/character.vrm' },
       { flag: '--bones', repoPath: 'docs/temp/3d-gate/bones.json' },
+      ...CANVAS_ARGS,
     ],
   },
   '0c': {
@@ -90,6 +131,7 @@ const GATES: Record<string, IGateSpec> = {
       { flag: '--action', value: 'Walk_Loop' },
       { flag: '--frames', value: '8' },
       { flag: '--gate', value: '0c' },
+      ...FRAME_ARGS,
     ],
   },
   '2': {
@@ -107,6 +149,7 @@ const GATES: Record<string, IGateSpec> = {
       { flag: '--action', value: 'Walk_Loop' },
       { flag: '--frames', value: '8' },
       { flag: '--gate', value: '2' },
+      ...FRAME_ARGS,
     ],
   },
 };
@@ -174,6 +217,14 @@ function judgeRender(outPath: string): { problems: string[]; summary: string } {
  * 실행이 남긴 프레임이 섞여 들어와, 이번에 아무것도 안 구웠는데 통과하는 경우가 생긴다.
  */
 function judgeFrames(payload: unknown, spec: IGateSpec): { problems: string[]; summary: string } {
+  // `GATE_OK null`처럼 객체가 아닌 값이 오면 아래 속성 접근이 TypeError로 새어, 맨 바깥 catch에
+  // 무엇이 틀렸는지 없는 한 줄만 남는다. 받은 값을 말하며 여기서 떨어뜨린다.
+  if (typeof payload !== 'object' || payload === null) {
+    return {
+      problems: [`판정 줄의 payload가 객체가 아니다: ${JSON.stringify(payload)}`],
+      summary: '',
+    };
+  }
   const written = (payload as { written?: unknown }).written;
   if (!Array.isArray(written) || written.some((p) => typeof p !== 'string')) {
     return {
@@ -183,9 +234,22 @@ function judgeFrames(payload: unknown, spec: IGateSpec): { problems: string[]; s
   }
 
   const paths = written as string[];
+  // 이 게이트의 출력 폴더 밖을 가리키는 파일은 재지 않는다. 판정 줄이 엉뚱한 폴더의 PNG를 말하면
+  // 그 파일로 통과해서, 정작 게이트가 책임지는 폴더의 프레임은 아무도 재지 않는다.
+  const outputDir = path.join(ROOT, spec.output);
+  const outside = paths.filter((p) => {
+    const rel = path.relative(outputDir, path.resolve(p));
+    return rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel);
+  });
+  if (outside.length > 0) {
+    return {
+      problems: [`판정할 파일이 출력 폴더(${spec.output}) 밖이다: ${outside.join(', ')}`],
+      summary: '',
+    };
+  }
   const missing = paths.filter((p) => !fs.existsSync(p));
   if (missing.length > 0) {
-    return { problems: [`판정 줄이 말한 파일이 없다: ${missing.join(', ')}`], summary: '' };
+    return { problems: [`판정할 파일이 없다: ${missing.join(', ')}`], summary: '' };
   }
 
   const images = paths.map((p) => decodePng(fs.readFileSync(p)));
@@ -199,13 +263,14 @@ function judgeFrames(payload: unknown, spec: IGateSpec): { problems: string[]; s
     height: PLAYER_FRAME_SPEC.height,
     footLineY: PLAYER_FRAME_SPEC.footLineY,
     footLineTolerance: FOOT_LINE_TOLERANCE,
+    headLineY: PLAYER_FRAME_SPEC.headLineY,
   });
 
   const summary = report.frames
     .map((f) => {
       const b = bands[f.index];
       return (
-        `#${f.index} 불투명 ${f.opaquePixels} 발밑 ${f.footLineY ?? -1} ` +
+        `#${f.index} 불투명 ${f.opaquePixels} 머리 ${f.topLineY ?? -1} 발밑 ${f.footLineY ?? -1} ` +
         `희미 ${b.faint} 경계 ${b.semi} 거의불투명 ${b.nearOpaque}`
       );
     })
@@ -220,12 +285,29 @@ function describe(line: GateLine): string {
     : `GATE_FAIL ${line.code} ${line.message}`;
 }
 
-function runGate(name: string): number {
+/** 게이트 이름으로 표의 줄을 찾는다. 없으면 가능한 이름을 말하며 던진다. */
+function specOf(name: string): IGateSpec {
   const spec = GATES[name];
   if (!spec) {
     throw new Error(`모르는 게이트 "${name}" (가능: ${Object.keys(GATES).join(', ')})`);
   }
+  return spec;
+}
 
+/** 판정 결과를 찍고 종료 코드를 돌려준다. 위반이 하나라도 있으면 1이다. */
+function report(spec: IGateSpec, problems: string[], summary: string): number {
+  console.log(`  ${summary}`);
+  if (problems.length > 0) {
+    for (const p of problems) console.error(`  ✗ ${p}`);
+    return 1;
+  }
+
+  console.log(`  ✓ ${spec.label} 통과 — ${spec.output}`);
+  return 0;
+}
+
+function runGate(name: string): number {
+  const spec = specOf(name);
   const blender = resolveBlender();
   const output = path.join(ROOT, spec.output);
 
@@ -262,6 +344,7 @@ function runGate(name: string): number {
     cwd: ROOT,
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
+    timeout: BLENDER_TIMEOUT_MS,
   });
 
   if (run.error) {
@@ -270,6 +353,14 @@ function runGate(name: string): number {
       throw new Error(
         `Blender를 실행할 수 없다 (${blender}). PATH에 없으면 환경 변수 BLENDER에 ` +
           'blender 실행 파일의 전체 경로를 넣는다.',
+      );
+    }
+    // 상한에 걸리면 Node가 Blender를 끊고 이 코드를 준다. 그대로 던지면 `spawnSync ... ETIMEDOUT`
+    // 한 줄만 남아 어디를 볼지 알 수 없으므로, 멈춘 자리로 짐작되는 곳과 다음 할 일을 함께 말한다.
+    if (code === 'ETIMEDOUT') {
+      throw new Error(
+        `Blender가 ${BLENDER_TIMEOUT_MS / 60000}분 안에 끝나지 않아 끊었다 — GPU 컨텍스트에서 ` +
+          '멈췄을 수 있다. 같은 명령을 --background 없이 손으로 돌려 본다.',
       );
     }
     throw run.error;
@@ -294,14 +385,38 @@ function runGate(name: string): number {
 
   const { problems, summary } =
     spec.kind === 'frames' ? judgeFrames(line.payload, spec) : judgeRender(output);
-  console.log(`  ${summary}`);
-  if (problems.length > 0) {
-    for (const p of problems) console.error(`  ✗ ${p}`);
-    return 1;
-  }
+  return report(spec, problems, summary);
+}
 
-  console.log(`  ✓ ${spec.label} 통과 — ${spec.output}`);
-  return 0;
+/**
+ * Blender를 부르지 않고 게이트 표의 출력 자리에 이미 있는 산출물만 다시 잰다.
+ *
+ * 게임 폴더의 프레임을 다시 구울 때 쓰는 경로다(README 「출하 프레임 다시 굽기」). 렌더 스크립트는
+ * 이미 있는 파일을 덮지 않으므로, 게이트 0c로 스크래치에 구워 판정한 뒤 그 PNG를 게임 폴더에
+ * 덮어 넣는다. 그렇게 넣은 파일에는 판정 줄이 없어서, 이 모드가 없으면 게임에 실린 세트를 다시
+ * 재는 도구 경로가 없다.
+ *
+ * 파일 목록은 폴더를 훑지 않고 이름 규칙으로 만든다 — 접두어에 `0001`부터 기대 장수까지 붙인
+ * 것이다. 폴더를 훑으면 지난 실행이 남긴 여분이 섞이고, 규칙으로 만들면 빠진 장이 「파일이
+ * 없다」로 드러난다.
+ */
+function judgeExisting(name: string): number {
+  const spec = specOf(name);
+  const output = path.join(ROOT, spec.output);
+  console.log(`\n■ ${spec.label} — 판정만 (Blender를 부르지 않는다)`);
+
+  if (spec.kind === 'frames') {
+    const written = Array.from({ length: spec.expectFrames ?? 0 }, (_, i) =>
+      path.join(output, `${FRAME_PREFIX}_${String(i + 1).padStart(4, '0')}.png`),
+    );
+    const { problems, summary } = judgeFrames({ written }, spec);
+    return report(spec, problems, summary);
+  }
+  if (!fs.existsSync(output)) {
+    return report(spec, [`판정할 산출물이 없다: ${spec.output}`], '');
+  }
+  const { problems, summary } = judgeRender(output);
+  return report(spec, problems, summary);
 }
 
 /**
@@ -327,9 +442,10 @@ try {
   assertNodeVersion();
   const name = process.argv[2];
   if (!name) {
-    throw new Error(`사용법: gate.ts <${Object.keys(GATES).join('|')}>`);
+    throw new Error(`사용법: gate.ts <${Object.keys(GATES).join('|')}> [--judge-only]`);
   }
-  process.exitCode = runGate(name);
+  const judgeOnly = process.argv.slice(3).includes('--judge-only');
+  process.exitCode = judgeOnly ? judgeExisting(name) : runGate(name);
 } catch (err) {
   console.error(`✗ ${(err as Error).message}`);
   process.exit(1);

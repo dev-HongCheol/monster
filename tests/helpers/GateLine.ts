@@ -15,7 +15,7 @@
 /** 판정 줄이 하나도 없을 때 돌려주는 실패 코드. */
 export const NO_GATE_LINE = 'no-gate-line';
 
-/** 판정 줄의 JSON을 읽을 수 없을 때 돌려주는 실패 코드. */
+/** 판정 줄을 읽을 수 없을 때 — `GATE_OK`의 JSON이 깨졌거나 `GATE_FAIL`에 실패 코드가 없을 때 — 돌려주는 실패 코드. */
 export const BAD_GATE_PAYLOAD = 'bad-gate-payload';
 
 /** 성공 줄 — 파이썬이 담아 보낸 값이 `payload`에 그대로 들어온다. */
@@ -76,6 +76,11 @@ export function parseGateLine(stdout: string): GateLine {
     const fail = /^GATE_FAIL(?:\s+(.*))?$/.exec(line);
     if (fail) {
       const rest = (fail[1] ?? '').trim();
+      // 코드가 없는 실패 줄을 빈 코드로 돌려주면, 실행기가 README의 실패 코드 표에서 찾을 것이
+      // 없어 사람이 무엇이 안 됐는지 알 길이 없다. 판정 줄 자체가 깨진 것으로 보고한다.
+      if (rest === '') {
+        return { ok: false, code: BAD_GATE_PAYLOAD, message: 'GATE_FAIL 줄에 실패 코드가 없다' };
+      }
       const cut = rest.indexOf(' ');
       return {
         ok: false,

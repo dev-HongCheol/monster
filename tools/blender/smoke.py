@@ -33,8 +33,13 @@ EEVEE_CANDIDATES = ('BLENDER_EEVEE_NEXT', 'BLENDER_EEVEE')
 # 스모크라 작게 굽는다. 여기서 재는 것은 그림이 아니라 「투명 렌더가 도는가」다.
 RESOLUTION = 256
 
+# 레포 뿌리. 이 파일이 있는 `tools/blender/`에서 두 단계 위다. 출하 아트 경로를 상대 경로로 두면
+# Blender를 띄운 작업 디렉터리를 기준으로 풀려서, 다른 폴더에서 부르는 순간 출하 아트를 가리키지
+# 못하고 아래 거부가 조용히 꺼진다.
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # 출하 아트가 있는 곳. 이 아래로는 어떤 경우에도 쓰지 않는다.
-SHIPPED_ART_DIR = os.path.join('game', 'assets', 'art')
+SHIPPED_ART_DIR = os.path.join(REPO_ROOT, 'game', 'assets', 'art')
 
 
 def gate_ok(payload):
@@ -115,6 +120,24 @@ def pick_eevee():
     )
 
 
+def is_under(path, directory):
+    """
+    `path`가 `directory` 자신이거나 그 아래인지 본다.
+
+    **경로를 문자열로 견주지 않는다.** 윈도우는 대소문자를 가리지 않아 `Game\\Assets\\Art`도 같은
+    폴더이고, 정션이나 심볼릭 링크를 거치면 겉 경로가 전혀 다르다. 문자열 포함으로 재면 둘 다
+    통과해서 출하 아트를 덮는다. 그래서 링크를 푼 실제 경로를 운영체제의 대소문자 규칙으로 맞춘 뒤
+    공통 조상을 견준다. `_common.py`에 같은 함수가 한 벌 더 있다.
+    """
+    target = os.path.normcase(os.path.realpath(path))
+    root = os.path.normcase(os.path.realpath(directory))
+    try:
+        return os.path.commonpath([target, root]) == root
+    except ValueError:
+        # 드라이브가 다르면 공통 조상이 없고, 그러면 아래일 수도 없다.
+        return False
+
+
 def assert_output_path(path):
     """
     출력 경로를 쓸 수 있는지 확인하고, 출하 아트 아래면 거부한다.
@@ -124,7 +147,7 @@ def assert_output_path(path):
     덮으면 Cocos가 조용히 재임포트해서 출하 아트가 바뀐 것을 아무도 모른다.
     """
     absolute = os.path.abspath(path)
-    if SHIPPED_ART_DIR.replace('\\', '/') in absolute.replace('\\', '/'):
+    if is_under(absolute, SHIPPED_ART_DIR):
         raise GateError('output-path', '출하 아트 아래로는 쓰지 않는다: {0}'.format(absolute))
 
     parent = os.path.dirname(absolute)

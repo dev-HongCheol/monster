@@ -22,12 +22,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import _common as common  # noqa: E402 - 위 경로 주입 뒤에 와야 한다
 
-# 출하 규격. `art-asset-spec.md` §12가 실측으로 닫은 값이고, 게이트 2가 굽는 캔버스와 같다.
-# 0b에서부터 같은 캔버스로 보는 이유는, 프레이밍을 나중에 바꾸면 0b가 통과시킨 구도와 게이트 2가
-# 굽는 구도가 달라져 0b의 통과가 아무것도 보장하지 않게 되기 때문이다.
-CANVAS_WIDTH = 246
-CANVAS_HEIGHT = 493
-
 # 대응표를 만들 때 먼저 확인할 핵심 본. VRM 1.0 휴머노이드가 반드시 갖는 것들이다.
 CORE_BONE_HINTS = (
     'hips',
@@ -71,6 +65,12 @@ def main():
         raise common.GateError('vrm-path', '`-- --vrm <경로>`를 받지 못했다')
     if not out_path:
         raise common.GateError('output-path', '`-- --out <경로>`를 받지 못했다')
+    # 캔버스는 게이트 2가 굽는 규격과 같고 `gate.ts`가 `PLAYER_FRAME_SPEC`에서 넘긴다(스크립트에
+    # 복사해 두지 않는 이유는 `common.parse_int_arg`에 있다). 0b에서부터 같은 캔버스로 보는 이유는,
+    # 프레이밍을 나중에 바꾸면 0b가 통과시킨 구도와 게이트 2가 굽는 구도가 달라져 0b의 통과가
+    # 아무것도 보장하지 않게 되기 때문이다.
+    canvas_width = common.parse_int_arg(args, 'width')
+    canvas_height = common.parse_int_arg(args, 'height')
 
     common.assert_version()
     engine = common.pick_eevee()
@@ -80,9 +80,9 @@ def main():
     names = [b.name for b in armature.data.bones]
 
     lo, hi = common.world_bounds()
-    camera = common.setup_camera(lo, hi, CANVAS_WIDTH, CANVAS_HEIGHT)
+    camera = common.setup_camera(lo, hi, canvas_width, canvas_height)
     common.setup_lights()
-    common.setup_render(engine, CANVAS_WIDTH, CANVAS_HEIGHT, absolute_out)
+    common.setup_render(engine, canvas_width, canvas_height, absolute_out)
     common.render_still(absolute_out)
 
     if bones_path:
@@ -111,8 +111,8 @@ def main():
             'ortho_scale': round(camera.data.ortho_scale, 4),
             'output': absolute_out.replace('\\', '/'),
             'bones_json': os.path.abspath(bones_path).replace('\\', '/') if bones_path else None,
-            'width': CANVAS_WIDTH,
-            'height': CANVAS_HEIGHT,
+            'width': canvas_width,
+            'height': canvas_height,
         }
     )
 
