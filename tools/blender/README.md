@@ -41,7 +41,7 @@ blender --background --python-exit-code 1 --python tools/blender/smoke.py -- --o
 **`--python-exit-code`가 `--python`보다 앞에 온다.** Blender는 인자를 적힌 순서대로 처리하므로
 뒤에 두면 스크립트가 이미 실행된 뒤에 설정돼 예외가 종료 코드에 실리지 않는다.
 
-**게이트 0b·0c·2는 규격 값을 인자로 받는다.** 캔버스와 발·머리 행(`--width`·`--height`·`--foot-row`·`--head-row`)의 주인은 `tests/helpers/FrameSet.ts`의 `PLAYER_FRAME_SPEC`이고, 실행기가 거기서 넘긴다. 스크립트에는 기본값이 없어서 빠지면 `spec-args`로 실패한다. 값을 스크립트에도 적어 두면 한쪽만 고쳤을 때 굽기와 판정이 조용히 갈리기 때문이다.
+**게이트 0b·0c·2는 규격 값을 인자로 받는다.** 0b는 캔버스(`--width`·`--height`)를, 0c·2는 캔버스와 발·머리 행(`--foot-row`·`--head-row`)을 받는다. 값의 주인은 `tests/helpers/FrameSet.ts`의 `PLAYER_FRAME_SPEC`이고, 실행기가 거기서 넘긴다. 스크립트에는 기본값이 없어서 빠지면 `spec-args`로 실패한다. 값을 스크립트에도 적어 두면 한쪽만 고쳤을 때 게이트가 크기·위치 결함으로 떨어져, 원인이 두 벌의 불일치라는 것이 드러나지 않기 때문이다.
 
 **굽지 않고 이미 있는 산출물만 다시 잴 수 있다.** `--judge-only`를 붙이면 Blender를 부르지 않고 게이트 표의 출력 자리에 있는 파일을 판정한다. 게임 폴더에 프레임을 덮어 넣은 뒤 그 세트를 다시 재는 데 쓴다(아래 「출하 프레임 다시 굽기」).
 
@@ -69,8 +69,9 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 정확히 같다.
 
 **Blender가 멈추면 실행기가 끊는다.** EEVEE가 GPU 컨텍스트에서 멈추면 Blender는 죽지도 끝나지도
-않으므로, 실행기가 20분을 기다린 뒤 끊고 그 사실을 말한다. 판정 줄이 없는 실패와 달리 끝나지 않은
-것이므로, 같은 명령을 `--background` 없이 돌려 어디서 멈추는지 본다.
+않으므로, 실행기가 20분을 기다린 뒤 끊고 그 사실을 말한다. 끊기 전까지 찍힌 stdout·stderr의 꼬리를
+함께 보여 주므로 임포트·굽기·렌더 중 어디서 멈췄는지를 먼저 거기서 보고, 그걸로 모자라면 같은 명령을
+`--background` 없이 돌린다.
 
 ## 실패 코드
 
@@ -78,16 +79,16 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 |---|---|---|---|
 | `blender-version` | Blender 버전이 허용 범위 밖이다 | 메시지가 기대 범위와 실측 버전을 둘 다 담는다. 4.2~5.2 안의 판을 깐다 | `smoke.py` · `_common.py` |
 | `eevee-missing` | 엔진 목록에 EEVEE 식별자가 없다 | 메시지의 실제 목록을 본다. 그 목록에 있는 이름을 `EEVEE_CANDIDATES`에 더한다 | `smoke.py` · `_common.py` |
-| `output-path` | 출력 경로에 쓸 수 없다. 디렉터리를 못 만들거나, 출하 아트 아래거나, `--out`이 빠졌거나, 렌더 뒤 파일이 없거나, **이미 있는 프레임 파일을 덮으려 했다** | 메시지의 절대 경로를 본다. 출하 아트 아래로는 어떤 경우에도 쓰지 않는다. 프레임을 다시 굽는 중이면 아래 「출하 프레임 다시 굽기」를 따른다 | `smoke.py` · `_common.py` · `import_vrm.py` · `retarget_render.py` |
+| `output-path` | 출력 경로에 쓸 수 없다. 디렉터리를 못 만들거나, 출하 아트 아래거나, `--out`이 빠졌거나, 렌더 뒤 파일이 없거나, **이미 있는 프레임 파일을 덮으려 했다** | `--out`이 빠졌으면 실행기(`gate.ts`)를 거쳐 부른다. 그 밖에는 메시지의 절대 경로를 본다. 출하 아트 아래로는 어떤 경우에도 쓰지 않는다. 프레임을 다시 굽는 중이면 아래 「출하 프레임 다시 굽기」를 따른다 | `smoke.py` · `_common.py` · `import_vrm.py` · `retarget_render.py` |
 | `unexpected` | 위 어디에도 안 들어가는 파이썬 예외 | 메시지에 예외 타입과 원문이 담긴다. 같은 명령을 `--background` 없이 손으로 돌려 본다 | `smoke.py` · `_common.py` |
 | `no-gate-line` | stdout에 판정 줄이 하나도 없다 | 실행기가 stderr 꼬리를 함께 찍는다. GPU·드라이버 쪽을 먼저 본다 | `gate.ts` |
 | `bad-gate-payload` | `GATE_OK`의 JSON을 읽을 수 없거나 `GATE_FAIL`에 실패 코드가 없다 | 굽기는 끝났는데 보고가 깨진 것이다. 파이썬 쪽 `gate_ok`·`gate_fail` 호출을 본다 | `gate.ts` |
 | `spec-args` | 규격 인자(`--width`·`--height`·`--foot-row`·`--head-row`)가 빠졌거나 정수가 아니다 | 실행기(`gate.ts`)를 거쳐 부른다. 손으로 부를 때는 `PLAYER_FRAME_SPEC`의 값을 그대로 준다 | `_common.py` |
 | `vrm-addon-missing` | VRM 임포터 확장이 켜져 있지 않거나 `poll()`이 거부한다 | 확장을 켜고 다시 돌린다. `read_factory_settings`가 사용자 설치 확장을 떨어뜨리므로 스크립트가 초기화 뒤 다시 켠다 | `_common.py` |
-| `vrm-path` | `.vrm` 경로가 없거나(`--vrm`이 빠진 경우 포함), 임포트가 실패했거나, 골격·메시가 없다 | VRoid에서 **VRM 1.0**으로 감축 없이 다시 내보낸다 | `_common.py` · `import_vrm.py` · `retarget_render.py` |
+| `vrm-path` | `.vrm` 경로가 없거나(`--vrm`이 빠진 경우 포함), 임포트가 실패했거나, 골격·메시가 없다 | `--vrm`이 빠졌으면 실행기(`gate.ts`)를 거쳐 부른다. 파일이 있는데 임포트가 실패하거나 골격·메시가 없으면 VRoid에서 **VRM 1.0**으로 감축 없이 다시 내보낸다 | `_common.py` · `import_vrm.py` · `retarget_render.py` |
 | `camera-framing` | 인물 높이가 0이거나, 발·머리 행을 하나만 줬거나, 두 행 사이로 키를 맞춘 배율에서 인물 폭이 여백 안에 안 들어온다 | 높이가 0이면 임포트가 메시를 실제로 들여왔는지 본다. 폭이 넘치면 메시지의 픽셀 폭을 보고 팔 자세(`BASE_ARM_POSE`)나 의상 폭을 줄인다 — 배율을 줄여 맞추면 인물이 출하 아트보다 작아진다 | `_common.py` |
 | `motion-path` | 모션 파일이 없거나(`--motion`이 빠진 경우 포함), 형식을 모르거나, 아마추어가 없다 | glb·gltf·fbx만 받는다. 경로를 확인한다 | `retarget_render.py` |
-| `motion-action` | 그 이름의 액션이 없거나, 길이가 0이거나, `--frames`가 1 이상의 정수가 아니다 | 메시지가 걷기로 보이는 액션 이름을 함께 준다. `--action`에 그것을 넘긴다 | `retarget_render.py` |
+| `motion-action` | 그 이름의 액션이 없거나, 길이가 0이거나, `--frames`가 1 이상의 정수가 아니다 | 액션이 없으면 메시지가 걷기로 보이는 액션 이름을 함께 주니 `--action`에 그것을 넘긴다. `--frames` 오류면 1 이상의 정수를 준다 | `retarget_render.py` |
 | `retarget-bone` | 대응표의 본을 한쪽 골격에서 못 찾았거나, `SWING_CHAIN`이 적은 부모가 모션 골격의 실제 부모와 다르다 | 못 찾았으면 메시지가 그쪽을 `모션:`·`대상:` 접두어로 말하니 `BONE_MAP`을 그 이름에 맞춘다. 부모가 다르면 메시지가 실제 부모 이름을 말하니 `SWING_CHAIN`을 그 이름에 맞춘다 | `retarget_render.py` |
 
 **메시지에 실측값을 박는다.** 「버전이 맞지 않는다」가 아니라 「기대 4.2~5.2, 지금 4.1.2」로

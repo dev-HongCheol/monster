@@ -212,7 +212,7 @@ describe('frameSetIntegrity — 프레임 세트가 규격을 지키는가', () 
 
     expect(report.problems).toHaveLength(1);
     expect(report.problems[0]).toContain('3');
-    expect(report.problems[0]).toContain('0');
+    expect(report.problems[0]).toContain('루프 이음새');
   });
 
   it('두 장짜리 세트는 이음새를 따로 보고하지 않는다 — 이음새가 곧 이웃 쌍이다', () => {
@@ -285,12 +285,16 @@ describe('frameSetIntegrity — 프레임 세트가 규격을 지키는가', () 
 
     expect(report.problems).toHaveLength(1);
     expect(report.problems[0]).toContain('3');
+    expect(report.problems[0]).toContain('작게');
   });
 
   it('가장 높이 뜬 머리가 머리 행보다 위에 있어도 잡는다 — 인물이 크게 구워진 경우', () => {
     const frames = [bar(8, 3, 255, 0), bar(8, 4), bar(7, 5), bar(8, 6)];
 
-    expect(frameSetIntegrity(frames, EXPECTED).problems).toHaveLength(1);
+    const report = frameSetIntegrity(frames, EXPECTED);
+
+    expect(report.problems).toHaveLength(1);
+    expect(report.problems[0]).toContain('크게');
   });
 
   it('머리 행에서 한 줄 아래까지는 통과시킨다', () => {

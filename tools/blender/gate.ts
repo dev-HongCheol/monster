@@ -68,8 +68,9 @@ const FRAME_PREFIX = 'walk';
  * 규격 캔버스에 굽는 게이트가 파이썬에 넘기는 인자.
  *
  * 값의 주인은 `PLAYER_FRAME_SPEC`이다. 파이썬이 TS를 import할 수 없다고 스크립트에 값을 복사해
- * 두면, 한쪽만 고쳤을 때 프레임은 멀쩡히 구워지는데 판정만 떨어지거나, 판정이 약한 값은 조용히
- * 어긋난다. 그래서 스크립트는 기본값 없이 이 인자를 받고, 못 받으면 `spec-args`로 실패한다.
+ * 두면, 한쪽만 고쳤을 때 굽기는 옛 값을, 판정은 새 값을 써서 게이트가 떨어진다. 그런데 실패
+ * 메시지는 크기·위치 결함을 가리키므로 원인이 두 벌의 불일치라는 것이 드러나지 않는다. 그래서
+ * 스크립트는 기본값 없이 이 인자를 받고, 못 받으면 `spec-args`로 실패한다.
  */
 const CANVAS_ARGS = [
   { flag: '--width', value: String(PLAYER_FRAME_SPEC.width) },
@@ -215,6 +216,10 @@ function judgeRender(outPath: string): { problems: string[]; summary: string } {
  *
  * 파일 목록을 디렉터리를 훑어 얻지 않고 **판정 줄이 말한 것을 쓴다.** 디렉터리를 훑으면 지난
  * 실행이 남긴 프레임이 섞여 들어와, 이번에 아무것도 안 구웠는데 통과하는 경우가 생긴다.
+ *
+ * 부르는 쪽은 둘이다. `runGate`는 판정 줄의 payload를 넘기고, `judgeExisting`은 이름 규칙으로
+ * 만든 목록을 같은 모양(`{ written }`)으로 넘긴다. 어느 쪽이든 목록이 게이트의 출력 폴더 밖 파일을
+ * 가리키면 재지 않고 떨어뜨린다.
  */
 function judgeFrames(payload: unknown, spec: IGateSpec): { problems: string[]; summary: string } {
   // `GATE_OK null`처럼 객체가 아닌 값이 오면 아래 속성 접근이 TypeError로 새어, 맨 바깥 catch에
@@ -257,7 +262,7 @@ function judgeFrames(payload: unknown, spec: IGateSpec): { problems: string[]; s
   // 있는가」인데, 불투명 픽셀 수만 보고는 그 값을 확인할 수 없다.
   const bands = images.map(alphaHistogram);
 
-  const report = frameSetIntegrity(images, {
+  const integrity = frameSetIntegrity(images, {
     count: spec.expectFrames ?? paths.length,
     width: PLAYER_FRAME_SPEC.width,
     height: PLAYER_FRAME_SPEC.height,
@@ -266,7 +271,7 @@ function judgeFrames(payload: unknown, spec: IGateSpec): { problems: string[]; s
     headLineY: PLAYER_FRAME_SPEC.headLineY,
   });
 
-  const summary = report.frames
+  const summary = integrity.frames
     .map((f) => {
       const b = bands[f.index];
       return (
@@ -275,7 +280,7 @@ function judgeFrames(payload: unknown, spec: IGateSpec): { problems: string[]; s
       );
     })
     .join('\n  ');
-  return { problems: report.problems, summary };
+  return { problems: integrity.problems, summary };
 }
 
 /** 판정 줄을 사람이 읽는 한 줄로 만든다. */
@@ -356,11 +361,18 @@ function runGate(name: string): number {
       );
     }
     // 상한에 걸리면 Node가 Blender를 끊고 이 코드를 준다. 그대로 던지면 `spawnSync ... ETIMEDOUT`
-    // 한 줄만 남아 어디를 볼지 알 수 없으므로, 멈춘 자리로 짐작되는 곳과 다음 할 일을 함께 말한다.
+    // 한 줄만 남아 어디를 볼지 알 수 없다. 그래서 끊기 전까지 찍힌 로그의 꼬리를 먼저 보여 준다 —
+    // 임포트·굽기·렌더 중 어디서 멈췄는지가 거기 드러나서, 20분을 기다린 뒤 같은 명령을 손으로
+    // 다시 돌리지 않아도 된다.
     if (code === 'ETIMEDOUT') {
+      const outTail = (run.stdout ?? '').trim().split('\n').slice(-8).join('\n    ');
+      if (outTail) console.error(`  stdout 꼬리:\n    ${outTail}`);
+      const errTail = (run.stderr ?? '').trim().split('\n').slice(-8).join('\n    ');
+      if (errTail) console.error(`  stderr 꼬리:\n    ${errTail}`);
       throw new Error(
         `Blender가 ${BLENDER_TIMEOUT_MS / 60000}분 안에 끝나지 않아 끊었다 — GPU 컨텍스트에서 ` +
-          '멈췄을 수 있다. 같은 명령을 --background 없이 손으로 돌려 본다.',
+          '멈췄을 수 있다. 위 로그 꼬리에서 멈춘 단계를 보고, 모자라면 같은 명령을 --background ' +
+          '없이 돌려 본다.',
       );
     }
     throw run.error;

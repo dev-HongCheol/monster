@@ -27,7 +27,8 @@ import { footLineY, type IRgbaImage, trimBox } from './SpriteMetrics.ts';
  *
  * **Blender 스크립트는 이 값을 복사해 두지 않는다.** `tools/blender/gate.ts`가 인자로 넘기고
  * 스크립트는 못 받으면 실패한다. 파이썬이 TS를 import할 수 없다고 값을 스크립트에도 적어 두면,
- * 한쪽만 고쳤을 때 프레임은 멀쩡히 구워지는데 판정만 떨어지거나, 판정이 약한 값은 조용히 어긋난다.
+ * 한쪽만 고쳤을 때 굽기는 옛 값을, 판정은 새 값을 써서 게이트가 떨어진다. 그런데 실패 메시지는
+ * 크기·위치 결함을 가리키므로 원인이 두 벌의 불일치라는 것이 드러나지 않는다.
  */
 export const PLAYER_FRAME_SPEC = {
   width: 246,
@@ -53,7 +54,12 @@ export interface IFrameSetExpectation {
   width: number;
   /** 캔버스 세로 */
   height: number;
-  /** 발 밑선이 와야 하는 y */
+  /**
+   * 발 밑선이 와야 하는 y.
+   *
+   * 프레임마다는 이 행보다 아래로 내려가면 안 되고 위로는 `footLineTolerance`까지 허용한다. 세트
+   * 전체로는 가장 낮은 발이 한 줄 위까지 이 행에 닿아야 한다 — `headLineY`와 짝을 이루는 세트 규칙이다.
+   */
   footLineY: number;
   /** 발 밑선이 기준에서 **위로** 벗어나도 되는 픽셀 수. 걷기는 발이 정당하게 떠오른다 */
   footLineTolerance: number;
@@ -199,7 +205,7 @@ export function frameSetIntegrity(
     if (highest < expected.headLineY || highest > headLimit) {
       problems.push(
         `세트에서 가장 높이 뜬 머리가 ${highest}행인데 ${expected.headLineY}~${headLimit}행이어야 ` +
-          `한다 — 인물이 규격보다 ${highest > headLimit ? '작게' : '크게'} 구워졌다`,
+          `한다 — ${highest > headLimit ? '인물이 규격보다 작게 구워졌거나 세트가 아래로 밀렸다' : '인물이 규격보다 크게 구워졌거나 세트가 위로 떴다'}`,
       );
     }
   }
@@ -212,7 +218,7 @@ export function frameSetIntegrity(
     if (deepest < footLimit) {
       problems.push(
         `세트에서 가장 낮은 발이 ${deepest}행인데 ${footLimit}~${expected.footLineY}행이어야 ` +
-          '한다 — 어느 장도 발 밑선에 닿지 않아 세트가 통째로 떠 있다',
+          '한다 — 어느 장도 발 밑선에 닿지 않았다. 세트가 통째로 떴거나 인물이 작게 구워졌다',
       );
     }
   }
