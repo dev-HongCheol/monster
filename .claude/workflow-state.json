@@ -1,6 +1,6 @@
 {
   "feature": "blender-3d-gate",
-  "phase": "verification",
+  "phase": "user-verification",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": "full",
@@ -9,14 +9,14 @@
     "docs/development/spec/ops-licensing.md"
   ],
   "canon_skip_reason": null,
-  "qa_doc_fingerprint": "b29b47633396286b",
+  "qa_doc_fingerprint": "49fc541078a86ccf",
   "verification": {
     "cso_done": true,
     "ts_check_clean": true,
     "lint_clean": true,
-    "code_review_clean": false
+    "code_review_clean": true
   },
   "docs_delivered": [
-    "verification"
+    "user-verification"
   ]
 }
