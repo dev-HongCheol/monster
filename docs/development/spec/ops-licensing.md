@@ -4,7 +4,7 @@
 
 - **최초 작성:** 2026-08-20
 - **상태:** CONFIRMED
-- **이력:** 2026-08-20 — 신설 · 2026-08-22 배경 제거가 fal 매팅으로 옮겨 가 §2 표에서 `rembg` 행을 「과거에 쓴 것」으로 내리고 `bria/background/remove`를 「지금 쓰는 것」으로 세웠다. §2.1의 모델 명시 함정은 폴백용으로 남기되 실효 표시를 달았다 · 2026-09-14 §2 표에 플레이어 3D 경로가 쓰는 도구 셋(VRoid Studio · VRM Add-on for Blender · Quaternius Universal Animation Library)을 더했다. VRoid는 원문을 직접 열지 못해 「미확인」으로 올렸다
+- **이력:** 2026-08-20 — 신설 · 2026-08-22 배경 제거가 fal 매팅으로 옮겨 가 §2 표에서 `rembg` 행을 「과거에 쓴 것」으로 내리고 `bria/background/remove`를 「지금 쓰는 것」으로 세웠다. §2.1의 모델 명시 함정은 폴백용으로 남기되 실효 표시를 달았다 · 2026-09-14 §2 표에 플레이어 3D 경로가 쓰는 도구 셋(VRoid Studio · VRM Add-on for Blender · Quaternius Universal Animation Library)을 더했다. VRoid는 원문을 직접 열지 못해 「미확인」으로 올렸다 · 2026-09-15 VRoid Studio 행을 이용약관(2026-06-24 개정판)과 가이드라인 원문으로 확인해 고치고, Blender 행과 지팡이 · 방패 3D 모델 행을 더했다. VRoid의 세부 조건과 생산 판의 VRM 메타 값은 §2.2를 새로 세워 모았다
 
 ---
 
@@ -39,7 +39,9 @@
 | **fal 배경 제거 대안 2종** | 폴백 | `birefnet/v2` · `imageutils/rembg` 둘 다 모델 페이지에 `Commercial use` 표시가 붙는다. `birefnet/v2`는 품질 판정에서 떨어졌을 뿐 라이선스는 문제없다 | 2026-08-20 |
 | **Spine** | 리깅(아직 결제 전) | 에디터 라이선스가 런타임을 제품에 넣을 권한을 함께 준다 — 런타임은 별도 구매가 아니다. 재배포물에 라이선스와 저작권 고지를 포함해야 한다. 등급·요금은 §1이 가리키는 사양서가 든다 | 2026-08-20 · [런타임 라이선스](https://esotericsoftware.com/spine-runtimes-license) |
 | **Cocos Creator** | 엔진 | 게임 개발 목적의 사용이 무료이고 로열티가 없다. 사용자 서비스 약관이 유료화 시 사전 공지를 약속한다. 스플래시·크레딧 표기 의무 조항은 없고 상표 사용 제한만 있다 | 2026-08-20 · [약관](https://download.cocos.com/CocosUdc/agreement/Cocos_User_Service_Agreement_en_20220901.html) |
-| **VRoid Studio** | 플레이어 3D 마스터(`.vrm`) — 3D 경로 시험 | 만든 모델을 상업적으로 써도 된다고 공식 FAQ가 밝힌다. **다만 원문을 직접 연 기록이 없다** — pixiv 도움말이 자동 조회를 막는다. 그래서 확인 칸을 「미확인」으로 두고, 생산에 쓰기 전에 사람이 원문을 열어 날짜를 채운다. 모델마다 내보낼 때 VRM 메타데이터에 이용 조건을 적는데, 지금 `art-source/`의 `character.vrm`은 상업 이용이 `personalNonProfit`(개인 비영리)로 나가 있다. 판매할 게임에 쓰는 모델은 이 값을 허용으로 바꿔 내보낸다. 다른 제작자의 텍스처·헤어·VRM을 들이면 조건이 따로 붙으므로, 받기 전에 이 표에 행을 붙인다 | **미확인** · [FAQ](https://vroid.pixiv.help/hc/en-us/articles/4405813333657-Can-I-use-the-models-created-with-VRoid-Studio-Stable-Ver-for-commercial-purposes) |
+| **VRoid Studio** | 플레이어 3D 마스터(`.vrm`) | 만든 캐릭터의 렌더를 게임에 싣고 그 게임을 팔아도 된다. 다만 pixiv가 제공하는 기본 모델 · 의상 · 프리셋은 CC0가 아니다. pixiv가 권리를 가진 채 이용을 허락하는 것이고, 특별 조항이 표시된 항목은 그 조항을 따른다. 제공 콘텐츠로 아바타를 만들어 내는 앱에는 별도 라이선스가 필요하고, 다른 제작자의 에셋은 그 에셋의 조건을 따른다. 원문 인용, 생산 판의 VRM 메타 값, 원본을 공개하지 않는 이유는 §2.2에 있다 | 2026-09-15 · [이용약관](https://policies.pixiv.net/en.html#vroidstudio) · [가이드라인](https://vroid.com/en/studio/guidelines) |
+| **Blender** | `.vrm`을 층별 프레임으로 굽기, 지팡이 · 방패 모델링 — `tools/blender/` | 프로그램은 GPL이지만 Blender로 만든 결과물에는 GPL이 붙지 않는다. 라이선스 페이지가 「What you create with Blender is your sole property」라고 적고, 그 대상에 이미지 · 영상과 `.blend` 등 데이터 파일을 넣는다. GPL이 따라붙는 것은 Blender를 배포하거나 Blender 파이썬 API를 쓰는 스크립트를 공개할 때이고, 그런 스크립트는 GPL 호환 라이선스로 공유해야 한다. 공개 레포에 있는 `tools/blender/`의 파이썬 스크립트가 여기에 해당한다 | 2026-09-15 · [라이선스](https://www.blender.org/about/license/) |
+| **지팡이 · 방패 3D 모델** | 기본 무기 층의 원본 | Blender에서 직접 만든다. 외부 모델이나 생성 서비스를 거치지 않으므로 권리가 전부 이 프로젝트에 있고 따라붙는 약관이 없다. 외부 모델을 받게 되면 `.glb` · `.obj`로만 받고, 받기 전에 이 표에 행을 붙인다. `.blend`를 받지 않는 것은 파일에 든 파이썬이 열 때 자동 실행되는 공격 경로가 되기 때문이다. 기각: AI 3D 생성(Meshy · Tripo) · 커미션(2026-09-15) | 2026-09-15 |
 | **VRM Add-on for Blender** | `.vrm`을 Blender로 들여오기 — `tools/blender/` | MIT와 GPL-3.0 가운데 골라 쓰는 이중 라이선스다. Blender 안에서 도구로만 쓰고 게임에 싣지 않으므로 게임 쪽에 붙는 의무가 없다. 판을 고정하는 방법은 `tools/blender/README.md`가 든다 | 2026-09-11 · [확장 페이지](https://extensions.blender.org/add-ons/vrm/) |
 | **Quaternius Universal Animation Library** | 걷기 모션 원본 — `tools/blender/`가 리타게팅한다 | CC0 1.0(퍼블릭 도메인 헌정)이라 표기 의무도 재배포 제한도 없다. 그래서 받은 파일을 라이선스 파일과 함께 `art-source/`에 커밋한다 | 2026-09-14 · 동봉 `License.txt` · [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
 | 폰트 · 사운드 | 아직 없다 | `game/assets/` 아래에 폰트 파일도 오디오 파일도 0개다. 고르는 시점에 이 표에 행이 붙는다 | 2026-08-20 |
@@ -54,6 +56,60 @@
 이 기본값은 2026-08-17 커밋으로 바뀐 것이라, 그 전에 처리한 `player_mage_bridge.png`에는 소급되지 않는다.
 
 **이 함정은 2026-08-22에 실효됐지만 절을 남긴다.** 배경 제거가 fal 매팅으로 옮겨 가 로컬 `rembg`를 부를 일이 없어졌기 때문이다. 그래도 지우지 않는 이유는 폴백으로 돌아올 수 있어서다 — 그때 로컬 rembg를 쓴다면 **`-m u2net`을 명시**한다. 명시하지 않으면 도구를 갱신한 날부터 유료 라이선스 모델로 처리되고, 결과 PNG만 봐서는 어느 모델이 만들었는지 구분할 수 없다.
+
+### 2.2 VRoid Studio로 만든 캐릭터에 붙는 조건
+
+판정의 근거는 VRoid Studio 이용약관과 가이드라인 두 문서다. 약관은 일본어 원문이 우선하고 영문판은 참고 번역인데, 아래 약관 인용은 영문판에서 옮겼다. 도움말 센터의 FAQ는 봇 확인 화면에서 멈춰 자동으로 열리지 않았지만, FAQ가 요약하는 조건의 원문이 이 두 문서다.
+
+**약관 조항 번호는 가이드라인과 어긋난다.** 가이드라인(2023-12-21판)이 가리키는 제11조 · 제5조는 2026-06-24 개정에서 유료 서비스 조항이 끼어 들어 지금은 제13조 · 제7조다. 가이드라인의 번호로 약관을 찾으면 다른 조항이 나오므로, 아래는 개정판 번호로 적는다.
+
+**게임에 싣고 파는 것은 허용이다.** 모델의 이미지를 게임에 써서 수익을 내는 것이 허용 목록에 들어 있다.
+
+> You can use images and videos of models created with VRoid Studio and generate profit from videos, books, printed materials such as posters and cards, goods such as acrylic keychains and T-shirts, games, applications, software, collections of materials, websites, icons for SNS, etc.
+> — [VRoid Studio Guidelines](https://vroid.com/en/studio/guidelines) (2023-12-21판, 2026-09-15 확인)
+
+**기본 데이터는 CC0가 아니고, 따로 조건이 붙은 항목이 있다.** pixiv는 제공 콘텐츠의 권리를 가진 채 넓게 이용을 허락하지만, 항목마다 다른 조건을 표시할 수 있다.
+
+> All content provided by pixiv, including the base models when creating a new avatar, is not CC0.
+> — [VRoid Studio Guidelines](https://vroid.com/en/studio/guidelines) (2023-12-21판, 2026-09-15 확인)
+
+> The Company will grant Users a non-exclusive, perpetual, worldwide, non-transferable, non-sublicensable license to use, duplicate, archive, modify, and display Provided Content, subject to restrictions common to all licenses, for (1) any purpose and (2) any use, except where different license conditions are specified and displayed for individual items of Provided Content.
+> — [VRoid Studio 이용약관](https://policies.pixiv.net/en.html#vroidstudio) 제13조 1항 (2026-06-24 개정판, 2026-09-15 확인)
+
+그래서 캐릭터와 옷은 VRoid 기본 프리셋, 그것을 직접 고친 것, 직접 만든 텍스처로만 구성하고, 별도 라이선스가 표시된 항목은 쓰지 않는다. 2026-06-24에 생긴 유료 서비스 VRoid Plus의 항목에 별도 조건이 붙는지는 확인하지 않았으므로, 항목을 고를 때마다 그 표시를 본다.
+
+**기본 프리셋을 고친 의상은 따로 팔 수 있다.** v2 스킨 판매가 이 조건에 기댄다. 게임이 파는 것은 모델 데이터가 아니라 구운 2D 층이라, 위의 「이미지를 게임에 써서 수익을 내는」 허용에도 함께 들어간다.
+
+> You can sell the data created by modifying preset items, as long as those preset items have no special clauses written in the license.
+> — [VRoid Studio Guidelines](https://vroid.com/en/studio/guidelines) (2023-12-21판, 2026-09-15 확인)
+
+**제공 콘텐츠로 3D 모델을 만들어 내는 앱에는 별도 라이선스가 필요하다.** 본인만 쓰는 앱은 예외다.
+
+> Users are not licensed to use Provided Content, or 3D models or Output Items containing Provided Content, to create applications having functions that allow avatars, items, or other 3D models to be created by deforming meshes or combining meshes or textures.
+> — [VRoid Studio 이용약관](https://policies.pixiv.net/en.html#vroidstudio) 제13조 3항 (2026-06-24 개정판, 2026-09-15 확인)
+
+지금 게임이 옷을 바꾸는 방식은 미리 구운 2D 층을 바꿔 끼우는 것이라, 메시나 텍스처를 조합해 3D 모델을 만들어 내는 기능이 아니다. 반면 게임 안에서 VRoid 메시와 텍스처를 조합해 3D 캐릭터를 꾸미게 하는 런타임 3D 방식이면 이 조항에 걸린다. 그 방식을 검토하게 되면 이 판정부터 다시 한다.
+
+**다른 제작자의 에셋은 그 에셋의 조건을 따른다.** 구입한 텍스처처럼 권리가 다른 제작자에게 있는 데이터에는 VRoid 조건이 아니라 그 데이터의 조건이 붙는다. 지금 캐릭터에는 제3자 에셋이 없고, 들이려면 §2 표에 행을 먼저 붙인다.
+
+**크레딧 표기 의무는 없다.** 약관과 가이드라인 어디에도 표기를 요구하는 조항이 없다.
+
+**VRM 메타는 그 파일을 쓰는 다른 사람에게 주는 조건이다.** 약관 제12조 2항이 제공 콘텐츠 조건을 어기지 않는 한 VRM의 라이선스를 자유롭게 정하게 하고, VRM 1.0 명세의 메타 항목은 그 모델을 쓰는 사람이 무엇을 할 수 있는지를 적는다. 생산 판은 공개하지 않으므로(아래) 이 값이 실제로 작동하는 것은 파일이 새어 나갔을 때다. 그래서 다른 사람에게는 가장 좁게 열고, 개발 주체가 법인으로 바뀌어도 판을 다시 내보낼 일이 없게 `commercialUsage`만 넓힌다.
+
+| 필드 | 값 |
+|---|---|
+| `avatarPermission` | `onlyAuthor` |
+| `commercialUsage` | `corporation` |
+| `allowRedistribution` | `false` |
+| `modification` | `prohibited` |
+| `creditNotation` | `required` |
+| `allowExcessivelyViolentUsage` · `allowExcessivelySexualUsage` · `allowPoliticalOrReligiousUsage` · `allowAntisocialOrHateUsage` | `false` |
+| `authors` | `monster` |
+| `contactInformation` · `references` · `copyrightInformation` | 비운다 |
+
+`authors`는 명세상 필수이고 빈 문자열이 아닌 항목이 하나 이상 있어야 해서 비울 수 없다. 레포가 공개라 실명 · 계정명 대신 프로젝트 이름을 넣는다. VRoid가 내보낼 때 이 필드들을 채울 수 있으므로 내보낸 파일의 메타를 읽어 확인한다.
+
+**생산 `.vrm` · `.vroid`는 공개 레포에 올리지 않는다.** 약관만 보면 공개가 금지되지는 않는다. 가이드라인이 내보낸 모델 데이터를 팔아도 된다고 적기 때문이다. 그래도 올리지 않는 것은, 공개하면 누구나 플레이어 캐릭터와 상의 판(v2 유료 스킨의 원형)을 내려받아 쓸 수 있고, 한 번 푸시한 파일은 PR ref에 남아 되돌릴 수 없어서다. 두 파일을 어디에 두는지는 §1이 가리키는 사양서가 든다.
 
 ## 3. 생성에 붙는 제약 — fal 경유
 

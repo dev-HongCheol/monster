@@ -2,11 +2,11 @@
 
 - **작성일:** 2026-09-15
 - **브랜치:** `feat/blender-3d-gate` — 1라운드와 같은 브랜치 · 같은 슬러그다
-- **상태:** 계획 — `/autoplan` 리뷰 완료(2026-09-15, 최종 관문 통과). 다음은 G0 라이선스 판정과 사용자 `계획 승인`
+- **상태:** qa-setup — `/autoplan` 리뷰 완료(최종 관문 통과) · G0 라이선스 판정 통과 · 사용자 `계획 승인`(모두 2026-09-15). 다음은 사람의 G1 제작과 AI의 도구 작업(G4 §2)
 - **정본:** [`art-direction.md`](../../design/spec/art-direction.md) §3.1 · §3.2 · §6 · [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §3 · §9.1.1 · [`ops-licensing.md`](../spec/ops-licensing.md) §2 — 이 슬라이스가 플레이어 트랙을 3D 층별 프레임으로 바꾸고, 기본 무기와 원본 커밋 규칙을 고친다. 전체 개정 목록은 §6
 - **닫는 백로그:** `F105` · `F106` · `F67` · `F101`
 - **전제가 바뀌는 백로그:** `F59` ① · `F60` 2단계 · `F61` · `F64` · `F66` ①③ · `F100`
-- **입력:** 승인된 설계 초안 `docs/etc/2026-09-15-blender-3d-gate-round2-design-draft.md`(계획 승인 뒤 지운다) · 1라운드 계획 `2026-09-11-blender-3d-gate-plan.md` · QA `docs/qa/blender-3d-gate-test.md`
+- **입력:** 승인된 설계 초안 `docs/etc/2026-09-15-blender-3d-gate-round2-design-draft.md`(계획 승인 뒤 지웠다) · 1라운드 계획 `2026-09-11-blender-3d-gate-plan.md` · QA `docs/qa/blender-3d-gate-test.md`
 - **리뷰 기록:** [`/autoplan` 리뷰](2026-09-15-blender-3d-gate-round2-review.md) — CEO · Eng 분석과 결정 근거는 그쪽에 있고, 수용한 항목은 이 문서와 게이트 문서 본문에 녹였다
 
 ---

@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-09-15
 - **브랜치:** `feat/blender-3d-gate`
-- **상태:** 진행 전 — planning 단계, 사용자 `계획 승인` 전에 끝낸다
+- **상태:** 통과(2026-09-15) — 원문 판정과 사용자 결정 넷을 §5에 적었다
 - **정본:** [`ops-licensing.md`](../spec/ops-licensing.md) §2 — 이 게이트의 판정이 라이선스 판정표에 행으로 들어간다
 - **개요:** [2라운드 계획 개요](2026-09-15-blender-3d-gate-round2-plan.md)
 
@@ -22,16 +22,16 @@
 
 ## 2. 할 일
 
-- [ ] VRoid Studio 가이드라인 · FAQ 원문을 열어, 확인 날짜와 함께 위 전제 넷을 판정한다.
-- [ ] VRoid 기본 프리셋에서 파생한 의상을 유료 스킨으로 따로 팔아도 되는지 판정한다. v2 스킨 판매 모델이 이 답에 기댄다.
-- [ ] Blender 라이선스 원문으로 렌더 산출물의 권리가 사용자에게 있는지 확인한다.
-- [ ] 지팡이 · 방패 모델 출처를 정한다. 후보는 Blender에서 직접 만든 저폴리, AI 3D 생성 유료 플랜(Tripo · Meshy), 커미션이다. Hunyuan3D는 라이선스가 한국을 이용 지역에서 빼므로 쓰지 않는다.
-- [ ] 외부에서 받는 모델은 `.glb` · `.obj`로만 받는다. `.blend`는 파일을 열 때 자동 실행되는 Python이 공격 경로가 되기 때문이다.
-- [ ] VRM 메타 값을 정한다. `commercialUsage`는 개인 판매면 `personalProfit`, 법인 전환 가능성이 있으면 `corporation`이다. `allowRedistribution` · `modification` · `creditNotation`은 아래 공개 커밋 판정과 함께 정한다.
-- [ ] VRM 메타의 `authors` · `contactInformation` · `references`에 실명 · 계정명 · 연락처가 들어가지 않게 한다. VRoid가 내보낼 때 계정 정보를 채울 수 있는데, 레포가 공개라 그대로 노출된다.
-- [ ] 생산 `.vrm` · `.vroid`를 공개 레포에 커밋해도 되는지와 크레딧 표기 의무를 판정한다.
-- [ ] 이미 푸시된 1라운드 `character.vrm`(메타 `personalNonProfit`)의 처리를 정한다. 그대로 두는 것을 받아들이거나, GitHub에 ref 삭제를 요청하는 것 중 하나다.
-- [ ] `.vroid` 원본의 보관 위치를 정한다. `.vroid`는 VRoid에서 캐릭터를 다시 편집할 때 필요한 유일한 원본이다(`.vrm`은 VRoid로 되돌려 편집할 수 없다). 레포에 넣지 못하면 잃어버리지 않을 다른 자리가 필요하다.
+- [x] VRoid Studio 가이드라인 · FAQ 원문을 열어, 확인 날짜와 함께 위 전제 넷을 판정한다.
+- [x] VRoid 기본 프리셋에서 파생한 의상을 유료 스킨으로 따로 팔아도 되는지 판정한다. v2 스킨 판매 모델이 이 답에 기댄다.
+- [x] Blender 라이선스 원문으로 렌더 산출물의 권리가 사용자에게 있는지 확인한다.
+- [x] 지팡이 · 방패 모델 출처를 정한다. 후보는 Blender에서 직접 만든 저폴리, AI 3D 생성 유료 플랜(Tripo · Meshy), 커미션이다. Hunyuan3D는 라이선스가 한국을 이용 지역에서 빼므로 쓰지 않는다.
+- [x] 외부에서 받는 모델은 `.glb` · `.obj`로만 받는다. `.blend`는 파일을 열 때 자동 실행되는 Python이 공격 경로가 되기 때문이다.
+- [x] VRM 메타 값을 정한다. `commercialUsage`는 개인 판매면 `personalProfit`, 법인 전환 가능성이 있으면 `corporation`이다. `allowRedistribution` · `modification` · `creditNotation`은 아래 공개 커밋 판정과 함께 정한다.
+- [x] VRM 메타의 `authors` · `contactInformation` · `references`에 실명 · 계정명 · 연락처가 들어가지 않게 한다. VRoid가 내보낼 때 계정 정보를 채울 수 있는데, 레포가 공개라 그대로 노출된다.
+- [x] 생산 `.vrm` · `.vroid`를 공개 레포에 커밋해도 되는지와 크레딧 표기 의무를 판정한다.
+- [x] 이미 푸시된 1라운드 `character.vrm`(메타 `personalNonProfit`)의 처리를 정한다. 그대로 두는 것을 받아들이거나, GitHub에 ref 삭제를 요청하는 것 중 하나다.
+- [x] `.vroid` 원본의 보관 위치를 정한다. `.vroid`는 VRoid에서 캐릭터를 다시 편집할 때 필요한 유일한 원본이다(`.vrm`은 VRoid로 되돌려 편집할 수 없다). 레포에 넣지 못하면 잃어버리지 않을 다른 자리가 필요하다.
 
 ## 3. 통과 조건
 
@@ -44,4 +44,93 @@
 
 ## 5. 판정 기록
 
-아직 없다.
+2026-09-15에 원문을 열어 판정했고, 원문이 답하지 않는 네 가지(무기 출처 · 원본 보관 · VRM 메타 값 · 1라운드 파일 처리)는 사용자가 정했다. 원문 인용과 앞으로 지킬 조건은 [`ops-licensing.md`](../spec/ops-licensing.md) §2 표와 §2.2에, 원본 보관 규칙은 [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §9.1.1에 넣었다. 여기에는 그날 무엇을 확인했고 무엇을 왜 골랐는지를 남긴다.
+
+### 5.1 열어 본 원문
+
+| 원문 | 판 | 결과 |
+|---|---|---|
+| [VRoid Studio 이용약관](https://policies.pixiv.net/en.html#vroidstudio) | 2026-06-24 개정판의 영문 참고 번역(일본어 원문이 우선한다) | 열었다 |
+| [VRoid Studio 가이드라인](https://vroid.com/en/studio/guidelines) | 2023-12-21판 | 열었다 |
+| [VRoid 도움말 FAQ(상업 이용)](https://vroid.pixiv.help/hc/en-us/articles/4405813333657-Can-I-use-the-models-created-with-VRoid-Studio-Stable-Ver-for-commercial-purposes) | — | Cloudflare 봇 확인 화면에서 멈춰 열리지 않았다. FAQ가 요약하는 조건의 원문이 위 두 문서라 판정은 둘로 했다 |
+| [Blender 라이선스](https://www.blender.org/about/license/) | — | 열었다 |
+| [VRM 1.0 메타 명세](https://github.com/vrm-c/vrm-specification/blob/master/specification/VRMC_vrm-1.0/meta.md) | — | 열었다 |
+| [Meshy 이용약관](https://www.meshy.ai/terms-of-use) | — | 열었다 |
+| [Tripo 이용약관](https://www.tripo3d.ai/terms) | — | 403으로 막혔다 |
+| [GitHub 민감 데이터 제거 문서](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository) | — | 열었다 |
+
+### 5.2 사용자 전제 넷은 원문과 맞다
+
+- **상업 게임에 싣는 것은 허용이다.** 가이드라인의 허용 목록이 모델의 이미지 · 영상을 게임과 앱에 써서 수익을 내는 것을 명시한다.
+- **기본 데이터는 CC0가 아니다.** 가이드라인이 새 아바타를 만들 때의 기본 모델까지 CC0가 아니라고 적는다. 약관 제13조 1항은 pixiv가 권리를 가진 채 비독점 · 양도 불가 · 재허락 불가로 이용을 허락한다고 적는다.
+- **캐릭터 생성 · 내보내기 앱에는 별도 라이선스가 필요하다.** 약관 제7조의 금지 행위와 제13조 3항이 같은 내용이고, 본인만 쓰는 앱은 예외다. 이 게임이 옷을 바꾸는 방식은 미리 구운 2D 층을 바꿔 끼우는 것이라, 이 조항이 말하는 「메시나 텍스처를 조합해 3D 모델을 만들어 내는 기능」이 아니다. 반면 최종 관문 D15에서 뺀 런타임 3D로 게임 안에서 VRoid 메시를 조합하게 되면 이 조항에 걸리므로, 그 안을 다시 꺼낼 때 이 판정부터 다시 한다.
+- **제3자 에셋은 에셋마다 조건이 다르다.** 가이드라인이 구입한 텍스처처럼 다른 제작자가 권리를 가진 데이터는 그 데이터의 조건을 따르라고 적는다.
+
+원문을 읽으며 전제 밖의 사실 둘을 더 찾았다.
+
+- 가이드라인이 가리키는 약관 제11조 · 제5조는 2026-06-24 개정에서 유료 서비스 조항이 끼어 들어 제13조 · 제7조가 됐다. 가이드라인의 조항 번호로 약관을 찾으면 다른 조항이 나온다.
+- 약관 제4조가 pixiv에는 VRoid Studio로 만든 데이터를 보관 · 백업할 의무가 없다고 적는다. `.vroid` 원본의 보관 자리를 우리가 따로 정해야 하는 근거다.
+
+### 5.3 기본 프리셋에서 파생한 의상은 유료 스킨으로 팔 수 있다
+
+가이드라인이 특별 조항이 없는 프리셋 항목이면 그것을 고친 데이터를 팔아도 된다고 적는다. 게임이 파는 것은 모델 데이터가 아니라 구운 2D 층이므로, 이미지를 게임에 써서 수익을 내는 허용에도 함께 들어간다. 조건은 그 프리셋에 특별 조항이 없어야 한다는 것 하나라, G1에서 항목을 고를 때 라이선스 표시를 본다. 2026-06-24에 생긴 유료 서비스 VRoid Plus의 항목에 별도 조건이 붙는지는 확인하지 않았다.
+
+### 5.4 Blender 렌더 산출물의 권리는 사용자에게 있다
+
+라이선스 페이지가 「What you create with Blender is your sole property」라고 적고, 그 대상에 이미지 · 영상과 `.blend` 등 데이터 파일을 넣는다. GPL이 따라붙는 것은 Blender를 배포하거나 Blender 파이썬 API를 쓰는 스크립트를 공개할 때다. `tools/blender/`의 파이썬 스크립트가 공개 레포에 있어 여기에 해당하는데, 레포 루트에는 라이선스 파일이 없고 `package.json`의 `license`만 `ISC`로 적혀 있다. 게임 산출물의 권리를 묻는 G0의 범위 밖이라 여기에는 사실만 적는다.
+
+### 5.5 지팡이 · 방패는 Blender에서 직접 만든다 (사용자 결정)
+
+| 후보 | 원문에서 확인한 것 | 판정 |
+|---|---|---|
+| Blender 직접 제작 | 따라붙는 외부 약관이 없고, 렌더와 데이터 파일이 우리 소유다(§5.4) | 채택 |
+| Meshy | 무료 플랜은 산출물을 Meshy가 소유하고 CC BY 4.0으로만 준다. 유료 플랜은 산출물을 비공개로 둘 수 있지만, 약관이 AI 산출물은 지식재산 보호를 받지 못할 수 있고 비슷한 입력에서 다른 사용자와 같거나 비슷한 모델이 나올 수 있다고 적는다 | 기각 |
+| Tripo | 약관 페이지가 403이라 확인하지 못했다 | 기각 |
+| 커미션 | 계약서에 저작권 양도와 상업 이용을 명시해야 하고, 비용과 대기 시간이 든다 | 기각 |
+| Hunyuan3D | 라이선스가 한국을 이용 지역에서 뺀다(계획 단계 판정) | 제외 |
+
+외부 모델을 받게 되면 `.glb` · `.obj`로만 받는다. `.blend`는 파일에 든 파이썬이 열 때 자동 실행되는 공격 경로가 되기 때문이다. 누가 모델링하는지(사용자가 직접 하거나 AI가 bpy 스크립트로 초안을 짜는지)는 라이선스와 무관해 G1에서 정한다.
+
+### 5.6 생산 VRM 메타 값 (사용자 결정)
+
+VRM 1.0 명세에서 메타의 이용 조건은 그 모델을 쓰는 사람에게 주는 조건이고, 약관 제12조 2항이 제공 콘텐츠 조건을 어기지 않는 한 그 값을 자유롭게 정하게 한다. 생산 판은 공개하지 않으므로(§5.7) 이 값이 실제로 작동하는 것은 파일이 새어 나갔을 때다. 그래서 다른 사람에게는 가장 좁게 열고, 개발 주체가 법인으로 바뀌어도 세 판을 다시 내보낼 일이 없게 `commercialUsage`만 넓힌다.
+
+| 필드 | 값 |
+|---|---|
+| `avatarPermission` | `onlyAuthor` |
+| `commercialUsage` | `corporation` |
+| `allowRedistribution` | `false` |
+| `modification` | `prohibited` |
+| `creditNotation` | `required` |
+| `allowExcessivelyViolentUsage` · `allowExcessivelySexualUsage` · `allowPoliticalOrReligiousUsage` · `allowAntisocialOrHateUsage` | `false` |
+| `authors` | `monster` |
+| `contactInformation` · `references` · `copyrightInformation` | 비운다 |
+
+`authors`는 명세상 필수이고 빈 문자열이 아닌 항목이 하나 이상 있어야 해서 비울 수 없다. 그래서 실명 · 계정명 대신 프로젝트 이름을 넣는다. VRoid가 내보낼 때 이 필드들을 채울 수 있으므로 G1에서 세 판의 메타를 읽어 확인한다.
+
+### 5.7 생산 `.vrm` · `.vroid`는 공개 레포에 올리지 않는다 (사용자 결정: 클라우드 드라이브)
+
+약관만 보면 공개가 금지되지는 않는다. 가이드라인이 내보낸 모델 데이터를 팔아도 된다고 적기 때문이다. 그래도 올리지 않는 것은, 공개하면 누구나 플레이어 캐릭터와 상의 A · B(v2 유료 스킨의 원형)를 내려받아 쓸 수 있고, 한 번 푸시한 파일은 PR ref에 남아 되돌릴 수 없어서다.
+
+두 파일은 사용자의 클라우드 드라이브에 둔다. 두 장비에서 모두 보이는 자리라, `art-asset-spec.md` §9.1.1이 원본을 레포에 두던 이유(레포가 두 장비의 유일한 공유 경로)를 드라이브가 대신 채운다. pixiv가 데이터를 보관해 주지 않으므로(§5.2) `.vroid`를 잃으면 캐릭터를 처음부터 다시 만들어야 한다는 점도 이 자리가 막는다.
+
+그 결과 main에는 굽기 도구만 들어가고 입력은 들어가지 않는다. 그래서 굽기 도구는 입력 경로를 인자로 받고, 없으면 무엇이 어디 필요한지 적고 실패한다([G4 문서](2026-09-15-blender-3d-gate-round2-g4-bake.md) §2).
+
+크레딧 표기 의무는 VRoid와 Blender 모두 없다. 약관 · 가이드라인 · 라이선스 페이지 어디에도 표기를 요구하는 조항이 없다.
+
+### 5.8 이미 푸시된 1라운드 `character.vrm`은 그대로 둔다 (사용자 결정)
+
+파일은 2026-09-14 커밋 `5898a27`로 이 브랜치에 들어가 PR #92의 ref에 남아 있다. 메타는 `authors` `devhong`, `avatarPermission` `onlyAuthor`, `commercialUsage` `personalNonProfit`, `allowRedistribution` `false`, `modification` `prohibited`, `creditNotation` `required`다.
+
+ref 삭제를 요청하지 않는 이유는 셋이다.
+
+- GitHub 문서가 Support는 자격 증명을 교체해도 위험이 해소되지 않는 민감 데이터만 지워 주고 민감하지 않은 데이터는 지우지 않는다고 적는다. 이 파일은 그 대상으로 보기 어렵다.
+- 요청하려면 먼저 브랜치 이력을 다시 써야 하고, 그러면 열린 PR #92의 diff와 댓글이 흔들린다.
+- 메타가 이미 가장 좁게 닫혀 있고, `devhong`은 공개된 GitHub 계정명 `dev-HongCheol`과 같은 계열이라 새로 드러나는 개인정보가 거의 없다.
+
+파일은 [G5 문서](2026-09-15-blender-3d-gate-round2-g5-game.md)의 정리 표대로 최종 PR 전에 트리에서 뺀다. squash merge라 main에는 들어가지 않는다.
+
+### 5.9 통과 조건 확인
+
+- `ops-licensing.md` §2에 VRoid 행(확인 날짜 · CC0 아님 · 캐릭터 생성 앱 조건 · 제3자 에셋 조건), Blender 행, 지팡이 · 방패 모델 행이 있다.
+- §2의 할 일 열 가지를 모두 판정했고, 최종 PR로 미룬 항목은 없다.
