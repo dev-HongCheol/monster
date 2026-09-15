@@ -31,7 +31,12 @@ import {
   maskRect,
   sampleLikeEngine,
 } from '../../tools/blender/ComparisonSheet';
-import { frameSetIntegrity, PLAYER_FRAME_SPEC } from '../helpers/FrameSet';
+import {
+  frameSetCheck,
+  frameSetIntegrity,
+  PLAYER_FRAME_SPEC,
+  unionRowCheck,
+} from '../helpers/FrameSet';
 import { BAD_GATE_PAYLOAD, NO_GATE_LINE, parseGateLine } from '../helpers/GateLine';
 import type { IRgbaImage } from '../helpers/SpriteMetrics';
 
@@ -137,8 +142,8 @@ describe('frameSetIntegrity — 프레임 세트가 규격을 지키는가', () 
 
   it('캔버스가 다른 프레임 한 장을 잡는다', () => {
     const frames = goodFrames();
-    // 띠를 여섯 칸으로 둔다. 다섯 칸이면 머리 점이 붙은 둘째 장(띠 4 + 머리 1)과 불투명 픽셀
-    // 수가 같아져, 캔버스 위반과 무관한 이웃 위반이 함께 잡힌다.
+    // 캔버스가 다른 장은 이웃 판정이 견주지 않고 다른 그림으로 넘긴다. 잰 자리가 서로 다른
+    // 픽셀을 가리키기 때문이다. 그래서 여기서 잡히는 위반은 캔버스 하나뿐이다.
     frames[2] = frame(W + 1, H, (x, y) => (y === 8 && x < 6 ? 255 : 0));
 
     const report = frameSetIntegrity(frames, EXPECTED);
@@ -181,7 +186,7 @@ describe('frameSetIntegrity — 프레임 세트가 규격을 지키는가', () 
     expect(frameSetIntegrity(frames, EXPECTED).problems).toEqual([]);
   });
 
-  it('이웃 프레임의 불투명 픽셀 수가 같으면 잡는다', () => {
+  it('이웃 프레임이 같은 그림이면 잡는다', () => {
     // 렌더 루프가 프레임 번호를 안 올리면 여덟 장이 같은 그림으로 나온다. 파일 수도 알파도
     // 캔버스도 정상이라 다른 검사가 전부 통과하는데, 그 결과는 Cocos에서 「안 움직인다」로
     // 보여 원인을 재생 설정 쪽에서 찾게 만든다.
@@ -194,15 +199,15 @@ describe('frameSetIntegrity — 프레임 세트가 규격을 지키는가', () 
     expect(report.problems[0]).toContain('2');
   });
 
-  it('이웃이 아닌 두 프레임이 같은 픽셀 수인 것은 잡지 않는다', () => {
+  it('이웃이 아닌 두 프레임이 같은 그림인 것은 잡지 않는다', () => {
     // 걷기는 주기 운동이라 떨어진 두 프레임이 같은 실루엣으로 돌아오는 것이 정상이다. 첫째 장과
-    // 셋째 장이 같고, 루프 이음새인 넷째 장과 첫째 장은 다르다.
-    const frames = [bar(8, 3), bar(8, 4), bar(7, 3), bar(8, 6)];
+    // 셋째 장이 픽셀까지 같고, 루프 이음새인 넷째 장과 첫째 장은 다르다.
+    const frames = [bar(8, 3), bar(8, 4), bar(8, 3), bar(8, 6)];
 
     expect(frameSetIntegrity(frames, EXPECTED).problems).toEqual([]);
   });
 
-  it('마지막 장과 첫 장의 불투명 픽셀 수가 같으면 잡는다 — 루프 이음새도 이웃이다', () => {
+  it('마지막 장과 첫 장이 같은 그림이면 잡는다 — 루프 이음새도 이웃이다', () => {
     // 클립은 Loop로 돌므로 마지막 장 다음에 첫 장이 온다. 샘플링이 한 주기의 끝 프레임까지 넣으면
     // 그 장이 첫 장과 같은 자세라, 재생이 이음새에서 한 박자 멈춘 것처럼 보인다. 이음새를 안 보면
     // 나머지 검사를 전부 통과한다.
@@ -260,8 +265,8 @@ describe('frameSetIntegrity — 프레임 세트가 규격을 지키는가', () 
   it('발 아래 희미한 알파가 번져 있어도 발 밑선이 밀리지 않는다', () => {
     // 안티앨리어싱 술을 원본에 대고 재면 발 밑선이 술의 최하단으로 내려간다. 여기서는 발이
     // 7에 있고 9에 알파 3짜리 술이 있으므로, 임계값을 안 걸면 9로 읽혀 위 「기준보다 아래」
-    // 위반이 된다 — 정상 렌더가 게이트에 걸리는 거짓 실패다. 띠는 여섯 칸이라 머리 점이 붙은
-    // 둘째 장(띠 4 + 머리 1)과 불투명 픽셀 수가 겹치지 않는다.
+    // 위반이 된다 — 정상 렌더가 게이트에 걸리는 거짓 실패다. 이웃 두 장과는 띠가 놓인 줄이
+    // 달라 이웃 판정에도 안 걸린다.
     const frames = goodFrames();
     frames[2] = frame(W, H, (x, y) => {
       if (y === 7 && x < 6) return 255;
@@ -335,6 +340,170 @@ describe('frameSetIntegrity — 프레임 세트가 규격을 지키는가', () 
 
     expect(report.problems).toHaveLength(1);
     expect(report.frames).toEqual([]);
+  });
+});
+
+/**
+ * 세트 검사에 거는 기대값 — 머리·발 합집합 행은 `UNION_EXPECTED`가 든다.
+ *
+ * 둘을 가른 이유는 층마다 거는 규칙이 달라서다. 상의·무기 층은 몸보다 작게 구워지고 방향에
+ * 따라 통째로 비기도 하는 것이 정상이라, 몸 층에 거는 머리·발 행을 그대로 걸면 정상 렌더가
+ * 떨어진다.
+ */
+const SET_EXPECTED = {
+  count: 4,
+  width: W,
+  height: H,
+  footLineY: 8,
+  footLineTolerance: 2,
+} as const;
+
+/** 합집합 행 기대값. 테스트 프레임의 머리 점은 `HEAD_Y`, 발 밑선은 8이다. */
+const UNION_EXPECTED = { headLineY: HEAD_Y, footLineY: 8 } as const;
+
+/** 세트를 재서 실측만 꺼낸다 — 합집합 검사가 받는 모양이다. */
+function measure(frames: readonly IRgbaImage[]) {
+  return frameSetCheck(frames, SET_EXPECTED).frames;
+}
+
+/** 머리 점만 `headY`로 옮긴 규격 세트 — 합집합 판정을 갈라 시험하려는 것이다. */
+function framesWithHead(headY: number): IRgbaImage[] {
+  return [
+    bar(8, 3, 255, headY),
+    bar(8, 4, 255, headY),
+    bar(7, 5, 255, headY),
+    bar(8, 6, 255, headY),
+  ];
+}
+
+describe('frameSetCheck — 세트 하나에 거는 검사', () => {
+  it('규격을 지킨 세트는 위반이 없다', () => {
+    expect(frameSetCheck(goodFrames(), SET_EXPECTED).problems).toEqual([]);
+  });
+
+  it('프레임별 실측을 돌려준다 — 합집합 검사가 이 값을 받는다', () => {
+    expect(frameSetCheck(goodFrames(), SET_EXPECTED).frames).toEqual([
+      { index: 0, opaquePixels: 4, footLineY: 8, topLineY: HEAD_Y },
+      { index: 1, opaquePixels: 5, footLineY: 8, topLineY: HEAD_Y },
+      { index: 2, opaquePixels: 6, footLineY: 7, topLineY: HEAD_Y },
+      { index: 3, opaquePixels: 7, footLineY: 8, topLineY: HEAD_Y },
+    ]);
+  });
+
+  it('머리·발 합집합 행은 보지 않는다', () => {
+    // 세트가 통째로 작게 구워진 경우다. 래퍼는 몸 층 기준으로 이것을 잡아야 하고, 세트 검사는
+    // 넘겨야 한다 — 같은 규칙을 상의·무기 층에 걸면 정상 렌더가 떨어지기 때문이다.
+    const frames = framesWithHead(3);
+
+    expect(frameSetCheck(frames, SET_EXPECTED).problems).toEqual([]);
+    expect(frameSetIntegrity(frames, EXPECTED).problems).toHaveLength(1);
+  });
+
+  it('프레임별 발 밑선은 세트 검사가 본다 — 합집합 판정과 다른 규칙이다', () => {
+    const frames = goodFrames();
+    frames[2] = bar(9, 5);
+
+    expect(frameSetCheck(frames, SET_EXPECTED).problems).toHaveLength(1);
+  });
+});
+
+describe('이웃 판정 — 불투명 픽셀 수가 아니라 픽셀별 차이로 본다', () => {
+  it('불투명 픽셀 수가 같아도 그림이 다르면 통과시킨다', () => {
+    // 숨쉬기 대기가 이 경우다. 가슴이 오르내리기만 하는 두 장은 넓이가 같을 수 있는데, 수만
+    // 비교하면 정상 대기가 「안 움직인다」로 떨어진다. 넓이가 같은 다른 자세도 마찬가지다.
+    const frames = [bar(8, 3), bar(8, 4), bar(7, 4), bar(8, 6)];
+
+    expect(frameSetCheck(frames, SET_EXPECTED).problems).toEqual([]);
+  });
+
+  it('픽셀까지 같은 이웃은 잡는다', () => {
+    // 렌더 루프가 프레임 번호를 안 올리면 여덟 장이 같은 그림으로 나온다. 파일 수도 알파도
+    // 캔버스도 정상이라 나머지 검사를 전부 통과하는데, Cocos에서는 「안 움직인다」로 보인다.
+    const frames = [bar(8, 3), bar(8, 4), bar(8, 4), bar(8, 6)];
+
+    const report = frameSetCheck(frames, SET_EXPECTED);
+
+    expect(report.problems).toHaveLength(1);
+    expect(report.problems[0]).toContain('1');
+    expect(report.problems[0]).toContain('2');
+  });
+
+  it('임계값 이하로만 다른 이웃은 같은 그림으로 본다', () => {
+    // 알파가 몇 단계 흔들린 것을 「움직였다」로 읽으면, 프레임 번호를 안 올린 굽기가 그 잡음
+    // 하나로 통과한다. 여기서는 띠 전체가 알파 245라 255와 10만큼 다르다.
+    const frames = [bar(8, 3), bar(8, 4), bar(8, 4, 245), bar(8, 6)];
+
+    expect(frameSetCheck(frames, SET_EXPECTED).problems).toHaveLength(1);
+  });
+
+  it('임계값을 넘게 다르면 다른 그림으로 본다', () => {
+    const frames = [bar(8, 3), bar(8, 4), bar(8, 4, 200), bar(8, 6)];
+
+    expect(frameSetCheck(frames, SET_EXPECTED).problems).toEqual([]);
+  });
+
+  it('루프 이음새도 픽셀로 본다', () => {
+    const frames = [bar(8, 3), bar(8, 4), bar(7, 5), bar(8, 3)];
+
+    const report = frameSetCheck(frames, SET_EXPECTED);
+
+    expect(report.problems).toHaveLength(1);
+    expect(report.problems[0]).toContain('루프 이음새');
+  });
+
+  it('캔버스가 다른 이웃은 다른 그림으로 본다 — 위반을 겹쳐 보고하지 않는다', () => {
+    const frames = goodFrames();
+    frames[2] = frame(W + 1, H, (x, y) => (y === 8 && x < 4 ? 255 : 0));
+
+    const report = frameSetCheck(frames, SET_EXPECTED);
+
+    expect(report.problems).toHaveLength(1);
+    expect(report.problems[0]).toContain('캔버스');
+  });
+});
+
+describe('unionRowCheck — 여러 세트의 합집합에 머리·발 행을 건다', () => {
+  it('한 세트만 머리 행에 닿아도 통과한다', () => {
+    // 카메라는 네 방향 × 두 동작을 합친 상자로 한 번만 잡는다. 옆모습이 정면보다 머리가 낮게
+    // 나오는 것은 정상이고, 합집합에서 가장 높은 머리 하나가 머리 행에 닿으면 된다.
+    const sets = [measure(framesWithHead(4)), measure(goodFrames())];
+
+    expect(unionRowCheck(sets, UNION_EXPECTED).problems).toEqual([]);
+  });
+
+  it('어느 세트도 머리 행에 안 닿으면 잡는다', () => {
+    const sets = [measure(framesWithHead(3)), measure(framesWithHead(4))];
+
+    const report = unionRowCheck(sets, UNION_EXPECTED);
+
+    expect(report.problems).toHaveLength(1);
+    expect(report.problems[0]).toContain('작게');
+  });
+
+  it('머리가 행보다 위로 올라가도 잡는다', () => {
+    const report = unionRowCheck([measure(framesWithHead(0))], UNION_EXPECTED);
+
+    expect(report.problems).toHaveLength(1);
+    expect(report.problems[0]).toContain('크게');
+  });
+
+  it('어느 세트도 발 밑선에 안 닿으면 잡는다', () => {
+    // 세트 검사는 프레임마다 허용 폭 안이라 통과시킨다. 그래도 카메라는 가장 낮은 발을 발
+    // 밑선에 놓으므로, 세트를 합쳐도 닿지 않았다면 인물이 통째로 떠 있는 것이다.
+    const floating = [bar(6, 3), bar(6, 4), bar(6, 5), bar(6, 6)];
+
+    expect(frameSetCheck(floating, SET_EXPECTED).problems).toEqual([]);
+
+    const report = unionRowCheck([measure(floating), measure(floating)], UNION_EXPECTED);
+
+    expect(report.problems).toHaveLength(1);
+    expect(report.problems[0]).toContain('6');
+  });
+
+  it('빈 실측만 오면 아무것도 보고하지 않는다', () => {
+    // 빈 세트는 세트 검사가 프레임 수 위반으로 이미 보고했다. 여기서 또 적으면 같은 원인이
+    // 두 줄로 늘어난다.
+    expect(unionRowCheck([[]], UNION_EXPECTED).problems).toEqual([]);
   });
 });
 
