@@ -66,9 +66,15 @@ const VIEWS = [
   { id: 'front', yaw: 0 },
   { id: 'back', yaw: 180 },
   { id: 'three_quarter', yaw: 45 },
+  // 왼쪽 측면 — 270° 돌리면 캐릭터의 왼쪽(+X)이 카메라(-Y)를 본다. 왼팔은 앞에서 방패에, 뒤에서
+  // 머리카락에 가려 이 방향에서만 보인다(사용자 2026-09-17). 기본 세 방향에는 안 들고 경우가 고른다
+  { id: 'left', yaw: 270 },
 ] as const;
 
 type ViewId = (typeof VIEWS)[number]['id'];
+
+/** 경우가 `views`를 안 주면 굽는 방향. 시트 줄 순서이기도 하다. */
+const DEFAULT_VIEWS: readonly ViewId[] = ['front', 'back', 'three_quarter'];
 
 /** 채널 차가 이 값을 넘어야 바뀐 픽셀로 센다. `layers.ts`와 같은 값이다. */
 const DIFF_THRESHOLD = 12;
@@ -115,6 +121,8 @@ interface IGearCase {
   toon?: Record<string, unknown>;
   /** 흔들림 재생. `t`는 0~1(한 주기 안의 위치)이고 그 순간의 사양을 돌려준다 */
   flutter?: { view: ViewId; at: (t: number) => IGearSpec };
+  /** 굽는 방향. 없으면 `DEFAULT_VIEWS` */
+  views?: readonly ViewId[];
 }
 
 /**
@@ -285,14 +293,19 @@ function wings(fold: number): IGearSpec {
 /**
  * 화려한 장비 — 사용자가 준 사진(가죽 어깨갑옷 + 가슴에서 X자로 교차하는 끈 + 버클, 어깨의 굽은 뿔)을
  * 금색 금속으로 옮긴 것이다(2026-09-17). 사진과 다른 점은 사용자 지정이다 — 털 장식은 뺐고, 끈은
- * 등에서도 X자로 교차하며, 명치 아래에 배를 덮는 판이 앞뒤로 있고, 교차점에 파란 발광 보석이 있다.
- * 끈도 금색 금속 띠다.
+ * 등에서도 X자로 교차하며, 명치 아래에서 허리까지 몸통을 한 바퀴 감싸는 몸판이 있고, 교차점에 파란
+ * 발광 보석이 있다. 끈도 금색 금속 띠다.
  *
- * **구조는 허리 위만 그린 멜빵바지다(사용자 판정 2026-09-17).** 배판이 멜빵바지의 앞판(가슴받이)이고,
- * 끈은 양 어깨에서 시작해 반대쪽 배판 위 모서리에 닿아 끝난다. 두 번째 판은 끈이 배판을 지나 허리까지
- * 내려가 있었다. 끈이 배판 위 모서리(x ±0.08, z 0.58)에서 끝나면 교차점은 그 위 7cm(z 0.655, 흉골
- * 가운데)에 온다 — 끈이 어깨(x ∓0.07, z 0.72)에서 출발하는 이상 교차점을 더 내리려면 배판을 더 낮게
- * 잘라야 한다. 보석은 그 교차점에 둔다.
+ * **구조는 허리 위만 그린 멜빵바지다(사용자 판정 2026-09-17).** 몸판이 멜빵바지의 가슴받이이고, 끈은
+ * 양 어깨에서 시작해 반대쪽 몸판 위 모서리에 닿아 끝난다. 두 번째 판은 끈이 몸판을 지나 허리까지
+ * 내려가 있었고, 세 번째 판은 앞 · 뒤 판만 있어 옆구리가 비었다(사용자 지적) — 몸통 둘레로 한 바퀴
+ * 투영한 `band`로 바꿨다. 끈이 몸판 위 모서리(x ±0.08, z 0.58)에서 끝나면 교차점은 그 위 7cm(z 0.655,
+ * 흉골 가운데)에 온다 — 끈이 어깨(x ∓0.07, z 0.72)에서 출발하는 이상 교차점을 더 내리려면 몸판을 더
+ * 낮게 잘라야 한다. 보석은 그 교차점에 둔다.
+ *
+ * **위팔 판은 소매에서 2cm 띄운다.** 소매에 7mm로 붙이니 소매 끝을 금색으로 칠한 것처럼 보였다
+ * (사용자 판정 2026-09-17). 범위도 줄여 어깨 판 아래에 따로 선 판으로 읽히게 한다. 왼팔은 앞에서
+ * 방패에, 뒤에서 머리카락에 가려서 이 경우만 왼쪽 측면(`views`)을 함께 굽는다.
  *
  * 판 · 끈 · 보석 · 버클은 전부 몸 표면에 투영해 붙인다(`weapons.py Surface`). 첫 판의 어깨 구는 어깨
  * 관절보다 7.7cm 위에 떠서 「흰 계란 두 개」로 보였고(사용자 판정 2026-09-17), 재질도 상의 규칙만 복사해
@@ -307,8 +320,9 @@ function wings(fold: number): IGearSpec {
  */
 function armor(): IGearSpec {
   const sides = [1, -1] as const;
-  /** 배판(가슴받이) 위 가장자리의 세계 z. 끈이 여기서 끝나고 버클이 여기 앉는다 */
+  /** 몸판(가슴받이) 위 가장자리의 세계 z. 끈이 여기서 끝나고 버클이 여기 앉는다 */
   const bibTop = 0.58;
+  /** 끈이 닿는 몸판 앞 · 뒤 모서리의 x */
   const bibHalfWidth = 0.08;
   const shoulder = (side: 1 | -1): IGearPart[] => [
     {
@@ -326,17 +340,17 @@ function armor(): IGearSpec {
       color: GOLD,
     },
     {
-      // 위팔 판 — 어깨 판 아래에서 팔 바깥을 감싼다. 중심이 위팔 축 위에 있다
+      // 위팔 판 — 어깨 판 아래에서 팔 바깥을 감싼다. 중심이 위팔 축 위에 있고, 소매에서 2cm 띄운다
       type: 'cap',
       group: 'Gear',
       center: atChest(side * 0.104, 0.018, 0.655),
       radius: 0.09,
       out: [side, 0, 0],
-      elevation: [50, 105],
-      azimuth: [-65, 65],
-      standoff: 0.007,
-      columns: 14,
-      rows: 6,
+      elevation: [55, 95],
+      azimuth: [-50, 50],
+      standoff: 0.02,
+      columns: 12,
+      rows: 5,
       color: GOLD,
     },
     {
@@ -369,29 +383,27 @@ function armor(): IGearSpec {
       rows: 2,
       color: GOLD,
     }));
-  // 배판 — 앞은 명치 아래에서 허리까지, 뒤도 같은 크기. 폭은 허리 반폭(0.114) 안이다
-  const bib = (face: 'front' | 'back'): IGearPart => ({
-    type: 'wrap',
+  // 몸판 — 명치 아래에서 허리까지 몸통을 한 바퀴 감싼다. 축은 몸통 가운데(세계 y -0.01)다
+  const bib: IGearPart = {
+    type: 'band',
     group: 'Gear',
-    origin: atChest(-bibHalfWidth, face === 'front' ? -0.4 : 0.4, bibTop),
-    u_axis: [1, 0, 0],
-    v_axis: [0, 0, -1],
-    width: bibHalfWidth * 2,
-    height: bibTop - 0.455,
-    direction: [0, face === 'front' ? 1 : -1, 0],
+    axis: [0, -0.01 - UPPER_CHEST_HEAD.y],
+    radius: 0.25,
+    z_top: chestZ(bibTop),
+    z_bottom: chestZ(0.455),
+    azimuth: [0, 360],
     standoff: 0.008,
-    columns: 12,
+    columns: 48,
     rows: 8,
     color: GOLD,
-  });
+  };
   return {
     id: 'armor',
     bone: CHEST_BONE,
     parts: [
       ...shoulder(1),
       ...shoulder(-1),
-      bib('front'),
-      bib('back'),
+      bib,
       ...straps('front'),
       ...straps('back'),
       ...sides.map((side) => ({
@@ -460,13 +472,15 @@ export const CASES: readonly IGearCase[] = [
     label: '화려한 장비 — 금색 어깨갑옷 · X자 끈 · 배판 · 뿔 · 명치 보석',
     checks: [
       '판 · 끈 · 뿔이 금속으로 읽히나 (반사점이 보이나, 흰 덩어리로 보이나)',
-      '끈이 양 어깨에서 반대쪽 배판 위 모서리로 이어져 끝나나 (앞 · 뒤)',
-      '끈과 배판이 몸에 붙어 보이나 (앞 · 뒤 · 3/4)',
-      '보석이 파랗게 빛나나, 그늘에 묻히지 않나',
+      '끈이 양 어깨에서 반대쪽 몸판 위 모서리로 이어져 끝나나 (앞 · 뒤)',
+      '옆구리까지 감싼 몸판과 끈이 몸에 붙어 보이나 (앞 · 뒤 · 3/4 · 왼쪽)',
+      '위팔 판이 소매를 칠한 것처럼 보이지 않나 (왼쪽 측면에서 왼팔)',
+      '보석이 그늘에 묻히지 않나',
       '720p에서 보석 · 뿔 · 끈이 남나',
     ],
     spec: armor(),
     hardEdge: false,
+    views: ['front', 'back', 'three_quarter', 'left'],
     // 금속 — 어두운 음영색(기본색의 35%) · 넓은 그늘 · 도구가 만든 금속 matcap의 반사점
     toon: {
       shade_ratio: 0.35,
@@ -742,7 +756,8 @@ function runCase(paths: IPaths, item: IGearCase): Record<string, unknown>[] {
   const rows: IRgbaImage[][] = [];
   const numbers: Record<string, unknown>[] = [];
 
-  for (const view of VIEWS) {
+  const wanted = item.views ?? DEFAULT_VIEWS;
+  for (const view of VIEWS.filter((v) => wanted.includes(v.id))) {
     const base = path.join(dir, `${item.id}_${view.id}`);
     const bodyFile = path.join(dir, `body_${view.id}.png`);
     if (!fs.existsSync(bodyFile)) bake(paths, { out: bodyFile, layer: 'body', yaw: view.yaw });
@@ -954,7 +969,7 @@ if (isMain) {
     console.log(
       '\n시트 열: 원본 음영(원본 크기) · [딱딱한 경계(원본 크기)] · 원본 음영 720p · [딱딱한 경계 720p] · 층 합성 720p',
     );
-    console.log('시트 줄: 앞 · 뒤 · 3/4');
+    console.log('시트 줄: 앞 · 뒤 · 3/4 (경우가 views를 주면 그 순서 — 왼쪽 측면은 화려한 장비만)');
     for (const item of chosen) {
       console.log(`\n[${item.label}] sheet_${item.id}.png`);
       for (const check of item.checks) console.log(`  - ${check}`);

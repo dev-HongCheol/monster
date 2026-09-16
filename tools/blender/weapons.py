@@ -359,6 +359,40 @@ def build_strap(part, surface):
     return build_sheet('Strap', part.get('columns', 16), part.get('rows', 2), point_at, flip)
 
 
+def build_band(part, surface):
+    """
+    몸통 둘레를 감싸 투영한 띠. 허리 위만 그린 멜빵바지의 몸판(앞 · 옆구리 · 뒤)이 이것으로 선다.
+
+    축 `axis`(부품 좌표의 x · y, 몸통 가운데)에서 반지름 `radius`(몸 밖)의 원기둥 면을 격자로 잡고 —
+    u가 방위(`azimuth` 범위, 도, 0이 앞 -Y이고 90이 캐릭터 왼쪽 +X), v가 `z_top`에서 `z_bottom`으로 —
+    정점마다 축을 향해 쏴서 표면에서 `standoff`만큼 띄운다. 앞 · 뒤 판을 따로 투영하면 옆구리가 빈다
+    (2026-09-17 사용자 지적). 방위가 0~360이면 u=0과 u=1이 같은 점에 와 이음새가 닫힌다.
+    """
+    surface = require_surface(surface, 'band')
+    axis = part.get('axis', (0.0, 0.0))
+    radius = part.get('radius', 0.25)
+    z_top = part.get('z_top', 0.0)
+    z_bottom = part.get('z_bottom', -0.1)
+    a0, a1 = [radians(a) for a in part.get('azimuth', (0.0, 360.0))]
+    standoff = part.get('standoff', 0.008)
+
+    def direction_at(u):
+        a = a0 + (a1 - a0) * u
+        return Vector((math.sin(a), -math.cos(a), 0.0))
+
+    def point_at(u, v):
+        direction = direction_at(u)
+        z = z_top + (z_bottom - z_top) * v
+        flat = Vector((axis[0], axis[1], z)) + direction * radius
+        return tuple(projected(surface, part, flat, -direction, standoff))
+
+    def outward(u, _v):
+        return tuple(direction_at(u))
+
+    flip = not faces_outward(point_at, outward)
+    return build_sheet('Band', part.get('columns', 48), part.get('rows', 8), point_at, flip)
+
+
 def build_horn(part):
     """
     굽은 원뿔. 어깨 위 뿔이 이것으로 선다. 원점이 뿌리 원의 중심이고 위(+Z)로 솟다가 `lean` 쪽으로
@@ -403,7 +437,7 @@ def build_part(part, surface=None):
         `emission_color`(발광 색, 없으면 `color`) · `alpha`(0~1, 1보다 작으면 반투명으로 섞는다).
         `snap`(`from` · `direction` · `standoff`)이
         있으면 `location` 대신 `from`에서 `direction`으로 쏴 몸 표면에서 `standoff`만큼 띄운 자리에 놓는다
-    @param surface 몸 표면(`Surface`). `wrap` · `cap` · `strap`과 `snap`에 필요하고, 없으면 그 부품은 실패한다
+    @param surface 몸 표면(`Surface`). `wrap` · `cap` · `strap` · `band`와 `snap`에 필요하고, 없으면 그 부품은 실패한다
     @returns 만들어진 오브젝트
     """
     kind = part.get('type')
@@ -444,6 +478,8 @@ def build_part(part, surface=None):
         build_cap(part, surface)
     elif kind == 'strap':
         build_strap(part, surface)
+    elif kind == 'band':
+        build_band(part, surface)
     elif kind == 'horn':
         build_horn(part)
     else:
