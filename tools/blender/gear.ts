@@ -120,7 +120,8 @@ interface IGearCase {
 /**
  * 등 뒤 장비가 붙는 본. 이 본의 머리는 어깨가 아니라 가슴 높이라(2026-09-16 실측 z 0.631, 키 1.104m)
  * 부품 좌표로 올려 쓴다. 기준 자세의 실측(2026-09-16)은 목 밑 z 0.744, 어깨 관절 z 0.714 · x ±0.067,
- * 어깨 바깥 x ±0.10, 머리카락을 뺀 등 표면 y 0.06~0.08(발목까지 최대 0.082)이다.
+ * 어깨 바깥 x ±0.10, 머리카락을 뺀 맨몸의 등 표면 y 0.06~0.08(발목까지 최대 0.082)이다. 상의 A를
+ * 입히면 엉덩이 높이(z 0.40~0.45)의 옷단이 y 0.094까지 나온다.
  *
  * 망토 윗단은 목 밑(+11.3cm)에 건다. 17cm로 올렸던 판은 윗단이 뒤통수에서 시작해 어깨에 두른 모양이
  * 아니었다(사용자 판정 2026-09-16 — 25px 아래로). 어깨갑옷의 16cm는 아직 판정 전이다.
@@ -131,10 +132,14 @@ const CHEST_BONE = 'J_Bip_C_UpperChest';
 const HIPS_BONE = 'J_Bip_C_Hips';
 
 /**
- * 망토. 위 가장자리를 목 밑 높이(z 0.744) 등 뒤 10cm에 걸고 정강이 중간(z 0.18)까지 늘어뜨린다.
+ * 망토. 위 가장자리를 목 밑 높이(z 0.744) 등 뒤 13cm에 걸고 정강이 중간(z 0.18)까지 늘어뜨린다.
  * 폭은 위가 어깨 폭(실측 0.21)에 맞춘 0.22, 아래가 0.34다 — 첫 판의 0.34 · 0.52는 소매 폭이라
- * 사용자가 2/3로 줄이라고 판정했다(2026-09-16). 등 뒤 10cm는 몸의 등 표면(최대 y 0.082)에서
- * 주름 깊이만큼 안으로 들어와도 몸을 뚫지 않는 거리다.
+ * 사용자가 2/3로 줄이라고 판정했다(2026-09-16).
+ *
+ * 등 뒤 13cm는 상의 옷단(엉덩이 높이 y 0.094)에서 나온 값이다. 10cm로 걸었던 판은 끝자락이 덜
+ * 젖혀진 프레임에서 안감 판의 주름 골(13cm 아래 3mm, 주름 깊이 2.8cm, 젖힘 0.4cm)이 옷단 안으로
+ * 들어가 뒷모습 허리에 흰 상의가 비쳤다(사용자 판정 2026-09-16). 가장 덜 젖힌 프레임에서도 골이
+ * 옷단 밖에 1cm 남게 13cm로 뺐다.
  *
  * **바깥 판과 안감 판 두 장이다.** MToon에는 뒷면 색이 없어 한 장으로는 안감 색이 안 나온다. 같은
  * 주름의 판을 3mm 안쪽(-Y)에 뒤집어 한 장 더 두면, 앞모습에서는 안감 판이 카메라에 가까워 안감 색이,
@@ -143,10 +148,14 @@ const HIPS_BONE = 'J_Bip_C_Hips';
  *
  * 주름은 위에서도 잡혀 있어야 망토로 읽힌다. 첫 판의 윗단 진폭 4mm는 평평한 판으로 보였다.
  *
- * @param phase 주름 사인파의 위상(라디안)
+ * 흔들림은 끝자락 젖힘(`sway`)과 위에서 아래로 내려가는 주름 물결(`ripple_phase`)로 만든다. 주름
+ * 위상을 돌리는 방식은 천이 좌우로 미끄러지는 것으로 보여 버렸다(사용자 판정 2026-09-16) —
+ * `weapons.py build_cloth`가 그 사정을 든다.
+ *
  * @param sway 아래 끝을 등 뒤로 들어 올리는 양(m)
+ * @param ripplePhase 주름 물결의 위상(라디안). 늘리면 물결이 아래로 내려간다
  */
-function cape(phase: number, sway: number): IGearSpec {
+function cape(sway: number, ripplePhase: number): IGearSpec {
   const sheet = (flip: boolean, y: number, color: Rgb): IGearPart => ({
     type: 'cloth',
     group: 'Gear',
@@ -156,8 +165,11 @@ function cape(phase: number, sway: number): IGearSpec {
     folds: 4,
     depth: 0.04,
     depth_top: 0.01,
-    phase,
+    phase: 0,
     sway,
+    ripple: 1.0,
+    ripple_waves: 1.5,
+    ripple_phase: ripplePhase,
     columns: 40,
     rows: 20,
     flip,
@@ -167,7 +179,7 @@ function cape(phase: number, sway: number): IGearSpec {
   return {
     id: 'cape',
     bone: CHEST_BONE,
-    parts: [sheet(false, 0.1, [150, 30, 40]), sheet(true, 0.097, [50, 35, 80])],
+    parts: [sheet(false, 0.13, [150, 30, 40]), sheet(true, 0.127, [50, 35, 80])],
   };
 }
 
@@ -205,12 +217,12 @@ export const CASES: readonly IGearCase[] = [
       '긴 머리카락과 망토가 서로 뚫고 나오나',
       '720p에서 망토가 망토로 읽히나',
     ],
-    spec: cape(0, 0.06),
+    spec: cape(0.06, 0),
     hardEdge: true,
     toon: { shade_threshold: 0.8 },
     flutter: {
       view: 'back',
-      at: (t) => cape(2 * Math.PI * t, 0.06 + 0.04 * Math.sin(2 * Math.PI * t)),
+      at: (t) => cape(0.06 + 0.05 * Math.sin(2 * Math.PI * t), 2 * Math.PI * t),
     },
   },
   {
@@ -575,6 +587,13 @@ function runCase(paths: IPaths, item: IGearCase): Record<string, unknown>[] {
   return numbers;
 }
 
+/** 흔들림 프레임 파일 이름(확장자 없음). 굽는 쪽과 페이지가 같은 이름을 보게 한 곳에서 만든다. */
+function flutterNames(item: IGearCase): { original: string[]; hard: string[] } {
+  const of = (kind: 'original' | 'hard') =>
+    Array.from({ length: FLUTTER_FRAMES }, (_, i) => `${item.id}_${kind}_${i}`);
+  return { original: of('original'), hard: of('hard') };
+}
+
 /** 흔들림 프레임을 굽고 720p 사본을 만든다. 파일 이름 목록을 돌려준다. */
 function runFlutter(paths: IPaths, item: IGearCase): { original: string[]; hard: string[] } {
   if (!item.flutter) return { original: [], hard: [] };
@@ -583,7 +602,7 @@ function runFlutter(paths: IPaths, item: IGearCase): { original: string[]; hard:
   fs.mkdirSync(dir, { recursive: true });
   const yaw = VIEWS.find((v) => v.id === flutter.view)?.yaw ?? 0;
   const files = toonFor(paths, item);
-  const names = { original: [] as string[], hard: [] as string[] };
+  const names = flutterNames(item);
 
   for (let i = 0; i < FLUTTER_FRAMES; i++) {
     const specFile = writeJson(
@@ -591,7 +610,7 @@ function runFlutter(paths: IPaths, item: IGearCase): { original: string[]; hard:
       flutter.at(i / FLUTTER_FRAMES),
     );
     for (const kind of ['original', 'hard'] as const) {
-      const name = `${item.id}_${kind}_${i}`;
+      const name = names[kind][i];
       const file = path.join(dir, `${name}.png`);
       const toon = kind === 'original' ? files.original : files.hard;
       bake(paths, { out: file, layer: 'whole', yaw, gearSpec: specFile, toon, weapons: true });
@@ -600,7 +619,6 @@ function runFlutter(paths: IPaths, item: IGearCase): { original: string[]; hard:
         path.join(dir, `${name}_720p.png`),
         encodePng(sampleLikeEngine(img, GAME_720P.width, GAME_720P.height)),
       );
-      names[kind].push(name);
     }
   }
   return names;
@@ -688,6 +706,15 @@ if (isMain) {
       console.log(
         `✓ ${item.id} ${((Date.now() - started) / 1000).toFixed(0)}s — sheet_${item.id}.png`,
       );
+    }
+    // `--only`로 한 경우만 다시 구워도 페이지는 흔들림이 있는 경우를 전부 실어야 한다. 안 그러면
+    // 망토만 고친 뒤 날개 흔들림이 페이지에서 사라진다(2026-09-16에 실제로 그랬다). 이번에 안 구운
+    // 경우는 프레임이 이미 있을 때만 싣는다.
+    for (const item of CASES) {
+      if (!item.flutter || chosen.includes(item)) continue;
+      const names = flutterNames(item);
+      if (fs.existsSync(path.join(outDir, 'flutter', `${names.original[0]}.png`)))
+        flutters.push({ item, names });
     }
     if (flutters.length > 0)
       console.log(`✓ ${path.relative(ROOT, writeFlutterPage(paths, flutters))}`);

@@ -88,7 +88,17 @@ def build_cloth(part):
     위 가장자리에 매달려 아래로 늘어진 주름 천을 세운다. 원점이 위 가장자리 가운데다.
 
     주름은 폭 방향 사인파이고 아래로 갈수록 깊어진다. `sway`는 아래 끝을 등 뒤(+Y)로 들어 올리는
-    양이라, 흔들림 프레임은 `phase`와 `sway`만 바꿔 만든다.
+    양이고, `ripple`은 주름의 위상을 길이 방향 물결로 흔드는 양(라디안)이라 `ripple_phase`를
+    돌리면 물결이 위에서 아래로 내려간다.
+
+    **흔들림 프레임은 `sway`와 `ripple_phase`로 만들고 `phase`는 돌리지 않는다.** `phase`를 돌리면
+    주름 전체가 옆으로 흘러, 뒷모습에서 천이 좌우로 미끄러지는 것으로 보였다(사용자 판정 2026-09-16).
+    카메라가 Y축을 보는 뒷모습에서 `sway`는 깊이 방향이라 안 보이므로, 보이는 움직임은 물결과 아래
+    호 길이 보정이 만든다.
+
+    **아래 끝을 들어 올리면 그만큼 짧아져 보여야 한다.** 천은 늘어나지 않으므로 `y = sway·v²`로
+    뒤로 젖힌 곡선의 호 길이를 `v·length`에 맞춘다 — `z(v) = ∫√(length² − (2·sway·x)²)dx`. 이
+    보정이 없으면 끝자락이 젖혀져도 뒷모습에서 길이가 그대로라 흔들림이 안 읽힌다.
     """
     width = part.get('width', 0.4)
     width_bottom = part.get('width_bottom', width)
@@ -98,14 +108,30 @@ def build_cloth(part):
     depth_top = part.get('depth_top', depth * 0.2)
     phase = part.get('phase', 0.0)
     sway = part.get('sway', 0.0)
+    ripple = part.get('ripple', 0.0)
+    ripple_waves = part.get('ripple_waves', 1.0)
+    ripple_phase = part.get('ripple_phase', 0.0)
+
+    lift = 2.0 * sway
+    if lift > length:
+        raise common.GateError(
+            'weapon-spec', 'cloth의 sway({0})는 length({1})의 절반을 넘을 수 없다'.format(sway, length)
+        )
+
+    def hang(v):
+        """`v`까지 늘어진 천의 세로 깊이. 젖힌 만큼 짧아진 호 길이 보정이다."""
+        if lift < 1e-9:
+            return v * length
+        return 0.5 * (v * math.sqrt(length * length - lift * lift * v * v) + (length * length / lift) * math.asin(lift * v / length))
 
     def point_at(u, v):
         span = width + (width_bottom - width) * v
         amplitude = depth_top + (depth - depth_top) * v
+        local_phase = phase + ripple * math.sin(2.0 * math.pi * ripple_waves * v - ripple_phase)
         return (
             (u - 0.5) * span,
-            amplitude * math.sin(2.0 * math.pi * folds * u + phase) + sway * v * v,
-            -v * length,
+            amplitude * math.sin(2.0 * math.pi * folds * u + local_phase) + sway * v * v,
+            -hang(v),
         )
 
     return build_sheet('Cloth', part.get('columns', 32), part.get('rows', 16), point_at, part.get('flip', False))
