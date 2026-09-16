@@ -67,8 +67,10 @@ def main():
 
     armature = common.import_vrm(vrm_path)
     # 자세를 먼저 입히고 상자를 잰다. A 포즈로 벌린 팔은 게임에 나오지 않는데도 인물 폭을
-    # 결정해 카메라 가로 판정을 떨어뜨린다.
-    common.apply_pose(armature, retarget.BASE_ARM_POSE, retarget.BASE_POSE_ORDER)
+    # 결정해 카메라 가로 판정을 떨어뜨린다. 팔은 월드 델타로, 손가락은 로컬 회전으로 넣는다 —
+    # 두 값이 서로 다른 기준계로 잰 것이라 한쪽 방식으로 통일하면 손이 엉뚱하게 꺾인다.
+    common.apply_world_delta_pose(armature, retarget.BASE_ARM_POSE, retarget.BASE_POSE_ORDER)
+    common.apply_local_pose(armature, retarget.BASE_FINGER_POSE, 'XYZ')
     lo, hi = common.world_bounds()
 
     # 카메라는 기준 규격으로 세운다. 층 캔버스는 여기에 관여하지 않는다.

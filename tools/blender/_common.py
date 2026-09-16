@@ -242,20 +242,28 @@ def import_vrm(vrm_path):
     return armatures[0]
 
 
-def apply_pose(armature, angles_by_bone, order):
+def apply_world_delta_pose(armature, angles_by_bone, order):
     """
-    본 이름별 오일러 각(도)을 포즈 본에 그대로 입힌다.
+    각도를 **월드 공간에서 rest 자세에 곱하는 델타**로 보고 입힌다. 팔 자세가 이 방식이다.
 
-    **값은 여기 두지 않는다.** 기준 팔 자세의 주인은 `retarget_render.BASE_ARM_POSE`이고 이
-    함수는 입히는 기계만 맡는다. 값을 이 모듈에 복사해 두면 굽기와 측정이 서로 다른 자세를 보게
-    되고, 그러면 측정이 통과시킨 크기가 실제 굽기에서 캔버스를 넘는다.
+    **로컬 회전으로 넣으면 안 된다.** `pose_bone.rotation_quaternion`에 그대로 넣으면 Blender가
+    그것을 부모 기준 로컬 회전으로 해석하는데, `BASE_ARM_POSE`의 값은 그 기준계로 잰 것이
+    아니다. 2026-09-16에 실제로 그렇게 넣었다가 두 팔이 머리 위로 올라가 손이 서로 가까워진
+    자세가 나왔다. `retarget_render.retarget_bake`가 쓰는 식과 같은 식을 여기 둔다.
 
-    자세를 입히지 않고 재면 A 포즈의 벌린 팔이 인물 폭을 결정한다. 그 폭은 게임에 나오지 않는
-    자세인데도 `setup_camera`의 가로 판정을 떨어뜨린다(실측: 벌린 팔 343.2px 대 허용 227.8px).
+        wanted = (delta × rest_회전)을 행렬로, 위치는 본의 현재 위치를 그대로
+        pose_bone.matrix = 아마추어_월드⁻¹ × wanted
+
+    **부모부터 자식 순으로 넣고 그때마다 뷰 레이어를 갱신한다.** 위치를 본의 **현재** 행렬에서
+    가져오므로, 부모가 아직 안 돌아간 상태에서 자식을 넣으면 자식이 옛 자리에 붙는다.
+
+    **값은 여기 두지 않는다.** 주인은 `retarget_render.BASE_ARM_POSE`이고 이 함수는 입히는
+    기계만 맡는다. 값을 복사해 두면 굽기와 측정이 서로 다른 자세를 보게 되고, 그러면 측정이
+    통과시킨 크기가 실제 굽기에서 캔버스를 넘는다.
 
     @param armature 포즈를 입힐 아마추어 오브젝트
-    @param angles_by_bone `{본 이름: (x, y, z)}` — 각도는 도 단위
-    @param order 오일러 회전 순서 문자열 (예 `YXZ`)
+    @param angles_by_bone `{본 이름: (x, y, z)}` — 각도는 도 단위. 부모가 자식보다 앞에 온다
+    @param order 오일러 회전 순서 문자열 (팔은 `YXZ`)
     """
     from math import radians
 
@@ -267,6 +275,37 @@ def apply_pose(armature, angles_by_bone, order):
             raise GateError(
                 'retarget-bone', '자세가 쓰는 본을 이 골격에서 못 찾았다: {0}'.format(name)
             )
+        rest = armature.matrix_world @ armature.data.bones[name].matrix_local
+        delta = Euler([radians(a) for a in angles], order).to_quaternion()
+        wanted = (delta @ rest.to_quaternion()).to_matrix().to_4x4()
+        wanted.translation = (armature.matrix_world @ bone.matrix).translation
+        bone.matrix = armature.matrix_world.inverted() @ wanted
+        bpy.context.view_layer.update()
+
+
+def apply_local_pose(armature, angles_by_bone, order):
+    """
+    각도를 **부모 기준 로컬 회전**으로 보고 입힌다. 손가락 그립이 이 방식이다.
+
+    팔과 방식이 다른 것은 의도한 것이다. `retarget_render`가 팔은 월드 델타로, 손가락은 로컬
+    회전으로 넣고 오일러 순서도 각각 `YXZ`와 `XYZ`로 다르다. 한쪽 방식으로 통일하면 그 값들이
+    잰 기준계가 바뀌어 손이 엉뚱하게 꺾인다.
+
+    **없는 본은 건너뛴다.** 손가락 본은 모델에 따라 빠질 수 있고, 그때 멈추면 손가락이 없는
+    골격으로는 아무것도 굽지 못한다.
+
+    @param armature 포즈를 입힐 아마추어 오브젝트
+    @param angles_by_bone `{본 이름: (x, y, z)}` — 각도는 도 단위
+    @param order 오일러 회전 순서 문자열 (손가락은 `XYZ`)
+    """
+    from math import radians
+
+    from mathutils import Euler
+
+    for name, angles in angles_by_bone.items():
+        bone = armature.pose.bones.get(name)
+        if bone is None:
+            continue
         bone.rotation_mode = 'QUATERNION'
         bone.rotation_quaternion = Euler([radians(a) for a in angles], order).to_quaternion()
     bpy.context.view_layer.update()

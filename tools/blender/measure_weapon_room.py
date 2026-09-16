@@ -27,22 +27,9 @@ import retarget_render as retarget  # noqa: E402 - 기준 자세 값의 주인�
 
 
 def apply_base_pose(armature):
-    """`BASE_ARM_POSE`가 정한 팔 각도를 포즈 본에 그대로 입힌다."""
-    from math import radians
-
-    from mathutils import Euler
-
-    for name, angles in retarget.BASE_ARM_POSE.items():
-        bone = armature.pose.bones.get(name)
-        if bone is None:
-            raise common.GateError(
-                'retarget-bone',
-                '기준 자세가 쓰는 본을 이 골격에서 못 찾았다: ' + name,
-            )
-        bone.rotation_mode = 'QUATERNION'
-        bone.rotation_quaternion = Euler(
-            [radians(a) for a in angles], retarget.BASE_POSE_ORDER
-        ).to_quaternion()
+    """굽기와 같은 기준 자세를 입힌다 — 팔은 월드 델타, 손가락은 로컬 회전이다."""
+    common.apply_world_delta_pose(armature, retarget.BASE_ARM_POSE, retarget.BASE_POSE_ORDER)
+    common.apply_local_pose(armature, retarget.BASE_FINGER_POSE, 'XYZ')
 
 
 def main():

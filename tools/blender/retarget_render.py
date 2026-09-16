@@ -157,6 +157,9 @@ BASE_ARM_POSE = {
     # 여유다. -75도로는 그 여유가 모자라 손이 옷 안으로 들어갔다.
     'J_Bip_R_UpperArm': (-10.0, -58.0, 0.0),
     'J_Bip_R_LowerArm': (-105.0, -58.0, 0.0),
+    # Z는 0이다. `verify_hand_fix.py`가 -50을 제안했으나 그 값은 손등을 등 뒤로 보내 손바닥이
+    # 정면을 향했다. 후보 여섯(-50 · 0 · +40 · +80 · +130)을 손만 확대해 견줘 0을 골랐다
+    # (2026-09-16 사용자 판정). 주먹의 등이 정면을 보고 손바닥이 안 보이는 자리다.
     'J_Bip_R_Hand': (-105.0, -58.0, 0.0),
     # 캐릭터의 왼팔 — 배꼽 높이. 보조 무기를 드는 자리라 조금 낮다. Y는 오른팔과 같은 이유로
     # 수직(90도)에서 32도 벌어진 58도다.
@@ -180,15 +183,20 @@ BASE_POSE_ORDER = 'YXZ'
 BASE_FINGER_POSE = {}
 
 # 오른손 네 손가락 (손바닥 쪽으로 굽힘: Z+)
+# 마디 합이 125도다. 종전 170도(55·65·50)는 끝마디가 과하게 말려 주먹 밖으로 튀어나왔다
+# (2026-09-16 사용자 판정 — `docs/temp/3d-gate/verify_hand_fix.py`의 4방향 렌더로 골랐다).
 for _finger in ('Index', 'Middle', 'Ring', 'Little'):
-    BASE_FINGER_POSE['J_Bip_R_{0}1'.format(_finger)] = (0.0, 0.0, 55.0)
-    BASE_FINGER_POSE['J_Bip_R_{0}2'.format(_finger)] = (0.0, 0.0, 65.0)
-    BASE_FINGER_POSE['J_Bip_R_{0}3'.format(_finger)] = (0.0, 0.0, 50.0)
+    BASE_FINGER_POSE['J_Bip_R_{0}1'.format(_finger)] = (0.0, 0.0, 45.0)
+    BASE_FINGER_POSE['J_Bip_R_{0}2'.format(_finger)] = (0.0, 0.0, 48.0)
+    BASE_FINGER_POSE['J_Bip_R_{0}3'.format(_finger)] = (0.0, 0.0, 32.0)
 
-# 오른손 엄지 (안쪽 손바닥 쪽으로 감싸기)
-BASE_FINGER_POSE['J_Bip_R_Thumb1'] = (35.0, -20.0, 45.0)
-BASE_FINGER_POSE['J_Bip_R_Thumb2'] = (25.0, 0.0, 30.0)
-BASE_FINGER_POSE['J_Bip_R_Thumb3'] = (20.0, 0.0, 20.0)
+# 오른손 엄지 — 네 손가락 **위로** 덮이는 자리다.
+# 밑마디의 Y가 -10이면 엄지가 먼저 접히고 네 손가락이 그 위를 덮어, 주먹에 가려 엄지가 안 보인다.
+# 실제 주먹은 네 손가락을 먼저 쥐고 엄지가 검지 위를 가로질러 덮는다. Z(굽힘) 30을 고정하고
+# 밑마디의 X·Y를 격자(X 4개 × Y 3개)로 훑어 +20을 골랐다(2026-09-16 사용자 판정).
+BASE_FINGER_POSE['J_Bip_R_Thumb1'] = (25.0, 20.0, 30.0)
+BASE_FINGER_POSE['J_Bip_R_Thumb2'] = (20.0, 0.0, 20.0)
+BASE_FINGER_POSE['J_Bip_R_Thumb3'] = (15.0, 0.0, 15.0)
 
 # 왼손 네 손가락 (손바닥 쪽으로 굽힘: Z-)
 for _finger in ('Index', 'Middle', 'Ring', 'Little'):
@@ -196,10 +204,14 @@ for _finger in ('Index', 'Middle', 'Ring', 'Little'):
     BASE_FINGER_POSE['J_Bip_L_{0}2'.format(_finger)] = (0.0, 0.0, -65.0)
     BASE_FINGER_POSE['J_Bip_L_{0}3'.format(_finger)] = (0.0, 0.0, -50.0)
 
-# 왼손 엄지 (안쪽 손바닥 쪽으로 감싸기)
-BASE_FINGER_POSE['J_Bip_L_Thumb1'] = (35.0, 20.0, -45.0)
-BASE_FINGER_POSE['J_Bip_L_Thumb2'] = (25.0, 0.0, -30.0)
-BASE_FINGER_POSE['J_Bip_L_Thumb3'] = (20.0, 0.0, -20.0)
+# 왼손 엄지 — 오른손의 좌우 반전이 **아니다.**
+# 오른손이 채택한 `(25, 20, 30)`을 `(X, -Y, -Z)`로 뒤집어 `(25, -20, -30)`을 넣는 것이 거울상인데,
+# 실제로 그 값이 맞는지는 왼손을 따로 훑어 확인했다. 오른손 값을 뒤집은 판이 왼손에서 엄지가
+# 손가락 밑에 깔리는 일이 먼저 있었기 때문이다(2026-09-16). 왼손 X·Y를 격자(3×4)로 훑어 골랐고,
+# 결과적으로 거울상과 같은 자리에 떨어졌다.
+BASE_FINGER_POSE['J_Bip_L_Thumb1'] = (25.0, -20.0, -30.0)
+BASE_FINGER_POSE['J_Bip_L_Thumb2'] = (20.0, 0.0, -20.0)
+BASE_FINGER_POSE['J_Bip_L_Thumb3'] = (15.0, 0.0, -15.0)
 
 
 
