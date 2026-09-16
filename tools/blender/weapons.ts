@@ -111,6 +111,9 @@ const REFERENCE = { height: 1.2, offset_x: -0.45, color: [70, 70, 80] as const }
  *
  * 셋씩 두는 이유는 하나를 보여 주면 「이것과 비슷한 다른 것」을 상상해서 고르게 되기 때문이다.
  * 좌표는 미터이고 원점이 바닥이라, 손잡이 길이를 바꾸면 `location`의 z도 절반만큼 함께 옮긴다.
+ *
+ * **사용자가 `staff_orb`와 `shield_round`를 골랐다(2026-09-16).** 떨어진 넷은 지우지 않고
+ * 남긴다 — 지우면 다음 사람이 같은 안을 다시 짜고, 왜 그것이 아니었는지도 사라진다.
  */
 const CANDIDATES: readonly ICandidate[] = [
   {
