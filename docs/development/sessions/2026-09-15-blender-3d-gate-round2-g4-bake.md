@@ -76,6 +76,7 @@ JSON에는 카메라 위치 · 회전 · 직교 배율과 모델 회전각을 �
 
 - **나누는 단위는 층 × 동작이다.** 방향까지 나누면 아틀라스가 40개로 늘어 빌드 파일이 불어난다. 층 단위로 묶으면 몸 48장이 약 5.0M px라 4096 텍스처가 필요하다.
 - **투명 여백을 트림하고 원본 크기와 offset을 담는다.** TexturePacker의 Trim 모드와 같게 `sourceSize` 246×493과 offset을 plist에 넣는다. Cocos 매뉴얼은 「Crop, flush position」 방식을 쓰면 offset을 잃는다고 적는다.
+- **plist는 cocos2d 포맷 2로 쓴다(2026-09-16 원본 확인).** 파서는 `frames` 딕셔너리와 `metadata`의 `format`을 읽고, 포맷 2에서는 프레임마다 `frame`(아틀라스 안 트림 상자) · `rotated` · `offset` · `sourceSize`를 쓴다. 포맷 3은 `spriteSize` · `spriteOffset` · `spriteSourceSize` · `textureRect` · `textureRotated`로 이름이 다르고 폴리곤 메시까지 받는데, 우리는 사각형만 쓰므로 포맷 2로 충분하다. **`offset`은 트림 상자의 좌상단이 아니라 원본 중심 대비 트림 상자 중심의 이동량이고 y는 위가 양수다.** 렌더가 꼭짓점을 `offset + (원본 크기 − 트림 크기) / 2`로 잡기 때문이다. 부호를 뒤집으면 판정은 통과하는데 게임 안에서 발치만 조용히 어긋난다. 근거는 cocos2d-x의 `CCSpriteFrameCache.cpp`(포맷 분기)와 `CCSprite.cpp`의 `setVertexCoords` · `setSpriteFrame`이다. **다만 Cocos Creator 3.8 에디터의 임포터는 별도 구현이라 이 확인이 보증하지 않는다** — 아래 「첫 임포트에서 확인한다」가 그 몫이고, 거부되면 `@property` SpriteFrame 배열로 물러선다.
 - **회전은 끄고, 패딩은 2px 이상 · extrude는 1로 둔다.** 밉맵을 켜면 축소 단계에서 이웃 프레임이 번지므로 패딩을 8로 늘린다.
 - **패킹은 새 패키지 없이 셸프 패킹을 직접 짠다.** 프레임 크기가 비슷해서 셸프 패킹으로 충분하다.
 - **왕복 테스트로 offset을 고정한다.** 트림 상자와 plist 값으로 246×493을 복원해 원본 알파와 바이트가 같은지 vitest로 본다. 부호가 틀리면 게임 안 발치가 조용히 움직인다.

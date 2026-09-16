@@ -25,6 +25,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { buildAtlas, frameName, packShelves, restoreFrame } from '../../tools/blender/Atlas';
 import {
   composeGrid,
   compositeOver,
@@ -504,6 +505,160 @@ describe('unionRowCheck — 여러 세트의 합집합에 머리·발 행을 건
     // 빈 세트는 세트 검사가 프레임 수 위반으로 이미 보고했다. 여기서 또 적으면 같은 원인이
     // 두 줄로 늘어난다.
     expect(unionRowCheck([[]], UNION_EXPECTED).problems).toEqual([]);
+  });
+});
+
+/** 아틀라스 단언용 — `(x, y)`에 흰 점 하나만 있고 나머지는 완전 투명인 프레임. */
+function dot(x: number, y: number): IRgbaImage {
+  return image(W, H, (px, py) => (px === x && py === y ? [255, 255, 255, 255] : [0, 0, 0, 0]));
+}
+
+/** 아틀라스 작성기의 기본 설정 — 칸 사이와 바깥에 2px, 가로 상한 64px. */
+const PACK = { maxWidth: 64, padding: 2 } as const;
+
+describe('frameName — 아틀라스 작성기와 게임이 같은 문자열을 만든다', () => {
+  it('층 · 동작 · 방향 · 번호를 밑줄로 잇고 확장자를 안 붙인다', () => {
+    // 이름 규칙이 작성기와 게임 두 곳에 사는데 Cocos 스크립트는 `game/assets` 밖을 import할 수
+    // 없어 한 파일로 모을 수 없다. 그래서 두 쪽이 같은 문자열을 내는지를 단언으로 붙든다.
+    expect(frameName('body', 'walk', 'front', 0)).toBe('body_walk_front_00');
+  });
+
+  it('번호는 두 자리로 채운다 — 에디터 목록에서 사전순이 번호순과 같아야 한다', () => {
+    expect(frameName('staff', 'idle', 'left', 12)).toBe('staff_idle_left_12');
+  });
+});
+
+describe('packShelves — 프레임을 줄 단위로 눕혀 담는다', () => {
+  it('한 줄에 들어가면 가로로 잇고 칸 사이와 바깥에 패딩을 둔다', () => {
+    const out = packShelves(
+      [
+        { width: 4, height: 3 },
+        { width: 5, height: 2 },
+      ],
+      { maxWidth: 32, padding: 2 },
+    );
+
+    expect(out.placements).toEqual([
+      { x: 2, y: 2 },
+      { x: 8, y: 2 },
+    ]);
+  });
+
+  it('줄이 넘치면 다음 선반으로 내리고, 선반 높이는 그 줄에서 가장 높은 칸이 정한다', () => {
+    const out = packShelves(
+      [
+        { width: 10, height: 4 },
+        { width: 10, height: 2 },
+      ],
+      { maxWidth: 16, padding: 2 },
+    );
+
+    expect(out.placements).toEqual([
+      { x: 2, y: 2 },
+      { x: 2, y: 8 },
+    ]);
+  });
+
+  it('아틀라스 크기는 담은 칸과 패딩을 감싼다', () => {
+    const out = packShelves(
+      [
+        { width: 10, height: 4 },
+        { width: 10, height: 2 },
+      ],
+      { maxWidth: 16, padding: 2 },
+    );
+
+    expect([out.width, out.height]).toEqual([14, 12]);
+  });
+});
+
+describe('buildAtlas — 트림해 담고 plist 항목을 만든다', () => {
+  it('sourceSize는 원본 캔버스이고 회전은 하지 않는다', () => {
+    // 게임은 층마다 246×493 캔버스를 같은 48×96 상자에 넣는다. sourceSize가 트림 크기로
+    // 들어가면 층끼리 크기가 달라져 무기가 몸에서 떨어진다. 회전은 켜면 offset 해석이 한 겹
+    // 늘어나는데 얻는 것이 없다.
+    const atlas = buildAtlas([{ name: 'a', image: dot(3, 4) }], PACK);
+
+    expect(atlas.entries[0].sourceSize).toEqual({ width: W, height: H });
+    expect(atlas.entries[0].rotated).toBe(false);
+    expect(atlas.entries[0].frame).toEqual({ x: 2, y: 2, width: 1, height: 1 });
+  });
+
+  it('offset은 원본 중심 대비 트림 상자 중심의 이동량이고 y는 위가 양수다', () => {
+    // 캔버스 8×10의 중심은 (4, 5)이고 점 하나짜리 트림 상자의 중심은 (3.5, 4.5)라, 가로로 0.5
+    // 왼쪽 · 세로로 0.5 위다. 렌더가 꼭짓점을 `offset + (원본 − 트림) / 2`로 잡으므로 부호를
+    // 뒤집으면 판정은 통과하는데 게임 안 발치만 조용히 어긋난다.
+    const atlas = buildAtlas([{ name: 'a', image: dot(3, 4) }], PACK);
+
+    expect(atlas.entries[0].offset).toEqual({ x: -0.5, y: 0.5 });
+  });
+
+  it('희미한 알파는 트림 전에 눌러 없앤다', () => {
+    // 알파 1짜리 먼지가 구석에 한 점 있으면 `> 0` 기준 트림 상자가 캔버스 전체가 되고, 아틀라스가
+    // 투명 여백을 그대로 싣는다. 판정이 쓰는 기준값(16)과 같은 값으로 눌러야 둘이 갈리지 않는다.
+    const dusty = image(W, H, (x, y) => {
+      if (x === 3 && y === 4) return [255, 255, 255, 255];
+      if (x === 0 && y === 0) return [9, 9, 9, 1];
+      return [0, 0, 0, 0];
+    });
+
+    const atlas = buildAtlas([{ name: 'a', image: dusty }], PACK);
+
+    expect(atlas.entries[0].frame).toEqual({ x: 2, y: 2, width: 1, height: 1 });
+  });
+
+  it('통째로 빈 프레임도 항목을 남긴다', () => {
+    // 무기 층은 방향에 따라 통째로 비는 것이 정상이다(뒷모습에서 몸에 가려진 지팡이). 항목을
+    // 빼면 게임이 그 이름을 못 찾아 직전 프레임을 붙든 채로 남는다.
+    const atlas = buildAtlas([{ name: 'empty', image: image(W, H, () => [0, 0, 0, 0]) }], PACK);
+
+    expect(atlas.entries[0].frame.width).toBe(1);
+    expect(atlas.entries[0].frame.height).toBe(1);
+    expect(atlas.entries[0].offset).toEqual({ x: 0, y: 0 });
+  });
+
+  it('가장자리 픽셀을 1px 바깥으로 늘려 둔다', () => {
+    // 늘리지 않으면 축소 샘플링이 칸 경계에서 이웃의 투명 픽셀을 함께 읽어 윤곽이 반투명해진다.
+    // 늘린 자리는 트림 상자 밖이라 plist 값과 왕복 복원에는 들어가지 않는다.
+    const atlas = buildAtlas([{ name: 'a', image: dot(3, 4) }], PACK);
+    const box = atlas.entries[0].frame;
+
+    expect(pixel(atlas.image, box.x - 1, box.y)).toEqual([255, 255, 255, 255]);
+  });
+
+  it('여러 장을 담아도 이름과 자리가 하나씩 대응한다', () => {
+    const atlas = buildAtlas(
+      [
+        { name: 'a', image: dot(1, 1) },
+        { name: 'b', image: dot(6, 8) },
+      ],
+      PACK,
+    );
+
+    expect(atlas.entries.map((e) => e.name)).toEqual(['a', 'b']);
+    expect(atlas.entries[0].frame).not.toEqual(atlas.entries[1].frame);
+  });
+});
+
+describe('restoreFrame — 담은 것을 원본 캔버스로 되돌린다', () => {
+  it('왕복하면 원본과 바이트가 같다', () => {
+    // 이 단언이 offset 부호를 붙든다. 복원은 plist에 적은 값(frame · offset · sourceSize)만 보고
+    // 계산하므로, 작성기가 부호를 틀리면 여기서 복원이 어긋난다.
+    const src = image(W, H, (x, y) =>
+      x >= 2 && x <= 4 && y >= 6 && y <= 8 ? [200, 100, 50, 200] : [0, 0, 0, 0],
+    );
+
+    const atlas = buildAtlas([{ name: 'a', image: src }], PACK);
+
+    expect(restoreFrame(atlas.image, atlas.entries[0])).toEqual(src);
+  });
+
+  it('빈 프레임도 원래 캔버스로 되돌아온다', () => {
+    const empty = image(W, H, () => [0, 0, 0, 0]);
+
+    const atlas = buildAtlas([{ name: 'empty', image: empty }], PACK);
+
+    expect(restoreFrame(atlas.image, atlas.entries[0])).toEqual(empty);
   });
 });
 
