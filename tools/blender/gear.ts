@@ -285,18 +285,31 @@ function wings(fold: number): IGearSpec {
 /**
  * 화려한 장비 — 사용자가 준 사진(가죽 어깨갑옷 + 가슴에서 X자로 교차하는 끈 + 버클, 어깨의 굽은 뿔)을
  * 금색 금속으로 옮긴 것이다(2026-09-17). 사진과 다른 점은 사용자 지정이다 — 털 장식은 뺐고, 끈은
- * 등에서도 X자로 교차하며, 명치 아래에 배를 덮는 판이 있고, 교차점에 파란 발광 보석이 있다. 끈도
- * 금색 금속 띠다.
+ * 등에서도 X자로 교차하며, 명치 아래에 배를 덮는 판이 앞뒤로 있고, 교차점에 파란 발광 보석이 있다.
+ * 끈도 금색 금속 띠다.
+ *
+ * **구조는 허리 위만 그린 멜빵바지다(사용자 판정 2026-09-17).** 배판이 멜빵바지의 앞판(가슴받이)이고,
+ * 끈은 양 어깨에서 시작해 반대쪽 배판 위 모서리에 닿아 끝난다. 두 번째 판은 끈이 배판을 지나 허리까지
+ * 내려가 있었다. 끈이 배판 위 모서리(x ±0.08, z 0.58)에서 끝나면 교차점은 그 위 7cm(z 0.655, 흉골
+ * 가운데)에 온다 — 끈이 어깨(x ∓0.07, z 0.72)에서 출발하는 이상 교차점을 더 내리려면 배판을 더 낮게
+ * 잘라야 한다. 보석은 그 교차점에 둔다.
  *
  * 판 · 끈 · 보석 · 버클은 전부 몸 표면에 투영해 붙인다(`weapons.py Surface`). 첫 판의 어깨 구는 어깨
  * 관절보다 7.7cm 위에 떠서 「흰 계란 두 개」로 보였고(사용자 판정 2026-09-17), 재질도 상의 규칙만 복사해
  * 금속으로 읽힐 재료가 없었다. 금속은 이 경우의 `toon`(어두운 음영색 + 금속 matcap)이 만든다.
+ *
+ * 보석은 `Raw`(툰으로 바꾸지 않음)다. 두 번째 판에서 발광 세기 4의 파란 구가 흰 점으로 나왔다 — 밝은
+ * 기본색에 같은 색 발광을 세게 얹으니 채널이 넘쳤고, 금색 matcap까지 더해졌다. 어두운 기본색 위에
+ * 파란 발광 색을 약하게 얹어 색이 남게 한다.
  *
  * 좌표는 세계 기준(m)으로 적고 `atChest` · `chestZ`로 부품 좌표로 옮긴다. 어깨 관절은 (±0.067, 0.028,
  * 0.714), 위팔 축은 z 0.655에서 x ±0.104다(2026-09-16 실측).
  */
 function armor(): IGearSpec {
   const sides = [1, -1] as const;
+  /** 배판(가슴받이) 위 가장자리의 세계 z. 끈이 여기서 끝나고 버클이 여기 앉는다 */
+  const bibTop = 0.58;
+  const bibHalfWidth = 0.08;
   const shoulder = (side: 1 | -1): IGearPart[] => [
     {
       // 어깨 위 판 — 관절을 중심으로 한 구면 조각을 어깨에 투영한다. 고도 0이 꼭대기다
@@ -339,7 +352,8 @@ function armor(): IGearSpec {
       color: GOLD,
     },
   ];
-  // 어깨 판 앞(뒤) 가운데에서 반대쪽 허리로. 두 번째 끈은 조금 더 띄워 교차점에서 위에 겹친다
+  // 멜빵끈 — 어깨 판 앞(뒤) 가운데에서 반대쪽 배판 위 모서리로. 끝을 배판 안으로 2cm 넣어 겹치고,
+  // 판(0.008)보다 띄워 위에 놓는다. 두 번째 끈은 조금 더 띄워 교차점에서 위에 겹친다
   const straps = (face: 'front' | 'back'): IGearPart[] =>
     sides.map((side, i) => ({
       type: 'strap',
@@ -347,55 +361,62 @@ function armor(): IGearSpec {
       side: face,
       path: [
         [side * -0.07, chestZ(0.72)],
-        [side * 0.09, chestZ(0.455)],
+        [side * (bibHalfWidth - 0.006), chestZ(bibTop - 0.02)],
       ],
       width: 0.032,
-      standoff: 0.006 + i * 0.004,
+      standoff: 0.011 + i * 0.004,
       columns: 16,
       rows: 2,
       color: GOLD,
     }));
+  // 배판 — 앞은 명치 아래에서 허리까지, 뒤도 같은 크기. 폭은 허리 반폭(0.114) 안이다
+  const bib = (face: 'front' | 'back'): IGearPart => ({
+    type: 'wrap',
+    group: 'Gear',
+    origin: atChest(-bibHalfWidth, face === 'front' ? -0.4 : 0.4, bibTop),
+    u_axis: [1, 0, 0],
+    v_axis: [0, 0, -1],
+    width: bibHalfWidth * 2,
+    height: bibTop - 0.455,
+    direction: [0, face === 'front' ? 1 : -1, 0],
+    standoff: 0.008,
+    columns: 12,
+    rows: 8,
+    color: GOLD,
+  });
   return {
     id: 'armor',
     bone: CHEST_BONE,
     parts: [
       ...shoulder(1),
       ...shoulder(-1),
+      bib('front'),
+      bib('back'),
       ...straps('front'),
       ...straps('back'),
-      {
-        // 배판 — 명치 아래에서 허리까지 앞면에 투영한 판. 폭은 허리 반폭(0.114) 안이다
-        type: 'wrap',
-        group: 'Gear',
-        origin: atChest(-0.08, -0.4, 0.565),
-        u_axis: [1, 0, 0],
-        v_axis: [0, 0, -1],
-        width: 0.16,
-        height: 0.115,
-        direction: [0, 1, 0],
-        standoff: 0.008,
-        columns: 12,
-        rows: 8,
-        color: GOLD,
-      },
       ...sides.map((side) => ({
-        // 버클 — 앞 끈의 허리 끝
+        // 버클 — 앞 끈이 배판 위 모서리에 닿는 자리
         type: 'cube',
         group: 'Gear',
         size: 0.03,
         scale: [1, 0.3, 1.1],
-        snap: { from: atChest(side * 0.09, -0.4, 0.455), direction: [0, 1, 0], standoff: 0.006 },
+        snap: {
+          from: atChest(side * (bibHalfWidth - 0.008), -0.4, bibTop - 0.012),
+          direction: [0, 1, 0],
+          standoff: 0.016,
+        },
         color: GOLD,
       })),
       {
-        // 명치 보석 — 앞 끈이 교차하는 자리(z 0.60)에 반쯤 박힌 발광 구. 이전과 같은 파란 구다
+        // 보석 — 앞 끈이 교차하는 흉골 가운데(z 0.655)에 반쯤 박힌 파란 발광 구
         type: 'sphere',
-        group: 'Gear',
+        group: 'Raw',
         radius: 0.022,
         subdivisions: 2,
-        snap: { from: atChest(0, -0.4, 0.6), direction: [0, 1, 0], standoff: 0.012 },
-        color: [80, 200, 255],
-        emission: 4.0,
+        snap: { from: atChest(0, -0.4, 0.655), direction: [0, 1, 0], standoff: 0.012 },
+        color: [10, 30, 140],
+        emission_color: [40, 100, 255],
+        emission: 0.6,
       },
     ],
   };
@@ -439,8 +460,9 @@ export const CASES: readonly IGearCase[] = [
     label: '화려한 장비 — 금색 어깨갑옷 · X자 끈 · 배판 · 뿔 · 명치 보석',
     checks: [
       '판 · 끈 · 뿔이 금속으로 읽히나 (반사점이 보이나, 흰 덩어리로 보이나)',
+      '끈이 양 어깨에서 반대쪽 배판 위 모서리로 이어져 끝나나 (앞 · 뒤)',
       '끈과 배판이 몸에 붙어 보이나 (앞 · 뒤 · 3/4)',
-      '명치 보석의 빛이 그늘에 묻히지 않나',
+      '보석이 파랗게 빛나나, 그늘에 묻히지 않나',
       '720p에서 보석 · 뿔 · 끈이 남나',
     ],
     spec: armor(),

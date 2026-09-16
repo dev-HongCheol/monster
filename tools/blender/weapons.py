@@ -400,7 +400,8 @@ def build_part(part, surface=None):
 
     @param part `type`과 그 종류의 인자, `location` · `rotation`(도) · `scale` · `color`.
         재질 선택지는 `group`(`MATERIAL_GROUPS`, 기본 `Part`) · `emission`(발광 세기) ·
-        `alpha`(0~1, 1보다 작으면 반투명으로 섞는다). `snap`(`from` · `direction` · `standoff`)이
+        `emission_color`(발광 색, 없으면 `color`) · `alpha`(0~1, 1보다 작으면 반투명으로 섞는다).
+        `snap`(`from` · `direction` · `standoff`)이
         있으면 `location` 대신 `from`에서 `direction`으로 쏴 몸 표면에서 `standoff`만큼 띄운 자리에 놓는다
     @param surface 몸 표면(`Surface`). `wrap` · `cap` · `strap`과 `snap`에 필요하고, 없으면 그 부품은 실패한다
     @returns 만들어진 오브젝트
@@ -479,7 +480,16 @@ def build_part(part, surface=None):
         principled.inputs['Base Color'].default_value = rgba
         emission = part.get('emission', 0.0)
         if emission > 0.0:
-            principled.inputs['Emission Color'].default_value = rgba
+            # 발광 색을 기본색과 따로 받는다. 같은 색으로 세기만 올리면 밝은 면에서 채널이 넘쳐
+            # 흰색이 된다 — 2026-09-17 명치 보석(파랑, 세기 4)이 흰 점으로 나왔다. 어두운 기본색에
+            # 밝은 발광 색을 얹어야 빛나면서 색이 남는다.
+            glow = part.get('emission_color', color)
+            principled.inputs['Emission Color'].default_value = (
+                glow[0] / 255.0,
+                glow[1] / 255.0,
+                glow[2] / 255.0,
+                1.0,
+            )
             principled.inputs['Emission Strength'].default_value = emission
         alpha = part.get('alpha', 1.0)
         if alpha < 1.0:

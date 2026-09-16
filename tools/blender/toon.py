@@ -175,8 +175,9 @@ def convert_part_material(ext, material, settings, reference):
     Principled BSDF로 세운 무기 · 장비 머티리얼을 MToon으로 바꾼다.
 
     음영색은 기본색에 `shade_ratio`를 곱해 만든다. `reference`가 있으면 그 머티리얼의 음영 규칙과
-    matcap 텍스처를 복사한다. 부품에 준 발광(`emission`)은 MToon 발광으로 옮긴다 — 안 옮기면 변환이
-    Principled 노드를 갈아 끼우면서 빛나는 보석이 그냥 파란 돌이 된다.
+    matcap 텍스처를 복사한다. 부품에 준 발광(`emission` · 발광 색)은 MToon 발광으로 옮긴다 — 안 옮기면
+    변환이 Principled 노드를 갈아 끼우면서 빛나는 보석이 그냥 파란 돌이 된다. 발광 색은 기본색이
+    아니라 Principled의 발광 색 입력에서 읽는다(`weapons.build_part`의 `emission_color`).
 
     **색과 발광을 변환 전에 읽는다.** 변환이 노드 트리를 MToon 것으로 갈아 끼우므로, 뒤에 읽으면
     Principled 노드가 이미 없다.
@@ -184,6 +185,7 @@ def convert_part_material(ext, material, settings, reference):
     principled = material.node_tree.nodes.get('Principled BSDF') if material.node_tree else None
     base = tuple(principled.inputs['Base Color'].default_value) if principled else (0.8, 0.8, 0.8, 1.0)
     emission = principled.inputs['Emission Strength'].default_value if principled else 0.0
+    glow = tuple(principled.inputs['Emission Color'].default_value)[:3] if principled else base[:3]
 
     ext.enabled = True
     mtoon = ext.extensions.vrmc_materials_mtoon
@@ -196,7 +198,7 @@ def convert_part_material(ext, material, settings, reference):
     ratio = settings.get('shade_ratio', 0.6)
     mtoon.shade_color_factor = tuple(c * ratio for c in base[:3])
     if emission > 0.0:
-        ext.emissive_factor = base[:3]
+        ext.emissive_factor = glow
         ext.extensions.khr_materials_emissive_strength.emissive_strength = emission
 
 
