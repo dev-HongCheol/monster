@@ -106,8 +106,8 @@ J_Bip_L_Thumb1  (  25, -20, -30)
 
 ### 3.2 그다음 — 외곽선
 
-1. **외곽선 방식 후보** — 인버티드 헐(애드온 MToon 외곽선) · Line Art · 컴포지터를 나란히 굽는다. **장비 검토 세트(특히 두께 없는 망토 · 날개)를 시험 세트로 함께 쓴다.** 가림과 함께 고른다(G2 §3)
-2. 겨냥 수치는 아래 §3.3. 애드온 외곽선 폭의 해석(밀어내는 거리가 폭 값과 같은지, 직교 카메라에서 `screenCoordinates`)은 아직 확인 안 됐다 — `ops-blender-toon.md` §5
+1. **외곽선 방식 후보** — 인버티드 헐 · Line Art · 후처리를 같은 시험 세트로 구웠다(2026-09-17, G2 §8.3). **판정 대기다.** 시트는 `docs/temp/3d-gate/outline/sheet_outline_compare_{front,back,three_quarter}.png`(없음 · 헐 · Line Art · 후처리 나란히)와 방식별 `sheet_outline_<방식>.png`. 가림과 함께 고른다(G2 §3) — 몸 헐 가림 탐침 수치도 §8.3에 있다
+2. 겨냥 수치는 아래 §3.3. 애드온 외곽선 폭의 해석은 확정됐다(밀어내는 거리 = 폭 값, 화면 좌표 모드는 노드에 미연결) — `ops-blender-toon.md` §5
 3. **비교 시트** — 3D 캐릭터 · 출하 2D 플레이어 · 귀신 둘을 **실제 표시 크기**로(도깨비 70단위, 처녀귀신 50단위, 플레이어 96단위). 카메라 고도도 여기서 고른다 — 후보 고도마다 발밑에 마법진 원판을 함께 둬 캐릭터와 마법진이 같이 보이는 고도를 고른다
 4. **층 합성과 기준 컷의 픽셀 차이 기록**(G4 회귀 가드) — `layers.ts diff`
 
@@ -155,6 +155,7 @@ blender --background --python-exit-code 1 --python tools/blender/probe_layers.py
 | `toon.py` | 툰 사양을 MToon 머티리얼에 입힌다 |
 | `inspect_mtoon.py` | MToon 값 덤프 + 애드온이 어느 음영 식을 쓰는지 보고(`shading_path`). 애드온 · Blender 판을 바꾸면 먼저 돌린다 |
 | `gear.ts` | 장비 검토 세트 굽기 · 시트 · 수치 · 흔들림 재생. `--only cape,wings`, `--sheet-only`(굽지 않고 시트만). 경우별 `toon`(툰 값 덮기) · `views`(방향 — 왼쪽 측면 yaw 300은 화려한 장비만) |
+| `outline.ts` · `outline.py` | 외곽선 후보 셋을 시험 세트로 굽고 시트 · 수치를 만든다. `--only hull,lineart,post` · `--cases cape,wings` · `--sheet-only`. 후처리 선은 TS가 긋고, Line Art와 패스는 `probe_layers.py`의 `--lineart` · `--passes`가 받는다 |
 | `layers.ts` | `subset`(가림 판정) · `stack`(층 합성 + 720p) · `diff`(기준 컷과의 차이) |
 | `bake_layer.py` | 층 캔버스를 달리해 굽는다(ADR 009 실증에 씀) |
 | `inspect_meshes.py` | 메시 · 머티리얼 · 정점 지문 덤프 |
@@ -188,6 +189,7 @@ blender --background --python-exit-code 1 --python tools/blender/probe_layers.py
 - **발밑 마법진** — 게임에서 얹는 별도 노드다(G5 본편 항목). 캐릭터 발치 아래에 두고 부모의 세로 배율을 카메라 고도의 사인값으로 눌러 자식을 회전시킨다. 배율은 카메라 고도가 정해지면 나온다(G2 §8.2)
 - **천의 그늘 문턱** — 몸 조명이 앞 위라 세로 주름은 옷 문턱으로 그늘지지 않는다(G2 §8.2). 망토는 문턱 0.8을 후보로 받았고, 천 재질을 확정할 때 그 값을 툰 사양과 정본에 적어야 한다. 그늘 텍스처 없이 기하로만 주름을 보이려면 이 길뿐이다
 - **가는 장식의 최소 굵기** — 720p에서 지름 0.8cm(0.7px)는 사라지고 2.2cm 고리는 점으로 남는다(G2 §8.2). 장비 디자인 규격에 적을 후보다 — G6 정본 개정 때 `art-asset-spec.md`에 넣을지 정한다
+- **무기 재질과 헐** — 인버티드 헐은 MToon에서만 나오므로 헐 판의 무기는 상의 규칙(MToon)으로 바꿔 구웠다. 무기 재질 확정(위 항목)과 외곽선 방식 결정이 서로 물린다
 - **`F108`** — 귀신 생성 요구사항을 플레이북 정본으로 승격. 플레이북이 fal.ai · 플레이어 2D 기준이라 지금은 못 받는다
 - **`F107`** — `pnpm check`가 빨간불. `.gstack/` 3건 + `docs/temp/` 1건이 biome 포맷에 걸린다. **검증 단계의 `wf pass lint`를 막으므로 그 전에 고쳐야 한다**
 - **`tools/blender/README.md` 파일 표** — `bake_layer.py` · `inspect_meshes.py` · `measure_weapon_room.py` 행이 없다
