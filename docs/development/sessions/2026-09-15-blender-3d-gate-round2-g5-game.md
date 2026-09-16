@@ -1,0 +1,116 @@
+# 3D 캐릭터 플로우 2라운드 G5 · G6 — 본편 연결과 마무리
+
+- **작성일:** 2026-09-15
+- **브랜치:** `feat/blender-3d-gate`
+- **상태:** 진행 전 — RED 테스트는 qa-setup 끝(G4 뒤), 구현은 implementation부터
+- **정본:** [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §3.5 · [`art-direction.md`](../../design/spec/art-direction.md) §3.1 — 출하 2D 방향 슬롯을 층별 아틀라스로 교체한다
+- **개요:** [2라운드 계획 개요](2026-09-15-blender-3d-gate-round2-plan.md)
+
+---
+
+## 1. RED 테스트 — qa-setup 끝
+
+G4에서 대기 방식 · 프레임 수 · 아틀라스 계약 · 형제 순서가 닫힌 뒤, QA 문서 `docs/qa/blender-3d-gate-test.md`에 2라운드 절을 더하고 RED 테스트를 세운다. 그다음 `pnpm wf ready-impl`로 implementation에 들어간다.
+
+게임 로직은 `game/assets/scripts/logic/`의 순수 함수로 두고(ADR 002 · 003), 컴포넌트는 연결만 한다. 레포에 `cc` 모킹이 없어서 컴포넌트 자체는 vitest로 테스트할 수 없기 때문이다.
+
+| 함수 | 하는 일 | RED 단언 |
+|---|---|---|
+| `advanceAnim(state, {facing, moving, ticking, dt}, {fps, counts})` | 시계와 프레임 번호 | 동작이 바뀌면 0 · 걷는 중 방향 전환은 번호 유지 · ticking이 거짓이면 시간 정지 · 번호는 `floor(elapsed * fps) % count`이고 elapsed는 한 주기 나머지라 큰 dt는 여러 장을 건너뜀 · G3에서 정한 대기 방식 |
+| `frameName(layer, action, facing, index)` | 확장자 없는 프레임 이름 | 모든 조합에서 아틀라스 작성기와 같은 문자열 |
+| `validateLayers(namesByLayer)` | 층별 프레임 수 검사 | (방향, 동작)별 불일치 목록 |
+| `resolveLayerFrame(found, prev, reported)` | 빠진 프레임 처리 | null이면 직전 프레임 유지 · 이름별로 한 번만 로그 |
+
+옷 전환이 재생 위치를 유지한다는 것은, 같은 AnimState에서 상의 A · B의 프레임 이름이 같은 번호를 가리키는지로 단언한다. G4가 프레임별 앞뒤 순서를 채택했다면 형제 순서를 고르는 함수와 단언이 여기에 더해진다.
+
+`ready-impl`은 `tests/logic/Blender3dGate.test.ts`가 실패해야 통과한다(`workflow.mjs:602-611`). 그런데 없는 모듈을 정적으로 import하면 파일 전체가 수집되지 않아, 1라운드 단언 50건과 G4 도구 테스트까지 함께 가려진다. 그래서 게임 로직 단언만 동적 `await import()`로 불러 그 테스트만 실패하게 한다. `ready-impl` 전에 vitest 출력에서 나머지가 통과하는지 확인해 QA에 적는다.
+
+## 2. 구현 — implementation
+
+착수 직전에 `origin/main`을 이 브랜치로 병합한다. 씬 편집은 §3의 짧은 창에 모으고, 그 창 동안 main에 `main.scene` · `PlayerController.ts`를 건드리는 머지를 하지 않는다. 씬 JSON 충돌은 손으로 풀 수 없기 때문이다.
+
+**PlayerController의 그림 역할을 옮긴다.** 지금은 방향 슬롯 넷(`frameFront`~`frameRight`)으로 방향이 바뀔 때 몸 Sprite를 직접 바꾼다(`PlayerController.ts:195-203`). 새 동기화 컴포넌트까지 같은 Sprite를 쓰면, 실행 순서에 따라 방향 전환 순간 2D 그림이 한 프레임 비친다. 그래서 슬롯과 `_applyFacingFrame`을 지우고(순서는 §3), 읽기 전용 getter 셋을 내준다.
+
+- `facing` — 바라보는 방향이다.
+- `isMoving` — 이동 입력이 있는지다. `FacingLogic`이 방향을 입력 의도로 정한 것(`FacingLogic.ts:10-12`)과 맞춘다. 대가로 벽을 밀면 제자리에서 걷는다.
+- `isTicking` — `_dataReady`이고 게임 상태가 Playing인지다. `update`가 이 조건에서만 돈다(`PlayerController.ts:123-126`).
+
+**노드 구조.** 맨살 몸 Sprite는 Player 노드에 그대로 둔다. 발치 오프셋이 Player의 `UITransform.height`에서 유도되기 때문이다(`PlayerController.ts:83`). Player를 빈 컨테이너로 바꾸면 반높이가 0이 되어 발치가 조용히 23 올라간다. 상의 · 지팡이 · 방패는 자식 노드로 더하고, Player와 같은 크기 · 원점 (0, 0) · Size Mode CUSTOM · Trim 끔으로 둔다. 같은 캔버스와 같은 카메라로 구웠으므로 오프셋은 필요 없다. 형제 순서는 상의 → 지팡이 → 방패로 시작하고, G4 결과에 따라 바뀐다.
+
+**동기화 컴포넌트.**
+
+- `lateUpdate`에서 돈다. `PlayerController.update`가 방향을 갱신한 뒤에 읽어야 한 프레임 늦지 않는다.
+- 시계는 getter 셋만 보고 `advanceAnim`으로 돌린다. 컴포넌트가 스스로 멈춤을 판정하면 레벨업 중에도 시계가 흐를 수 있다.
+- fps는 `@property`로 받고, 프레임 수는 아틀라스에서 읽는다.
+- `onLoad`에서 (층, 방향, 동작)별 SpriteFrame 배열을 한 번 만든다. 빠진 이름은 그때 이름별로 한 번 `console.error`를 남기고, 실행 중에는 빈 칸이면 직전 프레임을 유지한다. 매 프레임 이름 문자열을 조립하지 않는다.
+- 층별 프레임 수가 다르면 `console.error` 후 컴포넌트를 끈다. 아틀라스 속성이 비어 있으면 그 층 노드만 끄고 오류를 한 번 남긴다. 둘을 가르는 이유는, 속성 하나를 빠뜨린 실수 때문에 캐릭터 전체가 멈추지 않게 하려는 것이다.
+- 옷 전환은 상의 층이 참조하는 배열만 바꾼다.
+
+**개발용 옷 전환 입력.** `cc/env`의 `DEV` 조건 안에 둔다. 형태(디버그 키 또는 인스펙터 값)는 여기서 정한다. 확인은 에디터 프리뷰에서 하고, 디버그 웹 빌드에서 `DEV` 값이 무엇인지도 확인해 QA에 적는다. 상의 B와 이 입력을 게임에 연결하는 몫은 증명 자체에는 필요 없지만, 사용자 결정(R2-D10)으로 main에 싣는다.
+
+## 3. 씬 창과 정리 순서 — start-verification 전
+
+`approve-pr`은 타입체크와 `.meta`만 보고 스위트를 다시 돌리지 않는다(`workflow.mjs:819-863`). 그래서 출하 2D · 도구 · 단언을 검증 뒤에 지우면 스위트가 돌지 않은 트리가 머지된다. 정리는 전부 이 창 안에서 끝낸다.
+
+1. 창을 열 때 교체 전 720p 캡처를 남긴다. 「피격 박스와 발치가 교체 전과 같다」를 판정하는 기준이다.
+2. 사용자가 에디터에서 동기화 컴포넌트와 자식 노드를 연결한다. 몸 Sprite의 `_spriteFrame`(`main.scene:5160-5163`)을 아틀라스 프레임으로 바꾸고, 방향 슬롯 넷(`:5189-5204`)을 비워 저장한다. 조립 순서와 좌표는 QA 문서에 적는다. 슬롯을 비운 동안 `_applyFacingFrame`은 null이면 아무것도 하지 않으므로(`PlayerController.ts:201`) 동기화 컴포넌트와 다투지 않는다.
+3. AI가 `PlayerController`의 슬롯 속성과 `_applyFacingFrame`을 지운다. 속성을 먼저 지우면 인스펙터에서 슬롯이 사라져 사용자가 비울 수 없고, 몸 Sprite가 여전히 출하 PNG를 참조하는 줄 모른 채 PNG를 지우게 된다.
+4. 정리 커밋을 이 순서로 쌓는다.
+   1. `tests/logic/AiMatting.test.ts`의 표본을 테스트 픽스처로 옮긴다. 이 테스트는 출하 PNG를 세 곳(`:46` · `:244` · `:265`)에서 쓴다.
+   2. 도구와 1라운드 단언을 정리한다. 도구를 지우는 커밋에서 그 도구를 import하는 단언도 함께 지운다.
+   3. `game/assets/test-3d-gate/`를 지운다(씬 삭제라 사용자 확인).
+   4. §4의 UUID 0건 검사를 통과시킨 뒤 출하 2D PNG를 지운다(사용자 확인).
+5. `pnpm wf start-verification`의 GREEN 게이트를 통과한다.
+
+검증 뒤에 트리를 고쳐야 하면 `invalidate` 또는 `리워크`로 되돌린다.
+
+| 대상 | 처리 |
+|---|---|
+| 층별 아틀라스, 굽기 스크립트 · 키프레임 정의 · 카메라 JSON, 순수 함수 · 동기화 컴포넌트 · 테스트, 개발용 옷 전환, 정본 · ADR · QA 기록 | main에 넣는다 |
+| 생산 `.vrm` · `.vroid` | G0 판정에 따른다 |
+| 출하 2D `player_4dir_*.png` · `player_staff.png` · `player_mage_bridge.png` | 지운다(사용자 확인). 뒤의 둘은 F101 대상이다 |
+| `game/assets/test-3d-gate/`와 그 `.meta` | 지운다(사용자 확인) |
+| `art-source/player/2026-09-11-3d-gate/`(1라운드 `character.vrm` · 비교 시트 · 모션) | 뺀다 |
+| `tools/blender/gate.ts`의 1라운드 입력 경로 · 게이트 0b · 0c · 2 | 생산 입력으로 바꾸거나 뺀다 |
+| `tools/blender/import_vrm.py` · `sheet.ts` · `ComparisonSheet.ts` | 2라운드 도구가 재사용하면 입력 경로를 바꾸고, 아니면 뺀다 |
+| `retarget_render.py`의 `import_motion` · `BONE_MAP` · `SWING_SCALE` | 키프레임 굽기로 대체되면 뺀다 |
+| `tests/logic/Blender3dGate.test.ts`의 1라운드 단언 | 남는 도구에 해당하는 것만 둔다 |
+| `.gitattributes`의 `*.vrm` · `*.glb` | 남긴다. 바이너리 선언이라 대상 파일이 없어도 해가 없다 |
+| 비교 시트, 후보 HTML, 귀신 표본 | 커밋하지 않는다 |
+
+## 4. 검사 도구 명령
+
+아래 검사도 G4 문서 §7과 같은 이유로 vitest 밖의 도구 명령으로 둔다. 판정 함수는 인라인 픽스처로 단위 테스트하고, 실제 씬 · `.meta`에 돌린 결과를 QA §8에 적는다.
+
+- 출하 PNG 넷의 UUID(`c90a728c` · `40e8e4ff` · `2ced2856` · `15a10f47`)가 모든 `*.scene` · `*.prefab`에서 0건이다.
+- Player의 `_contentSize`가 48×96이고, 자식 노드 원점이 (0, 0)이며, 네 Sprite의 Trim이 꺼져 있다.
+
+## 5. G6 정본 · ADR — verification, `pass` 전
+
+[개요 문서](2026-09-15-blender-3d-gate-round2-plan.md)의 정본 개정 목록과 새 ADR 009를 쓰고 `pnpm wf canon-done`으로 기록한다. ADR 009에는 동작 하나 · 방향 하나 · 옷 한 벌을 더할 때의 비용 공식을 적는다. G4가 상의별 무기 층을 채택했다면 상의 N벌 × 무기 M개 곱 항도 넣는다. 리워크가 나면 정본 선언이 지워지므로 다시 기록한다.
+
+## 6. 사용자 확인 — user-verification
+
+Draft PR #92의 제목과 본문을 2라운드 범위로 갈아 쓴 뒤, 720p · 1440p에서 본다.
+
+- [ ] 네 방향으로 걷고 멈추며, 지팡이 · 방패 · 상의가 같은 프레임으로 따라온다.
+- [ ] 방향 전환 순간 2D 그림이 비치지 않는다.
+- [ ] 일시정지 · 레벨업 중 프레임이 멈추고, 재개하면 튀지 않는다.
+- [ ] 개발용 입력으로 상의를 바꿔도 방향 · 동작 · 프레임이 유지된다(에디터 프리뷰).
+- [ ] 피격 박스와 발치가 교체 전 캡처와 같다.
+- [ ] 걷는 중 반짝임이 눈에 띄지 않는다.
+- [ ] 방패가 막기 기능이 있는 것으로 오해되지 않는다.
+- [ ] 대각선 이동에서 걷기 애니메이션이 가로로 접힌 방향(`facingFromMoveDir`)을 자연스럽게 따른다.
+- [ ] 웹 빌드 파일 수 · 용량을 `ops-build.md` §6.2 실측값과 견줘 기록한다.
+- [ ] 상의 B 한 벌을 VRoid 착수부터 인게임 확인까지 만드는 데 걸린 대략의 사람 시간을 QA에 메모한다.
+
+## 7. 통과 조건
+
+- **G5:** §6 확인 항목과 §4 검사 명령이 통과하고, 전체 스위트 · 타입체크(`full`)가 통과한다.
+- **G6:** 정본 개정 목록과 ADR 009가 반영되고 `wf canon-done`에 기록된다. 최종 PR 트리가 §3의 정리 대상 표와 맞는다.
+
+## 8. 막히면
+
+- 린트 · 타입체크 · 테스트의 같은 오류를 같은 원인으로 3번 연속 고치지 못하면 멈추고 보고한다.
+- 인게임 문제는 사용자가 `리워크`로 되돌린다.
+- 라운드를 보류로 닫으면 Draft PR #92를 머지하지 않고 닫는다. main의 출하 2D는 그대로 남고, 판정 결과는 QA 문서에 통과 · 실패를 모두 적는다.
