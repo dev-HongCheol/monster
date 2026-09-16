@@ -289,6 +289,24 @@ const CANDIDATES: readonly ICandidate[] = [
 /** 굽는 시점. 정면은 실루엣, 3/4는 두께를 본다. */
 const VIEWS = ['front', 'three_quarter'] as const;
 
+/** 사용자가 고른 둘(2026-09-16). 게임 크기 장에는 이 둘만 넣는다. */
+const CHOSEN = ['staff_orb', 'shield_round'] as const;
+
+/**
+ * 게임이 캐릭터를 그리는 크기.
+ *
+ * 후보 시트는 크게 보므로 가는 테두리와 갈래가 살아 있는 것처럼 보이는데, 게임은 이 크기로
+ * 그린다. 그 크기에서 사라지는 선은 판정에서 빠져야 한다. 두 값의 근거(디자인 세로 720 실측)는
+ * `sheet.ts`의 `ROWS`가 든다.
+ *
+ * 굽는 캔버스를 통째로 줄이는 것이라 어림값이다. 캔버스는 키 1.2m 기준 막대까지 담고 있어서
+ * 화면의 무기는 캐릭터 키와 비슷한 크기로 보인다. 실제 비율은 맨살 몸이 나온 뒤 G1이 잰다.
+ */
+const GAME_SIZES = [
+  { label: '1440p 96×192', width: 96, height: 192 },
+  { label: '720p 48×96', width: 48, height: 96 },
+] as const;
+
 /** Node 버전이 최소 기준보다 낮으면 지금 버전을 말하며 던진다. */
 function assertNodeVersion(): void {
   const [major, minor] = process.versions.node.split('.').map(Number);
@@ -379,9 +397,25 @@ try {
   const sheetPath = path.join(outDir, 'sheet.png');
   fs.writeFileSync(sheetPath, encodePng(sheet));
 
+  const chosenRows = GAME_SIZES.map((size) =>
+    CHOSEN.map((id) => {
+      const img = decodePng(fs.readFileSync(path.join(outDir, `${id}_front.png`)));
+      return compositeOver(sampleLikeEngine(img, size.width, size.height), BACKGROUND);
+    }),
+  );
+  const chosenSheet = composeGrid(chosenRows, { gap: GAP, background: BACKGROUND });
+  const chosenPath = path.join(outDir, 'chosen.png');
+  fs.writeFileSync(chosenPath, encodePng(chosenSheet));
+
   console.log(`✓ 후보 시트 ${sheet.width}×${sheet.height} — ${path.relative(ROOT, sheetPath)}`);
   console.log(`  줄 순서: ${CANDIDATES.map((c) => c.label).join(' | ')}`);
   console.log(`  열 순서: ${VIEWS.join(' | ')} (왼쪽 가는 막대는 키 ${REFERENCE.height}m 기준선)`);
+  console.log(
+    `✓ 게임 크기 ${chosenSheet.width}×${chosenSheet.height} — ${path.relative(ROOT, chosenPath)}`,
+  );
+  console.log(
+    `  줄 순서: ${GAME_SIZES.map((s) => s.label).join(' | ')} · 열 순서: ${CHOSEN.join(' | ')}`,
+  );
 } catch (err) {
   console.error(`✗ ${(err as Error).message}`);
   process.exit(1);
