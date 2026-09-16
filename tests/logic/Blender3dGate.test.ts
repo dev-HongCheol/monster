@@ -39,7 +39,10 @@ import {
 import {
   composeGrid,
   compositeOver,
+  layerOver,
   maskRect,
+  occlusionDelta,
+  pixelDiff,
   sampleLikeEngine,
 } from '../../tools/blender/ComparisonSheet';
 import {
@@ -1132,5 +1135,106 @@ describe('composeGrid — 칸을 표로 붙여 시트 한 장을 만든다', () 
     // 둘째 행(y 5~6)의 둘째 열(x 4)에는 칸이 없다.
     expect(pixel(out, 4, 6)).toEqual([0, 0, 0, 255]);
     expect(pixel(out, 4, 3)).toEqual([20, 0, 0, 255]);
+  });
+});
+
+describe('layerOver — 층을 다른 층 위에 엔진의 알파 블렌딩으로 얹는다', () => {
+  it('위 층이 불투명하면 위 층의 색이 그대로 남는다', () => {
+    const below = image(1, 1, () => [200, 0, 0, 255]);
+    const above = image(1, 1, () => [0, 0, 200, 255]);
+
+    expect(pixel(layerOver(below, above), 0, 0)).toEqual([0, 0, 200, 255]);
+  });
+
+  it('위 층이 투명하면 아래 층이 알파까지 그대로 남는다', () => {
+    // 층 캔버스의 대부분이 투명이다. 여기서 아래 층의 알파를 바꾸면 겹친 결과 전체가 옅어진다.
+    const below = image(1, 1, () => [200, 100, 50, 128]);
+    const above = image(1, 1, () => [9, 9, 9, 0]);
+
+    expect(pixel(layerOver(below, above), 0, 0)).toEqual([200, 100, 50, 128]);
+  });
+
+  it('겹친 뒤 배경에 얹은 결과가 층을 배경에 차례로 얹은 결과와 반올림 차이 안에서 같다', () => {
+    // 게임은 층을 하나씩 화면에 그린다. 층을 먼저 겹쳐 두고 배경에 얹는 이 함수가 그 순서와 다른
+    // 그림을 내면, 층 합성과 한 번에 구운 컷의 차이를 잴 때 게임에 없는 차이까지 잰다.
+    const below = image(1, 1, () => [200, 0, 0, 128]);
+    const above = image(1, 1, () => [0, 0, 200, 128]);
+
+    const merged = pixel(compositeOver(layerOver(below, above), [0, 0, 0]), 0, 0);
+
+    // 차례로 얹으면 빨강 200 → 100 → 50, 파랑 0 → 0 → 100이다.
+    expect(Math.abs(merged[0] - 50)).toBeLessThanOrEqual(1);
+    expect(Math.abs(merged[2] - 100)).toBeLessThanOrEqual(1);
+  });
+
+  it('두 층의 크기가 다르면 두 크기를 말하며 던진다', () => {
+    // 층마다 캔버스가 다를 수 있다(ADR 009). 크기가 다른 채로 픽셀 번호를 맞대면 오른쪽 층이
+    // 줄마다 밀려 겹치는데, 결과는 멀쩡한 그림처럼 보인다.
+    expect(() =>
+      layerOver(
+        image(2, 1, () => [0, 0, 0, 0]),
+        image(1, 1, () => [0, 0, 0, 0]),
+      ),
+    ).toThrow(/2×1.*1×1/);
+  });
+});
+
+describe('occlusionDelta — 가림을 켠 층이 끈 층의 부분집합인가', () => {
+  it('가림이 지운 픽셀을 세고, 가림이 없던 픽셀을 만들지 않았으면 새로 생김이 0이다', () => {
+    const raw = image(3, 1, () => [0, 0, 0, 255]);
+    const held = image(3, 1, (x) => [0, 0, 0, x === 0 ? 255 : 0]);
+
+    expect(occlusionDelta(raw, held, 8)).toEqual({ removed: 2, added: 0 });
+  });
+
+  it('끈 층에 없던 픽셀이 켠 층에 생기면 새로 생김으로 센다', () => {
+    // 가림은 지우기만 해야 한다. 새로 생긴 픽셀이 있으면 가림 전용 몸이 렌더에 섞여 나온 것이다.
+    const raw = image(2, 1, (x) => [0, 0, 0, x === 0 ? 255 : 0]);
+    const held = image(2, 1, () => [0, 0, 0, 255]);
+
+    expect(occlusionDelta(raw, held, 8)).toEqual({ removed: 0, added: 1 });
+  });
+
+  it('알파가 문턱과 같으면 보이는 픽셀로 치지 않는다', () => {
+    // 가장자리 안티에일리어싱이 남긴 알파 1~8짜리 술은 가림 판정에서 뺀다. 넣으면 몸 윤곽을
+    // 따라 한 줄씩 「지워짐」이 흔들려 같은 렌더를 두 번 재도 수치가 달라진다.
+    const raw = image(1, 1, () => [0, 0, 0, 8]);
+    const held = image(1, 1, () => [0, 0, 0, 0]);
+
+    expect(occlusionDelta(raw, held, 8)).toEqual({ removed: 0, added: 0 });
+  });
+});
+
+describe('pixelDiff — 두 그림이 픽셀마다 얼마나 다른가', () => {
+  it('같은 그림이면 바뀐 픽셀이 0이다', () => {
+    const a = image(2, 2, (x, y) => [x * 50, y * 50, 7, 255]);
+
+    expect(pixelDiff(a, a, 12)).toEqual({ changed: 0, maxChannel: 0 });
+  });
+
+  it('둘 다 투명한 픽셀은 숨은 색이 달라도 세지 않는다', () => {
+    // 렌더러가 투명 픽셀에 남기는 색은 굽기마다 달라질 수 있고 화면에는 안 나온다. 세면 층 합성과
+    // 기준 컷의 차이가 보이지도 않는 픽셀로 부풀어, 회귀 가드가 이유 없이 빨간불이 된다.
+    const a = image(1, 1, () => [255, 0, 0, 0]);
+    const b = image(1, 1, () => [0, 255, 0, 0]);
+
+    expect(pixelDiff(a, b, 12)).toEqual({ changed: 0, maxChannel: 0 });
+  });
+
+  it('한 채널이라도 문턱을 넘으면 바뀐 픽셀로 세고, 문턱과 같으면 세지 않는다', () => {
+    const a = image(2, 1, () => [100, 100, 100, 255]);
+    const b = image(2, 1, (x) => (x === 0 ? [113, 100, 100, 255] : [100, 100, 112, 255]));
+
+    expect(pixelDiff(a, b, 12)).toEqual({ changed: 1, maxChannel: 13 });
+  });
+
+  it('크기가 다르면 던진다', () => {
+    expect(() =>
+      pixelDiff(
+        image(1, 2, () => [0, 0, 0, 0]),
+        image(2, 1, () => [0, 0, 0, 0]),
+        12,
+      ),
+    ).toThrow();
   });
 });

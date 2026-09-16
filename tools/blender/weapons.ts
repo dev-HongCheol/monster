@@ -11,6 +11,9 @@
  *
  * 돌리는 법: `node --experimental-strip-types tools/blender/weapons.ts`
  * Blender 실행 파일은 환경 변수 `BLENDER`로 준다. 자세한 것은 `README.md`에 있다.
+ *
+ * `--dump-chosen <폴더>`를 주면 굽지 않고 채택한 무기 둘의 사양을 `<id>.json`으로만 쓴다.
+ * 층 탐침(`probe_layers.py`)과 장비 검토(`gear.ts`)가 그 JSON을 받는다.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -143,8 +146,8 @@ export const CANDIDATES: readonly ICandidate[] = [
         type: 'cylinder',
         // 반지름 0.012는 게임 화면(720p)에서 대가 **2.1px**로 나오는 굵기다(소스 10.6px).
         // 0.018(3.1px)은 두껍고 0.006(1.0px)은 게임 크기에서 사라질 만큼 얇았다. 그 사이를
-        // 게임 크기 축소판으로 보고 골랐다(2026-09-16 사용자 판정). 외곽선을 붙인 뒤 대가
-        // 선으로 읽히는지는 G2가 다시 본다.
+        // 게임 크기 축소판으로 보고 골랐고, 같은 날 G2 툰 세팅에 들어가기 전에 사용자가 이 굵기를
+        // 다시 보고 확정했다(2026-09-16).
         radius: 0.012,
         depth: 0.81,
         vertices: 8,
@@ -338,9 +341,9 @@ const CHOSEN = ['staff_orb', 'shield_round'] as const;
  * 굽는 캔버스를 통째로 줄이는 것이라 어림값이다. 캔버스는 키 1.2m 기준 막대까지 담고 있어서
  * 화면의 무기는 캐릭터 키와 비슷한 크기로 보인다. 실제 비율은 맨살 몸이 나온 뒤 G1이 잰다.
  *
- * **이 크기에서 지팡이 대가 1~2px로 보이지만 굵기를 올리지 않기로 했다(2026-09-16 사용자
- * 결정).** G2가 붙일 툰 외곽선이 대를 두껍게 보이게 할 수 있어서 굵기 판단을 그 뒤로 미뤘다.
- * 지금 숫자를 키워 두면 외곽선까지 더해져 반대로 뭉툭해진다. 다시 볼 자리는 G2 문서 §5다.
+ * **지팡이 대의 굵기는 이 크기로 보고 정했다.** 처음에는 대가 1~2px로 보여도 툰 외곽선이 두껍게
+ * 보이게 할 수 있어 굵기 판단을 G2로 미뤘는데, 같은 날 반지름을 0.012(720p에서 2.1px)로 고친 판을
+ * 사용자가 확정했다(2026-09-16). 값과 근거는 `staff_orb`의 대 부품 주석이 든다.
  */
 const GAME_SIZES = [
   { label: '1440p 96×192', width: 96, height: 192 },
@@ -416,6 +419,26 @@ function bake(outDir: string, specPath: string): void {
   throw new Error(`${line.code} ${line.message}\n${tail}`);
 }
 
+/**
+ * 채택한 무기의 사양을 파이썬이 읽을 JSON으로 쓰고 경로들을 돌려준다.
+ *
+ * **그립이 없으면 던진다.** 층 탐침이 그립으로 무기를 손에 맞추는데, 그립이 빠진 사양은 무기
+ * 원점을 손에 붙여 지팡이가 손목에서 위로만 솟는 그림을 조용히 굽는다.
+ *
+ * @param dir 쓸 폴더. 없으면 만든다
+ */
+export function writeChosenSpecs(dir: string): string[] {
+  fs.mkdirSync(dir, { recursive: true });
+  return CHOSEN.map((id) => {
+    const found = CANDIDATES.find((c) => c.id === id);
+    if (!found) throw new Error(`채택한 무기 ${id}가 후보 표에 없다`);
+    if (!found.grip) throw new Error(`채택한 무기 ${id}에 grip이 없다`);
+    const file = path.join(dir, `${id}.json`);
+    fs.writeFileSync(file, `${JSON.stringify(found, null, 2)}\n`, 'utf-8');
+    return file;
+  });
+}
+
 /** 구운 한 장을 시트 칸으로 줄이고 배경 위에 얹는다. */
 function toCell(file: string): ReturnType<typeof compositeOver> {
   const img = decodePng(fs.readFileSync(file));
@@ -428,7 +451,18 @@ const isMain =
   process.argv[1] !== undefined &&
   path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 
-if (isMain) {
+const dumpAt = process.argv.indexOf('--dump-chosen');
+
+if (isMain && dumpAt >= 0) {
+  const dir = process.argv[dumpAt + 1];
+  if (!dir) {
+    console.error('✗ --dump-chosen 뒤에 쓸 폴더를 준다');
+    process.exit(1);
+  }
+  for (const file of writeChosenSpecs(path.resolve(ROOT, dir))) {
+    console.log(`✓ ${path.relative(ROOT, file)}`);
+  }
+} else if (isMain) {
   try {
     assertNodeVersion();
 

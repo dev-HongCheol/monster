@@ -38,11 +38,114 @@ VIEWS = {
 }
 
 
+# 부품 머티리얼 이름의 접두사. `toon.py`가 이 접두사로 무기 · 장비 · 원재질을 가른다 — 무기는 사양이
+# 무기를 적었을 때만, 장비는 사양이 장비를 적었을 때만 MToon으로 바꾸고, 원재질은 바꾸지 않는다.
+MATERIAL_GROUPS = ('Part', 'Gear', 'Raw')
+
+
+def build_sheet(name, columns, rows, point_at, flip=False):
+    """
+    두께 없는 격자 판을 세운다. 망토 · 날개처럼 얇은 부품이 이것으로 선다.
+
+    **일부러 두께를 주지 않는다.** 실제 망토 · 날개 에셋도 대개 한 겹 판이고, 그런 판에서 외곽선
+    껍데기 · 뒷면 컬링 · 가림이 어떻게 깨지는지 보는 것이 이 부품을 세우는 이유다.
+
+    면은 격자 한 칸마다 네모 하나이고, 기본 법선은 +Y(캐릭터의 등 쪽 바깥)를 향한다.
+
+    @param columns 가로(u) 칸 수
+    @param rows 세로(v) 칸 수
+    @param point_at `(u, v)` → `(x, y, z)`. u · v는 0~1이다
+    @param flip 참이면 면을 뒤집어 법선이 -Y를 향한다
+    @returns 만들어진 오브젝트
+    """
+    import bmesh
+
+    mesh = bpy.data.meshes.new(name)
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+
+    sheet = bmesh.new()
+    grid = [
+        [sheet.verts.new(point_at(i / float(columns), j / float(rows))) for j in range(rows + 1)]
+        for i in range(columns + 1)
+    ]
+    for i in range(columns):
+        for j in range(rows):
+            quad = [grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]]
+            sheet.faces.new(list(reversed(quad)) if flip else quad)
+    sheet.to_mesh(mesh)
+    sheet.free()
+
+    for other in bpy.context.selected_objects:
+        other.select_set(False)
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    return obj
+
+
+def build_cloth(part):
+    """
+    위 가장자리에 매달려 아래로 늘어진 주름 천을 세운다. 원점이 위 가장자리 가운데다.
+
+    주름은 폭 방향 사인파이고 아래로 갈수록 깊어진다. `sway`는 아래 끝을 등 뒤(+Y)로 들어 올리는
+    양이라, 흔들림 프레임은 `phase`와 `sway`만 바꿔 만든다.
+    """
+    width = part.get('width', 0.4)
+    width_bottom = part.get('width_bottom', width)
+    length = part.get('length', 0.6)
+    folds = part.get('folds', 4)
+    depth = part.get('depth', 0.03)
+    depth_top = part.get('depth_top', depth * 0.2)
+    phase = part.get('phase', 0.0)
+    sway = part.get('sway', 0.0)
+
+    def point_at(u, v):
+        span = width + (width_bottom - width) * v
+        amplitude = depth_top + (depth - depth_top) * v
+        return (
+            (u - 0.5) * span,
+            amplitude * math.sin(2.0 * math.pi * folds * u + phase) + sway * v * v,
+            -v * length,
+        )
+
+    return build_sheet('Cloth', part.get('columns', 32), part.get('rows', 16), point_at, part.get('flip', False))
+
+
+def build_wing(part):
+    """
+    뿌리에서 바깥으로 뻗는 날개 막 한 장을 세운다. 원점이 뿌리 위 모서리다.
+
+    `side`가 1이면 +X(화면 오른쪽), -1이면 -X로 뻗는다. -1일 때 면 순서를 뒤집어 두 날개의 법선이
+    같은 쪽(+Y)을 보게 한다 — 안 뒤집으면 한쪽 날개만 뒷면으로 그려져, 뒷면 컬링이나 외곽선
+    껍데기를 볼 때 좌우가 다른 결과를 낸다. 퍼덕임은 부품의 `rotation`으로 뿌리를 축 삼아 돌린다.
+    """
+    side = part.get('side', 1)
+    span = part.get('span', 0.45)
+    height_root = part.get('height_root', 0.3)
+    height_tip = part.get('height_tip', 0.1)
+    sweep = part.get('sweep', 0.15)
+    bend = part.get('bend', 0.05)
+    feathers = part.get('feathers', 4)
+    scallop = part.get('scallop', 0.04)
+
+    def point_at(u, v):
+        height = height_root + (height_tip - height_root) * u
+        z = sweep * u - v * height
+        if v >= 1.0:
+            z += scallop * abs(math.sin(math.pi * feathers * u))
+        return (side * u * span, bend * u * u, z)
+
+    flip = part.get('flip', False) != (side < 0)
+    return build_sheet('Wing', part.get('columns', 24), part.get('rows', 8), point_at, flip)
+
+
 def build_part(part):
     """
     부품 하나를 세운다. 모르는 종류면 이름을 말하며 실패한다.
 
-    @param part `type`과 그 종류의 인자, `location` · `rotation`(도) · `scale` · `color`
+    @param part `type`과 그 종류의 인자, `location` · `rotation`(도) · `scale` · `color`.
+        재질 선택지는 `group`(`MATERIAL_GROUPS`, 기본 `Part`) · `emission`(발광 세기) ·
+        `alpha`(0~1, 1보다 작으면 반투명으로 섞는다)
     @returns 만들어진 오브젝트
     """
     kind = part.get('type')
@@ -73,8 +176,18 @@ def build_part(part):
         )
     elif kind == 'cube':
         bpy.ops.mesh.primitive_cube_add(size=part.get('size', 1.0))
+    elif kind == 'cloth':
+        build_cloth(part)
+    elif kind == 'wing':
+        build_wing(part)
     else:
         raise common.GateError('weapon-spec', '모르는 부품 종류 {0}'.format(kind))
+
+    group = part.get('group', 'Part')
+    if group not in MATERIAL_GROUPS:
+        raise common.GateError(
+            'weapon-spec', '모르는 재질 묶음 {0} (아는 것 {1})'.format(group, list(MATERIAL_GROUPS))
+        )
 
     obj = bpy.context.active_object
     obj.location = Vector(part.get('location', (0.0, 0.0, 0.0)))
@@ -82,18 +195,24 @@ def build_part(part):
     obj.scale = Vector(part.get('scale', (1.0, 1.0, 1.0)))
 
     color = part.get('color', (200, 200, 200))
-    material = bpy.data.materials.new('Part')
+    material = bpy.data.materials.new(group)
     material.use_nodes = True
     # sRGB 정수를 선형으로 바꾸지 않고 그대로 넣는다. 여기서 재는 것은 색의 정확도가 아니라
     # 부품이 서로 구별되는가이고, 툰 세팅은 G2가 잡는다.
     principled = material.node_tree.nodes.get('Principled BSDF')
     if principled is not None:
-        principled.inputs['Base Color'].default_value = (
-            color[0] / 255.0,
-            color[1] / 255.0,
-            color[2] / 255.0,
-            1.0,
-        )
+        rgba = (color[0] / 255.0, color[1] / 255.0, color[2] / 255.0, 1.0)
+        principled.inputs['Base Color'].default_value = rgba
+        emission = part.get('emission', 0.0)
+        if emission > 0.0:
+            principled.inputs['Emission Color'].default_value = rgba
+            principled.inputs['Emission Strength'].default_value = emission
+        alpha = part.get('alpha', 1.0)
+        if alpha < 1.0:
+            principled.inputs['Alpha'].default_value = alpha
+            # EEVEE는 기본으로 알파를 디더링해 반투명을 점무늬로 흉내 낸다. 섞어 그리게 바꾸지
+            # 않으면 오라가 게임 크기에서 반투명이 아니라 자글자글한 점으로 나온다.
+            material.surface_render_method = 'BLENDED'
     obj.data.materials.append(material)
     return obj
 

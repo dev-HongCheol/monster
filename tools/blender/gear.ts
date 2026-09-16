@@ -1,0 +1,665 @@
+/**
+ * 장비 검토 세트를 굽고 사람이 볼 시트와 흔들림 재생 페이지를 만드는 실행기.
+ *
+ * 플레이어는 몸 · 상의 · 무기를 층으로 굽는데, 나중에 붙을 망토 · 날개 · 화려한 장비 · 오라가 같은
+ * 방식에서 깨지는지는 아직 아무도 보지 않았다(G2 검토 세트, 2026-09-16 사용자 요청). 이 파일의 표가
+ * 그 예외 경우들이다. 모양은 실제 아트가 아니라 기본 도형이고, 보는 것은 예쁜지가 아니라 **이 굽기
+ * 방식에서 깨지는지**다.
+ *
+ * 경우마다 세 가지를 만든다.
+ *
+ * - **시트** — 무기와 함께 한 번에 구운 컷을 방향별로, 원본 크기와 720p 크기로 나란히 둔다.
+ *   망토 · 날개는 경계를 딱딱하게 한 판도 옆에 둔다.
+ * - **층 합성 수치** — 몸 층 위에 장비 층(몸으로 가림)을 겹친 그림이 한 번에 구운 컷과 몇 픽셀
+ *   다른지, 장비 층이 캔버스를 넘는지. 판정 기준은 두지 않는다. 사람이 시트를 볼 때 옆에 두는 숫자다.
+ * - **흔들림 재생** — 망토 · 날개를 조금씩 바꾼 여러 장을 한 페이지에서 나란히 재생한다. 실제 걷기
+ *   동작(G3) 없이 모양만 바꾼 흉내라, 프레임 사이에 그늘 조각이 튀는지를 대략 본다.
+ *
+ * 몸의 음영은 VRoid가 내보낸 원본 그대로 둔다(2026-09-16 사용자 판정). 장비만 `toon.py`의 `like`로
+ * 상의와 같은 음영 규칙을 받는다. 판정은 사람이 하고, 산출물은 추적하지 않는 `docs/temp/`에 둔다.
+ *
+ * 돌리는 법: `node --experimental-strip-types tools/blender/gear.ts [--only 경우id,경우id] [--vrm 경로] [--sheet-only]`
+ * Blender 실행 파일은 환경 변수 `BLENDER`로 준다. 한 경우에 Blender를 스무 번 가까이 부른다.
+ */
+
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { PLAYER_FRAME_SPEC } from '../../tests/helpers/FrameSet.ts';
+import { parseGateLine } from '../../tests/helpers/GateLine.ts';
+import type { IRgbaImage } from '../../tests/helpers/SpriteMetrics.ts';
+import { decodePng, encodePng } from '../art/PngCodec.ts';
+import {
+  composeGrid,
+  compositeOver,
+  layerOver,
+  pixelDiff,
+  type Rgb,
+  sampleLikeEngine,
+} from './ComparisonSheet.ts';
+import { writeChosenSpecs } from './weapons.ts';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+
+/** 산출물 자리. 추적되지 않는 스크래치다. */
+const OUT_DIR = 'docs/temp/3d-gate/gear';
+
+/** 상의 A를 입은 판. `--vrm`으로 바꿀 수 있다 — 생산 `.vrm`은 커밋하지 않아 장비마다 경로가 다르다. */
+const DEFAULT_VRM = 'art-source/player/2026-09-16-player-3d/player_top_a.vrm';
+
+/**
+ * 층 캔버스(px). 날개가 기준 몸 캔버스 246px을 가로로 넘으므로 넓힌다(ADR 009).
+ *
+ * 가로는 기준 246과 홀짝이 같아야 한다. 어긋나면 층 중심이 반 픽셀 밀려 `probe_layers.py`가 거부한다.
+ */
+const LAYER = { width: 600, height: PLAYER_FRAME_SPEC.height };
+
+/** 720p에서 층 캔버스가 차지하는 크기. 기준 캔버스 246px이 48단위로 보이는 배율을 그대로 쓴다. */
+const GAME_720P = {
+  width: Math.round((LAYER.width * 48) / PLAYER_FRAME_SPEC.width),
+  height: Math.round((LAYER.height * 96) / PLAYER_FRAME_SPEC.height),
+};
+
+/** 방향. 카메라는 그대로 두고 모델을 돌린다(`probe_layers.py`의 `--yaw`). */
+const VIEWS = [
+  { id: 'front', yaw: 0 },
+  { id: 'back', yaw: 180 },
+  { id: 'three_quarter', yaw: 45 },
+] as const;
+
+type ViewId = (typeof VIEWS)[number]['id'];
+
+/** 채널 차가 이 값을 넘어야 바뀐 픽셀로 센다. `layers.ts`와 같은 값이다. */
+const DIFF_THRESHOLD = 12;
+
+/** 이 알파를 넘는 픽셀이 캔버스 가장자리에 있으면 장비가 캔버스를 넘은 것으로 본다. */
+const ALPHA_ON = 8;
+
+/** 시트 배경 — 게임 월드 카메라와 같은 검정. */
+const BACKGROUND: Rgb = [0, 0, 0];
+
+/** Blender 한 번을 기다리는 상한(밀리초). */
+const BLENDER_TIMEOUT_MS = 10 * 60 * 1000;
+
+/** 흔들림 재생 프레임 수. 걷기 한 주기를 8장으로 잡은 1라운드와 같다. */
+const FLUTTER_FRAMES = 8;
+
+/** 부품 하나. 모양 인자는 `weapons.py`의 `build_part`가 해석한다. */
+type IGearPart = { type: string } & Record<string, unknown>;
+
+/** 장비 사양 — `probe_layers.py`의 `--gear-spec`이 읽는다. */
+interface IGearSpec {
+  id: string;
+  /** 붙일 본. 부품 좌표의 원점이 이 본의 머리에 온다 */
+  bone: string;
+  parts: IGearPart[];
+}
+
+/** 검토할 경우 하나. */
+interface IGearCase {
+  id: string;
+  /** 사람이 읽는 이름 */
+  label: string;
+  /** 이 경우에서 사람이 볼 것 — 시트를 건넬 때 체크리스트로 찍는다 */
+  checks: string[];
+  /** 흔들림 없는 기본 모양 */
+  spec: IGearSpec;
+  /** 경계를 딱딱하게 한 판도 굽는가 — 주름 · 곡면이 큰 천과 막에서만 본다 */
+  hardEdge: boolean;
+  /** 흔들림 재생. `t`는 0~1(한 주기 안의 위치)이고 그 순간의 사양을 돌려준다 */
+  flutter?: { view: ViewId; at: (t: number) => IGearSpec };
+}
+
+/**
+ * 등 뒤 장비가 붙는 본. 이 본의 머리는 어깨가 아니라 가슴 높이라(2026-09-16 실측 z 0.631, 키 1.104m)
+ * 망토 윗단 · 어깨갑옷은 부품 좌표로 17cm쯤 올린다. 처음에 10cm만 올렸더니 망토 윗단이 긴 머리카락
+ * 끝보다 아래에 걸려 어깨에 두른 모양이 안 됐다.
+ */
+const CHEST_BONE = 'J_Bip_C_UpperChest';
+
+/** 허리 장비가 붙는 본. */
+const HIPS_BONE = 'J_Bip_C_Hips';
+
+/**
+ * 망토 한 장. 위 가장자리를 어깨 높이 등 뒤에 걸고 무릎 근처까지 늘어뜨린다.
+ * @param phase 주름 사인파의 위상(라디안)
+ * @param sway 아래 끝을 등 뒤로 들어 올리는 양(m)
+ */
+function cape(phase: number, sway: number): IGearSpec {
+  return {
+    id: 'cape',
+    bone: CHEST_BONE,
+    parts: [
+      {
+        type: 'cloth',
+        group: 'Gear',
+        width: 0.34,
+        width_bottom: 0.52,
+        length: 0.62,
+        folds: 5,
+        depth: 0.03,
+        depth_top: 0.004,
+        phase,
+        sway,
+        columns: 40,
+        rows: 20,
+        location: [0, 0.12, 0.17],
+        color: [150, 30, 40],
+      },
+    ],
+  };
+}
+
+/**
+ * 날개 한 쌍. 등 가운데 뿌리에서 좌우로 뻗고 뒤로 조금 젖힌다.
+ * @param flap 뿌리를 축으로 날개 끝을 들어 올리는 각(도)
+ */
+function wings(flap: number): IGearSpec {
+  const wing = (side: 1 | -1): IGearPart => ({
+    type: 'wing',
+    group: 'Gear',
+    side,
+    span: 0.5,
+    height_root: 0.32,
+    height_tip: 0.12,
+    sweep: 0.22,
+    bend: 0.06,
+    feathers: 4,
+    scallop: 0.05,
+    location: [side * 0.04, 0.12, 0.16],
+    rotation: [0, -side * flap, side * 25],
+    color: [220, 215, 240],
+  });
+  return { id: 'wings', bone: CHEST_BONE, parts: [wing(1), wing(-1)] };
+}
+
+/** 사람이 고를 경우 표. */
+export const CASES: readonly IGearCase[] = [
+  {
+    id: 'cape',
+    label: '망토',
+    checks: [
+      '주름에 그늘이 흉터처럼 얼룩지나 (원본 음영 · 딱딱한 경계 두 판 모두)',
+      '앞모습에서 몸 옆으로 보이는 안감이 어떤 색으로 나오나',
+      '긴 머리카락과 망토가 서로 뚫고 나오나',
+      '720p에서 망토가 망토로 읽히나',
+    ],
+    spec: cape(0, 0.06),
+    hardEdge: true,
+    flutter: {
+      view: 'back',
+      at: (t) => cape(2 * Math.PI * t, 0.06 + 0.04 * Math.sin(2 * Math.PI * t)),
+    },
+  },
+  {
+    id: 'wings',
+    label: '날개',
+    checks: [
+      '날개가 층 캔버스를 넘나 (아래 수치의 넘침)',
+      '앞모습에서 날개와 팔 · 방패가 서로 가리는 경계가 이상한가',
+      '얇은 막의 가장자리가 720p에서 사라지거나 깨지나',
+      '딱딱한 경계에서 막에 그늘 조각이 생기나',
+    ],
+    spec: wings(0),
+    hardEdge: true,
+    flutter: { view: 'three_quarter', at: (t) => wings(15 * Math.sin(2 * Math.PI * t)) },
+  },
+  {
+    id: 'armor',
+    label: '화려한 장비 — 금속 어깨갑옷과 빛나는 보석',
+    checks: [
+      '어깨갑옷이 금속으로 읽히나, 천이나 플라스틱처럼 보이나',
+      '보석의 빛이 그늘에 묻히지 않나',
+      '720p에서 보석이 한 점으로라도 남나',
+    ],
+    spec: {
+      id: 'armor',
+      bone: CHEST_BONE,
+      parts: [
+        ...([1, -1] as const).map((side) => ({
+          type: 'sphere',
+          group: 'Gear',
+          radius: 0.07,
+          subdivisions: 3,
+          location: [side * 0.14, 0.0, 0.16],
+          scale: [1.0, 1.0, 0.7],
+          color: [190, 190, 205],
+        })),
+        {
+          type: 'sphere',
+          group: 'Gear',
+          radius: 0.022,
+          subdivisions: 2,
+          location: [0, -0.14, 0.1],
+          color: [80, 200, 255],
+          emission: 4.0,
+        },
+      ],
+    },
+    hardEdge: false,
+  },
+  {
+    id: 'ornament',
+    label: '얇은 장식 — 허리 술과 사슬',
+    checks: [
+      '술 · 사슬이 720p에서 사라지나',
+      '사라진다면 몇 px 굵기부터 남는지 판단할 근거가 되나',
+    ],
+    spec: {
+      id: 'ornament',
+      bone: HIPS_BONE,
+      parts: [
+        ...[-0.08, -0.04, 0, 0.04, 0.08].map((x) => ({
+          type: 'cylinder',
+          group: 'Gear',
+          radius: 0.004,
+          depth: 0.14,
+          vertices: 6,
+          location: [x, -0.12, -0.1],
+          color: [200, 160, 60],
+        })),
+        ...[-0.1, -0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.1].map((x) => ({
+          type: 'torus',
+          group: 'Gear',
+          major_radius: 0.011,
+          minor_radius: 0.0025,
+          major_segments: 10,
+          minor_segments: 4,
+          location: [x, -0.125, -0.02],
+          rotation: [90, 0, x * 900],
+          color: [210, 210, 220],
+        })),
+      ],
+    },
+    hardEdge: false,
+  },
+  {
+    id: 'aura',
+    label: '오라 — 몸을 감싸는 반투명 발광 껍데기',
+    checks: [
+      '반투명이 층 합성에서 제대로 겹치나 (아래 수치의 층 합성 차이)',
+      '프레임에 구워 넣을 만한가, 게임에서 이펙트로 얹는 편이 나은가',
+    ],
+    spec: {
+      id: 'aura',
+      bone: HIPS_BONE,
+      parts: [
+        {
+          type: 'sphere',
+          group: 'Raw',
+          radius: 0.62,
+          subdivisions: 4,
+          location: [0, 0.03, 0.02],
+          scale: [0.62, 0.5, 1.0],
+          color: [120, 200, 255],
+          alpha: 0.12,
+          emission: 1.0,
+        },
+      ],
+    },
+    hardEdge: false,
+  },
+];
+
+/** 장비에 입히는 툰 사양. 몸은 건드리지 않고(`*` 없음) 장비만 상의의 음영 규칙을 받는다. */
+const TOON_ORIGINAL = {
+  id: 'gear_original',
+  materials: { GEAR: { like: 'Tops_CLOTH', double_sided: true } },
+};
+
+/** 딱딱한 경계 판. 장비의 계단 정도만 1로 올린다. */
+const TOON_HARD = {
+  id: 'gear_hard',
+  materials: { GEAR: { like: 'Tops_CLOTH', double_sided: true, shading_toony: 1 } },
+};
+
+/** 굽기 한 번의 인자. */
+interface IBake {
+  out: string;
+  layer: 'body' | 'gear' | 'whole';
+  yaw: number;
+  gearSpec?: string;
+  toon?: string;
+  weapons?: boolean;
+}
+
+/** 경로 묶음 — 한 실행 안에서 한 번만 정한다. */
+interface IPaths {
+  /** 거짓이면 굽지 않고 이미 있는 PNG로 시트와 수치만 다시 만든다(`--sheet-only`) */
+  bakeEnabled: boolean;
+  outDir: string;
+  vrm: string;
+  staff: string;
+  shield: string;
+  toonOriginal: string;
+  toonHard: string;
+}
+
+/** Blender 실행 파일. `weapons.ts`와 같은 규칙이다. */
+function resolveBlender(): string {
+  const fromEnv = process.env.BLENDER;
+  if (!fromEnv) return 'blender';
+  if (!fs.existsSync(fromEnv))
+    throw new Error(`환경 변수 BLENDER가 가리키는 파일이 없다: ${fromEnv}`);
+  return fromEnv;
+}
+
+/** JSON을 쓰고 경로를 돌려준다. */
+function writeJson(file: string, value: unknown): string {
+  fs.writeFileSync(file, `${JSON.stringify(value, null, 1)}\n`, 'utf-8');
+  return file;
+}
+
+/**
+ * `probe_layers.py`를 한 번 부른다. 판정 줄이 실패면 코드와 stderr 꼬리를 담아 던진다.
+ *
+ * `--sheet-only`면 굽지 않고 산출물이 이미 있는지만 본다. 시트 배치를 고칠 때마다 Blender를 여든
+ * 번 넘게 다시 부르지 않으려는 것이다.
+ */
+function bake(paths: IPaths, job: IBake): void {
+  if (!paths.bakeEnabled) {
+    if (!fs.existsSync(job.out)) throw new Error(`--sheet-only인데 구운 파일이 없다: ${job.out}`);
+    return;
+  }
+  const args = [
+    '--background',
+    '--python-exit-code',
+    '1',
+    '--python',
+    path.join(ROOT, 'tools/blender/probe_layers.py'),
+    '--',
+    '--base-vrm',
+    paths.vrm,
+    '--layer',
+    job.layer,
+    '--yaw',
+    String(job.yaw),
+    '--out',
+    job.out,
+    '--width',
+    String(PLAYER_FRAME_SPEC.width),
+    '--height',
+    String(PLAYER_FRAME_SPEC.height),
+    '--foot-row',
+    String(PLAYER_FRAME_SPEC.footLineY),
+    '--head-row',
+    String(PLAYER_FRAME_SPEC.headLineY),
+    '--layer-width',
+    String(LAYER.width),
+    '--layer-height',
+    String(LAYER.height),
+  ];
+  if (job.gearSpec) args.push('--gear-spec', job.gearSpec);
+  if (job.toon) args.push('--toon', job.toon);
+  if (job.weapons) args.push('--staff-spec', paths.staff, '--shield-spec', paths.shield);
+
+  const result = spawnSync(resolveBlender(), args, {
+    encoding: 'utf-8',
+    timeout: BLENDER_TIMEOUT_MS,
+  });
+  const line = parseGateLine(result.stdout ?? '');
+  if (line.ok) return;
+  const tail = (result.stderr ?? '').split('\n').slice(-12).join('\n');
+  throw new Error(`${path.basename(job.out)}: ${line.code} ${line.message}\n${tail}`);
+}
+
+/** PNG 한 장을 읽는다. */
+function read(file: string): IRgbaImage {
+  return decodePng(fs.readFileSync(file));
+}
+
+/** 캔버스 가장자리 한 줄에 보이는 픽셀 수 — 0보다 크면 부품이 캔버스를 넘은 것이다. */
+function edgePixels(img: IRgbaImage): number {
+  let count = 0;
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      if (x !== 0 && y !== 0 && x !== img.width - 1 && y !== img.height - 1) continue;
+      if (img.data[(y * img.width + x) * 4 + 3] > ALPHA_ON) count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * 픽셀 하나를 `factor`×`factor` 칸으로 그대로 늘린다. 보간하지 않는다.
+ *
+ * 720p 칸은 117×96이라 원본 칸 옆에 두면 너무 작아 판정할 수 없다. 부드럽게 늘리면 게임 크기에서
+ * 사라지는 선이 흐리게 되살아나므로, 픽셀 경계를 그대로 둔 채 키운다.
+ */
+function enlarge(img: IRgbaImage, factor: number): IRgbaImage {
+  const width = img.width * factor;
+  const height = img.height * factor;
+  const data = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const from = (Math.floor(y / factor) * img.width + Math.floor(x / factor)) * 4;
+      data.set(img.data.subarray(from, from + 4), (y * width + x) * 4);
+    }
+  }
+  return { width, height, data };
+}
+
+/** 720p 칸을 시트에서 키우는 배율. 흔들림 재생 페이지와 같은 세 배다. */
+const GAME_ENLARGE = 3;
+
+/** 원본 크기 칸과 720p 칸(세 배로 키움)을 배경 위에 얹어 만든다. */
+function cells(file: string): { source: IRgbaImage; game: IRgbaImage } {
+  const img = read(file);
+  const game = compositeOver(sampleLikeEngine(img, GAME_720P.width, GAME_720P.height), BACKGROUND);
+  return { source: compositeOver(img, BACKGROUND), game: enlarge(game, GAME_ENLARGE) };
+}
+
+/** 경우 하나를 굽고 시트와 수치를 쓴다. 수치를 돌려준다. */
+function runCase(paths: IPaths, item: IGearCase): Record<string, unknown>[] {
+  const dir = paths.outDir;
+  const specFile = writeJson(path.join(dir, `${item.id}.json`), item.spec);
+  const rows: IRgbaImage[][] = [];
+  const numbers: Record<string, unknown>[] = [];
+
+  for (const view of VIEWS) {
+    const base = path.join(dir, `${item.id}_${view.id}`);
+    const bodyFile = path.join(dir, `body_${view.id}.png`);
+    if (!fs.existsSync(bodyFile)) bake(paths, { out: bodyFile, layer: 'body', yaw: view.yaw });
+
+    const whole = `${base}_whole.png`;
+    bake(paths, {
+      out: whole,
+      layer: 'whole',
+      yaw: view.yaw,
+      gearSpec: specFile,
+      toon: paths.toonOriginal,
+      weapons: true,
+    });
+    const hard = `${base}_hard.png`;
+    if (item.hardEdge) {
+      bake(paths, {
+        out: hard,
+        layer: 'whole',
+        yaw: view.yaw,
+        gearSpec: specFile,
+        toon: paths.toonHard,
+        weapons: true,
+      });
+    }
+    const ref = `${base}_ref.png`;
+    bake(paths, {
+      out: ref,
+      layer: 'whole',
+      yaw: view.yaw,
+      gearSpec: specFile,
+      toon: paths.toonOriginal,
+    });
+    const layer = `${base}_layer.png`;
+    bake(paths, {
+      out: layer,
+      layer: 'gear',
+      yaw: view.yaw,
+      gearSpec: specFile,
+      toon: paths.toonOriginal,
+    });
+
+    const layerImg = read(layer);
+    const stacked = layerOver(read(bodyFile), layerImg);
+    const stackedFile = `${base}_stacked.png`;
+    fs.writeFileSync(stackedFile, encodePng(stacked));
+    const { changed, maxChannel } = pixelDiff(stacked, read(ref), DIFF_THRESHOLD);
+    numbers.push({
+      case: item.id,
+      view: view.id,
+      stackedVsRef: changed,
+      maxChannel,
+      layerEdge: edgePixels(layerImg),
+    });
+
+    const w = cells(whole);
+    const s = cells(stackedFile);
+    const row = [w.source];
+    if (item.hardEdge) row.push(cells(hard).source);
+    row.push(w.game);
+    if (item.hardEdge) row.push(cells(hard).game);
+    row.push(s.game);
+    rows.push(row);
+  }
+
+  const sheet = composeGrid(rows, { gap: 12, background: [40, 40, 44] });
+  fs.writeFileSync(path.join(dir, `sheet_${item.id}.png`), encodePng(sheet));
+  return numbers;
+}
+
+/** 흔들림 프레임을 굽고 720p 사본을 만든다. 파일 이름 목록을 돌려준다. */
+function runFlutter(paths: IPaths, item: IGearCase): { original: string[]; hard: string[] } {
+  if (!item.flutter) return { original: [], hard: [] };
+  const flutter = item.flutter;
+  const dir = path.join(paths.outDir, 'flutter');
+  fs.mkdirSync(dir, { recursive: true });
+  const yaw = VIEWS.find((v) => v.id === flutter.view)?.yaw ?? 0;
+  const names = { original: [] as string[], hard: [] as string[] };
+
+  for (let i = 0; i < FLUTTER_FRAMES; i++) {
+    const specFile = writeJson(
+      path.join(dir, `${item.id}_${i}.json`),
+      flutter.at(i / FLUTTER_FRAMES),
+    );
+    for (const kind of ['original', 'hard'] as const) {
+      const name = `${item.id}_${kind}_${i}`;
+      const file = path.join(dir, `${name}.png`);
+      const toon = kind === 'original' ? paths.toonOriginal : paths.toonHard;
+      bake(paths, { out: file, layer: 'whole', yaw, gearSpec: specFile, toon, weapons: true });
+      const img = read(file);
+      fs.writeFileSync(
+        path.join(dir, `${name}_720p.png`),
+        encodePng(sampleLikeEngine(img, GAME_720P.width, GAME_720P.height)),
+      );
+      names[kind].push(name);
+    }
+  }
+  return names;
+}
+
+/**
+ * 흔들림 재생 페이지를 쓴다. 후보를 한 판씩 굽지 않고 나란히 재생해 고르는 방식이다.
+ *
+ * 720p 칸은 엔진식으로 줄인 PNG를 픽셀 그대로 세 배 키워 보여 준다. 브라우저가 부드럽게 늘리면
+ * 게임 크기에서 튀는 그늘 조각이 뭉개져 안 보인다.
+ */
+function writeFlutterPage(
+  paths: IPaths,
+  groups: { item: IGearCase; names: { original: string[]; hard: string[] } }[],
+): string {
+  const block = (item: IGearCase, kind: string, names: string[]) => `
+    <figure><figcaption>${item.label} · ${kind === 'original' ? '원본 음영' : '딱딱한 경계'}</figcaption>
+      <div class="pair">
+        <img class="src" data-frames="${names.map((n) => `flutter/${n}.png`).join(',')}">
+        <img class="game" data-frames="${names.map((n) => `flutter/${n}_720p.png`).join(',')}">
+      </div>
+    </figure>`;
+  const html = `<!doctype html>
+<html lang="ko"><meta charset="utf-8"><title>장비 흔들림 재생</title>
+<style>
+  body { background: #1c1c20; color: #ddd; font: 14px sans-serif; margin: 16px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 24px; }
+  figure { margin: 0; } figcaption { margin-bottom: 6px; }
+  .pair { display: flex; gap: 12px; align-items: flex-end; background: #000; padding: 8px; }
+  .src { width: 300px; } .game { width: ${GAME_720P.width * 3}px; image-rendering: pixelated; }
+</style>
+<p>한 주기 ${FLUTTER_FRAMES}장을 8fps로 반복한다. 왼쪽은 원본 크기(절반으로 표시), 오른쪽은 720p를 픽셀 그대로 세 배.</p>
+<div class="grid">${groups
+    .map(
+      ({ item, names }) =>
+        block(item, 'original', names.original) + block(item, 'hard', names.hard),
+    )
+    .join('')}</div>
+<script>
+  const imgs = [...document.querySelectorAll('img[data-frames]')].map((el) => ({ el, frames: el.dataset.frames.split(',') }));
+  let i = 0;
+  const tick = () => { for (const { el, frames } of imgs) el.src = frames[i % frames.length]; i++; };
+  tick(); setInterval(tick, 125);
+</script>
+</html>
+`;
+  const file = path.join(paths.outDir, 'flutter.html');
+  fs.writeFileSync(file, html, 'utf-8');
+  return file;
+}
+
+const isMain =
+  process.argv[1] !== undefined &&
+  path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+
+if (isMain) {
+  try {
+    const argv = process.argv.slice(2);
+    const onlyAt = argv.indexOf('--only');
+    const only = onlyAt >= 0 ? argv[onlyAt + 1].split(',') : null;
+    const vrmAt = argv.indexOf('--vrm');
+    const vrm = path.resolve(ROOT, vrmAt >= 0 ? argv[vrmAt + 1] : DEFAULT_VRM);
+    if (!fs.existsSync(vrm)) throw new Error(`.vrm이 없다: ${vrm} — --vrm으로 경로를 준다`);
+
+    const outDir = path.join(ROOT, OUT_DIR);
+    fs.mkdirSync(outDir, { recursive: true });
+    const [staff, shield] = writeChosenSpecs(outDir);
+    const paths: IPaths = {
+      bakeEnabled: !argv.includes('--sheet-only'),
+      outDir,
+      vrm,
+      staff,
+      shield,
+      toonOriginal: writeJson(path.join(outDir, 'toon_original.json'), TOON_ORIGINAL),
+      toonHard: writeJson(path.join(outDir, 'toon_hard.json'), TOON_HARD),
+    };
+
+    const chosen = CASES.filter((c) => !only || only.includes(c.id));
+    const numbers: Record<string, unknown>[] = [];
+    const flutters: { item: IGearCase; names: { original: string[]; hard: string[] } }[] = [];
+    for (const item of chosen) {
+      const started = Date.now();
+      numbers.push(...runCase(paths, item));
+      if (item.flutter) flutters.push({ item, names: runFlutter(paths, item) });
+      console.log(
+        `✓ ${item.id} ${((Date.now() - started) / 1000).toFixed(0)}s — sheet_${item.id}.png`,
+      );
+    }
+    if (flutters.length > 0)
+      console.log(`✓ ${path.relative(ROOT, writeFlutterPage(paths, flutters))}`);
+
+    writeJson(path.join(outDir, 'numbers.json'), numbers);
+    console.log('\n경우      방향            층합성차이  최대채널차  캔버스넘침');
+    for (const n of numbers) {
+      console.log(
+        `${String(n.case).padEnd(9)} ${String(n.view).padEnd(15)} ${String(n.stackedVsRef).padStart(9)}  ${String(n.maxChannel).padStart(9)}  ${String(n.layerEdge).padStart(9)}`,
+      );
+    }
+    console.log(
+      '\n시트 열: 원본 음영(원본 크기) · [딱딱한 경계(원본 크기)] · 원본 음영 720p · [딱딱한 경계 720p] · 층 합성 720p',
+    );
+    console.log('시트 줄: 앞 · 뒤 · 3/4');
+    for (const item of chosen) {
+      console.log(`\n[${item.label}] sheet_${item.id}.png`);
+      for (const check of item.checks) console.log(`  - ${check}`);
+    }
+  } catch (err) {
+    console.error(`✗ ${(err as Error).message}`);
+    process.exit(1);
+  }
+}

@@ -13,6 +13,13 @@ G2 — 층 하나를 가림 전용 몸과 함께 굽는다. 가림 렌더가 되
 값이 다르면 같은 픽셀의 색이 층끼리 달라져 겹친 경계에 색띠가 생긴다. `_common.setup_render`가
 이 값을 안 건드리므로 여기서 명시한다.
 
+**`gear` 층은 망토 · 날개 · 갑옷 같은 장비 하나를 몸으로 가려 굽는다.** 사양(`--gear-spec`)이 붙일
+본을 든다.
+
+**`whole`은 층이 아니라 기준 컷이다.** 옷 입은 판 하나에 받은 무기와 장비를 함께 들려 가림 없이 한
+장으로 굽는다. 층을 겹친 결과가 이것과 얼마나 다른지가 G2 §3의 회귀 가드이고, 툰 후보를 사람이
+견줄 때도 층 합성의 테두리가 끼지 않은 이 컷으로 본다.
+
 판정은 하지 않는다. 굽고 실측을 보고하는 것까지이고 재는 것은 실행기가 한다
 (`README.md` 「판정은 파이썬에 없다」).
 
@@ -27,6 +34,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import _common as common  # noqa: E402 - 위 경로 주입 뒤에 와야 한다
 import retarget_render as retarget  # noqa: E402 - 기준 자세 값의 주인이다
+import toon  # noqa: E402 - 툰 사양 입히기의 주인이다
 import weapons  # noqa: E402 - 부품 세우기의 주인이다
 
 # 가림 전용 몸을 담는 컬렉션 이름. 이름으로 찾아 Holdout을 켜므로 다른 곳에서 쓰면 안 된다.
@@ -103,11 +111,11 @@ def move_to_holdout(objects):
 
 def attach_weapon(armature, spec, bone_name, yaw):
     """
-    부품으로 무기를 세워 손 본에 붙인다.
+    부품으로 무기를 세워 본에 붙인다. 망토 · 날개 · 갑옷 같은 장비도 같은 식으로 붙인다.
 
-    붙이는 방식은 2026-09-14 `verify_hand_fix.py`가 실물로 확인한 것을 따른다 — 손 본의 머리
-    위치에 두고 `matrix_parent_inverse`로 본의 현재 자세를 상쇄한다. 상쇄하지 않으면 자세를 입힌
-    만큼 무기가 한 번 더 돌아간다.
+    무기는 손 본에, 장비는 사양의 `bone`(등이면 `J_Bip_C_UpperChest`)에 붙는다. 어느 쪽이든 사양의
+    `grip` 점이 본의 머리 위치에 오고, 부품은 본의 회전이 아니라 캐릭터 방향만 따라 곧게 선다
+    (아래 본문 주석).
     """
     from mathutils import Vector
 
@@ -192,9 +200,10 @@ def main():
         raise common.GateError('vrm-path', '`-- --base-vrm <경로>`를 받지 못했다')
     if not out_path:
         raise common.GateError('output-path', '`-- --out <경로>`를 받지 못했다')
-    if layer not in ('body', 'top', 'staff', 'shield'):
+    if layer not in ('body', 'top', 'staff', 'shield', 'gear', 'whole'):
         raise common.GateError(
-            'weapon-spec', 'layer는 body · top · staff · shield 중 하나여야 한다 (받은 값 {0})'.format(layer)
+            'weapon-spec',
+            'layer는 body · top · staff · shield · gear · whole 중 하나여야 한다 (받은 값 {0})'.format(layer),
         )
 
     base_width = common.parse_int_arg(args, 'width')
@@ -238,6 +247,19 @@ def main():
     for each in armatures:
         common.apply_world_delta_pose(each, retarget.BASE_ARM_POSE, retarget.BASE_POSE_ORDER)
         common.apply_local_pose(each, retarget.BASE_FINGER_POSE, 'XYZ')
+    bpy.context.view_layer.update()
+
+    # **카메라 상자는 몸만 보고 잡는다.** 무기 · 상의를 넣으면 머리 위로 올라간 지팡이까지
+    # 담으려고 배율이 줄어 인물이 층마다 다른 크기로 나온다(실측: 몸 층 `ortho_scale` 1.118 대
+    # 지팡이 층 2.363). G4 §3이 「무기와 상의는 이 계산에 넣지 않는다」로 정한 것이 이 자리다.
+    #
+    # **상자는 모델을 돌리기 전에 잰다.** 방향마다 상자를 다시 재면 3/4에서 돌아간 상자의 모서리가
+    # 폭을 실제 실루엣보다 넓게 잡는다. 2026-09-16에 yaw 45 몸 층이 그 폭(233.9px)으로 배율 검사에
+    # 걸려 굽기가 멈췄다. 통과하더라도 방향마다 카메라가 달라지는데, G4 §3은 카메라 하나를 모든
+    # 방향이 공유하게 정했다. 앞 · 뒤는 상자가 좌우로 대칭이라 이 순서가 결과를 바꾸지 않는다.
+    body_lo, body_hi = common.object_bounds(body_objects)
+
+    for each in armatures:
         # 방향은 모델을 돌려 만든다(G2 §2). 카메라는 그대로 두고 인물만 돌린다 — 카메라를
         # 옮기면 층마다 카메라가 갈려 정렬이 깨진다.
         #
@@ -247,11 +269,6 @@ def main():
         if yaw:
             each.matrix_world = Matrix.Rotation(radians(yaw), 4, 'Z') @ each.matrix_world
     bpy.context.view_layer.update()
-
-    # **카메라 상자는 몸만 보고 잡는다.** 무기 · 상의를 넣으면 머리 위로 올라간 지팡이까지
-    # 담으려고 배율이 줄어 인물이 층마다 다른 크기로 나온다(실측: 몸 층 `ortho_scale` 1.118 대
-    # 지팡이 층 2.363). G4 §3이 「무기와 상의는 이 계산에 넣지 않는다」로 정한 것이 이 자리다.
-    body_lo, body_hi = common.object_bounds(body_objects)
 
     if layer in ('staff', 'shield'):
         with open(weapon_spec_path, encoding='utf-8') as handle:
@@ -268,10 +285,52 @@ def main():
             round(v, 4) for v in (armature.matrix_world @ hand_bone.head)
         ]
 
+    # 기준 컷의 무기는 받은 것만 붙인다. 장비 가림을 잴 때는 무기 없이 몸과 장비만 한 번에 구운 컷이
+    # 기준이라, 무기를 필수로 두면 그 컷을 굽지 못한다.
+    if layer == 'whole':
+        for kind, flag in (('staff', 'staff-spec'), ('shield', 'shield-spec')):
+            path = common.parse_arg(args, flag)
+            if path:
+                with open(path, encoding='utf-8') as handle:
+                    attach_weapon(armature, json.load(handle), WEAPON_HAND[kind], yaw)
+
+    gear_spec_path = common.parse_arg(args, 'gear-spec')
+    if layer == 'gear' and not gear_spec_path:
+        raise common.GateError('weapon-spec', 'gear 층에는 `--gear-spec <경로>`가 필요하다')
+    if gear_spec_path and layer in ('gear', 'whole'):
+        with open(gear_spec_path, encoding='utf-8') as handle:
+            gear_spec = json.load(handle)
+        if not gear_spec.get('bone'):
+            raise common.GateError('weapon-spec', '장비 사양에 붙일 본(`bone`)이 없다')
+        gear = attach_weapon(armature, gear_spec, gear_spec['bone'], yaw)
+        gear_lo, gear_hi = common.object_bounds([gear])
+        detail['gear'] = gear.name
+        detail['gear_bone_head'] = [
+            round(v, 4) for v in (armature.matrix_world @ armature.pose.bones[gear_spec['bone']].head)
+        ]
+        detail['gear_x'] = [round(gear_lo.x, 4), round(gear_hi.x, 4)]
+        detail['gear_y'] = [round(gear_lo.y, 4), round(gear_hi.y, 4)]
+        detail['gear_z'] = [round(gear_lo.z, 4), round(gear_hi.z, 4)]
+
     # 가림을 끄고 굽는 길을 둔다. 층이 비어 나올 때 그것이 **가려져서**인지 **애초에 없어서**인지
     # 를 가르는 유일한 수단이고, 둘은 고칠 곳이 완전히 다르다.
     skip_holdout = common.parse_arg(args, 'no-holdout') is not None
-    held_out = 0 if (layer == 'body' or skip_holdout) else move_to_holdout(body_objects)
+    held_out = 0 if (layer in ('body', 'whole') or skip_holdout) else move_to_holdout(body_objects)
+
+    # 툰 사양은 무기 · 장비를 붙인 **뒤에** 입힌다. 그 부품의 머티리얼도 MToon으로 바꿀 수 있으므로,
+    # 앞에서 입히면 뒤에 세운 부품만 Principled BSDF로 남는다. 카메라 상자는 이미 위에서 쟀으므로
+    # 외곽선 헐을 두껍게 해도 인물 배율이 흔들리지 않는다.
+    toon_path = common.parse_arg(args, 'toon')
+    toon_spec = None
+    if toon_path:
+        with open(toon_path, encoding='utf-8') as handle:
+            toon_spec = json.load(handle)
+        detail['toon'] = toon_spec.get('id')
+        applied = toon.apply_to_materials(toon_spec)
+        detail['toon_materials'] = len(applied)
+        # 어느 부위가 사양을 받았는지 남긴다. 후보가 기준과 똑같이 나왔을 때 값이 안 먹은 것인지
+        # 머티리얼을 못 찾은 것인지를 렌더를 열지 않고 가른다.
+        detail['toon_parts'] = sorted({row['klass'] for row in applied.values()})
 
     camera = common.setup_camera(
         body_lo, body_hi, base_width, base_height, foot_row=foot_row, head_row=head_row
@@ -291,7 +350,8 @@ def main():
         )
     per_pixel = (body_hi.z - body_lo.z) / float(foot_row - head_row)
     camera.data.ortho_scale = per_pixel * max(layer_width, layer_height)
-    common.setup_lights()
+    if toon_spec is None or toon.setup_lights(toon_spec) is None:
+        common.setup_lights()
     common.setup_render(engine, layer_width, layer_height, absolute_out)
     view_transform = set_standard_view_transform()
     common.render_still(absolute_out)

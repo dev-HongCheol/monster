@@ -90,7 +90,9 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `motion-path` | 모션 파일이 없거나(`--motion`이 빠진 경우 포함), 형식을 모르거나, 아마추어가 없다 | glb·gltf·fbx만 받는다. 경로를 확인한다 | `retarget_render.py` |
 | `motion-action` | 그 이름의 액션이 없거나, 길이가 0이거나, `--frames`가 1 이상의 정수가 아니다 | 액션이 없으면 메시지가 걷기로 보이는 액션 이름을 함께 주니 `--action`에 그것을 넘긴다. `--frames` 오류면 1 이상의 정수를 준다 | `retarget_render.py` |
 | `retarget-bone` | 대응표의 본을 한쪽 골격에서 못 찾았거나, `SWING_CHAIN`이 적은 부모가 모션 골격의 실제 부모와 다르다 | 못 찾았으면 메시지가 그쪽을 `모션:`·`대상:` 접두어로 말하니 `BONE_MAP`을 그 이름에 맞춘다. 부모가 다르면 메시지가 실제 부모 이름을 말하니 `SWING_CHAIN`을 그 이름에 맞춘다 | `retarget_render.py` |
-| `weapon-spec` | 무기 후보 표가 없거나, 후보가 0개거나, 부품이 없거나, 모르는 부품 종류·시점이다 | 표를 만드는 것은 `weapons.ts`이므로 그쪽을 거쳐 부른다. 부품 종류를 늘리려면 `weapons.py`의 `build_part`에 분기를 더한다 | `weapons.py` |
+| `weapon-spec` | 무기 후보 표가 없거나, 후보가 0개거나, 부품이 없거나, 모르는 부품 종류·시점·재질 묶음이다. 층 탐침에서는 layer 값이 틀렸거나, `gear` 층에 `--gear-spec`이 없거나, 장비 사양에 `bone`이 없는 경우도 여기로 온다 | 표를 만드는 것은 `weapons.ts`·`gear.ts`이므로 그쪽을 거쳐 부른다. 부품 종류를 늘리려면 `weapons.py`의 `build_part`에 분기를 더한다 | `weapons.py` · `probe_layers.py` |
+| `toon-spec` | 툰 사양에 모르는 키가 있거나, `shade_threshold`가 0~1 밖이거나, `like`가 지목한 VRoid 부위가 장면에 없다 | 메시지가 아는 키·있는 부위를 함께 준다. 값이 그림에서 무엇을 하는지는 `docs/development/spec/ops-blender-toon.md`에 있다 — 명세 이름(`shading_shift`)을 받지 않는 이유도 거기 있다 | `toon.py` |
+| `mtoon-inspect` | `.vrm`에 MToon 노드 그룹이 없다 | MToon 머티리얼로 내보낸 판인지 확인한다 | `inspect_mtoon.py` |
 
 **메시지에 실측값을 박는다.** 「버전이 맞지 않는다」가 아니라 「기대 4.2~5.2, 지금 4.1.2」로
 적는다. 이 레포의 다른 도구가 이미 그 형태다 — `tools/art/Postprocess.ts`의 예외가 수치를 담고,
@@ -107,11 +109,16 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `_common.py` | VRM 임포트 · 카메라 프레이밍 · 렌더 설정. **plumbing이 `smoke.py`와 두 벌인 것은 의도한 것이고** 이유는 그 파일 첫머리에 있다 | 있음 |
 | `import_vrm.py` | 게이트 0b | 있음 |
 | `retarget_render.py` | 게이트 0c와 2. 모션을 입히고 프레임을 굽는다. 본 대응표와 관절별 흔들림 비율(`SWING_SCALE`)을 든다 | 있음 |
-| `ComparisonSheet.ts` | 게이트 1 비교 시트의 순수 로직 — 엔진식 축소 · 알파 합성 · 얼굴 가림 · 칸 배치. 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
+| `ComparisonSheet.ts` | 게이트 1 비교 시트의 순수 로직 — 엔진식 축소 · 알파 합성 · 얼굴 가림 · 칸 배치, 그리고 층 겹치기 · 가림 부분집합 · 픽셀 차이. 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `sheet.ts` | 비교 시트 실행기. 3D 프레임 한 장과 출하된 2D 정면을 원본 · 1440p · 720p 세 줄로 붙인다 | 있음 |
 | `Atlas.ts` | 층별 프레임을 트림해 한 장에 담는 순수 로직 — 이름 규칙과 되가르기 · 선반 패킹 · plist 직렬화와 파싱 · 왕복 복원 · 들어간 plist 검사 둘(원본 크기 · 층별 프레임 수). 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `weapons.py` | 지팡이 · 방패 후보를 프리미티브로 세워 굽는다. 모양의 정의는 받는 JSON에 있고 이 파일은 세우기만 한다 | 있음 |
-| `weapons.ts` | 무기 후보 실행기. 후보 표를 들고, 굽고, 한 장짜리 비교 시트로 붙인다 | 있음 |
+| `weapons.ts` | 무기 후보 실행기. 후보 표를 들고, 굽고, 한 장짜리 비교 시트로 붙인다. `--dump-chosen <폴더>`면 채택한 무기 둘의 사양 JSON만 쓴다 | 있음 |
+| `probe_layers.py` | G2 층 탐침. 층 하나(몸 · 상의 · 무기 · 장비)를 가림 전용 몸과 함께 굽거나, 가림 없이 한 번에 구운 기준 컷(`whole`)을 굽는다. `--toon`으로 툰 사양을 입힌다 | 있음 |
+| `toon.py` | 툰 사양 JSON을 MToon 머티리얼에 입힌다. 무기 · 장비 부품은 사양이 그 분류를 적었을 때만 MToon으로 바꾼다 | 있음 |
+| `inspect_mtoon.py` | `.vrm`의 MToon 값을 덤프하고, 애드온 셰이더가 명세 식과 옛 식 중 어느 쪽을 음영 혼합에 물렸는지 보고한다. 애드온 · Blender 판을 바꾼 뒤 먼저 돌린다 | 있음 |
+| `layers.ts` | 층 PNG 실행기 — 가림 부분집합 판정(`subset`), 층 겹치기와 720p 축소(`stack`), 기준 컷과의 차이(`diff`). 규칙은 `ComparisonSheet.ts`가 든다 | 있음 |
+| `gear.ts` | 장비 검토 세트 실행기. 망토 · 날개 · 금속 장비 · 얇은 장식 · 오라를 방향별로 굽고 시트 · 층 합성 수치 · 흔들림 재생 페이지를 만든다 | 있음 |
 
 **`smoke.py`가 독립인 것이 설계다.** 공용 모듈을 거치면 애드온이나 모델 때문에 난 실패가 환경
 실패로 보고되고, 그러면 「여기서 막히면 VRoid를 설치하지 않는다」는 규칙이 조용히 깨진다. 되돌릴
@@ -145,6 +152,7 @@ Cocos가 꺼져 있어 `.meta`를 확실히 남길 수 있으면, 게임 폴더�
 | 게이트 0a 스모크 PNG | `docs/temp/3d-gate/` | 안 함 — 스크립트로 다시 만들 수 있는 것만 둔다 |
 | 걷기 프레임 | `game/assets/test-3d-gate/` | 함 |
 | 게이트 1 비교 시트 | `art-source/player/2026-09-11-3d-gate/comparison-sheet.png` | 함 |
+| G2 층 탐침 · 장비 검토 세트(`gear.ts`) | `docs/temp/3d-gate/g2/` · `docs/temp/3d-gate/gear/` | 안 함 — 판정 증거라 커밋하지 않는다. **스크립트는 여기 두지 않는다** — 이 폴더는 추적되지 않아 여기 둔 스크립트는 한 장비에만 남는다 |
 | `.vrm` 마스터와 판정 증거 | `art-source/player/2026-09-11-3d-gate/` | 함 |
 
 `.vrm`은 커밋한다. 커밋하지 않으면 사슬의 출발점이 한 장비에만 남는다. 크기 상한은 50MB이고

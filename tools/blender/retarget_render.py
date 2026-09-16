@@ -184,7 +184,8 @@ BASE_FINGER_POSE = {}
 
 # 오른손 네 손가락 (손바닥 쪽으로 굽힘: Z+)
 # 마디 합이 125도다. 종전 170도(55·65·50)는 끝마디가 과하게 말려 주먹 밖으로 튀어나왔다
-# (2026-09-16 사용자 판정 — `docs/temp/3d-gate/verify_hand_fix.py`의 4방향 렌더로 골랐다).
+# (2026-09-16 사용자 판정 — 손을 네 방향에서 구운 렌더를 보고 골랐다. 그 렌더 스크립트는 1라운드 시험
+# 캐릭터 기준의 일회성 진단이라 남기지 않았다).
 for _finger in ('Index', 'Middle', 'Ring', 'Little'):
     BASE_FINGER_POSE['J_Bip_R_{0}1'.format(_finger)] = (0.0, 0.0, 45.0)
     BASE_FINGER_POSE['J_Bip_R_{0}2'.format(_finger)] = (0.0, 0.0, 48.0)
