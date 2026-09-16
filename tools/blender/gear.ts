@@ -373,33 +373,12 @@ export const CASES: readonly IGearCase[] = [
     },
     hardEdge: false,
   },
-  {
-    id: 'aura',
-    label: '오라 — 몸을 감싸는 반투명 발광 껍데기',
-    checks: [
-      '반투명이 층 합성에서 제대로 겹치나 (아래 수치의 층 합성 차이)',
-      '프레임에 구워 넣을 만한가, 게임에서 이펙트로 얹는 편이 나은가',
-    ],
-    spec: {
-      id: 'aura',
-      bone: HIPS_BONE,
-      parts: [
-        {
-          type: 'sphere',
-          group: 'Raw',
-          radius: 0.62,
-          subdivisions: 4,
-          location: [0, 0.03, 0.02],
-          scale: [0.62, 0.5, 1.0],
-          color: [120, 200, 255],
-          alpha: 0.12,
-          emission: 1.0,
-        },
-      ],
-    },
-    hardEdge: false,
-  },
 ];
+
+// 오라(몸을 감싸는 반투명 발광 껍데기, `Raw` 재질)는 2026-09-17에 검토 세트에서 뺐다. 사용자가 발밑에서
+// 회전하는 마법진(워크3 패시브식)으로 바꿨고, 그것은 프레임에 굽지 않고 게임에서 별도 노드로 얹는다 —
+// 회전이 걷기 주기와 무관해야 하고, 바닥 원판은 층 캔버스를 넘치며(첫 판 오라가 세 방향 모두 넘쳤다),
+// 패시브마다 켜고 꺼야 한다. 굽기 쪽에서 정할 것은 카메라 고도 하나라, 그 후보 시트에 원판을 넣는다.
 
 /** 툰 사양 — `toon.py`가 읽는다. `materials`의 키는 분류(`GEAR`)다. */
 interface IToonSpec {
