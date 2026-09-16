@@ -149,6 +149,37 @@ const WING_ROOT_HEIGHT = 0.22;
 /** 허리 장비가 붙는 본. */
 const HIPS_BONE = 'J_Bip_C_Hips';
 
+/** `HIPS_BONE` 머리의 기준 자세 위치(m, 2026-09-17 실측). 허리 부품 좌표의 원점이다. */
+const HIPS_HEAD = { y: -0.0046, z: 0.4748 };
+
+/**
+ * 벨트 높이(z 0.445~0.485) 허리 앞면의 세계 좌표 y를 |x| 열마다 잰 표(상의 A, 2026-09-17). 그 높이의
+ * 반폭은 0.114이다. 술이 늘어지는 z 0.30~0.45의 앞면은 이보다 뒤(가운데 −0.1015)라, 벨트 면에 붙인
+ * 술이 허벅지에 파묻히지 않는다.
+ *
+ * 첫 판은 표 없이 엉덩이 본 앞 12.5cm에 벨트를 뒀는데 앞면이 10.3cm라 3/4 방향에서 벨트가 허리 앞에
+ * 떠 보였고, 사슬을 ±10cm로 펼쳐 반폭에 육박한 바깥 고리가 뒷모습 허리 옆으로 삐져나왔다(사용자
+ * 판정 2026-09-17). 굵기 판정과 무관해 좌표만 고치고 다시 굽지 않았다.
+ */
+const WAIST_FRONT: readonly (readonly [number, number])[] = [
+  [0, -0.1034],
+  [0.03, -0.0997],
+  [0.045, -0.0916],
+  [0.06, -0.089],
+  [0.075, -0.0867],
+];
+
+/** `WAIST_FRONT`를 |x|로 선형 보간한 허리 앞면 y(세계 좌표). 표 밖은 끝 값이다. */
+function waistFront(x: number): number {
+  const ax = Math.abs(x);
+  for (let i = 1; i < WAIST_FRONT.length; i++) {
+    const [x0, y0] = WAIST_FRONT[i - 1];
+    const [x1, y1] = WAIST_FRONT[i];
+    if (ax <= x1) return y0 + ((y1 - y0) * (ax - x0)) / (x1 - x0);
+  }
+  return WAIST_FRONT[WAIST_FRONT.length - 1][1];
+}
+
 /**
  * 망토. 위 가장자리를 목 밑 높이(z 0.744) 등 뒤 13cm에 걸고 정강이 중간(z 0.18)까지 늘어뜨린다.
  * 폭은 위가 어깨 폭(실측 0.21)에 맞춘 0.22, 아래가 0.34다 — 첫 판의 0.34 · 0.52는 소매 폭이라
@@ -315,25 +346,27 @@ export const CASES: readonly IGearCase[] = [
     spec: {
       id: 'ornament',
       bone: HIPS_BONE,
+      // 술은 벨트 아래 z 0.31~0.45에 매달리고, 고리는 z 0.46의 벨트 선에 앞면을 따라 납작하게 붙는다.
+      // 둘 다 `waistFront`에서 굵기의 절반보다 조금 더 앞에 둬 표면에 닿게 한다.
       parts: [
-        ...[-0.08, -0.04, 0, 0.04, 0.08].map((x) => ({
+        ...[-0.06, -0.03, 0, 0.03, 0.06].map((x) => ({
           type: 'cylinder',
           group: 'Gear',
           radius: 0.004,
           depth: 0.14,
           vertices: 6,
-          location: [x, -0.12, -0.1],
+          location: [x, waistFront(x) - 0.006 - HIPS_HEAD.y, 0.38 - HIPS_HEAD.z],
           color: [200, 160, 60],
         })),
-        ...[-0.1, -0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.1].map((x) => ({
+        ...[-0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075].map((x) => ({
           type: 'torus',
           group: 'Gear',
           major_radius: 0.011,
           minor_radius: 0.0025,
           major_segments: 10,
           minor_segments: 4,
-          location: [x, -0.125, -0.02],
-          rotation: [90, 0, x * 900],
+          location: [x, waistFront(x) - 0.004 - HIPS_HEAD.y, 0.46 - HIPS_HEAD.z],
+          rotation: [90, 0, 0],
           color: [210, 210, 220],
         })),
       ],
