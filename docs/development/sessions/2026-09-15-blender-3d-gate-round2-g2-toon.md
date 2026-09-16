@@ -56,7 +56,7 @@ AI가 한다.
 
 - [ ] 같은 툰 설정으로 가림 탐침 컷을 굽는다. 정면과 3/4에서 지팡이가 몸 뒤로 지나는 자세를 넣는다.
 - [ ] 층 합성과 기준 컷의 픽셀 차이를 기록한다(G4 회귀 가드).
-- [ ] 귀신 표본 프롬프트 초안을 `art-generation-playbook.md`의 화풍 조건에 맞춰 준비한다.
+- [x] 귀신 표본을 만들 **요구사항 문서**를 준비한다 → [G2 귀신 표본 요구사항](2026-09-15-blender-3d-gate-round2-g2-toon-ghost-brief.md). 사용자가 그것을 GPT에 넣으면 GPT가 생성 프롬프트를 짜고 그림을 만든다. 화풍 조건의 정본은 [`art-direction.md`](../../design/spec/art-direction.md) §2 · §4 · §5와 [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §4다 — [`art-generation-playbook.md`](../../design/spec/art-generation-playbook.md)가 아니다. 그 문서는 플레이어 2D 생성의 실행 절차를 들고 있어 귀신 화풍 조건이 없고, 서비스도 fal.ai 기준이라 지금과 맞지 않는다(전면 개정은 이번 라운드 밖 — 개요 §4, 백로그 `F108`).
 - [ ] 사용자가 준 귀신 두 장으로 비교 시트를 만든다. 시트와 표본은 커밋하지 않는다.
 
 사람이 판정한다.
