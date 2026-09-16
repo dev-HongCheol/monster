@@ -94,6 +94,12 @@ THRESHOLD_KEY = 'shade_threshold'
 # 만들고(`shade_ratio`), 음영 규칙은 `like`가 지목한 VRoid 부위에서 복사해 온다.
 CONVERTED_KEYS = {'shade_ratio', 'like'}
 
+# matcap 텍스처 파일(절대 경로). `like`가 복사한 부위에 matcap이 없을 때(VRoid 옷이 그렇다) 금속 반사점을
+# 주려고 쓴다. 애드온의 matcap 항은 더해지기만 해서 밝히기만 하고 어둡게는 못 하므로, 금속의 어두운 면은
+# `shade_ratio`로 만들고 여기서는 반사만 준다. 2026-09-17 어깨갑옷이 상의 규칙만 복사해 흰 덩어리로 나온
+# 뒤 생겼다.
+MATCAP_IMAGE_KEY = 'matcap_image'
+
 
 def material_accessor():
     """
@@ -134,7 +140,7 @@ def merged_settings(spec, klass, part):
     settings.update(table.get(klass) or {})
     if part != klass:
         settings.update(table.get(part) or {})
-    known = set(MTOON_KEYS) | set(EXTENSION_KEYS) | {THRESHOLD_KEY} | CONVERTED_KEYS
+    known = set(MTOON_KEYS) | set(EXTENSION_KEYS) | {THRESHOLD_KEY, MATCAP_IMAGE_KEY} | CONVERTED_KEYS
     unknown = sorted(set(settings) - known)
     if unknown:
         raise common.GateError(
@@ -229,6 +235,12 @@ def apply_to_materials(spec):
                 setattr(mtoon, MTOON_KEYS[key], value)
             elif key in EXTENSION_KEYS:
                 setattr(ext, EXTENSION_KEYS[key], value)
+            elif key == MATCAP_IMAGE_KEY:
+                if not os.path.isfile(value):
+                    raise common.GateError('toon-spec', 'matcap 파일이 없다: {0}'.format(value))
+                image = bpy.data.images.load(value, check_existing=True)
+                image.colorspace_settings.name = 'sRGB'
+                mtoon.matcap_texture.index.source = image
             elif key == THRESHOLD_KEY:
                 if not 0.0 <= value <= 1.0:
                     raise common.GateError(

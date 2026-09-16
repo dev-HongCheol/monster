@@ -10,6 +10,11 @@
 방패가 화면에서 같은 크기로 보여, 정작 판정해야 할 크기 비율이 사라진다. 그래서 모든 후보의
 상자를 합쳐 배율을 한 번 정하고, 키 기준 막대를 옆에 함께 세운다.
 
+**몸에 붙는 부품은 표면에 투영해 세운다.** 끈 · 배판 · 어깨판처럼 몸을 따라야 하는 부품은 좌표 표를
+손으로 재서 두면 몸(자세 · 상의)이 바뀔 때마다 어긋난다 — 2026-09-17에 얇은 장식이 허리 앞에 떠 있었고
+어깨 구는 관절보다 7.7cm 위에 떠 있었다. 그래서 `Surface`가 몸 메시(머리카락 제외)로 광선을 쏴 정점을
+표면에 맞추고 간격만큼 띄운다. 무기 후보 굽기처럼 몸이 없는 자리에서는 이 부품을 세울 수 없다.
+
 판정은 하지 않는다. 여기서 하는 일은 굽고 경로를 보고하는 것까지이고, 무기 상자 비율을 재는
 것은 맨살 몸 렌더가 나온 뒤 TS가 한다.
 
@@ -165,13 +170,239 @@ def build_wing(part):
     return build_sheet('Wing', part.get('columns', 24), part.get('rows', 8), point_at, flip)
 
 
-def build_part(part):
+class Surface:
+    """
+    몸 표면. 부품 좌표의 점을 방향으로 쏴서 몸에 맞춘다.
+
+    부품은 자기 좌표(원점이 본 머리, 축은 캐릭터 방향)로 세워지고 나중에 `frame`(부품 → 세계)으로
+    놓이므로, 광선은 세계 좌표로 바꿔 쏘고 맞은 점은 부품 좌표로 되돌린다. 머리카락 면은 뺀다 —
+    긴 머리가 등을 덮어서, 안 빼면 등의 끈이 머리카락 표면(등 뒤 10cm 넘게)에 붙는다.
+    """
+
+    def __init__(self, body_objects, frame):
+        from mathutils.bvhtree import BVHTree
+
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        verts = []
+        polys = []
+        for obj in body_objects:
+            evaluated = obj.evaluated_get(depsgraph)
+            mesh = evaluated.data
+            names = [m.name if m else '' for m in mesh.materials]
+            base = len(verts)
+            verts.extend(evaluated.matrix_world @ v.co for v in mesh.vertices)
+            for poly in mesh.polygons:
+                if names and 'HAIR' in names[poly.material_index]:
+                    continue
+                polys.append([base + i for i in poly.vertices])
+        if not polys:
+            raise common.GateError('weapon-spec', '몸 표면을 만들 면이 없다')
+        self.tree = BVHTree.FromPolygons(verts, polys)
+        self.frame = frame
+        self.inverse = frame.inverted()
+        self.rotation = frame.to_3x3()
+
+    def project(self, point, direction, standoff):
+        """
+        부품 좌표 `point`에서 `direction`(부품 좌표, 정규화 불필요)으로 쏴서 처음 맞은 표면에서
+        `standoff`만큼 되돌아온 부품 좌표. 못 맞으면 `None`.
+        """
+        heading = Vector(direction).normalized()
+        origin = self.frame @ Vector(point)
+        hit, _normal, _index, _distance = self.tree.ray_cast(origin, self.rotation @ heading, 3.0)
+        if hit is None:
+            return None
+        return (self.inverse @ hit) - heading * standoff
+
+
+def require_surface(surface, kind):
+    """몸 표면이 없으면 그 부품 종류를 말하며 실패한다."""
+    if surface is None:
+        raise common.GateError(
+            'weapon-spec',
+            '{0} 부품은 몸 표면이 있어야 세운다 — 무기 후보 굽기처럼 몸이 없는 자리에서는 못 쓴다'.format(kind),
+        )
+    return surface
+
+
+def projected(surface, part, point, direction, standoff):
+    """`Surface.project`에 실패(빗나감)를 좌표와 함께 말하는 포장. 조용히 띄워 두면 부품이 허공에 남는다."""
+    hit = surface.project(point, direction, standoff)
+    if hit is None:
+        raise common.GateError(
+            'weapon-spec',
+            '{0} 부품의 점 {1}에서 {2} 방향으로 몸을 못 맞혔다 — 범위를 몸 안으로 줄인다'.format(
+                part.get('type'), [round(v, 3) for v in point], list(direction)
+            ),
+        )
+    return hit
+
+
+def faces_outward(point_at, outward):
+    """
+    격자 면의 법선(u × v)이 `outward(u, v)`와 같은 쪽인지. 다르면 `build_sheet`에 `flip`을 준다.
+
+    투영한 판은 정점이 몸을 따라가므로 u · v 축을 어느 쪽으로 잡았느냐에 따라 법선이 몸 안을 볼 수 있고,
+    그러면 카메라 쪽 면이 뒷면이라 툰 음영이 빛을 등진 것으로 칠한다. 가운데 점 하나로 판단한다.
+    """
+    u, v, h = 0.5, 0.5, 1e-3
+    p = Vector(point_at(u, v))
+    pu = Vector(point_at(u + h, v))
+    pv = Vector(point_at(u, v + h))
+    return (pu - p).cross(pv - p).dot(Vector(outward(u, v))) >= 0
+
+
+def build_wrap(part, surface):
+    """
+    평면 격자를 한 방향으로 몸에 투영한 판. 배판처럼 몸 앞 · 뒤에 대는 판이 이것으로 선다.
+
+    `origin`에서 `u_axis`로 `width`, `v_axis`로 `height`만큼 펼친 평면의 정점마다 `direction`으로
+    쏴서 표면에서 `standoff`만큼 띄운다. 평면은 몸 밖에서 시작해야 한다(앞 판이면 y가 몸 앞보다 작게).
+    """
+    surface = require_surface(surface, 'wrap')
+    origin = Vector(part.get('origin', (0.0, -0.3, 0.0)))
+    u_axis = Vector(part.get('u_axis', (1.0, 0.0, 0.0)))
+    v_axis = Vector(part.get('v_axis', (0.0, 0.0, -1.0)))
+    width = part.get('width', 0.1)
+    height = part.get('height', 0.1)
+    direction = tuple(part.get('direction', (0.0, 1.0, 0.0)))
+    standoff = part.get('standoff', 0.006)
+
+    def point_at(u, v):
+        flat = origin + u_axis * (u * width) + v_axis * (v * height)
+        return tuple(projected(surface, part, flat, direction, standoff))
+
+    def outward(_u, _v):
+        return (-direction[0], -direction[1], -direction[2])
+
+    flip = not faces_outward(point_at, outward)
+    return build_sheet('Wrap', part.get('columns', 12), part.get('rows', 8), point_at, flip)
+
+
+def build_cap(part, surface):
+    """
+    구면 조각을 중심으로 투영한 판. 어깨갑옷처럼 관절을 감싸는 판이 이것으로 선다.
+
+    `center` 둘레 반지름 `radius`의 구면에서 고도 `elevation`(위에서 잰 각, 도)과 방위 `azimuth`(`out`
+    방향이 0이고 ±가 앞뒤, 도) 범위를 격자로 잡고, 정점마다 중심을 향해 쏴서 표면에서 `standoff`만큼
+    띄운다. 중심이 몸 안에 있으면 어느 정점이든 몸을 맞힌다 — 위에서 아래로 쏘는 방식은 어깨 바깥에서
+    몸을 빗나간다.
+    """
+    surface = require_surface(surface, 'cap')
+    center = Vector(part.get('center', (0.0, 0.0, 0.0)))
+    radius = part.get('radius', 0.1)
+    out = Vector(part.get('out', (1.0, 0.0, 0.0))).normalized()
+    up = Vector((0.0, 0.0, 1.0))
+    side_axis = up.cross(out)
+    e0, e1 = [radians(a) for a in part.get('elevation', (0.0, 60.0))]
+    a0, a1 = [radians(a) for a in part.get('azimuth', (-70.0, 70.0))]
+    standoff = part.get('standoff', 0.008)
+
+    def direction_at(u, v):
+        az = a0 + (a1 - a0) * u
+        el = e0 + (e1 - e0) * v
+        return (out * math.cos(az) + side_axis * math.sin(az)) * math.sin(el) + up * math.cos(el)
+
+    def point_at(u, v):
+        direction = direction_at(u, v)
+        flat = center + direction * radius
+        return tuple(projected(surface, part, flat, -direction, standoff))
+
+    def outward(u, v):
+        return tuple(direction_at(u, v))
+
+    flip = not faces_outward(point_at, outward)
+    return build_sheet('Cap', part.get('columns', 16), part.get('rows', 8), point_at, flip)
+
+
+def build_strap(part, surface):
+    """
+    (x, z) 경로를 따라 몸 앞이나 뒤에 붙는 띠. X자 끈이 이것으로 선다.
+
+    경로의 점 사이를 직선으로 잇고, 폭은 XZ 평면에서 경로에 수직인 방향으로 편 뒤 정점마다 `side`
+    방향(앞이면 -Y에서 +Y로, 뒤면 그 반대)으로 쏴서 표면에서 `standoff`만큼 띄운다. 겹치는 끈은
+    `standoff`를 조금 더 줘 위에 오게 한다.
+    """
+    surface = require_surface(surface, 'strap')
+    path = [Vector((p[0], 0.0, p[1])) for p in part.get('path', ((0.0, 0.0), (0.0, -0.3)))]
+    if len(path) < 2:
+        raise common.GateError('weapon-spec', 'strap의 path에는 점이 둘 이상 필요하다')
+    width = part.get('width', 0.03)
+    standoff = part.get('standoff', 0.006)
+    front = part.get('side', 'front') == 'front'
+    start_y = -0.5 if front else 0.5
+    direction = (0.0, 1.0, 0.0) if front else (0.0, -1.0, 0.0)
+    lengths = [(path[i + 1] - path[i]).length for i in range(len(path) - 1)]
+    total = sum(lengths)
+
+    def along(u):
+        target = u * total
+        for i, seg in enumerate(lengths):
+            if target <= seg or i == len(lengths) - 1:
+                t = min(target / seg, 1.0) if seg > 0 else 0.0
+                step = path[i + 1] - path[i]
+                return path[i] + step * t, step.normalized()
+            target -= seg
+        return path[-1], (path[-1] - path[-2]).normalized()
+
+    def point_at(u, v):
+        point, tangent = along(u)
+        across = Vector((-tangent.z, 0.0, tangent.x))
+        flat = point + across * ((v - 0.5) * width)
+        flat.y = start_y
+        return tuple(projected(surface, part, flat, direction, standoff))
+
+    def outward(_u, _v):
+        return (-direction[0], -direction[1], -direction[2])
+
+    flip = not faces_outward(point_at, outward)
+    return build_sheet('Strap', part.get('columns', 16), part.get('rows', 2), point_at, flip)
+
+
+def build_horn(part):
+    """
+    굽은 원뿔. 어깨 위 뿔이 이것으로 선다. 원점이 뿌리 원의 중심이고 위(+Z)로 솟다가 `lean` 쪽으로
+    굽는다.
+
+    축은 반지름 `length / bend`의 원호이고 굵기는 뿌리 `radius`에서 끝 `tip`까지 줄어든다. 격자의
+    u가 둘레, v가 축 방향이라 u=0과 u=1이 같은 점에 와 이음새가 닫힌다. 법선은 둘레 × 축이라 바깥을
+    본다.
+    """
+    length = part.get('length', 0.1)
+    radius = part.get('radius', 0.015)
+    tip = part.get('tip', 0.002)
+    bend = radians(part.get('bend', 90.0))
+    lean = Vector(part.get('lean', (1.0, 0.0, 0.0)))
+    lean.z = 0.0
+    lean = lean.normalized() if lean.length > 1e-9 else Vector((1.0, 0.0, 0.0))
+    up = Vector((0.0, 0.0, 1.0))
+    curve_radius = length / bend if bend > 1e-6 else 0.0
+
+    def point_at(u, v):
+        a = bend * v
+        if curve_radius > 0:
+            centre = lean * (curve_radius * (1.0 - math.cos(a))) + up * (curve_radius * math.sin(a))
+        else:
+            centre = up * (length * v)
+        tangent = lean * math.sin(a) + up * math.cos(a)
+        normal = lean * math.cos(a) - up * math.sin(a)
+        binormal = tangent.cross(normal)
+        r = radius + (tip - radius) * v
+        phi = 2.0 * math.pi * u
+        return tuple(centre + normal * (r * math.cos(phi)) + binormal * (r * math.sin(phi)))
+
+    return build_sheet('Horn', part.get('columns', 12), part.get('rows', 10), point_at, part.get('flip', False))
+
+
+def build_part(part, surface=None):
     """
     부품 하나를 세운다. 모르는 종류면 이름을 말하며 실패한다.
 
     @param part `type`과 그 종류의 인자, `location` · `rotation`(도) · `scale` · `color`.
         재질 선택지는 `group`(`MATERIAL_GROUPS`, 기본 `Part`) · `emission`(발광 세기) ·
-        `alpha`(0~1, 1보다 작으면 반투명으로 섞는다)
+        `alpha`(0~1, 1보다 작으면 반투명으로 섞는다). `snap`(`from` · `direction` · `standoff`)이
+        있으면 `location` 대신 `from`에서 `direction`으로 쏴 몸 표면에서 `standoff`만큼 띄운 자리에 놓는다
+    @param surface 몸 표면(`Surface`). `wrap` · `cap` · `strap`과 `snap`에 필요하고, 없으면 그 부품은 실패한다
     @returns 만들어진 오브젝트
     """
     kind = part.get('type')
@@ -206,6 +437,14 @@ def build_part(part):
         build_cloth(part)
     elif kind == 'wing':
         build_wing(part)
+    elif kind == 'wrap':
+        build_wrap(part, surface)
+    elif kind == 'cap':
+        build_cap(part, surface)
+    elif kind == 'strap':
+        build_strap(part, surface)
+    elif kind == 'horn':
+        build_horn(part)
     else:
         raise common.GateError('weapon-spec', '모르는 부품 종류 {0}'.format(kind))
 
@@ -217,6 +456,15 @@ def build_part(part):
 
     obj = bpy.context.active_object
     obj.location = Vector(part.get('location', (0.0, 0.0, 0.0)))
+    snap = part.get('snap')
+    if snap:
+        obj.location = projected(
+            require_surface(surface, kind),
+            part,
+            snap.get('from', (0.0, 0.0, 0.0)),
+            snap.get('direction', (0.0, 1.0, 0.0)),
+            snap.get('standoff', 0.0),
+        )
     obj.rotation_euler = Euler([radians(a) for a in part.get('rotation', (0.0, 0.0, 0.0))])
     obj.scale = Vector(part.get('scale', (1.0, 1.0, 1.0)))
 

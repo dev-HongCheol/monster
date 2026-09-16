@@ -109,48 +109,27 @@ def move_to_holdout(objects):
     return len(objects)
 
 
-def attach_weapon(armature, spec, bone_name, yaw):
+def attach_weapon(armature, spec, bone_name, yaw, body_objects=None):
     """
     부품으로 무기를 세워 본에 붙인다. 망토 · 날개 · 갑옷 같은 장비도 같은 식으로 붙인다.
 
     무기는 손 본에, 장비는 사양의 `bone`(등이면 `J_Bip_C_UpperChest`)에 붙는다. 어느 쪽이든 사양의
     `grip` 점이 본의 머리 위치에 오고, 부품은 본의 회전이 아니라 캐릭터 방향만 따라 곧게 선다
     (아래 본문 주석).
+
+    @param body_objects 몸 메시 목록. 주면 끈 · 판처럼 몸 표면에 붙는 부품(`weapons.Surface`)을 세울 수 있다
     """
-    from mathutils import Vector
+    from math import radians
+
+    from mathutils import Euler, Matrix, Vector
 
     parts = spec.get('parts') or []
     if not parts:
         raise common.GateError('weapon-spec', '무기 사양에 부품이 없다')
 
-    built = [weapons.build_part(part) for part in parts]
-    for obj in built:
-        obj.select_set(True)
-    bpy.context.view_layer.objects.active = built[0]
-    if len(built) > 1:
-        bpy.ops.object.join()
-    weapon = bpy.context.active_object
-    weapon.name = spec.get('id', 'Weapon')
-
-    # **합친 뒤 변환을 메시에 구워 넣는다.** 그래야 오브젝트의 로컬 좌표가 사양 좌표와 같아져
-    # `grip`을 그대로 쓸 수 있다. 2026-09-16에 두 가지가 여기서 어긋났다.
-    #
-    # - `join`은 합친 오브젝트의 **원점을 활성 오브젝트의 원점**으로 잡는데 그것은 첫 부품의
-    #   `location`이다(지팡이는 대의 중심 z 0.625). 그래서 지팡이가 정확히 0.625m 내려앉았다.
-    # - `join`은 첫 부품의 **회전도 오브젝트 변환으로 남긴다.** 방패의 첫 부품이 90도 누운
-    #   원판이라, 아래에서 `matrix_world`를 덮어쓰는 순간 그 회전이 지워져 방패가 상 위에 놓인
-    #   접시처럼 납작하게 누웠다(실측 z 두께 0.14, 지름이 X로 눕는다).
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-
     bone = armature.pose.bones.get(bone_name)
     if bone is None:
         raise common.GateError('retarget-bone', '무기를 붙일 본이 없다: ' + bone_name)
-
-    from math import radians
-
-    from mathutils import Euler, Matrix
-
-    hand = armature.matrix_world @ bone.matrix
 
     # **무기는 손 본의 회전이 아니라 곧게 세운다.** 손은 팔 자세 때문에 -105도로 꺾여 있어서,
     # 그 회전을 무기에 물리면 지팡이가 팔뚝 방향으로 눕는다. 2026-09-16에 실제로 그렇게 나왔다 —
@@ -170,6 +149,29 @@ def attach_weapon(armature, spec, bone_name, yaw):
     offset = upright.to_3x3() @ Vector(grip)
     placed = upright.copy()
     placed.translation = (armature.matrix_world @ bone.head) - offset
+
+    # **놓일 자리를 부품보다 먼저 정한다.** 몸 표면에 붙는 부품(`wrap` · `cap` · `strap` · `snap`)은
+    # 부품 좌표의 점을 세계 좌표로 옮겨 몸에 광선을 쏴야 하는데, 그 변환이 `placed`다. 몸 목록이
+    # 없으면 그런 부품은 `weapons.build_part`가 실패로 접는다.
+    surface = weapons.Surface(body_objects, placed) if body_objects else None
+    built = [weapons.build_part(part, surface) for part in parts]
+    for obj in built:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = built[0]
+    if len(built) > 1:
+        bpy.ops.object.join()
+    weapon = bpy.context.active_object
+    weapon.name = spec.get('id', 'Weapon')
+
+    # **합친 뒤 변환을 메시에 구워 넣는다.** 그래야 오브젝트의 로컬 좌표가 사양 좌표와 같아져
+    # `grip`을 그대로 쓸 수 있다. 2026-09-16에 두 가지가 여기서 어긋났다.
+    #
+    # - `join`은 합친 오브젝트의 **원점을 활성 오브젝트의 원점**으로 잡는데 그것은 첫 부품의
+    #   `location`이다(지팡이는 대의 중심 z 0.625). 그래서 지팡이가 정확히 0.625m 내려앉았다.
+    # - `join`은 첫 부품의 **회전도 오브젝트 변환으로 남긴다.** 방패의 첫 부품이 90도 누운
+    #   원판이라, 아래에서 `matrix_world`를 덮어쓰는 순간 그 회전이 지워져 방패가 상 위에 놓인
+    #   접시처럼 납작하게 누웠다(실측 z 두께 0.14, 지름이 X로 눕는다).
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
     # **부모로 붙이지 않고 월드에 그대로 놓는다.** `parent_type='BONE'`은 본의 **꼬리**를 원점으로
     # 삼아서, 붙이는 순간 월드 행렬이 `본꼬리 × 부모역행렬 × 기준행렬`로 다시 계산된다. 그 결과
@@ -302,7 +304,7 @@ def main():
             gear_spec = json.load(handle)
         if not gear_spec.get('bone'):
             raise common.GateError('weapon-spec', '장비 사양에 붙일 본(`bone`)이 없다')
-        gear = attach_weapon(armature, gear_spec, gear_spec['bone'], yaw)
+        gear = attach_weapon(armature, gear_spec, gear_spec['bone'], yaw, body_objects)
         gear_lo, gear_hi = common.object_bounds([gear])
         detail['gear'] = gear.name
         detail['gear_bone_head'] = [

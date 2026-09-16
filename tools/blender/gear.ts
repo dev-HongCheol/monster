@@ -146,6 +146,19 @@ const SHOULDER_BLADE = { x: 0.045, y: 0.068, z: 0.65 };
 /** 날개 뿌리 면의 높이(m). 날개뼈 열의 등 길이(z 0.48~0.76) 안에 들어가는 값이다. */
 const WING_ROOT_HEIGHT = 0.22;
 
+/** 노란빛이 도는 금색(사용자 지정 2026-09-17). */
+const GOLD: Rgb = [220, 185, 60];
+
+/** 세계 좌표(m)를 `CHEST_BONE` 부품 좌표로. */
+function atChest(x: number, y: number, z: number): [number, number, number] {
+  return [x, y - UPPER_CHEST_HEAD.y, z - UPPER_CHEST_HEAD.z];
+}
+
+/** 세계 z(m)를 `CHEST_BONE` 부품 z로. `strap`의 (x, z) 경로처럼 y가 없는 곳에 쓴다. */
+function chestZ(z: number): number {
+  return z - UPPER_CHEST_HEAD.z;
+}
+
 /** 허리 장비가 붙는 본. */
 const HIPS_BONE = 'J_Bip_C_Hips';
 
@@ -269,6 +282,125 @@ function wings(fold: number): IGearSpec {
   return { id: 'wings', bone: CHEST_BONE, parts: [wing(1), wing(-1)] };
 }
 
+/**
+ * 화려한 장비 — 사용자가 준 사진(가죽 어깨갑옷 + 가슴에서 X자로 교차하는 끈 + 버클, 어깨의 굽은 뿔)을
+ * 금색 금속으로 옮긴 것이다(2026-09-17). 사진과 다른 점은 사용자 지정이다 — 털 장식은 뺐고, 끈은
+ * 등에서도 X자로 교차하며, 명치 아래에 배를 덮는 판이 있고, 교차점에 파란 발광 보석이 있다. 끈도
+ * 금색 금속 띠다.
+ *
+ * 판 · 끈 · 보석 · 버클은 전부 몸 표면에 투영해 붙인다(`weapons.py Surface`). 첫 판의 어깨 구는 어깨
+ * 관절보다 7.7cm 위에 떠서 「흰 계란 두 개」로 보였고(사용자 판정 2026-09-17), 재질도 상의 규칙만 복사해
+ * 금속으로 읽힐 재료가 없었다. 금속은 이 경우의 `toon`(어두운 음영색 + 금속 matcap)이 만든다.
+ *
+ * 좌표는 세계 기준(m)으로 적고 `atChest` · `chestZ`로 부품 좌표로 옮긴다. 어깨 관절은 (±0.067, 0.028,
+ * 0.714), 위팔 축은 z 0.655에서 x ±0.104다(2026-09-16 실측).
+ */
+function armor(): IGearSpec {
+  const sides = [1, -1] as const;
+  const shoulder = (side: 1 | -1): IGearPart[] => [
+    {
+      // 어깨 위 판 — 관절을 중심으로 한 구면 조각을 어깨에 투영한다. 고도 0이 꼭대기다
+      type: 'cap',
+      group: 'Gear',
+      center: atChest(side * 0.067, 0.028, 0.714),
+      radius: 0.1,
+      out: [side, 0, 0],
+      elevation: [0, 70],
+      azimuth: [-75, 75],
+      standoff: 0.008,
+      columns: 16,
+      rows: 8,
+      color: GOLD,
+    },
+    {
+      // 위팔 판 — 어깨 판 아래에서 팔 바깥을 감싼다. 중심이 위팔 축 위에 있다
+      type: 'cap',
+      group: 'Gear',
+      center: atChest(side * 0.104, 0.018, 0.655),
+      radius: 0.09,
+      out: [side, 0, 0],
+      elevation: [50, 105],
+      azimuth: [-65, 65],
+      standoff: 0.007,
+      columns: 14,
+      rows: 6,
+      color: GOLD,
+    },
+    {
+      // 뿔 — 어깨 판 위에 앉혀 바깥 · 뒤로 굽는다. 위에서 아래로 쏴 어깨 표면 + 판 두께에 뿌리를 둔다
+      type: 'horn',
+      group: 'Gear',
+      length: 0.11,
+      radius: 0.017,
+      tip: 0.002,
+      bend: 100,
+      lean: [side * 0.7, 0.5, 0],
+      snap: { from: atChest(side * 0.078, 0.02, 0.8), direction: [0, 0, -1], standoff: 0.008 },
+      color: GOLD,
+    },
+  ];
+  // 어깨 판 앞(뒤) 가운데에서 반대쪽 허리로. 두 번째 끈은 조금 더 띄워 교차점에서 위에 겹친다
+  const straps = (face: 'front' | 'back'): IGearPart[] =>
+    sides.map((side, i) => ({
+      type: 'strap',
+      group: 'Gear',
+      side: face,
+      path: [
+        [side * -0.07, chestZ(0.72)],
+        [side * 0.09, chestZ(0.455)],
+      ],
+      width: 0.032,
+      standoff: 0.006 + i * 0.004,
+      columns: 16,
+      rows: 2,
+      color: GOLD,
+    }));
+  return {
+    id: 'armor',
+    bone: CHEST_BONE,
+    parts: [
+      ...shoulder(1),
+      ...shoulder(-1),
+      ...straps('front'),
+      ...straps('back'),
+      {
+        // 배판 — 명치 아래에서 허리까지 앞면에 투영한 판. 폭은 허리 반폭(0.114) 안이다
+        type: 'wrap',
+        group: 'Gear',
+        origin: atChest(-0.08, -0.4, 0.565),
+        u_axis: [1, 0, 0],
+        v_axis: [0, 0, -1],
+        width: 0.16,
+        height: 0.115,
+        direction: [0, 1, 0],
+        standoff: 0.008,
+        columns: 12,
+        rows: 8,
+        color: GOLD,
+      },
+      ...sides.map((side) => ({
+        // 버클 — 앞 끈의 허리 끝
+        type: 'cube',
+        group: 'Gear',
+        size: 0.03,
+        scale: [1, 0.3, 1.1],
+        snap: { from: atChest(side * 0.09, -0.4, 0.455), direction: [0, 1, 0], standoff: 0.006 },
+        color: GOLD,
+      })),
+      {
+        // 명치 보석 — 앞 끈이 교차하는 자리(z 0.60)에 반쯤 박힌 발광 구. 이전과 같은 파란 구다
+        type: 'sphere',
+        group: 'Gear',
+        radius: 0.022,
+        subdivisions: 2,
+        snap: { from: atChest(0, -0.4, 0.6), direction: [0, 1, 0], standoff: 0.012 },
+        color: [80, 200, 255],
+        emission: 4.0,
+      },
+    ],
+  };
+}
+
 /** 사람이 고를 경우 표. */
 export const CASES: readonly IGearCase[] = [
   {
@@ -304,37 +436,22 @@ export const CASES: readonly IGearCase[] = [
   },
   {
     id: 'armor',
-    label: '화려한 장비 — 금속 어깨갑옷과 빛나는 보석',
+    label: '화려한 장비 — 금색 어깨갑옷 · X자 끈 · 배판 · 뿔 · 명치 보석',
     checks: [
-      '어깨갑옷이 금속으로 읽히나, 천이나 플라스틱처럼 보이나',
-      '보석의 빛이 그늘에 묻히지 않나',
-      '720p에서 보석이 한 점으로라도 남나',
+      '판 · 끈 · 뿔이 금속으로 읽히나 (반사점이 보이나, 흰 덩어리로 보이나)',
+      '끈과 배판이 몸에 붙어 보이나 (앞 · 뒤 · 3/4)',
+      '명치 보석의 빛이 그늘에 묻히지 않나',
+      '720p에서 보석 · 뿔 · 끈이 남나',
     ],
-    spec: {
-      id: 'armor',
-      bone: CHEST_BONE,
-      parts: [
-        ...([1, -1] as const).map((side) => ({
-          type: 'sphere',
-          group: 'Gear',
-          radius: 0.07,
-          subdivisions: 3,
-          location: [side * 0.14, 0.0, 0.16],
-          scale: [1.0, 1.0, 0.7],
-          color: [190, 190, 205],
-        })),
-        {
-          type: 'sphere',
-          group: 'Gear',
-          radius: 0.022,
-          subdivisions: 2,
-          location: [0, -0.14, 0.1],
-          color: [80, 200, 255],
-          emission: 4.0,
-        },
-      ],
-    },
+    spec: armor(),
     hardEdge: false,
+    // 금속 — 어두운 음영색(기본색의 35%) · 넓은 그늘 · 도구가 만든 금속 matcap의 반사점
+    toon: {
+      shade_ratio: 0.35,
+      shade_threshold: 0.5,
+      matcap: [1, 1, 1],
+      matcap_image: 'matcap_gold.png',
+    },
   },
   {
     id: 'ornament',
@@ -441,7 +558,13 @@ function writeJson(file: string, value: unknown): string {
  */
 function toonFor(paths: IPaths, item: IGearCase): { original: string; hard: string } {
   if (!item.toon) return { original: paths.toonOriginal, hard: paths.toonHard };
-  const override = item.toon;
+  const override = { ...item.toon };
+  // matcap 파일은 산출물 자리에 도구가 만들고 절대 경로로 넘긴다 — `toon.py`는 경로만 안다
+  if (typeof override.matcap_image === 'string') {
+    const file = path.join(paths.outDir, override.matcap_image);
+    if (!fs.existsSync(file)) fs.writeFileSync(file, encodePng(metalMatcap(256)));
+    override.matcap_image = file;
+  }
   const merged = (base: IToonSpec): IToonSpec => ({
     id: `${base.id}_${item.id}`,
     materials: { ...base.materials, GEAR: { ...base.materials.GEAR, ...override } },
@@ -453,6 +576,41 @@ function toonFor(paths: IPaths, item: IGearCase): { original: string; hard: stri
     ),
     hard: writeJson(path.join(paths.outDir, `toon_hard_${item.id}.json`), merged(TOON_HARD)),
   };
+}
+
+/**
+ * 금속용 matcap. 구 법선에 따라 따뜻한 반사점 하나와 약한 보조 반사, 넓은 그라디언트를 준다.
+ *
+ * 애드온의 matcap 항은 더해지기만 해서 어둡게는 못 하므로(`toon.py`) 어두운 면은 `shade_ratio`가 만들고,
+ * 여기서는 밝은 반사만 든다. 원 밖은 검정(효과 없음)이다. 값을 파일로 두지 않고 만드는 이유는 산출물
+ * 자리가 추적되지 않는 폴더라서다.
+ */
+function metalMatcap(size: number): IRgbaImage {
+  const unit = (v: [number, number, number]): [number, number, number] => {
+    const n = Math.hypot(v[0], v[1], v[2]);
+    return [v[0] / n, v[1] / n, v[2] / n];
+  };
+  const key = unit([-0.45, 0.65, 0.6]);
+  const fill = unit([0.6, -0.3, 0.75]);
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const nx = ((x + 0.5) / size) * 2 - 1;
+      const ny = 1 - ((y + 0.5) / size) * 2;
+      const r2 = nx * nx + ny * ny;
+      const at = (y * size + x) * 4;
+      data[at + 3] = 255;
+      if (r2 > 1) continue;
+      const nz = Math.sqrt(1 - r2);
+      const d1 = Math.max(0, nx * key[0] + ny * key[1] + nz * key[2]);
+      const d2 = Math.max(0, nx * fill[0] + ny * fill[1] + nz * fill[2]);
+      const v = Math.min(1, d1 ** 60 * 0.95 + d2 ** 25 * 0.3 + d1 * 0.12);
+      data[at] = Math.round(v * 255);
+      data[at + 1] = Math.round(v * 0.96 * 255);
+      data[at + 2] = Math.round(v * 0.85 * 255);
+    }
+  }
+  return { width: size, height: size, data };
 }
 
 /**
