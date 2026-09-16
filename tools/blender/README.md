@@ -90,6 +90,7 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `motion-path` | 모션 파일이 없거나(`--motion`이 빠진 경우 포함), 형식을 모르거나, 아마추어가 없다 | glb·gltf·fbx만 받는다. 경로를 확인한다 | `retarget_render.py` |
 | `motion-action` | 그 이름의 액션이 없거나, 길이가 0이거나, `--frames`가 1 이상의 정수가 아니다 | 액션이 없으면 메시지가 걷기로 보이는 액션 이름을 함께 주니 `--action`에 그것을 넘긴다. `--frames` 오류면 1 이상의 정수를 준다 | `retarget_render.py` |
 | `retarget-bone` | 대응표의 본을 한쪽 골격에서 못 찾았거나, `SWING_CHAIN`이 적은 부모가 모션 골격의 실제 부모와 다르다 | 못 찾았으면 메시지가 그쪽을 `모션:`·`대상:` 접두어로 말하니 `BONE_MAP`을 그 이름에 맞춘다. 부모가 다르면 메시지가 실제 부모 이름을 말하니 `SWING_CHAIN`을 그 이름에 맞춘다 | `retarget_render.py` |
+| `weapon-spec` | 무기 후보 표가 없거나, 후보가 0개거나, 부품이 없거나, 모르는 부품 종류·시점이다 | 표를 만드는 것은 `weapons.ts`이므로 그쪽을 거쳐 부른다. 부품 종류를 늘리려면 `weapons.py`의 `build_part`에 분기를 더한다 | `weapons.py` |
 
 **메시지에 실측값을 박는다.** 「버전이 맞지 않는다」가 아니라 「기대 4.2~5.2, 지금 4.1.2」로
 적는다. 이 레포의 다른 도구가 이미 그 형태다 — `tools/art/Postprocess.ts`의 예외가 수치를 담고,
@@ -108,6 +109,9 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `retarget_render.py` | 게이트 0c와 2. 모션을 입히고 프레임을 굽는다. 본 대응표와 관절별 흔들림 비율(`SWING_SCALE`)을 든다 | 있음 |
 | `ComparisonSheet.ts` | 게이트 1 비교 시트의 순수 로직 — 엔진식 축소 · 알파 합성 · 얼굴 가림 · 칸 배치. 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `sheet.ts` | 비교 시트 실행기. 3D 프레임 한 장과 출하된 2D 정면을 원본 · 1440p · 720p 세 줄로 붙인다 | 있음 |
+| `Atlas.ts` | 층별 프레임을 트림해 한 장에 담는 순수 로직 — 이름 규칙 · 선반 패킹 · plist 값 · 왕복 복원. 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
+| `weapons.py` | 지팡이 · 방패 후보를 프리미티브로 세워 굽는다. 모양의 정의는 받는 JSON에 있고 이 파일은 세우기만 한다 | 있음 |
+| `weapons.ts` | 무기 후보 실행기. 후보 표를 들고, 굽고, 한 장짜리 비교 시트로 붙인다 | 있음 |
 
 **`smoke.py`가 독립인 것이 설계다.** 공용 모듈을 거치면 애드온이나 모델 때문에 난 실패가 환경
 실패로 보고되고, 그러면 「여기서 막히면 VRoid를 설치하지 않는다」는 규칙이 조용히 깨진다. 되돌릴
