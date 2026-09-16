@@ -107,14 +107,23 @@ interface IGearCase {
   spec: IGearSpec;
   /** 경계를 딱딱하게 한 판도 굽는가 — 주름 · 곡면이 큰 천과 막에서만 본다 */
   hardEdge: boolean;
+  /**
+   * 이 경우의 장비에만 덮는 툰 값(`GEAR` 아래 키). 기준 컷의 조명은 앞 위에서 오므로 옷과 같은
+   * 문턱으로는 세로 주름이 그늘지지 않는다 — `ops-blender-toon.md` §3.2로 계산하면 주름 면이
+   * 73° 넘게 기울어야 한다. 그래서 천은 여기서 문턱을 따로 준다
+   */
+  toon?: Record<string, unknown>;
   /** 흔들림 재생. `t`는 0~1(한 주기 안의 위치)이고 그 순간의 사양을 돌려준다 */
   flutter?: { view: ViewId; at: (t: number) => IGearSpec };
 }
 
 /**
  * 등 뒤 장비가 붙는 본. 이 본의 머리는 어깨가 아니라 가슴 높이라(2026-09-16 실측 z 0.631, 키 1.104m)
- * 망토 윗단 · 어깨갑옷은 부품 좌표로 17cm쯤 올린다. 처음에 10cm만 올렸더니 망토 윗단이 긴 머리카락
- * 끝보다 아래에 걸려 어깨에 두른 모양이 안 됐다.
+ * 부품 좌표로 올려 쓴다. 기준 자세의 실측(2026-09-16)은 목 밑 z 0.744, 어깨 관절 z 0.714 · x ±0.067,
+ * 어깨 바깥 x ±0.10, 머리카락을 뺀 등 표면 y 0.06~0.08(발목까지 최대 0.082)이다.
+ *
+ * 망토 윗단은 목 밑(+11.3cm)에 건다. 17cm로 올렸던 판은 윗단이 뒤통수에서 시작해 어깨에 두른 모양이
+ * 아니었다(사용자 판정 2026-09-16 — 25px 아래로). 어깨갑옷의 16cm는 아직 판정 전이다.
  */
 const CHEST_BONE = 'J_Bip_C_UpperChest';
 
@@ -122,32 +131,43 @@ const CHEST_BONE = 'J_Bip_C_UpperChest';
 const HIPS_BONE = 'J_Bip_C_Hips';
 
 /**
- * 망토 한 장. 위 가장자리를 어깨 높이 등 뒤에 걸고 무릎 근처까지 늘어뜨린다.
+ * 망토. 위 가장자리를 목 밑 높이(z 0.744) 등 뒤 10cm에 걸고 정강이 중간(z 0.18)까지 늘어뜨린다.
+ * 폭은 위가 어깨 폭(실측 0.21)에 맞춘 0.22, 아래가 0.34다 — 첫 판의 0.34 · 0.52는 소매 폭이라
+ * 사용자가 2/3로 줄이라고 판정했다(2026-09-16). 등 뒤 10cm는 몸의 등 표면(최대 y 0.082)에서
+ * 주름 깊이만큼 안으로 들어와도 몸을 뚫지 않는 거리다.
+ *
+ * **바깥 판과 안감 판 두 장이다.** MToon에는 뒷면 색이 없어 한 장으로는 안감 색이 안 나온다. 같은
+ * 주름의 판을 3mm 안쪽(-Y)에 뒤집어 한 장 더 두면, 앞모습에서는 안감 판이 카메라에 가까워 안감 색이,
+ * 뒷모습에서는 바깥 판이 가까워 겉 색이 보인다. 두 판은 Y로만 밀려 있어 주름이 아무리 가팔라도
+ * 서로 뚫지 않는다.
+ *
+ * 주름은 위에서도 잡혀 있어야 망토로 읽힌다. 첫 판의 윗단 진폭 4mm는 평평한 판으로 보였다.
+ *
  * @param phase 주름 사인파의 위상(라디안)
  * @param sway 아래 끝을 등 뒤로 들어 올리는 양(m)
  */
 function cape(phase: number, sway: number): IGearSpec {
+  const sheet = (flip: boolean, y: number, color: Rgb): IGearPart => ({
+    type: 'cloth',
+    group: 'Gear',
+    width: 0.22,
+    width_bottom: 0.34,
+    length: 0.56,
+    folds: 4,
+    depth: 0.04,
+    depth_top: 0.01,
+    phase,
+    sway,
+    columns: 40,
+    rows: 20,
+    flip,
+    location: [0, y, 0.113],
+    color,
+  });
   return {
     id: 'cape',
     bone: CHEST_BONE,
-    parts: [
-      {
-        type: 'cloth',
-        group: 'Gear',
-        width: 0.34,
-        width_bottom: 0.52,
-        length: 0.62,
-        folds: 5,
-        depth: 0.03,
-        depth_top: 0.004,
-        phase,
-        sway,
-        columns: 40,
-        rows: 20,
-        location: [0, 0.12, 0.17],
-        color: [150, 30, 40],
-      },
-    ],
+    parts: [sheet(false, 0.1, [150, 30, 40]), sheet(true, 0.097, [50, 35, 80])],
   };
 }
 
@@ -181,12 +201,13 @@ export const CASES: readonly IGearCase[] = [
     label: '망토',
     checks: [
       '주름에 그늘이 흉터처럼 얼룩지나 (원본 음영 · 딱딱한 경계 두 판 모두)',
-      '앞모습에서 몸 옆으로 보이는 안감이 어떤 색으로 나오나',
+      '앞모습에서 몸 옆으로 보이는 안감이 겉과 다른 색으로 갈리나',
       '긴 머리카락과 망토가 서로 뚫고 나오나',
       '720p에서 망토가 망토로 읽히나',
     ],
     spec: cape(0, 0.06),
     hardEdge: true,
+    toon: { shade_threshold: 0.8 },
     flutter: {
       view: 'back',
       at: (t) => cape(2 * Math.PI * t, 0.06 + 0.04 * Math.sin(2 * Math.PI * t)),
@@ -302,14 +323,20 @@ export const CASES: readonly IGearCase[] = [
   },
 ];
 
+/** 툰 사양 — `toon.py`가 읽는다. `materials`의 키는 분류(`GEAR`)다. */
+interface IToonSpec {
+  id: string;
+  materials: Record<string, Record<string, unknown>>;
+}
+
 /** 장비에 입히는 툰 사양. 몸은 건드리지 않고(`*` 없음) 장비만 상의의 음영 규칙을 받는다. */
-const TOON_ORIGINAL = {
+const TOON_ORIGINAL: IToonSpec = {
   id: 'gear_original',
   materials: { GEAR: { like: 'Tops_CLOTH', double_sided: true } },
 };
 
 /** 딱딱한 경계 판. 장비의 계단 정도만 1로 올린다. */
-const TOON_HARD = {
+const TOON_HARD: IToonSpec = {
   id: 'gear_hard',
   materials: { GEAR: { like: 'Tops_CLOTH', double_sided: true, shading_toony: 1 } },
 };
@@ -349,6 +376,26 @@ function resolveBlender(): string {
 function writeJson(file: string, value: unknown): string {
   fs.writeFileSync(file, `${JSON.stringify(value, null, 1)}\n`, 'utf-8');
   return file;
+}
+
+/**
+ * 경우 하나가 쓸 툰 사양 파일 둘(원본 음영 · 딱딱한 경계). 경우가 `toon`으로 `GEAR` 값을 덮으면
+ * 공용 파일 대신 그 경우 이름을 붙인 파일을 따로 쓴다 — 공용 파일을 고치면 다른 경우까지 바뀐다.
+ */
+function toonFor(paths: IPaths, item: IGearCase): { original: string; hard: string } {
+  if (!item.toon) return { original: paths.toonOriginal, hard: paths.toonHard };
+  const override = item.toon;
+  const merged = (base: IToonSpec): IToonSpec => ({
+    id: `${base.id}_${item.id}`,
+    materials: { ...base.materials, GEAR: { ...base.materials.GEAR, ...override } },
+  });
+  return {
+    original: writeJson(
+      path.join(paths.outDir, `toon_original_${item.id}.json`),
+      merged(TOON_ORIGINAL),
+    ),
+    hard: writeJson(path.join(paths.outDir, `toon_hard_${item.id}.json`), merged(TOON_HARD)),
+  };
 }
 
 /**
@@ -454,6 +501,7 @@ function cells(file: string): { source: IRgbaImage; game: IRgbaImage } {
 function runCase(paths: IPaths, item: IGearCase): Record<string, unknown>[] {
   const dir = paths.outDir;
   const specFile = writeJson(path.join(dir, `${item.id}.json`), item.spec);
+  const toon = toonFor(paths, item);
   const rows: IRgbaImage[][] = [];
   const numbers: Record<string, unknown>[] = [];
 
@@ -468,7 +516,7 @@ function runCase(paths: IPaths, item: IGearCase): Record<string, unknown>[] {
       layer: 'whole',
       yaw: view.yaw,
       gearSpec: specFile,
-      toon: paths.toonOriginal,
+      toon: toon.original,
       weapons: true,
     });
     const hard = `${base}_hard.png`;
@@ -478,7 +526,7 @@ function runCase(paths: IPaths, item: IGearCase): Record<string, unknown>[] {
         layer: 'whole',
         yaw: view.yaw,
         gearSpec: specFile,
-        toon: paths.toonHard,
+        toon: toon.hard,
         weapons: true,
       });
     }
@@ -488,7 +536,7 @@ function runCase(paths: IPaths, item: IGearCase): Record<string, unknown>[] {
       layer: 'whole',
       yaw: view.yaw,
       gearSpec: specFile,
-      toon: paths.toonOriginal,
+      toon: toon.original,
     });
     const layer = `${base}_layer.png`;
     bake(paths, {
@@ -496,7 +544,7 @@ function runCase(paths: IPaths, item: IGearCase): Record<string, unknown>[] {
       layer: 'gear',
       yaw: view.yaw,
       gearSpec: specFile,
-      toon: paths.toonOriginal,
+      toon: toon.original,
     });
 
     const layerImg = read(layer);
@@ -534,6 +582,7 @@ function runFlutter(paths: IPaths, item: IGearCase): { original: string[]; hard:
   const dir = path.join(paths.outDir, 'flutter');
   fs.mkdirSync(dir, { recursive: true });
   const yaw = VIEWS.find((v) => v.id === flutter.view)?.yaw ?? 0;
+  const files = toonFor(paths, item);
   const names = { original: [] as string[], hard: [] as string[] };
 
   for (let i = 0; i < FLUTTER_FRAMES; i++) {
@@ -544,7 +593,7 @@ function runFlutter(paths: IPaths, item: IGearCase): { original: string[]; hard:
     for (const kind of ['original', 'hard'] as const) {
       const name = `${item.id}_${kind}_${i}`;
       const file = path.join(dir, `${name}.png`);
-      const toon = kind === 'original' ? paths.toonOriginal : paths.toonHard;
+      const toon = kind === 'original' ? files.original : files.hard;
       bake(paths, { out: file, layer: 'whole', yaw, gearSpec: specFile, toon, weapons: true });
       const img = read(file);
       fs.writeFileSync(
