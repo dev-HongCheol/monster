@@ -43,26 +43,26 @@ import { writeChosenSpecs } from './weapons.ts';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 /** 산출물 자리. 추적되지 않는 스크래치다. */
-const OUT_DIR = 'docs/temp/3d-gate/gear';
+export const OUT_DIR = 'docs/temp/3d-gate/gear';
 
 /** 상의 A를 입은 판. `--vrm`으로 바꿀 수 있다 — 생산 `.vrm`은 커밋하지 않아 장비마다 경로가 다르다. */
-const DEFAULT_VRM = 'art-source/player/2026-09-16-player-3d/player_top_a.vrm';
+export const DEFAULT_VRM = 'art-source/player/2026-09-16-player-3d/player_top_a.vrm';
 
 /**
  * 층 캔버스(px). 날개가 기준 몸 캔버스 246px을 가로로 넘으므로 넓힌다(ADR 009).
  *
  * 가로는 기준 246과 홀짝이 같아야 한다. 어긋나면 층 중심이 반 픽셀 밀려 `probe_layers.py`가 거부한다.
  */
-const LAYER = { width: 600, height: PLAYER_FRAME_SPEC.height };
+export const LAYER = { width: 600, height: PLAYER_FRAME_SPEC.height };
 
 /** 720p에서 층 캔버스가 차지하는 크기. 기준 캔버스 246px이 48단위로 보이는 배율을 그대로 쓴다. */
-const GAME_720P = {
+export const GAME_720P = {
   width: Math.round((LAYER.width * 48) / PLAYER_FRAME_SPEC.width),
   height: Math.round((LAYER.height * 96) / PLAYER_FRAME_SPEC.height),
 };
 
 /** 방향. 카메라는 그대로 두고 모델을 돌린다(`probe_layers.py`의 `--yaw`). */
-const VIEWS = [
+export const VIEWS = [
   { id: 'front', yaw: 0 },
   { id: 'back', yaw: 180 },
   { id: 'three_quarter', yaw: 45 },
@@ -72,10 +72,10 @@ const VIEWS = [
   { id: 'left', yaw: 300 },
 ] as const;
 
-type ViewId = (typeof VIEWS)[number]['id'];
+export type ViewId = (typeof VIEWS)[number]['id'];
 
 /** 경우가 `views`를 안 주면 굽는 방향. 시트 줄 순서이기도 하다. */
-const DEFAULT_VIEWS: readonly ViewId[] = ['front', 'back', 'three_quarter'];
+export const DEFAULT_VIEWS: readonly ViewId[] = ['front', 'back', 'three_quarter'];
 
 /** 채널 차가 이 값을 넘어야 바뀐 픽셀로 센다. `layers.ts`와 같은 값이다. */
 const DIFF_THRESHOLD = 12;
@@ -84,7 +84,7 @@ const DIFF_THRESHOLD = 12;
 const ALPHA_ON = 8;
 
 /** 시트 배경 — 게임 월드 카메라와 같은 검정. */
-const BACKGROUND: Rgb = [0, 0, 0];
+export const BACKGROUND: Rgb = [0, 0, 0];
 
 /** Blender 한 번을 기다리는 상한(밀리초). */
 const BLENDER_TIMEOUT_MS = 10 * 60 * 1000;
@@ -104,7 +104,7 @@ interface IGearSpec {
 }
 
 /** 검토할 경우 하나. */
-interface IGearCase {
+export interface IGearCase {
   id: string;
   /** 사람이 읽는 이름 */
   label: string;
@@ -525,13 +525,13 @@ export const CASES: readonly IGearCase[] = [
 // 패시브마다 켜고 꺼야 한다. 굽기 쪽에서 정할 것은 카메라 고도 하나라, 그 후보 시트에 원판을 넣는다.
 
 /** 툰 사양 — `toon.py`가 읽는다. `materials`의 키는 분류(`GEAR`)다. */
-interface IToonSpec {
+export interface IToonSpec {
   id: string;
   materials: Record<string, Record<string, unknown>>;
 }
 
 /** 장비에 입히는 툰 사양. 몸은 건드리지 않고(`*` 없음) 장비만 상의의 음영 규칙을 받는다. */
-const TOON_ORIGINAL: IToonSpec = {
+export const TOON_ORIGINAL: IToonSpec = {
   id: 'gear_original',
   materials: { GEAR: { like: 'Tops_CLOTH', double_sided: true } },
 };
@@ -543,17 +543,23 @@ const TOON_HARD: IToonSpec = {
 };
 
 /** 굽기 한 번의 인자. */
-interface IBake {
+export interface IBake {
   out: string;
   layer: 'body' | 'gear' | 'whole';
   yaw: number;
   gearSpec?: string;
   toon?: string;
   weapons?: boolean;
+  /** `staff` · `shield` 층의 무기 사양(`--weapon-spec`) */
+  weaponSpec?: string;
+  /** 외곽선 후보 — Line Art 사양 JSON(`--lineart`) */
+  lineart?: string;
+  /** 외곽선 후보 — 법선 · 깊이 패스를 쓸 폴더(`--passes`) */
+  passes?: string;
 }
 
 /** 경로 묶음 — 한 실행 안에서 한 번만 정한다. */
-interface IPaths {
+export interface IPaths {
   /** 거짓이면 굽지 않고 이미 있는 PNG로 시트와 수치만 다시 만든다(`--sheet-only`) */
   bakeEnabled: boolean;
   outDir: string;
@@ -574,7 +580,7 @@ function resolveBlender(): string {
 }
 
 /** JSON을 쓰고 경로를 돌려준다. */
-function writeJson(file: string, value: unknown): string {
+export function writeJson(file: string, value: unknown): string {
   fs.writeFileSync(file, `${JSON.stringify(value, null, 1)}\n`, 'utf-8');
   return file;
 }
@@ -583,18 +589,29 @@ function writeJson(file: string, value: unknown): string {
  * 경우 하나가 쓸 툰 사양 파일 둘(원본 음영 · 딱딱한 경계). 경우가 `toon`으로 `GEAR` 값을 덮으면
  * 공용 파일 대신 그 경우 이름을 붙인 파일을 따로 쓴다 — 공용 파일을 고치면 다른 경우까지 바뀐다.
  */
-function toonFor(paths: IPaths, item: IGearCase): { original: string; hard: string } {
-  if (!item.toon) return { original: paths.toonOriginal, hard: paths.toonHard };
-  const override = { ...item.toon };
-  // matcap 파일은 산출물 자리에 도구가 만들고 절대 경로로 넘긴다 — `toon.py`는 경로만 안다
+/**
+ * 경우의 장비(`GEAR`) 툰 값 — `base`의 `GEAR` 위에 경우의 `toon`을 덮은 것. matcap 파일은 산출물 자리에
+ * 도구가 만들고 절대 경로로 바꾼다(`toon.py`는 경로만 안다). 외곽선 후보 굽기(`outline.ts`)도 같은 값을 쓴다.
+ */
+export function gearSettings(
+  paths: IPaths,
+  item: IGearCase,
+  base: IToonSpec = TOON_ORIGINAL,
+): Record<string, unknown> {
+  const override = { ...(item.toon ?? {}) };
   if (typeof override.matcap_image === 'string') {
     const file = path.join(paths.outDir, override.matcap_image);
     if (!fs.existsSync(file)) fs.writeFileSync(file, encodePng(metalMatcap(256)));
     override.matcap_image = file;
   }
+  return { ...base.materials.GEAR, ...override };
+}
+
+function toonFor(paths: IPaths, item: IGearCase): { original: string; hard: string } {
+  if (!item.toon) return { original: paths.toonOriginal, hard: paths.toonHard };
   const merged = (base: IToonSpec): IToonSpec => ({
     id: `${base.id}_${item.id}`,
-    materials: { ...base.materials, GEAR: { ...base.materials.GEAR, ...override } },
+    materials: { ...base.materials, GEAR: gearSettings(paths, item, base) },
   });
   return {
     original: writeJson(
@@ -646,7 +663,7 @@ function metalMatcap(size: number): IRgbaImage {
  * `--sheet-only`면 굽지 않고 산출물이 이미 있는지만 본다. 시트 배치를 고칠 때마다 Blender를 여든
  * 번 넘게 다시 부르지 않으려는 것이다.
  */
-function bake(paths: IPaths, job: IBake): void {
+export function bake(paths: IPaths, job: IBake): void {
   if (!paths.bakeEnabled) {
     if (!fs.existsSync(job.out)) throw new Error(`--sheet-only인데 구운 파일이 없다: ${job.out}`);
     return;
@@ -682,6 +699,9 @@ function bake(paths: IPaths, job: IBake): void {
   if (job.gearSpec) args.push('--gear-spec', job.gearSpec);
   if (job.toon) args.push('--toon', job.toon);
   if (job.weapons) args.push('--staff-spec', paths.staff, '--shield-spec', paths.shield);
+  if (job.weaponSpec) args.push('--weapon-spec', job.weaponSpec);
+  if (job.lineart) args.push('--lineart', job.lineart);
+  if (job.passes) args.push('--passes', job.passes);
 
   const result = spawnSync(resolveBlender(), args, {
     encoding: 'utf-8',
@@ -694,7 +714,7 @@ function bake(paths: IPaths, job: IBake): void {
 }
 
 /** PNG 한 장을 읽는다. */
-function read(file: string): IRgbaImage {
+export function read(file: string): IRgbaImage {
   return decodePng(fs.readFileSync(file));
 }
 
@@ -730,10 +750,10 @@ function enlarge(img: IRgbaImage, factor: number): IRgbaImage {
 }
 
 /** 720p 칸을 시트에서 키우는 배율. 흔들림 재생 페이지와 같은 세 배다. */
-const GAME_ENLARGE = 3;
+export const GAME_ENLARGE = 3;
 
 /** 원본 크기 칸과 720p 칸(세 배로 키움)을 배경 위에 얹어 만든다. */
-function cells(file: string): { source: IRgbaImage; game: IRgbaImage } {
+export function cells(file: string): { source: IRgbaImage; game: IRgbaImage } {
   const img = read(file);
   const game = compositeOver(sampleLikeEngine(img, GAME_720P.width, GAME_720P.height), BACKGROUND);
   return { source: compositeOver(img, BACKGROUND), game: enlarge(game, GAME_ENLARGE) };

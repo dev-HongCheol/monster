@@ -93,6 +93,7 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `weapon-spec` | 무기 후보 표가 없거나, 후보가 0개거나, 부품이 없거나, 모르는 부품 종류·시점·재질 묶음이다. 층 탐침에서는 layer 값이 틀렸거나, `gear` 층에 `--gear-spec`이 없거나, 장비 사양에 `bone`이 없는 경우도 여기로 온다 | 표를 만드는 것은 `weapons.ts`·`gear.ts`이므로 그쪽을 거쳐 부른다. 부품 종류를 늘리려면 `weapons.py`의 `build_part`에 분기를 더한다 | `weapons.py` · `probe_layers.py` |
 | `toon-spec` | 툰 사양에 모르는 키가 있거나, `shade_threshold`가 0~1 밖이거나, `like`가 지목한 VRoid 부위가 장면에 없다 | 메시지가 아는 키·있는 부위를 함께 준다. 값이 그림에서 무엇을 하는지는 `docs/development/spec/ops-blender-toon.md`에 있다 — 명세 이름(`shading_shift`)을 받지 않는 이유도 거기 있다 | `toon.py` |
 | `mtoon-inspect` | `.vrm`에 MToon 노드 그룹이 없다 | MToon 머티리얼로 내보낸 판인지 확인한다 | `inspect_mtoon.py` |
+| `lineart` | Line Art 오브젝트를 만들었는데 모디파이어나 재질이 없다 | Blender 판이 바뀌어 `grease_pencil_add(type='LINEART_SCENE')`의 산출이 달라진 것이다. 5.2에서는 모디파이어 `type`이 `LINEART`, 재질이 `Black` 하나다 | `outline.py` |
 
 **메시지에 실측값을 박는다.** 「버전이 맞지 않는다」가 아니라 「기대 4.2~5.2, 지금 4.1.2」로
 적는다. 이 레포의 다른 도구가 이미 그 형태다 — `tools/art/Postprocess.ts`의 예외가 수치를 담고,
@@ -114,11 +115,13 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `Atlas.ts` | 층별 프레임을 트림해 한 장에 담는 순수 로직 — 이름 규칙과 되가르기 · 선반 패킹 · plist 직렬화와 파싱 · 왕복 복원 · 들어간 plist 검사 둘(원본 크기 · 층별 프레임 수). 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `weapons.py` | 지팡이 · 방패 후보를 프리미티브로 세워 굽는다. 모양의 정의는 받는 JSON에 있고 이 파일은 세우기만 한다 | 있음 |
 | `weapons.ts` | 무기 후보 실행기. 후보 표를 들고, 굽고, 한 장짜리 비교 시트로 붙인다. `--dump-chosen <폴더>`면 채택한 무기 둘의 사양 JSON만 쓴다 | 있음 |
-| `probe_layers.py` | G2 층 탐침. 층 하나(몸 · 상의 · 무기 · 장비)를 가림 전용 몸과 함께 굽거나, 가림 없이 한 번에 구운 기준 컷(`whole`)을 굽는다. `--toon`으로 툰 사양을 입힌다 | 있음 |
+| `probe_layers.py` | G2 층 탐침. 층 하나(몸 · 상의 · 무기 · 장비)를 가림 전용 몸과 함께 굽거나, 가림 없이 한 번에 구운 기준 컷(`whole`)을 굽는다. `--toon`으로 툰 사양을 입히고, `--lineart` · `--passes`로 외곽선 후보(Line Art · 후처리용 패스)를 굽는다 | 있음 |
 | `toon.py` | 툰 사양 JSON을 MToon 머티리얼에 입힌다. 무기 · 장비 부품은 사양이 그 분류를 적었을 때만 MToon으로 바꾼다 | 있음 |
 | `inspect_mtoon.py` | `.vrm`의 MToon 값을 덤프하고, 애드온 셰이더가 명세 식과 옛 식 중 어느 쪽을 음영 혼합에 물렸는지 보고한다. 애드온 · Blender 판을 바꾼 뒤 먼저 돌린다 | 있음 |
 | `layers.ts` | 층 PNG 실행기 — 가림 부분집합 판정(`subset`), 층 겹치기와 720p 축소(`stack`), 기준 컷과의 차이(`diff`). 규칙은 `ComparisonSheet.ts`가 든다 | 있음 |
-| `gear.ts` | 장비 검토 세트 실행기. 망토 · 날개 · 금속 장비 · 얇은 장식 · 오라를 방향별로 굽고 시트 · 층 합성 수치 · 흔들림 재생 페이지를 만든다 | 있음 |
+| `gear.ts` | 장비 검토 세트 실행기. 망토 · 날개 · 화려한 장비 · 얇은 장식을 방향별로 굽고 시트 · 층 합성 수치 · 흔들림 재생 페이지를 만든다. 굽기 함수와 경우 표를 내보내 `outline.ts`가 같이 쓴다 | 있음 |
+| `outline.py` | 외곽선 후보의 Blender 쪽 조각. Line Art(Grease Pencil) 오브젝트를 세우고, 후처리용 법선 · 깊이 패스를 재질을 갈아 끼워 한 장씩 굽는다. 인버티드 헐은 툰 사양이 켠다 | 있음 |
+| `outline.ts` | 외곽선 후보 실행기. 인버티드 헐 · Line Art · 후처리를 같은 시험 세트(장비 경우 + 무기)로 굽고, 후처리 선을 긋고, 방식별 시트와 방향별 비교 시트, 층 합성 수치, 몸 헐 가림 탐침 수치를 만든다 | 있음 |
 
 **`smoke.py`가 독립인 것이 설계다.** 공용 모듈을 거치면 애드온이나 모델 때문에 난 실패가 환경
 실패로 보고되고, 그러면 「여기서 막히면 VRoid를 설치하지 않는다」는 규칙이 조용히 깨진다. 되돌릴

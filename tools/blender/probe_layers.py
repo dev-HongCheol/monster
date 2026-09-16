@@ -20,6 +20,10 @@ G2 — 층 하나를 가림 전용 몸과 함께 굽는다. 가림 렌더가 되
 장으로 굽는다. 층을 겹친 결과가 이것과 얼마나 다른지가 G2 §3의 회귀 가드이고, 툰 후보를 사람이
 견줄 때도 층 합성의 테두리가 끼지 않은 이 컷으로 본다.
 
+**`--lineart` · `--passes`는 외곽선 후보용이다.** Line Art는 카메라를 세운 뒤에 Grease Pencil
+오브젝트로 세우고(선이 카메라 기준으로 계산된다), 패스는 렌더 전에 컴포지터 그룹으로 걸어 법선 ·
+깊이를 PNG로 뽑는다. 인버티드 헐은 툰 사양의 외곽선 키가 켠다. 셋의 사정은 `outline.py` 머리 주석.
+
 판정은 하지 않는다. 굽고 실측을 보고하는 것까지이고 재는 것은 실행기가 한다
 (`README.md` 「판정은 파이썬에 없다」).
 
@@ -34,6 +38,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import _common as common  # noqa: E402 - 위 경로 주입 뒤에 와야 한다
 import retarget_render as retarget  # noqa: E402 - 기준 자세 값의 주인이다
+import outline  # noqa: E402 - 외곽선 후보(Line Art · 패스)의 주인이다
 import toon  # noqa: E402 - 툰 사양 입히기의 주인이다
 import weapons  # noqa: E402 - 부품 세우기의 주인이다
 
@@ -356,7 +361,32 @@ def main():
         common.setup_lights()
     common.setup_render(engine, layer_width, layer_height, absolute_out)
     view_transform = set_standard_view_transform()
+
+    # 외곽선 후보. 가림 전용 몸은 Line Art에서 선을 내지 않고 가리기만 한다 — 안 그러면 장비 층에
+    # 몸 윤곽선이 남는다. 패스의 깊이 범위는 카메라에서 몸 중심까지의 거리 둘레 ±0.45m라 8비트 한
+    # 단계가 3.5mm다. 넓게 잡으면 끈(몸에서 6~11mm)이 몸과 같은 값으로 뭉친다.
+    lineart_path = common.parse_arg(args, 'lineart')
+    if lineart_path:
+        with open(lineart_path, encoding='utf-8') as handle:
+            lineart_spec = json.load(handle)
+        occluders = body_objects if held_out else []
+        drawn = [o for o in scene_meshes() if o not in occluders]
+        _, lineart_modifier = outline.setup_lineart(lineart_spec, drawn, occluders)
+        detail['lineart'] = {
+            'radius': round(lineart_modifier.radius, 5),
+            'drawn': len(drawn),
+            'occluders': len(occluders),
+        }
+    passes_dir = common.parse_arg(args, 'passes')
+
     common.render_still(absolute_out)
+    if passes_dir:
+        # 본 렌더 뒤에 재질을 갈아 끼워 굽는다(`outline.render_passes`). 장면은 되돌리지 않는다
+        passes_dir = os.path.abspath(passes_dir)
+        centre = (body_lo + body_hi) / 2.0
+        distance = (centre - camera.location).length
+        detail['depth_range'] = [round(distance - 0.45, 4), round(distance + 0.45, 4)]
+        detail['passes'] = outline.render_passes(passes_dir, distance - 0.45, distance + 0.45)
 
     payload = {
         'gate': 'g2-probe',
