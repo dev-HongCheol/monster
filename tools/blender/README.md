@@ -109,7 +109,7 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `retarget_render.py` | 게이트 0c와 2. 모션을 입히고 프레임을 굽는다. 본 대응표와 관절별 흔들림 비율(`SWING_SCALE`)을 든다 | 있음 |
 | `ComparisonSheet.ts` | 게이트 1 비교 시트의 순수 로직 — 엔진식 축소 · 알파 합성 · 얼굴 가림 · 칸 배치. 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `sheet.ts` | 비교 시트 실행기. 3D 프레임 한 장과 출하된 2D 정면을 원본 · 1440p · 720p 세 줄로 붙인다 | 있음 |
-| `Atlas.ts` | 층별 프레임을 트림해 한 장에 담는 순수 로직 — 이름 규칙 · 선반 패킹 · plist 값 · 왕복 복원. 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
+| `Atlas.ts` | 층별 프레임을 트림해 한 장에 담는 순수 로직 — 이름 규칙과 되가르기 · 선반 패킹 · plist 직렬화와 파싱 · 왕복 복원 · 들어간 plist 검사 둘(원본 크기 · 층별 프레임 수). 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `weapons.py` | 지팡이 · 방패 후보를 프리미티브로 세워 굽는다. 모양의 정의는 받는 JSON에 있고 이 파일은 세우기만 한다 | 있음 |
 | `weapons.ts` | 무기 후보 실행기. 후보 표를 들고, 굽고, 한 장짜리 비교 시트로 붙인다 | 있음 |
 

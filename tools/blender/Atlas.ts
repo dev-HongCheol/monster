@@ -284,3 +284,279 @@ export function restoreFrame(atlas: IRgbaImage, entry: IAtlasEntry): IRgbaImage 
 
   return out;
 }
+
+/** 아틀라스 한 장과 함께 나가는 plist의 머리 정보. */
+export interface IPlistMetadata {
+  /** plist와 같은 폴더에 있는 PNG 파일 이름 */
+  textureFileName: string;
+  /** 그 PNG의 크기 */
+  textureSize: ISize;
+}
+
+/** `parsePlist`가 돌려주는 것. */
+export interface IParsedPlist {
+  entries: IAtlasEntry[];
+  metadata: IPlistMetadata & { format: number };
+}
+
+/** 이름에서 되읽은 조각. */
+export interface IFrameNameParts {
+  layer: string;
+  action: string;
+  facing: string;
+  index: number;
+}
+
+/**
+ * plist 포맷 번호.
+ *
+ * 파서는 0~3을 읽는데 2만 쓴다. 3은 폴리곤 메시까지 받는 대신 키 이름이 전부 다르고
+ * (`spriteSize` · `spriteOffset` · `textureRect`), 우리는 사각형만 담으므로 얻는 것이 없다.
+ */
+const PLIST_FORMAT = 2;
+
+/** `{x,y}` 꼴. 공백을 넣지 않는다 — 형식이 어긋나면 파서가 통째로 0으로 읽는다. */
+function pointText(p: IPoint): string {
+  return `{${p.x},${p.y}}`;
+}
+
+/** `{w,h}` 꼴. */
+function sizeText(s: ISize): string {
+  return `{${s.width},${s.height}}`;
+}
+
+/** `{{x,y},{w,h}}` 꼴. */
+function rectText(r: IRect): string {
+  return `{{${r.x},${r.y}},{${r.width},${r.height}}}`;
+}
+
+/**
+ * 아틀라스 항목을 cocos2d 포맷 2 plist로 적는다.
+ *
+ * **값은 중괄호 한 겹과 쉼표로만 적고 공백을 넣지 않는다.** 파서가 중괄호 안쪽에 또 중괄호가
+ * 있으면 거부하고, 조각이 둘이 아니어도 거부한다. 거부하면 예외가 아니라 0이 되므로, 형식을
+ * 틀리면 모든 프레임이 아틀라스 왼쪽 위 0×0 자리를 가리킨 채 조용히 실린다.
+ *
+ * @param entries `buildAtlas`가 낸 항목. 적는 순서는 이 순서다
+ * @param metadata 같은 폴더의 PNG 이름과 크기
+ */
+export function writePlist(entries: readonly IAtlasEntry[], metadata: IPlistMetadata): string {
+  const lines: string[] = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+    '<plist version="1.0">',
+    '<dict>',
+    '<key>frames</key>',
+    '<dict>',
+  ];
+
+  for (const item of entries) {
+    lines.push(
+      `<key>${item.name}</key>`,
+      '<dict>',
+      `<key>frame</key><string>${rectText(item.frame)}</string>`,
+      `<key>offset</key><string>${pointText(item.offset)}</string>`,
+      `<key>rotated</key>${item.rotated ? '<true/>' : '<false/>'}`,
+      `<key>sourceSize</key><string>${sizeText(item.sourceSize)}</string>`,
+      '</dict>',
+    );
+  }
+
+  lines.push(
+    '</dict>',
+    '<key>metadata</key>',
+    '<dict>',
+    `<key>format</key><integer>${PLIST_FORMAT}</integer>`,
+    `<key>size</key><string>${sizeText(metadata.textureSize)}</string>`,
+    `<key>textureFileName</key><string>${metadata.textureFileName}</string>`,
+    '</dict>',
+    '</dict>',
+    '</plist>',
+    '',
+  );
+  return lines.join('\n');
+}
+
+/**
+ * `from` 뒤의 첫 `<dict>`와 짝이 맞는 `</dict>` 사이를 떼어 낸다.
+ *
+ * 깊이를 세는 이유는 프레임 딕셔너리가 프레임 딕셔너리를 품기 때문이다. 처음 만난 `</dict>`로
+ * 자르면 첫 프레임에서 끊겨 나머지가 통째로 사라지는데, 그 결과는 「프레임 수가 모자라다」로
+ * 보여 원인이 파서라는 것이 안 드러난다.
+ *
+ * @returns 안쪽 내용과 닫는 태그 뒤 위치. 짝이 없으면 `null`
+ */
+function dictAfter(xml: string, from: number): { inner: string; end: number } | null {
+  const open = xml.indexOf('<dict>', from);
+  if (open < 0) return null;
+
+  let depth = 1;
+  let cursor = open + '<dict>'.length;
+  while (cursor < xml.length) {
+    const nextOpen = xml.indexOf('<dict>', cursor);
+    const nextClose = xml.indexOf('</dict>', cursor);
+    if (nextClose < 0) return null;
+    if (nextOpen >= 0 && nextOpen < nextClose) {
+      depth++;
+      cursor = nextOpen + '<dict>'.length;
+      continue;
+    }
+    depth--;
+    if (depth === 0) {
+      return {
+        inner: xml.slice(open + '<dict>'.length, nextClose),
+        end: nextClose + '</dict>'.length,
+      };
+    }
+    cursor = nextClose + '</dict>'.length;
+  }
+  return null;
+}
+
+/** `<key>이름</key>` 뒤에 오는 딕셔너리를 떼어 낸다. */
+function dictOfKey(xml: string, key: string): string | null {
+  const marker = `<key>${key}</key>`;
+  const at = xml.indexOf(marker);
+  if (at < 0) return null;
+  return dictAfter(xml, at + marker.length)?.inner ?? null;
+}
+
+/** 딕셔너리에서 문자열 값을 읽는다. */
+function stringOfKey(dict: string, key: string): string | null {
+  return new RegExp(`<key>${key}</key>\\s*<string>([^<]*)</string>`).exec(dict)?.[1] ?? null;
+}
+
+/** 중괄호 값에서 숫자만 순서대로 꺼낸다. 부호와 소수점을 받는다. */
+function numbersIn(text: string): number[] {
+  return (text.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+}
+
+/** 없으면 무엇이 빠졌는지 말하며 던진다. */
+function required<T>(value: T | null, what: string): T {
+  if (value === null) throw new Error(`plist에 ${what}이(가) 없다`);
+  return value;
+}
+
+/**
+ * 게임에 들어간 plist를 도로 읽는다.
+ *
+ * 검사 명령이 재는 것은 우리가 방금 만든 값이 아니라 **파일에 실제로 실린 것**이라, 파일을
+ * 거쳐 돌아오는 경로가 필요하다. 작성기의 내부 값을 그대로 검사하면 직렬화가 틀려도 통과한다.
+ *
+ * @throws `frames`·`metadata`나 프레임의 필수 키가 없으면
+ */
+export function parsePlist(xml: string): IParsedPlist {
+  const framesDict = required(dictOfKey(xml, 'frames'), 'frames 딕셔너리');
+  const metaDict = required(dictOfKey(xml, 'metadata'), 'metadata 딕셔너리');
+
+  const entries: IAtlasEntry[] = [];
+  const keyPattern = /<key>([^<]+)<\/key>/g;
+  let match = keyPattern.exec(framesDict);
+  while (match !== null) {
+    const name = match[1];
+    const frameDict = required(
+      dictAfter(framesDict, match.index + match[0].length),
+      `프레임 ${name}의 딕셔너리`,
+    );
+    const frame = numbersIn(required(stringOfKey(frameDict.inner, 'frame'), `${name}의 frame`));
+    const offset = numbersIn(required(stringOfKey(frameDict.inner, 'offset'), `${name}의 offset`));
+    const source = numbersIn(
+      required(stringOfKey(frameDict.inner, 'sourceSize'), `${name}의 sourceSize`),
+    );
+
+    entries.push({
+      name,
+      frame: { x: frame[0], y: frame[1], width: frame[2], height: frame[3] },
+      offset: { x: offset[0], y: offset[1] },
+      rotated: /<key>rotated<\/key>\s*<true\/>/.test(frameDict.inner),
+      sourceSize: { width: source[0], height: source[1] },
+    });
+
+    // 프레임 딕셔너리 안쪽의 키(frame · offset …)를 프레임 이름으로 읽지 않도록 건너뛴다.
+    keyPattern.lastIndex = frameDict.end;
+    match = keyPattern.exec(framesDict);
+  }
+
+  const size = numbersIn(required(stringOfKey(metaDict, 'size'), 'metadata의 size'));
+  return {
+    entries,
+    metadata: {
+      format: Number(/<key>format<\/key>\s*<integer>(-?\d+)<\/integer>/.exec(metaDict)?.[1] ?? 0),
+      textureFileName: required(
+        stringOfKey(metaDict, 'textureFileName'),
+        'metadata의 textureFileName',
+      ),
+      textureSize: { width: size[0], height: size[1] },
+    },
+  };
+}
+
+/** 프레임 이름의 형태. 번호는 두 자리 이상이고 나머지 셋에는 밑줄이 없다. */
+const FRAME_NAME_PATTERN = /^([A-Za-z0-9]+)_([A-Za-z0-9]+)_([A-Za-z0-9]+)_(\d{2,})$/;
+
+/**
+ * `frameName`이 만든 이름을 도로 가른다.
+ *
+ * 검사가 층 · 동작 · 방향으로 묶어 세려면 이름에서 그 셋을 되읽어야 한다. 게임과 작성기가 쓰는
+ * 규칙이 하나이므로 되읽기도 같은 자리에 둔다.
+ *
+ * @returns 규칙에 안 맞으면 `null`
+ */
+export function parseFrameName(name: string): IFrameNameParts | null {
+  const match = FRAME_NAME_PATTERN.exec(name);
+  if (match === null) return null;
+  return { layer: match[1], action: match[2], facing: match[3], index: Number(match[4]) };
+}
+
+/**
+ * 들어간 항목의 원본 크기가 규격인지 본다.
+ *
+ * 게임은 층마다 같은 원본 캔버스를 같은 48×96 상자에 넣어 겹친다. 한 층만 원본 크기가 다르면
+ * 그 층이 몸에서 어긋나는데, 그림 자체는 멀쩡해서 눈으로는 「무기가 좀 뜬다」로만 읽힌다.
+ *
+ * @param spec 기대 캔버스. `PLAYER_FRAME_SPEC`을 그대로 넘긴다
+ */
+export function checkSourceSizes(entries: readonly IAtlasEntry[], spec: ISize): string[] {
+  const problems: string[] = [];
+  for (const item of entries) {
+    if (item.sourceSize.width === spec.width && item.sourceSize.height === spec.height) continue;
+    problems.push(
+      `${item.name}의 원본 크기가 ${item.sourceSize.width}×${item.sourceSize.height}인데 ` +
+        `${spec.width}×${spec.height}를 기대했다`,
+    );
+  }
+  return problems;
+}
+
+/**
+ * (동작, 방향)마다 층별 프레임 수가 같은지 본다.
+ *
+ * 층마다 수가 다르면 동기화 컴포넌트가 같은 번호를 찾지 못해 그 층만 직전 프레임에 멈춘 채
+ * 나머지가 걷는다. 굽기 폴더가 아니라 **게임에 들어간 이름 목록**으로 재야, 실제로 실린 것이
+ * 검사 대상이 된다.
+ */
+export function checkFrameCounts(names: readonly string[]): string[] {
+  const problems: string[] = [];
+  const byCombo = new Map<string, Map<string, number>>();
+
+  for (const name of names) {
+    const parts = parseFrameName(name);
+    if (parts === null) {
+      problems.push(`이름 규칙에 안 맞는 프레임이다: ${name}`);
+      continue;
+    }
+    const combo = `${parts.action}|${parts.facing}`;
+    const byLayer = byCombo.get(combo) ?? new Map<string, number>();
+    byLayer.set(parts.layer, (byLayer.get(parts.layer) ?? 0) + 1);
+    byCombo.set(combo, byLayer);
+  }
+
+  for (const [combo, byLayer] of byCombo) {
+    const counts = [...byLayer.values()];
+    if (Math.max(...counts) === Math.min(...counts)) continue;
+    const [action, facing] = combo.split('|');
+    const detail = [...byLayer].map(([layer, count]) => `${layer} ${count}장`).join(' · ');
+    problems.push(`(${action}, ${facing})의 층별 프레임 수가 다르다 — ${detail}`);
+  }
+  return problems;
+}

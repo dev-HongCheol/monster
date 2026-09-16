@@ -25,7 +25,17 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { buildAtlas, frameName, packShelves, restoreFrame } from '../../tools/blender/Atlas';
+import {
+  buildAtlas,
+  checkFrameCounts,
+  checkSourceSizes,
+  frameName,
+  packShelves,
+  parseFrameName,
+  parsePlist,
+  restoreFrame,
+  writePlist,
+} from '../../tools/blender/Atlas';
 import {
   composeGrid,
   compositeOver,
@@ -659,6 +669,148 @@ describe('restoreFrame — 담은 것을 원본 캔버스로 되돌린다', () =
     const atlas = buildAtlas([{ name: 'empty', image: empty }], PACK);
 
     expect(restoreFrame(atlas.image, atlas.entries[0])).toEqual(empty);
+  });
+});
+
+/** plist 단언용 항목 하나. 값은 파서가 읽는 네 키를 모두 채운다. */
+function entry(name: string, overrides: Partial<Parameters<typeof writePlist>[0][0]> = {}) {
+  return {
+    name,
+    frame: { x: 2, y: 2, width: 10, height: 20 },
+    offset: { x: -0.5, y: 1.5 },
+    rotated: false,
+    sourceSize: { width: 246, height: 493 },
+    ...overrides,
+  };
+}
+
+describe('writePlist — cocos2d 포맷 2로 적는다', () => {
+  it('plist 머리말과 포맷 2, 텍스처 이름과 크기를 metadata에 담는다', () => {
+    const xml = writePlist([entry('body_walk_front_00')], {
+      textureFileName: 'player_body_walk.png',
+      textureSize: { width: 64, height: 64 },
+    });
+
+    expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
+    expect(xml).toContain('<plist version="1.0">');
+    expect(xml).toContain('<key>format</key><integer>2</integer>');
+    expect(xml).toContain('<key>textureFileName</key><string>player_body_walk.png</string>');
+    expect(xml).toContain('<key>size</key><string>{64,64}</string>');
+  });
+
+  it('frame · offset · sourceSize를 중괄호 형식으로 적고 공백을 넣지 않는다', () => {
+    // 파서가 중괄호 한 겹과 쉼표로 나뉜 두 조각만 받고, 안쪽에 중괄호가 또 있으면 거부한다.
+    // 형식이 어긋나면 값이 0으로 읽혀 프레임이 아틀라스 왼쪽 위에 겹쳐 그려진다.
+    const xml = writePlist([entry('body_walk_front_00')], {
+      textureFileName: 't.png',
+      textureSize: { width: 64, height: 64 },
+    });
+
+    expect(xml).toContain('<key>frame</key><string>{{2,2},{10,20}}</string>');
+    expect(xml).toContain('<key>offset</key><string>{-0.5,1.5}</string>');
+    expect(xml).toContain('<key>sourceSize</key><string>{246,493}</string>');
+    expect(xml).toContain('<key>rotated</key><false/>');
+  });
+
+  it('프레임 이름을 키로 쓴다', () => {
+    const xml = writePlist([entry('staff_idle_left_03')], {
+      textureFileName: 't.png',
+      textureSize: { width: 8, height: 8 },
+    });
+
+    expect(xml).toContain('<key>staff_idle_left_03</key>');
+  });
+});
+
+describe('parsePlist — 게임에 들어간 plist를 도로 읽는다', () => {
+  it('왕복하면 적은 값이 그대로 나온다', () => {
+    // 검사 명령이 읽는 것은 우리가 적은 문자열이 아니라 파일이다. 직렬화와 파싱이 같은 형식을
+    // 쓰는지 여기서 붙들지 않으면, 검사 명령이 0으로 읽은 값을 통과시킨다.
+    const entries = [entry('body_walk_front_00'), entry('body_walk_front_01')];
+
+    const parsed = parsePlist(
+      writePlist(entries, { textureFileName: 't.png', textureSize: { width: 64, height: 64 } }),
+    );
+
+    expect(parsed.entries).toEqual(entries);
+    expect(parsed.metadata).toEqual({
+      format: 2,
+      textureFileName: 't.png',
+      textureSize: { width: 64, height: 64 },
+    });
+  });
+
+  it('frames가 없으면 무엇이 빠졌는지 말하며 던진다', () => {
+    expect(() => parsePlist('<?xml version="1.0"?><plist><dict></dict></plist>')).toThrow(/frames/);
+  });
+});
+
+describe('parseFrameName — 이름에서 층 · 동작 · 방향 · 번호를 되읽는다', () => {
+  it('`frameName`이 만든 이름을 도로 가른다', () => {
+    expect(parseFrameName(frameName('topA', 'walk', 'back', 7))).toEqual({
+      layer: 'topA',
+      action: 'walk',
+      facing: 'back',
+      index: 7,
+    });
+  });
+
+  it('규칙에 안 맞는 이름은 null이다', () => {
+    expect(parseFrameName('body_walk_front')).toBeNull();
+    expect(parseFrameName('body_walk_front_xx')).toBeNull();
+  });
+});
+
+describe('checkSourceSizes — 들어간 plist의 원본 크기가 규격인가', () => {
+  it('규격이면 위반이 없다', () => {
+    expect(checkSourceSizes([entry('body_walk_front_00')], PLAYER_FRAME_SPEC)).toEqual([]);
+  });
+
+  it('다른 원본 크기를 이름과 실측으로 보고한다', () => {
+    // 층마다 246×493을 같은 48×96 상자에 넣으므로, 한 층만 원본 크기가 다르면 그 층이 몸에서
+    // 어긋난다. 그림은 멀쩡해 보여서 눈으로는 「무기가 좀 뜬다」로만 읽힌다.
+    const problems = checkSourceSizes(
+      [entry('staff_walk_front_00', { sourceSize: { width: 246, height: 400 } })],
+      PLAYER_FRAME_SPEC,
+    );
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('staff_walk_front_00');
+    expect(problems[0]).toContain('400');
+  });
+});
+
+describe('checkFrameCounts — 층별 (방향, 동작) 프레임 수가 같은가', () => {
+  it('모든 층이 같은 수면 위반이 없다', () => {
+    const names = ['body', 'staff'].flatMap((layer) =>
+      [0, 1].map((i) => frameName(layer, 'walk', 'front', i)),
+    );
+
+    expect(checkFrameCounts(names)).toEqual([]);
+  });
+
+  it('한 층만 수가 모자라면 그 조합과 두 수를 보고한다', () => {
+    // 층마다 프레임 수가 다르면 동기화 컴포넌트가 같은 번호를 찾지 못해, 그 층만 직전 프레임에
+    // 멈춘 채로 나머지가 걷는다.
+    const names = [
+      ...[0, 1, 2].map((i) => frameName('body', 'walk', 'front', i)),
+      ...[0, 1].map((i) => frameName('staff', 'walk', 'front', i)),
+    ];
+
+    const problems = checkFrameCounts(names);
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('walk');
+    expect(problems[0]).toContain('front');
+    expect(problems[0]).toContain('3');
+    expect(problems[0]).toContain('2');
+  });
+
+  it('규칙에 안 맞는 이름은 따로 보고한다', () => {
+    const problems = checkFrameCounts(['body_walk_front_00', 'wrong-name']);
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('wrong-name');
   });
 });
 
