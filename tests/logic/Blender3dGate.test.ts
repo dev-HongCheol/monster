@@ -761,14 +761,14 @@ describe('parseFrameName — 이름에서 층 · 동작 · 방향 · 번호를 �
   });
 });
 
-describe('checkSourceSizes — 들어간 plist의 원본 크기가 규격인가', () => {
+describe('checkSourceSizes — 들어간 plist의 원본 크기가 그 층의 규격인가', () => {
   it('규격이면 위반이 없다', () => {
     expect(checkSourceSizes([entry('body_walk_front_00')], PLAYER_FRAME_SPEC)).toEqual([]);
   });
 
   it('다른 원본 크기를 이름과 실측으로 보고한다', () => {
-    // 층마다 246×493을 같은 48×96 상자에 넣으므로, 한 층만 원본 크기가 다르면 그 층이 몸에서
-    // 어긋난다. 그림은 멀쩡해 보여서 눈으로는 「무기가 좀 뜬다」로만 읽힌다.
+    // 층이 선언한 캔버스와 다르면 그 층이 몸에서 어긋난다. 그림은 멀쩡해 보여서 눈으로는
+    // 「무기가 좀 뜬다」로만 읽힌다.
     const problems = checkSourceSizes(
       [entry('staff_walk_front_00', { sourceSize: { width: 246, height: 400 } })],
       PLAYER_FRAME_SPEC,
@@ -777,6 +777,46 @@ describe('checkSourceSizes — 들어간 plist의 원본 크기가 규격인가'
     expect(problems).toHaveLength(1);
     expect(problems[0]).toContain('staff_walk_front_00');
     expect(problems[0]).toContain('400');
+  });
+
+  it('층이 더 큰 캔버스를 선언하면 그 크기를 기대한다', () => {
+    // 몸보다 큰 무기 · 망토 · 날개가 이 자리를 쓴다. 굽기가 카메라를 층끼리 공유하므로 캔버스가
+    // 넓어져도 인물 크기는 그대로다(2026-09-16 실측 — 246×493과 600×701에서 인물 트림 상자가
+    // 둘 다 182×490이었다).
+    const byLayer = { staff: { width: 600, height: 701 } };
+    const entries = [
+      entry('body_walk_front_00'),
+      entry('staff_walk_front_00', { sourceSize: { width: 600, height: 701 } }),
+    ];
+
+    expect(checkSourceSizes(entries, PLAYER_FRAME_SPEC, byLayer)).toEqual([]);
+  });
+
+  it('선언한 층 캔버스가 기준보다 작으면 막는다', () => {
+    const problems = checkSourceSizes([], PLAYER_FRAME_SPEC, {
+      staff: { width: 200, height: 493 },
+    });
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('몸이 잘린다');
+  });
+
+  it('선언한 층 캔버스의 홀짝이 기준과 다르면 막는다', () => {
+    // 캔버스 중심이 픽셀 격자에 놓이는 자리가 홀짝에 따라 반 칸 달라진다. 246×493 기준에서
+    // 600×700은 세로가 0.5px 밀렸고 600×701은 정확히 맞았다(2026-09-16 실측).
+    const problems = checkSourceSizes([], PLAYER_FRAME_SPEC, {
+      staff: { width: 600, height: 700 },
+    });
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('홀짝');
+  });
+
+  it('이름 규칙에 안 맞는 프레임은 층을 못 고르므로 보고한다', () => {
+    const problems = checkSourceSizes([entry('staff_walk_front')], PLAYER_FRAME_SPEC);
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('이름 규칙');
   });
 });
 

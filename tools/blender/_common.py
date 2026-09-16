@@ -242,6 +242,36 @@ def import_vrm(vrm_path):
     return armatures[0]
 
 
+def apply_pose(armature, angles_by_bone, order):
+    """
+    본 이름별 오일러 각(도)을 포즈 본에 그대로 입힌다.
+
+    **값은 여기 두지 않는다.** 기준 팔 자세의 주인은 `retarget_render.BASE_ARM_POSE`이고 이
+    함수는 입히는 기계만 맡는다. 값을 이 모듈에 복사해 두면 굽기와 측정이 서로 다른 자세를 보게
+    되고, 그러면 측정이 통과시킨 크기가 실제 굽기에서 캔버스를 넘는다.
+
+    자세를 입히지 않고 재면 A 포즈의 벌린 팔이 인물 폭을 결정한다. 그 폭은 게임에 나오지 않는
+    자세인데도 `setup_camera`의 가로 판정을 떨어뜨린다(실측: 벌린 팔 343.2px 대 허용 227.8px).
+
+    @param armature 포즈를 입힐 아마추어 오브젝트
+    @param angles_by_bone `{본 이름: (x, y, z)}` — 각도는 도 단위
+    @param order 오일러 회전 순서 문자열 (예 `YXZ`)
+    """
+    from math import radians
+
+    from mathutils import Euler
+
+    for name, angles in angles_by_bone.items():
+        bone = armature.pose.bones.get(name)
+        if bone is None:
+            raise GateError(
+                'retarget-bone', '자세가 쓰는 본을 이 골격에서 못 찾았다: {0}'.format(name)
+            )
+        bone.rotation_mode = 'QUATERNION'
+        bone.rotation_quaternion = Euler([radians(a) for a in angles], order).to_quaternion()
+    bpy.context.view_layer.update()
+
+
 def world_bounds():
     """
     장면의 모든 메시를 감싸는 월드 좌표 상자.

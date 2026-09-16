@@ -509,20 +509,59 @@ export function parseFrameName(name: string): IFrameNameParts | null {
 }
 
 /**
- * 들어간 항목의 원본 크기가 규격인지 본다.
+ * 들어간 항목의 원본 크기가 그 층의 규격인지 본다.
  *
- * 게임은 층마다 같은 원본 캔버스를 같은 48×96 상자에 넣어 겹친다. 한 층만 원본 크기가 다르면
- * 그 층이 몸에서 어긋나는데, 그림 자체는 멀쩡해서 눈으로는 「무기가 좀 뜬다」로만 읽힌다.
+ * **층마다 원본 캔버스가 다를 수 있다.** 몸보다 큰 무기 · 망토 · 날개를 담으려면 그 층의 캔버스가
+ * 기준 몸 캔버스보다 넓어야 하고, 그래도 겹쳤을 때 어긋나지 않는다 — 굽기가 카메라의 위치와
+ * 픽셀 밀도를 층끼리 공유하고 `offset`이 중심 기준이라, 캔버스 중심이 같은 월드 점에 놓이기
+ * 때문이다. 그래서 여기서 보는 것은 「모두 같은가」가 아니라 **「그 층이 선언한 크기와 같은가」**다.
  *
- * @param spec 기대 캔버스. `PLAYER_FRAME_SPEC`을 그대로 넘긴다
+ * 층 캔버스에는 두 조건이 붙고, 둘 다 어기면 어긋남이 그림으로는 안 드러난다.
+ *
+ * - **기준보다 작을 수 없다.** 작으면 몸이 그 층의 캔버스 밖으로 나가 잘린다.
+ * - **가로 · 세로의 홀짝이 기준과 같아야 한다.** 캔버스 중심이 픽셀 격자에 놓이는 자리가 홀짝에
+ *   따라 반 칸 달라져서, 어긋나면 그 축으로 0.5px 밀린다(2026-09-16 실측 — 246×493 기준에
+ *   600×700은 세로가 0.5px 밀렸고 600×701은 정확히 맞았다).
+ *
+ * @param entries 들어간 아틀라스 항목
+ * @param base 기준 몸 캔버스. `PLAYER_FRAME_SPEC`을 그대로 넘긴다
+ * @param byLayer 층 이름별 캔버스. 여기 없는 층은 `base`를 기대한다
  */
-export function checkSourceSizes(entries: readonly IAtlasEntry[], spec: ISize): string[] {
+export function checkSourceSizes(
+  entries: readonly IAtlasEntry[],
+  base: ISize,
+  byLayer: Readonly<Record<string, ISize>> = {},
+): string[] {
   const problems: string[] = [];
+
+  for (const [layer, canvas] of Object.entries(byLayer)) {
+    if (canvas.width < base.width || canvas.height < base.height) {
+      problems.push(
+        `층 ${layer}의 캔버스 ${canvas.width}×${canvas.height}가 기준 ` +
+          `${base.width}×${base.height}보다 작다 — 몸이 잘린다`,
+      );
+    }
+    if (canvas.width % 2 !== base.width % 2 || canvas.height % 2 !== base.height % 2) {
+      problems.push(
+        `층 ${layer}의 캔버스 ${canvas.width}×${canvas.height}가 기준 ` +
+          `${base.width}×${base.height}와 홀짝이 다르다 — 중심이 0.5px 밀린다`,
+      );
+    }
+  }
+
   for (const item of entries) {
-    if (item.sourceSize.width === spec.width && item.sourceSize.height === spec.height) continue;
+    const parts = parseFrameName(item.name);
+    if (parts === null) {
+      problems.push(`이름 규칙에 안 맞는 프레임이다: ${item.name}`);
+      continue;
+    }
+    const expected = byLayer[parts.layer] ?? base;
+    if (item.sourceSize.width === expected.width && item.sourceSize.height === expected.height) {
+      continue;
+    }
     problems.push(
       `${item.name}의 원본 크기가 ${item.sourceSize.width}×${item.sourceSize.height}인데 ` +
-        `${spec.width}×${spec.height}를 기대했다`,
+        `${expected.width}×${expected.height}를 기대했다`,
     );
   }
   return problems;
