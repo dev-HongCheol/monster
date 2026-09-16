@@ -242,6 +242,63 @@ def import_vrm(vrm_path):
     return armatures[0]
 
 
+def append_vrm(vrm_path):
+    """
+    **이미 있는 장면에** `.vrm`을 하나 더 읽는다. 초기화하지 않는다.
+
+    `import_vrm`은 빈 장면에서 출발하려고 `read_factory_settings`를 부르므로, 두 번째로 부르면
+    첫 임포트가 통째로 사라진다(2026-09-16 실측: 그 뒤 첫 임포트의 오브젝트를 만지면
+    `StructRNA of type Object has been removed`가 난다). 상의 층처럼 두 판을 한 장면에 놓아야
+    하는 자리가 이 함수를 쓴다.
+
+    애드온은 다시 켜지 않는다. 초기화를 안 하므로 `import_vrm`이 켜 둔 상태가 그대로 살아 있다.
+
+    @returns `(아마추어, 이번 임포트로 생긴 오브젝트 전부)`
+    """
+    absolute = os.path.abspath(vrm_path)
+    if not os.path.exists(absolute):
+        raise GateError('vrm-path', '파일이 없다: {0}'.format(absolute))
+
+    assert_vrm_import_operator()
+    before = set(bpy.data.objects)
+    try:
+        bpy.ops.import_scene.vrm(filepath=absolute)
+    except Exception as err:
+        raise GateError('vrm-path', '임포트 실패 {0}: {1}'.format(type(err).__name__, err))
+
+    added = [o for o in bpy.data.objects if o not in before]
+    armatures = [o for o in added if o.type == 'ARMATURE']
+    if not armatures:
+        raise GateError('vrm-path', '덧붙인 임포트에 아마추어가 없다: {0}'.format(absolute))
+    return armatures[0], added
+
+
+def object_bounds(objects):
+    """
+    주어진 오브젝트만 감싸는 월드 좌표 상자.
+
+    `world_bounds`가 장면의 모든 메시를 보는 것과 다르다. 카메라는 **몸에만** 맞춰야 하므로
+    (G4 §3), 무기와 상의를 장면에 올린 뒤에도 몸만 골라 잴 수단이 필요하다.
+    """
+    from mathutils import Vector
+
+    lows, highs = None, None
+    for obj in objects:
+        if obj.type != 'MESH':
+            continue
+        for corner in obj.bound_box:
+            point = obj.matrix_world @ Vector(corner)
+            if lows is None:
+                lows, highs = point.copy(), point.copy()
+                continue
+            for axis in range(3):
+                lows[axis] = min(lows[axis], point[axis])
+                highs[axis] = max(highs[axis], point[axis])
+    if lows is None:
+        raise GateError('camera-framing', '상자를 잴 메시가 없다')
+    return lows, highs
+
+
 def apply_world_delta_pose(armature, angles_by_bone, order):
     """
     각도를 **월드 공간에서 rest 자세에 곱하는 델타**로 보고 입힌다. 팔 자세가 이 방식이다.

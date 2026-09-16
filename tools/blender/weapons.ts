@@ -79,11 +79,21 @@ interface IPart {
 }
 
 /** 후보 하나. */
-interface ICandidate {
+export interface ICandidate {
   id: string;
   /** 사람이 읽는 이름 — 시트를 보며 고를 때 부르는 말이다 */
   label: string;
   parts: IPart[];
+  /**
+   * 손이 쥐는 지점 — 무기 로컬 좌표(m). 굽기가 이 점을 손 본에 맞춘다.
+   *
+   * **무기마다 다르다.** 완드는 아래쪽을, 스태프는 위쪽을, 방패는 판 중심에서 몸 쪽으로 당긴
+   * 자리를 쥔다. 그래서 굽기 코드에 한 값을 박지 않고 후보마다 들려 둔다 — 박아 두면 v2에서
+   * 칼 · 도끼 · 활이 올 때마다 그 코드를 고치게 된다.
+   *
+   * 채택한 후보에만 있다. 떨어진 후보는 쥐어 볼 일이 없어 비워 둔다.
+   */
+  grip?: readonly [number, number, number];
 }
 
 /** 나무 손잡이. */
@@ -115,30 +125,43 @@ const REFERENCE = { height: 1.2, offset_x: -0.45, color: [70, 70, 80] as const }
  * **사용자가 `staff_orb`와 `shield_round`를 골랐다(2026-09-16).** 떨어진 넷은 지우지 않고
  * 남긴다 — 지우면 다음 사람이 같은 안을 다시 짜고, 왜 그것이 아니었는지도 사라진다.
  */
-const CANDIDATES: readonly ICandidate[] = [
+export const CANDIDATES: readonly ICandidate[] = [
   {
     id: 'staff_orb',
     label: '지팡이 A — 구슬',
+    // **전장 0.883m — 캐릭터 키(1.104m)의 5분의 4다(2026-09-16 사용자 결정).** 종전 1.362m는
+    // 키보다 23% 길어서 캔버스를 세로로 키워도 잘렸고, 눈으로도 캐릭터보다 1.5배로 읽혔다.
+    //
+    // 길이를 줄일 때 구슬과 테도 비율에 맞춰 줄였다. 대 굵기는 아래 부품 주석이 든다.
+    //
+    // 그립은 아래에서 65% 지점이다. 손이 키의 58% 높이에 있어서, 대의 아래 끝이 바닥에서
+    // 30px(0.068m) 뜨고 위 끝이 머리 아래에 온다 — 짚는 것이 아니라 들고 걷는 자리다
+    // (2026-09-16 사용자 판정). x는 화면 왼쪽으로 10px 옮긴 값이다.
+    grip: [-0.005, 0.015, 0.57],
     parts: [
       {
         type: 'cylinder',
-        radius: 0.018,
-        depth: 1.25,
+        // 반지름 0.012는 게임 화면(720p)에서 대가 **2.1px**로 나오는 굵기다(소스 10.6px).
+        // 0.018(3.1px)은 두껍고 0.006(1.0px)은 게임 크기에서 사라질 만큼 얇았다. 그 사이를
+        // 게임 크기 축소판으로 보고 골랐다(2026-09-16 사용자 판정). 외곽선을 붙인 뒤 대가
+        // 선으로 읽히는지는 G2가 다시 본다.
+        radius: 0.012,
+        depth: 0.81,
         vertices: 8,
-        location: [0, 0, 0.625],
+        location: [0, 0, 0.405],
         color: WOOD,
       },
       {
         type: 'torus',
-        major_radius: 0.035,
-        minor_radius: 0.012,
+        major_radius: 0.032,
+        minor_radius: 0.011,
         major_segments: 10,
         minor_segments: 6,
-        location: [0, 0, 1.2],
+        location: [0, 0, 0.795],
         rotation: [0, 0, 0],
         color: METAL,
       },
-      { type: 'sphere', radius: 0.062, subdivisions: 2, location: [0, 0, 1.3], color: GEM },
+      { type: 'sphere', radius: 0.045, subdivisions: 2, location: [0, 0, 0.838], color: GEM },
     ],
   },
   {
@@ -209,11 +232,24 @@ const CANDIDATES: readonly ICandidate[] = [
   {
     id: 'shield_round',
     label: '방패 A — 원형',
+    // **손은 판의 중심을 쥔다.** x와 z가 판 중심(0, 0.75)과 같은 값인 것이 그 뜻이다.
+    //
+    // 한동안 x를 0.05로 당겨 뒀다. 손이 몸 바깥에 있어서 중심을 손에 두면 판의 절반이 기준
+    // 캔버스를 넘기 때문이었는데, 그 자리가 뒷모습에서 중심이 아닌 것으로 드러났다(2026-09-16
+    // 사용자 판정 — 22px 어긋남). 무기 층이 자기 캔버스를 갖게 되면서 당겨 둘 이유도 사라졌다
+    // (ADR 009). 넘치는 것은 캔버스를 키워 받는다.
+    //
+    // y만 0.07로 물려 둔다. **손이 판 뒤에 통째로 들어가야** 하기 때문이다. 판의 반두께가
+    // 0.0225라 y를 0.02로 두면 손 앞면이 판의 뒷면에 걸쳐, 정면 렌더에서 손가락이 방패를 뚫고
+    // 나온다(2026-09-16 사용자 판정). 방패를 쥔 손은 앞에서 보이면 안 된다.
+    grip: [0, 0.07, 0.75],
+    // **크기를 절반으로 줄였다(2026-09-16 사용자 판정).** 바깥 반지름이 0.282일 때 방패가 몸을
+    // 거의 다 가렸다. 지금은 0.141이고 지름이 키의 25%다.
     parts: [
       {
         type: 'cylinder',
-        radius: 0.26,
-        depth: 0.045,
+        radius: 0.13,
+        depth: 0.0225,
         vertices: 16,
         location: [0, 0, 0.75],
         rotation: [90, 0, 0],
@@ -221,15 +257,15 @@ const CANDIDATES: readonly ICandidate[] = [
       },
       {
         type: 'torus',
-        major_radius: 0.26,
-        minor_radius: 0.022,
+        major_radius: 0.13,
+        minor_radius: 0.011,
         major_segments: 16,
         minor_segments: 6,
         location: [0, 0, 0.75],
         rotation: [90, 0, 0],
         color: METAL,
       },
-      { type: 'sphere', radius: 0.07, subdivisions: 2, location: [0, -0.03, 0.75], color: BOSS },
+      { type: 'sphere', radius: 0.035, subdivisions: 2, location: [0, -0.015, 0.75], color: BOSS },
     ],
   },
   {
@@ -386,41 +422,51 @@ function toCell(file: string): ReturnType<typeof compositeOver> {
   return compositeOver(sampleLikeEngine(img, CELL.width, CELL.height), BACKGROUND);
 }
 
-try {
-  assertNodeVersion();
+// **이 파일을 import해도 굽기가 돌지 않게 한다.** 후보 표(`CANDIDATES`)가 무기 모양의 정본이라
+// 다른 도구가 그것을 읽어 가는데, 진입점 가드가 없으면 import만으로 Blender가 열두 번 돈다.
+const isMain =
+  process.argv[1] !== undefined &&
+  path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 
-  const outDir = path.join(ROOT, OUT_DIR);
-  fs.mkdirSync(outDir, { recursive: true });
-  const specPath = writeSpec(outDir);
-  bake(outDir, specPath);
+if (isMain) {
+  try {
+    assertNodeVersion();
 
-  const rows = CANDIDATES.map((candidate) =>
-    VIEWS.map((view) => toCell(path.join(outDir, `${candidate.id}_${view}.png`))),
-  );
-  const sheet = composeGrid(rows, { gap: GAP, background: BACKGROUND });
-  const sheetPath = path.join(outDir, 'sheet.png');
-  fs.writeFileSync(sheetPath, encodePng(sheet));
+    const outDir = path.join(ROOT, OUT_DIR);
+    fs.mkdirSync(outDir, { recursive: true });
+    const specPath = writeSpec(outDir);
+    bake(outDir, specPath);
 
-  const chosenRows = GAME_SIZES.map((size) =>
-    CHOSEN.map((id) => {
-      const img = decodePng(fs.readFileSync(path.join(outDir, `${id}_front.png`)));
-      return compositeOver(sampleLikeEngine(img, size.width, size.height), BACKGROUND);
-    }),
-  );
-  const chosenSheet = composeGrid(chosenRows, { gap: GAP, background: BACKGROUND });
-  const chosenPath = path.join(outDir, 'chosen.png');
-  fs.writeFileSync(chosenPath, encodePng(chosenSheet));
+    const rows = CANDIDATES.map((candidate) =>
+      VIEWS.map((view) => toCell(path.join(outDir, `${candidate.id}_${view}.png`))),
+    );
+    const sheet = composeGrid(rows, { gap: GAP, background: BACKGROUND });
+    const sheetPath = path.join(outDir, 'sheet.png');
+    fs.writeFileSync(sheetPath, encodePng(sheet));
 
-  console.log(`✓ 후보 시트 ${sheet.width}×${sheet.height} — ${path.relative(ROOT, sheetPath)}`);
-  console.log(`  줄 순서: ${CANDIDATES.map((c) => c.label).join(' | ')}`);
-  console.log(`  열 순서: ${VIEWS.join(' | ')} (왼쪽 가는 막대는 키 ${REFERENCE.height}m 기준선)`);
-  console.log(
-    `✓ 게임 크기 ${chosenSheet.width}×${chosenSheet.height} — ${path.relative(ROOT, chosenPath)}`,
-  );
-  console.log(
-    `  줄 순서: ${GAME_SIZES.map((s) => s.label).join(' | ')} · 열 순서: ${CHOSEN.join(' | ')}`,
-  );
-} catch (err) {
-  console.error(`✗ ${(err as Error).message}`);
-  process.exit(1);
+    const chosenRows = GAME_SIZES.map((size) =>
+      CHOSEN.map((id) => {
+        const img = decodePng(fs.readFileSync(path.join(outDir, `${id}_front.png`)));
+        return compositeOver(sampleLikeEngine(img, size.width, size.height), BACKGROUND);
+      }),
+    );
+    const chosenSheet = composeGrid(chosenRows, { gap: GAP, background: BACKGROUND });
+    const chosenPath = path.join(outDir, 'chosen.png');
+    fs.writeFileSync(chosenPath, encodePng(chosenSheet));
+
+    console.log(`✓ 후보 시트 ${sheet.width}×${sheet.height} — ${path.relative(ROOT, sheetPath)}`);
+    console.log(`  줄 순서: ${CANDIDATES.map((c) => c.label).join(' | ')}`);
+    console.log(
+      `  열 순서: ${VIEWS.join(' | ')} (왼쪽 가는 막대는 키 ${REFERENCE.height}m 기준선)`,
+    );
+    console.log(
+      `✓ 게임 크기 ${chosenSheet.width}×${chosenSheet.height} — ${path.relative(ROOT, chosenPath)}`,
+    );
+    console.log(
+      `  줄 순서: ${GAME_SIZES.map((s) => s.label).join(' | ')} · 열 순서: ${CHOSEN.join(' | ')}`,
+    );
+  } catch (err) {
+    console.error(`✗ ${(err as Error).message}`);
+    process.exit(1);
+  }
 }
