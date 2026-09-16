@@ -128,6 +128,24 @@ interface IGearCase {
  */
 const CHEST_BONE = 'J_Bip_C_UpperChest';
 
+/**
+ * `CHEST_BONE` 머리의 기준 자세 위치(m, 2026-09-16 실측). 부품 좌표의 원점이라, 세계 좌표로 잰 자리를
+ * 부품 좌표로 옮길 때 이것을 뺀다.
+ */
+const UPPER_CHEST_HEAD = { y: 0.0026, z: 0.631 };
+
+/**
+ * 날개 뿌리 면의 중심이 오는 자리 — 날개뼈(세계 좌표, m). 기준 자세에 상의 A를 입힌 등 표면을 날개뼈
+ * 열(|x| 0.03~0.06)에서 재니(2026-09-16) 등은 z 0.48~0.76에 있고(위는 목, 아래는 허리) 표면 y는
+ * 0.069~0.081이다. 뿌리 면은 그 안에 들어가도록 높이 `WING_ROOT_HEIGHT`로 z 0.54~0.76에 두고, y는
+ * 표면보다 안쪽(0.068)에 둬 몸에 붙인다 — 밖에 두면 3/4 방향에서 등과 뿌리 사이가 벌어져 보인다.
+ * 안으로 들어간 부분은 몸이 가린다.
+ */
+const SHOULDER_BLADE = { x: 0.045, y: 0.068, z: 0.65 };
+
+/** 날개 뿌리 면의 높이(m). 날개뼈 열의 등 길이(z 0.48~0.76) 안에 들어가는 값이다. */
+const WING_ROOT_HEIGHT = 0.22;
+
 /** 허리 장비가 붙는 본. */
 const HIPS_BONE = 'J_Bip_C_Hips';
 
@@ -184,23 +202,37 @@ function cape(sway: number, ripplePhase: number): IGearSpec {
 }
 
 /**
- * 날개 한 쌍. 등 가운데 뿌리에서 좌우로 뻗고 뒤로 조금 젖힌다.
- * @param flap 뿌리를 축으로 날개 끝을 들어 올리는 각(도)
+ * 날개 한 쌍. 뿌리 면의 중심을 날개뼈(`SHOULDER_BLADE`)에 붙이고 좌우로 뻗는다. 부품 원점이 뿌리
+ * 위 모서리라, 뿌리 중심에서 높이의 절반만큼 올린 자리가 `location`이다 — 날개 모양(뿌리 높이)이
+ * 바뀌어도 뿌리 중심은 날개뼈에 남는다(사용자 요청 2026-09-16).
+ *
+ * 첫 판의 뿌리는 등을 고려한 것이 아니었다. 가슴 높이 4.5cm 뒤에 직사각형 모서리를 매단 것이고,
+ * 뿌리 면적이 넓어 문제로 드러나지 않았을 뿐이다.
+ *
+ * **경첩은 뿌리의 세로 모서리이고 나비처럼 접힌다.** 첫 판은 깊이 축(Y)으로 끝을 들어 올렸는데, 그
+ * 축은 뿌리 위 모서리 한 점만 지나서 뿌리 아랫부분이 등에서 떨어졌다 붙었다 했다(사용자 판정
+ * 2026-09-16). Z축 회전은 뿌리 모서리 전체가 축이라, 등에 붙은 면이 고정된 채 날개가 펴졌다 접힌다.
+ *
+ * @param fold 뿌리 모서리를 축으로 날개를 뒤로 접는 각(도). 0이면 옆으로 활짝, 70이면 등 뒤로 거의 접힘
  */
-function wings(flap: number): IGearSpec {
+function wings(fold: number): IGearSpec {
   const wing = (side: 1 | -1): IGearPart => ({
     type: 'wing',
     group: 'Gear',
     side,
     span: 0.5,
-    height_root: 0.32,
+    height_root: WING_ROOT_HEIGHT,
     height_tip: 0.12,
     sweep: 0.22,
     bend: 0.06,
     feathers: 4,
     scallop: 0.05,
-    location: [side * 0.04, 0.12, 0.16],
-    rotation: [0, -side * flap, side * 25],
+    location: [
+      side * SHOULDER_BLADE.x,
+      SHOULDER_BLADE.y - UPPER_CHEST_HEAD.y,
+      SHOULDER_BLADE.z + WING_ROOT_HEIGHT / 2 - UPPER_CHEST_HEAD.z,
+    ],
+    rotation: [0, 0, side * fold],
     color: [220, 215, 240],
   });
   return { id: 'wings', bone: CHEST_BONE, parts: [wing(1), wing(-1)] };
@@ -229,14 +261,15 @@ export const CASES: readonly IGearCase[] = [
     id: 'wings',
     label: '날개',
     checks: [
+      '뿌리 면이 날개뼈 자리에 등과 붙어 보이나 (뒤 · 3/4)',
       '날개가 층 캔버스를 넘나 (아래 수치의 넘침)',
       '앞모습에서 날개와 팔 · 방패가 서로 가리는 경계가 이상한가',
       '얇은 막의 가장자리가 720p에서 사라지거나 깨지나',
-      '딱딱한 경계에서 막에 그늘 조각이 생기나',
+      '나비처럼 접혔다 펴질 때 뿌리가 등에서 떨어지거나 막에 그늘 조각이 튀나',
     ],
-    spec: wings(0),
+    spec: wings(25),
     hardEdge: true,
-    flutter: { view: 'three_quarter', at: (t) => wings(15 * Math.sin(2 * Math.PI * t)) },
+    flutter: { view: 'three_quarter', at: (t) => wings(35 + 35 * Math.sin(2 * Math.PI * t)) },
   },
   {
     id: 'armor',
