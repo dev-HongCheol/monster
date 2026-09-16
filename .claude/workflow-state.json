@@ -4,7 +4,9 @@
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": null,
-  "canon_updated": [],
+  "canon_updated": [
+    "docs/development/spec/ops-blender-toon.md"
+  ],
   "canon_skip_reason": null,
   "qa_doc_fingerprint": "c32f9186cdf28766",
   "verification": {
