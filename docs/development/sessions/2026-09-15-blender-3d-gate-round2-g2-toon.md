@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-09-15
 - **브랜치:** `feat/blender-3d-gate`
-- **상태:** 진행 전 — qa-setup 단계, G1 통과 뒤
+- **상태:** 진행 중 — 가림 판정 통과(2026-09-16, §6 첫 조건). 남은 것은 툰 세팅 · 외곽선 · 비교 시트다. 겨냥할 수치와 도구 쓰는 법은 [2026-09-16 인계 문서](2026-09-16-blender-3d-gate-round2-handoff.md) §3 · §4가 든다
 - **정본:** [`art-direction.md`](../../design/spec/art-direction.md) §3.1 · [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §3 — 3D 렌더의 화풍 설정과 층 구성이 플레이어 규격에 들어간다
 - **개요:** [2라운드 계획 개요](2026-09-15-blender-3d-gate-round2-plan.md)
 
