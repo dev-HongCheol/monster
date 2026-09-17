@@ -19,6 +19,13 @@
  * 귀신은 노드 높이가 도깨비 70 · 처녀귀신 50 단위이고, 표본은 여백이 있어 그린 부분(알파 상자)의 높이가 그 단위
  * 수가 되게 줄인다. 1440p는 두 배다.
  *
+ * **고른 고도의 720p 그림은 상의 A · B 두 판을 다 뽑는다.** 화풍 게이트가 두 벌 모두를 판정하기 때문이다(G2 §5).
+ * 고도 후보 시트는 A만 쓴다 — 고도 선택에 옷은 관계없다.
+ *
+ * **3D 칸의 그린 높이를 기대값과 견준다.** 2026-09-17 첫 시트에서 3D 칸이 세로 1.46배 늘어난 채 판정에 올라갔는데
+ * (굽기 캔버스와 시트 배율의 불일치), 720p 칸의 그린 높이를 키 × cos(고도)와 견줬으면 시트 전에 잡혔다. 그래서
+ * 칸을 만들 때 그 검사를 하고, 어긋나면 시트를 만들지 않고 멈춘다.
+ *
  * 귀신 표본과 시트는 커밋하지 않는다(G2 §4). 판정은 사람이 한다 — 고도 선택과 화풍 게이트(§5).
  */
 
@@ -51,6 +58,16 @@ const DEFAULT_PITCHES = [0, 15, 30, 45];
 
 /** 고른 고도(도). 후보 넷을 본 사용자가 15°를 골랐다(2026-09-17). 이 고도의 720p 크기 그림을 따로 쓴다 */
 const CHOSEN_PITCH = 15;
+
+/** 상의 B 판. `DEFAULT_VRM`(상의 A)과 같은 폴더에 있다 */
+const TOP_B_VRM = path.join(path.dirname(DEFAULT_VRM), 'player_top_b.vrm');
+
+/**
+ * 3D 칸의 그린 높이가 허용 범위 밖으로 벗어나도 되는 비율. 범위의 상한은 0°의 키(발 행 − 머리 행)이고 하한은
+ * 키 × cos(고도)다 — 몸통은 cos만큼 짧아지지만 앞으로 나온 발끝 · 방패 · 지팡이가 sin만큼 더해져 한 점으로는
+ * 못 잡는다(30°에서 cos 기대 82px인데 실측 92px, 2026-09-17). 잡으려는 것은 1.46배 같은 배율 사고라 10%면 넉넉하다
+ */
+const CELL_HEIGHT_TOLERANCE = 0.1;
 
 /**
  * 3D를 굽는 층 캔버스. 무기가 몸 옆으로 나가므로 가로를 키운다. 세로는 기준 493 그대로다 — 마법진은 굽지
@@ -181,6 +198,23 @@ function toGame(img: IRgbaImage, factor: number): IRgbaImage {
   );
 }
 
+/**
+ * 720p 칸의 그린 높이가 키 × cos(고도) ~ 키(0°) 범위에서 `CELL_HEIGHT_TOLERANCE` 안에 있는지 본다. 구운 파일의
+ * 실제 크기와 시트 배율이 어긋나면 여기서 걸린다. 마법진을 얹기 전의 렌더로 재야 한다 — 마법진이 발 아래로
+ * 내려와 상자를 키운다.
+ */
+function checkCellHeight(render: IRgbaImage, pitch: number, heightPx: number): void {
+  const box = trimBox(toGame(render, 1));
+  if (!box) throw new Error(`고도 ${pitch}°의 렌더가 비어 있다`);
+  const upright = heightPx * SCALE_720P.y;
+  const low = upright * Math.cos((pitch * Math.PI) / 180) * (1 - CELL_HEIGHT_TOLERANCE);
+  const high = upright * (1 + CELL_HEIGHT_TOLERANCE);
+  if (box.height < low || box.height > high)
+    throw new Error(
+      `고도 ${pitch}°의 720p 칸 높이가 ${box.height}px — 허용 ${low.toFixed(1)}~${high.toFixed(1)}px. 굽기 캔버스와 시트 배율이 어긋난 것이다`,
+    );
+}
+
 /** 그린 부분의 높이가 `heightPx`가 되게 엔진식으로 줄인다. 여백이 있는 귀신 표본용이다 */
 function scaleToDrawnHeight(img: IRgbaImage, heightPx: number): IRgbaImage {
   const box = trimBox(img);
@@ -205,6 +239,8 @@ if (isMain) {
     const pitches = at >= 0 ? argv[at + 1].split(',').map(Number) : DEFAULT_PITCHES;
     const vrm = path.resolve(ROOT, DEFAULT_VRM);
     if (!fs.existsSync(vrm)) throw new Error(`.vrm이 없다: ${vrm}`);
+    const vrmB = path.resolve(ROOT, TOP_B_VRM);
+    if (!fs.existsSync(vrmB)) throw new Error(`상의 B 판이 없다: ${vrmB}`);
     for (const ghost of GHOSTS)
       if (!fs.existsSync(path.join(ROOT, ghost.file)))
         throw new Error(
@@ -229,25 +265,23 @@ if (isMain) {
 
     const started = Date.now();
     const files = pitches.map((pitch) => path.join(outDir, `player_p${pitch}.png`));
+    const chosenAt = pitches.indexOf(CHOSEN_PITCH);
+    const fileB = path.join(outDir, `player_top_b_p${CHOSEN_PITCH}.png`);
     const groundFile = path.join(outDir, 'ground.json');
     const grounds: Record<string, [number, number]> = fs.existsSync(groundFile)
       ? JSON.parse(fs.readFileSync(groundFile, 'utf-8'))
       : {};
-    const payloads = await runPool(
-      pitches.map(
-        (pitch, i) => () =>
-          bakeAsync(paths, {
-            out: files[i],
-            layer: 'whole',
-            yaw: 0,
-            toon,
-            weapons: true,
-            pitch,
-            canvas: CANVAS,
-          }),
-      ),
-    );
-    payloads.forEach((payload, i) => {
+    const job = (out: string, pitch: number, vrmFile: string) => () =>
+      bakeAsync(
+        { ...paths, vrm: vrmFile },
+        { out, layer: 'whole', yaw: 0, toon, weapons: true, pitch, canvas: CANVAS },
+      );
+    // 고른 고도에서는 상의 B도 같은 풀에서 함께 굽는다 — 720p 그림을 두 판 다 뽑으려는 것이다
+    const payloads = await runPool([
+      ...pitches.map((pitch, i) => job(files[i], pitch, vrm)),
+      ...(chosenAt >= 0 ? [job(fileB, CHOSEN_PITCH, vrmB)] : []),
+    ]);
+    payloads.slice(0, pitches.length).forEach((payload, i) => {
       const ground = payload.ground_px as [number, number] | undefined;
       if (ground) grounds[String(pitches[i])] = ground;
       if (!grounds[String(pitches[i])])
@@ -264,9 +298,11 @@ if (isMain) {
     fs.writeFileSync(path.join(outDir, 'magic_circle_texture.png'), encodePng(texture));
 
     const composed = pitches.map((pitch, i) => {
+      const render = read(files[i]);
+      checkCellHeight(render, pitch, heightPx);
       const ratio = Math.sin((pitch * Math.PI) / 180);
       const circle = squash(texture, Math.max(ratio, 0.02));
-      const { img } = withCircle(read(files[i]), circle, grounds[String(pitch)]);
+      const { img } = withCircle(render, circle, grounds[String(pitch)]);
       const file = path.join(outDir, `player_p${pitch}_circle.png`);
       fs.writeFileSync(file, encodePng(img));
       return img;
@@ -296,17 +332,25 @@ if (isMain) {
     );
 
     // 고른 고도의 플레이어와 귀신을 720p 게임 크기 그대로 따로 쓴다 — 사용자가 게임 화면을 다른 도구로 꾸밀 때 그대로 붙인다
-    const chosenAt = pitches.indexOf(CHOSEN_PITCH);
     if (chosenAt >= 0) {
       const playerFile = path.join(outDir, `player_p${CHOSEN_PITCH}_720p.png`);
       fs.writeFileSync(playerFile, encodePng(toGame(composed[chosenAt], 1)));
+      // 상의 B — 몸과 카메라가 A와 같으므로 발밑 점은 A의 것을 그대로 쓴다
+      const renderB = read(fileB);
+      checkCellHeight(renderB, CHOSEN_PITCH, heightPx);
+      const circleB = squash(texture, Math.max(Math.sin((CHOSEN_PITCH * Math.PI) / 180), 0.02));
+      const playerFileB = path.join(outDir, `player_top_b_p${CHOSEN_PITCH}_720p.png`);
+      fs.writeFileSync(
+        playerFileB,
+        encodePng(toGame(withCircle(renderB, circleB, grounds[String(CHOSEN_PITCH)]).img, 1)),
+      );
       for (const [i, img] of ghosts.entries())
         fs.writeFileSync(
           path.join(outDir, `ghost_${i + 1}_720p.png`),
           encodePng(scaleToDrawnHeight(img, GHOSTS[i].units)),
         );
       console.log(
-        `✓ 720p 크기 그대로: ${path.relative(ROOT, playerFile)}, ghost_1_720p.png(도깨비), ghost_2_720p.png(처녀귀신)`,
+        `✓ 720p 크기 그대로: ${path.relative(ROOT, playerFile)}(상의 A), ${path.basename(playerFileB)}(상의 B), ghost_1_720p.png(도깨비), ghost_2_720p.png(처녀귀신)`,
       );
     }
   })().catch((err) => {
