@@ -130,6 +130,8 @@ user-verification  720p · 1440p 확인 ─▶ PR 승인
 | `docs/design/spec/art-asset-spec.md` | §0 · §2.4 · §2.6 | 트랙 표, 시전하는 손, 스켈레탈 트랙의 무기 |
 | | §3 · §5 · §12 | 플레이어 규격(§3.5 파일명 동결 포함), Spine 규격의 적용 범위, 미결 목록의 Spine 행 셋(:538, :547, :548) |
 | | §9.1.1 | 커밋 규칙을 「최종 정본만」으로 |
+| | §3.2 · §4.1 ~ §4.3 | 플레이어 표시 크기 38.42×77(낡은 72×96 문장 정리), 몬스터 크기 규칙을 `collisionRadius` 직선(18 → 50 · 40 → 75)으로, 치수표 · 제안 갱신 — 값은 [G5 문서](2026-09-15-blender-3d-gate-round2-g5-game.md) §2.6 |
+| `docs/development/spec/game-combat.md` | §3 | 피격 사각형 반값 14 · 35, 이동 원 20 (G5 §2.6) |
 | `docs/design/spec/art-generation-playbook.md` | §2.3 · §3.1 · §5.1 · §8.2 · §8.8 | 인물 고정 문장의 지팡이 · 빈손, 지팡이 생성 · 배선(2D 전제)을 플레이어에서 떼어 냄 |
 | `docs/development/spec/ops-licensing.md` | §2 | VRoid 확인 날짜 · 조건, Blender, 무기 모델 출처 행을 더하고, Quaternius 행은 뺀다(이 브랜치가 더했고 근거 자산이 main에 남지 않는다) |
 | `docs/development/spec/ops-build.md` | §6.2 | 교체 뒤 빌드 파일 수 · 용량 실측값 |
