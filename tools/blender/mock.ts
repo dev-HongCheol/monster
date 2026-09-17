@@ -21,7 +21,7 @@
  * **놓은 뒤 수치로 검증한다.** 놓인 그림마다 720p 그린 높이를 기대값과 견주고 어긋나면 멈춘다 — 첫 고도
  * 시트에서 배율 사고가 판정에 올라간 전례가 있다(`elevation.ts` 머리 주석).
  *
- * 귀신 표본과 흉내는 커밋하지 않는다(G2 §4).
+ * 흉내는 `docs/temp/`에 나오고, 판정에 쓴 장은 `art-source/player/2026-09-17-3d-gate-round2-g2/`에 복사해 추적한다.
  */
 
 import fs from 'node:fs';
@@ -58,12 +58,28 @@ const HEIGHT_TOLERANCE_PX = 1;
 /** 적 데이터 — `collisionRadius`만 쓴다 */
 const ENEMIES_JSON = 'game/assets/resources/data/enemies.json';
 
-/** 귀신 표본. 파일은 이 장비에만 있고 커밋하지 않는다. `id`는 `enemies.json`의 것이다 */
+/** 귀신 표본. 사용자가 만든 원본이고 `art-source/`에 추적한다(`elevation.ts`와 같은 자리). `id`는 `enemies.json`의 것이다 */
 const SAMPLES: readonly { id: string; label: string; file: string }[] = [
-  { id: 'dalgyal', label: '달걀귀신', file: 'docs/temp/3d-gate/g2/달걀귀신.png' },
-  { id: 'cheonyeo', label: '처녀귀신', file: 'docs/temp/3d-gate/g2/처녀귀신.png' },
-  { id: 'dokkaebi', label: '도깨비', file: 'docs/temp/3d-gate/g2/도깨비.png' },
-  { id: 'dueokshini', label: '두억시니', file: 'docs/temp/3d-gate/g2/두억시니.png' },
+  {
+    id: 'dalgyal',
+    label: '달걀귀신',
+    file: 'art-source/enemies/2026-09-17-ghost-samples/달걀귀신.png',
+  },
+  {
+    id: 'cheonyeo',
+    label: '처녀귀신',
+    file: 'art-source/enemies/2026-09-17-ghost-samples/처녀귀신.png',
+  },
+  {
+    id: 'dokkaebi',
+    label: '도깨비',
+    file: 'art-source/enemies/2026-09-17-ghost-samples/도깨비.png',
+  },
+  {
+    id: 'dueokshini',
+    label: '두억시니',
+    file: 'art-source/enemies/2026-09-17-ghost-samples/두억시니.png',
+  },
 ];
 
 /**
@@ -171,7 +187,7 @@ if (isMain) {
       const file = path.join(ROOT, sample.file);
       if (!fs.existsSync(file))
         throw new Error(
-          `귀신 표본이 없다: ${sample.file} — 이 장비에만 있는 파일이라 다른 장비면 다시 받는다`,
+          `귀신 표본이 없다: ${sample.file} — art-source에 추적하는 파일이다. 체크아웃을 확인한다`,
         );
       const expected = heightFor(row.collisionRadius, range);
       const img = scaleToDrawnHeight(read(file), expected);

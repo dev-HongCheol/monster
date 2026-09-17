@@ -27,7 +27,8 @@
  * (굽기 캔버스와 시트 배율의 불일치), 720p 칸의 그린 높이를 키 × cos(고도)와 견줬으면 시트 전에 잡혔다. 그래서
  * 칸을 만들 때 그 검사를 하고, 어긋나면 시트를 만들지 않고 멈춘다.
  *
- * 귀신 표본과 시트는 커밋하지 않는다(G2 §4). 판정은 사람이 한다 — 고도 선택과 화풍 게이트(§5).
+ * 산출물은 `docs/temp/`에 두고, 판정에 쓴 시트와 귀신 표본 원본은 `art-source/`에 추적한다(2026-09-17 사용자 결정).
+ * 판정은 사람이 한다 — 고도 선택과 화풍 게이트(§5).
  */
 
 import fs from 'node:fs';
@@ -93,10 +94,17 @@ const BACKGROUND: Rgb = [0, 0, 0];
 /** 출하된 2D 정면. 캔버스가 플레이어 규격이라 720p에서 48×96이다 */
 const SHIPPED_2D = 'game/assets/art/player/player_4dir_front.png';
 
-/** 귀신 표본과 노드 높이(720p px). 파일은 커밋하지 않는다 */
+/**
+ * 귀신 표본과 노드 높이(720p px). 사용자가 GPT 웹으로 만든 원본이고 `art-source/`에 추적한다 — 흉내와 시트를
+ * 다시 만들 때 필요한 입력이라 장비 하나에만 두지 않는다(2026-09-17 사용자 결정, 종전에는 커밋하지 않았다)
+ */
 const GHOSTS: readonly { label: string; file: string; units: number }[] = [
-  { label: '도깨비', file: 'docs/temp/3d-gate/g2/도깨비.png', units: 70 },
-  { label: '처녀귀신', file: 'docs/temp/3d-gate/g2/처녀귀신.png', units: 50 },
+  { label: '도깨비', file: 'art-source/enemies/2026-09-17-ghost-samples/도깨비.png', units: 70 },
+  {
+    label: '처녀귀신',
+    file: 'art-source/enemies/2026-09-17-ghost-samples/처녀귀신.png',
+    units: 50,
+  },
 ];
 
 /**
@@ -256,7 +264,7 @@ if (isMain) {
     for (const ghost of GHOSTS)
       if (!fs.existsSync(path.join(ROOT, ghost.file)))
         throw new Error(
-          `귀신 표본이 없다: ${ghost.file} — 이 장비에만 있는 파일이라 다른 장비면 다시 받는다`,
+          `귀신 표본이 없다: ${ghost.file} — art-source에 추적하는 파일이다. 체크아웃을 확인한다`,
         );
 
     const outDir = path.join(ROOT, OUT_DIR);

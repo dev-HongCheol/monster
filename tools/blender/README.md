@@ -160,7 +160,8 @@ Cocos가 꺼져 있어 `.meta`를 확실히 남길 수 있으면, 게임 폴더�
 | 게이트 0a 스모크 PNG | `docs/temp/3d-gate/` | 안 함 — 스크립트로 다시 만들 수 있는 것만 둔다 |
 | 걷기 프레임 | `game/assets/test-3d-gate/` | 함 |
 | 게이트 1 비교 시트 | `art-source/player/2026-09-11-3d-gate/comparison-sheet.png` | 함 |
-| G2 층 탐침 · 장비 검토 세트(`gear.ts`) | `docs/temp/3d-gate/g2/` · `docs/temp/3d-gate/gear/` | 안 함 — 판정 증거라 커밋하지 않는다. **스크립트는 여기 두지 않는다** — 이 폴더는 추적되지 않아 여기 둔 스크립트는 한 장비에만 남는다 |
+| G2 층 탐침 · 장비 검토 세트 · 외곽선 · 고도 · 흉내(`probe_layers.py` · `gear.ts` · `outline.ts` · `elevation.ts` · `mock.ts`) | `docs/temp/3d-gate/<도구>/` | 안 함 — 도구로 다시 만든다. **판정에 실제로 쓴 시트 · 흉내만** `art-source/player/2026-09-17-3d-gate-round2-g2/`에 복사해 추적한다(2026-09-17, 폴더 README가 목록). **스크립트는 여기 두지 않는다** — 이 폴더는 추적되지 않아 여기 둔 스크립트는 장비 하나에만 남는다 |
+| 귀신 표본 원본(사용자가 GPT 웹으로 생성) | `art-source/enemies/2026-09-17-ghost-samples/` | 함 — `elevation.ts` · `mock.ts`의 입력이라 장비 하나에만 두지 않는다 |
 | `.vrm` 마스터와 판정 증거 | `art-source/player/2026-09-11-3d-gate/` | 함 |
 
 `.vrm`은 커밋한다. 커밋하지 않으면 사슬의 출발점이 한 장비에만 남는다. 크기 상한은 50MB이고

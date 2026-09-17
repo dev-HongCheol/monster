@@ -141,7 +141,7 @@ Weapon 자식(600×701) = 93.712 × 109.487
 | `retarget_render.py`의 `import_motion` · `BONE_MAP` · `SWING_SCALE` | 키프레임 굽기로 대체되면 뺀다 |
 | `tests/logic/Blender3dGate.test.ts`의 1라운드 단언 | 남는 도구에 해당하는 것만 둔다 |
 | `.gitattributes`의 `*.vrm` · `*.glb` | 남긴다. 바이너리 선언이라 대상 파일이 없어도 해가 없다 |
-| 비교 시트, 후보 HTML, 귀신 표본 | 커밋하지 않는다 |
+| 판정에 쓴 비교 시트 · 흉내, 귀신 표본 원본 | `art-source/` 아래에 추적한다(2026-09-17 사용자 결정 — 개요 §3, 목록은 G2 §8.6). 후보 HTML · 탐침 · 중간 산출물은 커밋하지 않는다 |
 
 ## 4. 검사 도구 명령
 
