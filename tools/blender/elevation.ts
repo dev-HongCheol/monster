@@ -49,6 +49,9 @@ const OUT_DIR = 'docs/temp/3d-gate/elevation';
 /** 고도 후보(도). 0이 지금까지의 정면 수평이고, 참고 그림은 34°였다 */
 const DEFAULT_PITCHES = [0, 15, 30, 45];
 
+/** 고른 고도(도). 후보 넷을 본 사용자가 15°를 골랐다(2026-09-17). 이 고도의 720p 크기 그림을 따로 쓴다 */
+const CHOSEN_PITCH = 15;
+
 /**
  * 3D를 굽는 층 캔버스. 무기가 몸 옆으로 나가므로 가로를 키운다. 세로는 기준 493 그대로다 — 마법진은 굽지
  * 않고 뒤에 얹으므로 발 밑 여백이 필요 없다. 기준과 홀짝을 맞춘다(ADR 009).
@@ -70,8 +73,11 @@ const GHOSTS: readonly { label: string; file: string; units: number }[] = [
   { label: '처녀귀신', file: 'docs/temp/3d-gate/g2/처녀귀신.png', units: 50 },
 ];
 
-/** 마법진 지름을 캐릭터 키(px)의 몇 배로 하나. 참고 그림에서 잰 값이다 */
-const CIRCLE_DIAMETER_PER_HEIGHT = 2.0;
+/**
+ * 마법진 지름을 캐릭터 키(px)의 몇 배로 하나. 참고 그림은 두 배쯤이었는데 후보를 본 사용자가 절반(키와 같게)으로
+ * 정했다(2026-09-17).
+ */
+const CIRCLE_DIAMETER_PER_HEIGHT = 1.0;
 
 /** 마법진 색(sRGB). 발광하는 파란빛이라 배경 검정 위에서 잘 보인다 */
 const CIRCLE_COLOR: Rgb = [90, 210, 255];
@@ -288,6 +294,21 @@ if (isMain) {
     console.log(
       `마법진 지름은 캐릭터 키의 ${CIRCLE_DIAMETER_PER_HEIGHT}배(${texture.width}px, 720p에서 ${Math.round(texture.width * SCALE_720P.x)}px). 원본 크기 후보는 player_p<고도>_circle.png`,
     );
+
+    // 고른 고도의 플레이어와 귀신을 720p 게임 크기 그대로 따로 쓴다 — 사용자가 게임 화면을 다른 도구로 꾸밀 때 그대로 붙인다
+    const chosenAt = pitches.indexOf(CHOSEN_PITCH);
+    if (chosenAt >= 0) {
+      const playerFile = path.join(outDir, `player_p${CHOSEN_PITCH}_720p.png`);
+      fs.writeFileSync(playerFile, encodePng(toGame(composed[chosenAt], 1)));
+      for (const [i, img] of ghosts.entries())
+        fs.writeFileSync(
+          path.join(outDir, `ghost_${i + 1}_720p.png`),
+          encodePng(scaleToDrawnHeight(img, GHOSTS[i].units)),
+        );
+      console.log(
+        `✓ 720p 크기 그대로: ${path.relative(ROOT, playerFile)}, ghost_1_720p.png(도깨비), ghost_2_720p.png(처녀귀신)`,
+      );
+    }
   })().catch((err) => {
     console.error(`✗ ${(err as Error).message}`);
     process.exit(1);
