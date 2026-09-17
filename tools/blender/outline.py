@@ -58,6 +58,9 @@ def setup_lineart(spec, line_objects, occluder_objects):
     modifier.use_intersection = spec.get('intersection', True)
     modifier.use_loose = False
     modifier.silhouette_filtering = spec.get('silhouette', 'NONE')
+    # 평면 음영 메시(망토 · 날개 · 갑옷 부품)는 모든 변이 날카로운 변이라, 이 옵션이 켜져 있으면 격자
+    # 전체에 주름 선이 그어진다(2026-09-17 첫 판). 끄면 주름은 각도 문턱으로만 잡는다
+    modifier.use_crease_on_sharp = spec.get('crease_on_sharp', False)
 
     color = spec.get('color', (0.061, 0.009, 0.014))
     if not pencil.data.materials:
