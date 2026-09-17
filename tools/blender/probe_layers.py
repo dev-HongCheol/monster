@@ -202,6 +202,8 @@ def main():
     top_vrm = common.parse_arg(args, 'top-vrm')
     weapon_spec_path = common.parse_arg(args, 'weapon-spec')
     yaw = float(common.parse_arg(args, 'yaw') or 0.0)
+    # 카메라 고도(도). 0이면 정면 수평이고 크면 내려다본다 — G2 고도 후보용(`_common.setup_camera`)
+    pitch = float(common.parse_arg(args, 'pitch') or 0.0)
 
     if not base_vrm:
         raise common.GateError('vrm-path', '`-- --base-vrm <경로>`를 받지 못했다')
@@ -340,7 +342,7 @@ def main():
         detail['toon_parts'] = sorted({row['klass'] for row in applied.values()})
 
     camera = common.setup_camera(
-        body_lo, body_hi, base_width, base_height, foot_row=foot_row, head_row=head_row
+        body_lo, body_hi, base_width, base_height, foot_row=foot_row, head_row=head_row, pitch=pitch
     )
 
     # 층 캔버스를 키운다. 카메라는 몸 규격 그대로 두고 `ortho_scale`만 비례로 늘리므로 인물
@@ -394,6 +396,7 @@ def main():
         'engine': engine,
         'layer': layer,
         'yaw': yaw,
+        'pitch': pitch,
         'held_out_objects': held_out,
         'view_transform': view_transform,
         'ortho_scale': round(camera.data.ortho_scale, 6),

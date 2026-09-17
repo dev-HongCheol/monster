@@ -397,10 +397,10 @@ def world_bounds():
 
 
 def setup_camera(
-    lo, hi, width_px, height_px, margin=0.04, foot_row=None, head_row=None, view='front'
+    lo, hi, width_px, height_px, margin=0.04, foot_row=None, head_row=None, view='front', pitch=0.0
 ):
     """
-    인물을 정면에서 담는 직교 카메라를 세운다.
+    인물을 정면에서 담는 직교 카메라를 세운다. `pitch`(도)를 주면 정면에서 그만큼 내려다본다.
 
     **직교를 쓴다.** 원근이면 거리에 따라 크기가 바뀌어 프레이밍 실패와 렌더 실패가 같은 증상으로
     보이고, 프레임마다 팔다리가 앞뒤로 움직이는 걷기에서는 원근 왜곡이 등신비를 흔든다.
@@ -498,7 +498,22 @@ def setup_camera(
 
     camera = bpy.data.objects.new('GateCamera', data)
     distance = max(2.0, height * 2.0)
-    if view == 'front':
+    if view == 'front' and pitch:
+        # 고도 후보(G2)를 굽는 길이다. 시선을 +Y에서 `pitch`도 아래로 기울이고, 몸 중심(x · y)과
+        # 세로 중심(`center_z`)을 겨냥한 채 카메라를 그 시선의 반대쪽으로 물린다. 직교라 배율은
+        # 그대로고, 인물은 cos(pitch)만큼 짧아 보이며 바닥의 원판은 sin(pitch) 비율의 타원으로
+        # 열린다. 발 · 머리 행은 pitch 0에서만 정확하다 — 고도를 견주는 시트용이라 그 오차는
+        # 받아들이고, 출하 프레임은 고도가 정해진 뒤 행 규격을 다시 잡는다(2026-09-17).
+        from math import cos, radians, sin
+
+        tilt = radians(pitch)
+        camera.location = (
+            center.x,
+            center.y - distance * cos(tilt),
+            center_z + distance * sin(tilt),
+        )
+        camera.rotation_euler = (1.5707963 - tilt, 0.0, 0.0)
+    elif view == 'front':
         # X축 90도만 돌리면 카메라가 -Y에서 +Y를 본다. 기본 카메라는 -Z를 보기 때문이다.
         camera.location = (center.x, lo.y - distance, center_z)
         camera.rotation_euler = (1.5707963, 0.0, 0.0)

@@ -94,7 +94,7 @@ interface IPostRule {
   creaseDegrees: number | null;
 }
 
-interface IMethod {
+export interface IMethod {
   id: string;
   label: string;
   kind: 'hull' | 'lineart' | 'post';
@@ -117,7 +117,7 @@ const LINEART_BASE = {
 };
 
 /** 후보 표. 첫 판 셋은 기록용이고 `DEFAULT_METHODS`가 지금 판정할 판이다. */
-const METHODS: readonly IMethod[] = [
+export const METHODS: readonly IMethod[] = [
   {
     id: 'hull',
     label: '헐 1 — 전부 같은 굵기 · 같은 색',
@@ -188,7 +188,7 @@ const OUTLINE_COLOR_SRGB: Rgb = [
  * 몸(VRoid 재질) · 무기 · 장비가 받는 툰 값. 헐이면 분류마다 외곽선 폭을 주고 색은 재질 것을 둔다 —
  * 무기 · 장비는 `like`가 상의의 외곽선 색을 복사해 오므로 같은 색이 된다.
  */
-function toonSpec(paths: IPaths, method: IMethod, item: IGearCase | null, bodyHull = true) {
+export function toonSpec(paths: IPaths, method: IMethod, item: IGearCase | null, bodyHull = true) {
   const gear = item ? gearSettings(paths, item) : { ...TOON_ORIGINAL.materials.GEAR };
   const materials: Record<string, Record<string, unknown>> = { GEAR: gear };
   if (method.kind === 'hull' && method.hull) {

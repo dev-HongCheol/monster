@@ -22,7 +22,7 @@
  * Blender 실행 파일은 환경 변수 `BLENDER`로 준다. 한 경우에 Blender를 스무 번 가까이 부른다.
  */
 
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -169,10 +169,10 @@ function chestZ(z: number): number {
 }
 
 /** 허리 장비가 붙는 본. */
-const HIPS_BONE = 'J_Bip_C_Hips';
+export const HIPS_BONE = 'J_Bip_C_Hips';
 
 /** `HIPS_BONE` 머리의 기준 자세 위치(m, 2026-09-17 실측). 허리 부품 좌표의 원점이다. */
-const HIPS_HEAD = { y: -0.0046, z: 0.4748 };
+export const HIPS_HEAD = { y: -0.0046, z: 0.4748 };
 
 /**
  * 벨트 높이(z 0.445~0.485) 허리 앞면의 세계 좌표 y를 |x| 열마다 잰 표(상의 A, 2026-09-17). 그 높이의
@@ -545,7 +545,7 @@ const TOON_HARD: IToonSpec = {
 /** 굽기 한 번의 인자. */
 export interface IBake {
   out: string;
-  layer: 'body' | 'gear' | 'whole';
+  layer: 'body' | 'top' | 'staff' | 'shield' | 'gear' | 'whole';
   yaw: number;
   gearSpec?: string;
   toon?: string;
@@ -556,6 +556,8 @@ export interface IBake {
   lineart?: string;
   /** 외곽선 후보 — 법선 · 깊이 패스를 쓸 폴더(`--passes`) */
   passes?: string;
+  /** 카메라 고도(도, `--pitch`). 0이면 정면 수평 */
+  pitch?: number;
 }
 
 /** 경로 묶음 — 한 실행 안에서 한 번만 정한다. */
@@ -657,17 +659,8 @@ function metalMatcap(size: number): IRgbaImage {
   return { width: size, height: size, data };
 }
 
-/**
- * `probe_layers.py`를 한 번 부른다. 판정 줄이 실패면 코드와 stderr 꼬리를 담아 던진다.
- *
- * `--sheet-only`면 굽지 않고 산출물이 이미 있는지만 본다. 시트 배치를 고칠 때마다 Blender를 여든
- * 번 넘게 다시 부르지 않으려는 것이다.
- */
-export function bake(paths: IPaths, job: IBake): void {
-  if (!paths.bakeEnabled) {
-    if (!fs.existsSync(job.out)) throw new Error(`--sheet-only인데 구운 파일이 없다: ${job.out}`);
-    return;
-  }
+/** 굽기 한 번의 Blender 인자. 동기 · 비동기 굽기가 같은 줄을 쓴다 */
+function bakeArgs(paths: IPaths, job: IBake): string[] {
   const args = [
     '--background',
     '--python-exit-code',
@@ -702,15 +695,110 @@ export function bake(paths: IPaths, job: IBake): void {
   if (job.weaponSpec) args.push('--weapon-spec', job.weaponSpec);
   if (job.lineart) args.push('--lineart', job.lineart);
   if (job.passes) args.push('--passes', job.passes);
+  if (job.pitch) args.push('--pitch', String(job.pitch));
+  return args;
+}
 
-  const result = spawnSync(resolveBlender(), args, {
+/** 판정 줄을 읽어 실패면 코드와 stderr 꼬리를 담은 오류를 돌려준다. */
+function bakeFailure(job: IBake, stdout: string, stderr: string): Error | null {
+  const line = parseGateLine(stdout);
+  if (line.ok) return null;
+  const tail = stderr.split('\n').slice(-12).join('\n');
+  return new Error(`${path.basename(job.out)}: ${line.code} ${line.message}\n${tail}`);
+}
+
+/**
+ * `probe_layers.py`를 한 번 부른다. 판정 줄이 실패면 코드와 stderr 꼬리를 담아 던진다.
+ *
+ * `--sheet-only`면 굽지 않고 산출물이 이미 있는지만 본다. 시트 배치를 고칠 때마다 Blender를 여든
+ * 번 넘게 다시 부르지 않으려는 것이다.
+ */
+export function bake(paths: IPaths, job: IBake): void {
+  if (!paths.bakeEnabled) {
+    if (!fs.existsSync(job.out)) throw new Error(`--sheet-only인데 구운 파일이 없다: ${job.out}`);
+    return;
+  }
+  const result = spawnSync(resolveBlender(), bakeArgs(paths, job), {
     encoding: 'utf-8',
     timeout: BLENDER_TIMEOUT_MS,
   });
-  const line = parseGateLine(result.stdout ?? '');
-  if (line.ok) return;
-  const tail = (result.stderr ?? '').split('\n').slice(-12).join('\n');
-  throw new Error(`${path.basename(job.out)}: ${line.code} ${line.message}\n${tail}`);
+  const failure = bakeFailure(job, result.stdout ?? '', result.stderr ?? '');
+  if (failure) throw failure;
+}
+
+/**
+ * `bake`와 같되 기다리지 않는다. `runPool`로 여러 장을 동시에 굽는 데 쓴다.
+ *
+ * 한 장이 11초쯤 걸리는데 그중 렌더는 2~3초이고 나머지는 Blender 시작과 VRM 불러오기라, 한 번에
+ * 하나씩 돌리면 CPU 대부분과 GPU가 논다(2026-09-17 실측). 프로세스 하나가 1~2GB라 넷을 동시에
+ * 돌려도 여유가 있다.
+ */
+export function bakeAsync(paths: IPaths, job: IBake): Promise<void> {
+  if (!paths.bakeEnabled) {
+    if (!fs.existsSync(job.out))
+      return Promise.reject(new Error(`--sheet-only인데 구운 파일이 없다: ${job.out}`));
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    const child = spawn(resolveBlender(), bakeArgs(paths, job), { windowsHide: true });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf-8');
+    child.stderr.setEncoding('utf-8');
+    child.stdout.on('data', (chunk: string) => {
+      stdout += chunk;
+    });
+    child.stderr.on('data', (chunk: string) => {
+      stderr += chunk;
+    });
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(
+        new Error(
+          `${path.basename(job.out)}: Blender가 ${BLENDER_TIMEOUT_MS / 1000}초 안에 안 끝났다`,
+        ),
+      );
+    }, BLENDER_TIMEOUT_MS);
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on('close', () => {
+      clearTimeout(timer);
+      const failure = bakeFailure(job, stdout, stderr);
+      if (failure) reject(failure);
+      else resolve();
+    });
+  });
+}
+
+/** 동시에 돌리는 굽기 수. 한 장의 대부분이 프로세스 시작 · 불러오기라 넷이 겹쳐도 서로 안 막는다 */
+export const BAKE_CONCURRENCY = 4;
+
+/**
+ * 일 목록을 `concurrency`개씩 동시에 돌린다. 하나가 실패해도 나머지를 끝까지 돌린 뒤 첫 실패를 던진다 —
+ * 중간에 끊으면 어느 장까지 구워졌는지 알 수 없다.
+ */
+export async function runPool<T>(
+  jobs: readonly (() => Promise<T>)[],
+  concurrency: number = BAKE_CONCURRENCY,
+): Promise<T[]> {
+  const results: T[] = new Array(jobs.length);
+  const failures: Error[] = [];
+  let next = 0;
+  const worker = async () => {
+    while (next < jobs.length) {
+      const index = next++;
+      try {
+        results[index] = await jobs[index]();
+      } catch (err) {
+        failures.push(err as Error);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, worker));
+  if (failures.length > 0) throw failures[0];
+  return results;
 }
 
 /** PNG 한 장을 읽는다. */

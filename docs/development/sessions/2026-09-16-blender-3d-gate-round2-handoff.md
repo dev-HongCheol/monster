@@ -108,7 +108,7 @@ J_Bip_L_Thumb1  (  25, -20, -30)
 
 1. **외곽선 방식 후보** — 인버티드 헐 · Line Art · 후처리를 같은 시험 세트로 구웠고(2026-09-17, G2 §8.3) 첫 판은 셋 다 되돌아왔다(헐 입체감 감소 · Line Art 격자 · 후처리 뭉개짐). **인버티드 헐 1로 정했다(2026-09-17). 끝.** Line Art · 후처리는 둘째 판에서도 뭉개져 탈락. 헐의 「입체감이 줄었다」는 3D 티가 줄었다는 긍정이었는데 AI가 불만으로 읽고 머리카락 외곽선을 뺀 헐 2 · 3을 구웠다(오독, G2 §8.3) — 사용자가 헐 1(머리카락까지 같은 굵기)을 골랐다. 몸 헐은 가림 전용에 넣는다(67픽셀). 헐 1 세 방향은 첫 판에서 이미 구워져 있다(`sheet_outline_hull.png`) 가림과 함께 고른다(G2 §3) — 몸 헐 가림 탐침 수치도 §8.3에 있다
 2. 겨냥 수치는 아래 §3.3. 애드온 외곽선 폭의 해석은 확정됐다(밀어내는 거리 = 폭 값, 화면 좌표 모드는 노드에 미연결) — `ops-blender-toon.md` §5
-3. **비교 시트** — 3D 캐릭터 · 출하 2D 플레이어 · 귀신 둘을 **실제 표시 크기**로(도깨비 70단위, 처녀귀신 50단위, 플레이어 96단위). 카메라 고도도 여기서 고른다 — 후보 고도마다 발밑에 마법진 원판을 함께 둬 캐릭터와 마법진이 같이 보이는 고도를 고른다
+3. **비교 시트** — 구웠다(2026-09-17, G2 §8.4). `docs/temp/3d-gate/elevation/sheet_elevation.png`에 3D 고도 0° · 15° · 30° · 45°(발밑 마법진 고리 포함) · 출하 2D 플레이어(96단위) · 도깨비(70단위) · 처녀귀신(50단위)이 720p · 1440p 두 줄로 있다. **고도 하나와 화풍 게이트(§5)를 사용자가 판정한다 — 대기 중.** 고도가 정해지면 출하 프레임의 발 · 머리 행 규격을 그 고도로 다시 잡는다
 4. **층 합성과 기준 컷의 픽셀 차이 기록**(G4 회귀 가드) — 끝났다. 장비 세트는 G2 §8.2, 헐 1 세 방향은 §8.3의 표
 
 외곽선 방식 · 카메라 고도 · 화풍 통과는 **전부 사람 판정**이다(G2 §5).
@@ -143,6 +143,7 @@ blender --background --python-exit-code 1 --python tools/blender/probe_layers.py
 
 - `--no-holdout 1` — 가림을 끈다. **층이 비어 나올 때 가려져서인지 애초에 없어서인지를 가르는 유일한 수단**이다
 - `--yaw 180` — 모델을 돌린다(뒷모습). 몸 상자는 돌리기 전에 잰다
+- `--pitch 30` — 카메라 고도(도). 몸 중심을 겨냥한 채 내려다보고 직교 배율은 그대로다. 발 · 머리 행은 0°에서만 정확하다
 - `--top-vrm <경로>` — 상의 층에 필요하다
 - `--gear-spec <json>` — 장비(망토 · 날개 …)를 사양의 `bone`에 붙인다. `gear` 층은 몸으로 가리고, `whole`은 가림 없이 함께 굽는다. 몸에 붙는 부품(`wrap` · `cap` · `strap`, `snap`)은 `weapons.py Surface`가 몸 메시로 광선을 쏴 표면에 맞춘다 — 머리카락은 뺀다
 - `--staff-spec` · `--shield-spec` — `whole`에 무기를 든다(없으면 빼고 굽는다)
@@ -155,7 +156,8 @@ blender --background --python-exit-code 1 --python tools/blender/probe_layers.py
 | `toon.py` | 툰 사양을 MToon 머티리얼에 입힌다 |
 | `inspect_mtoon.py` | MToon 값 덤프 + 애드온이 어느 음영 식을 쓰는지 보고(`shading_path`). 애드온 · Blender 판을 바꾸면 먼저 돌린다 |
 | `gear.ts` | 장비 검토 세트 굽기 · 시트 · 수치 · 흔들림 재생. `--only cape,wings`, `--sheet-only`(굽지 않고 시트만). 경우별 `toon`(툰 값 덮기) · `views`(방향 — 왼쪽 측면 yaw 300은 화려한 장비만) |
-| `outline.ts` · `outline.py` | 외곽선 후보 셋을 시험 세트로 굽고 시트 · 수치를 만든다. `--only hull,lineart,post` · `--cases cape,wings` · `--sheet-only`. 후처리 선은 TS가 긋고, Line Art와 패스는 `probe_layers.py`의 `--lineart` · `--passes`가 받는다 |
+| `outline.ts` · `outline.py` | 외곽선 후보를 표(`METHODS`)로 두고 시험 세트로 굽고 시트 · 수치를 만든다. `--only hull2,post2` · `--cases cape,wings` · `--views front` · `--sheet-only`. 후처리 선은 TS가 긋고, Line Art와 패스는 `probe_layers.py`의 `--lineart` · `--passes`가 받는다 |
+| `elevation.ts` | 카메라 고도 후보를 발밑 마법진과 함께 굽고, 출하 2D · 귀신 표본과 실제 표시 크기로 나란히 놓는 비교 시트. `--pitches 0,15,30,45`. 넷을 동시에 굽는다(`gear.ts`의 `bakeAsync` · `runPool`) |
 | `layers.ts` | `subset`(가림 판정) · `stack`(층 합성 + 720p) · `diff`(기준 컷과의 차이) |
 | `bake_layer.py` | 층 캔버스를 달리해 굽는다(ADR 009 실증에 씀) |
 | `inspect_meshes.py` | 메시 · 머티리얼 · 정점 지문 덤프 |
