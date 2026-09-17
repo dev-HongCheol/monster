@@ -106,7 +106,6 @@ J_Bip_L_Thumb1  (  25, -20, -30)
 - G2 §6 통과 조건 넷 중 셋(가림 알파 0 · 층 합성 테두리와 수치 · 외곽선과 고도)이 닫혔고 화풍 게이트만 남았다. 닫히면 판정 결과를 `docs/qa/blender-3d-gate-test.md` 2라운드 절에 적는다.
 - **출하 프레임의 발 · 머리 행 규격을 15°로 다시 잡는다**(G4). 고도가 있으면 발밑 점이 489행에서 위로 올라간다(15°에서 485.1행 — `probe_layers.py`가 판정 줄에 `ground_px`로 준다). `PLAYER_FRAME_SPEC`과 `FootprintLogic`의 발치 오프셋이 같이 걸린다.
 - **정본 갱신(G6)** — 외곽선(인버티드 헐 1 · 폭 0.0062m · 눈 · 얼굴 그림 제외 · 몸 헐은 가림 포함), 고도 15°, 마법진(위에서 본 정원 텍스처를 게임 노드로, 세로 배율 sin 15° = 0.26, 지름 = 키, 캐릭터 뒤), 천 그늘 문턱 0.8 후보, 금속 matcap, 몸 표면 투영을 어느 정본에 적을지 정한다. `ops-blender-toon.md` §5는 이미 고쳤다.
-- **도구 위생** — `F107` 린트 빨간불(지금 46건, 전부 `docs/temp/` · `.gstack/` JSON이라 biome 제외 경로로 닫는다), README 파일 표의 빠진 행(§6).
 
 ### 3.3 겨냥할 수치
 
@@ -190,9 +189,7 @@ blender --background --python-exit-code 1 --python tools/blender/probe_layers.py
 - **가는 장식의 최소 굵기** — 720p에서 지름 0.8cm(0.7px)는 사라지고 2.2cm 고리는 점으로 남는다(G2 §8.2). 장비 디자인 규격에 적을 후보다 — G6 정본 개정 때 `art-asset-spec.md`에 넣을지 정한다
 - **무기 재질과 헐** — 외곽선이 인버티드 헐로 정해졌고 헐은 MToon에서만 나오므로, 무기도 MToon(상의 규칙 · `shade_ratio` 0.6)으로 바꾸는 쪽이 사실상 정해졌다. 사용자에게 확인받아 정본에 적는다
 - **`F108`** — 귀신 생성 요구사항을 플레이북 정본으로 승격. 플레이북이 fal.ai · 플레이어 2D 기준이라 지금은 못 받는다
-- **`F107`** — `pnpm check`가 빨간불. 지금 46건이고 전부 `docs/temp/`(장비 · 외곽선 도구가 쓰는 JSON)와 `.gstack/`의 JSON이라 biome 제외 경로로 한 번에 닫는다. **검증 단계의 `wf pass lint`를 막으므로 그 전에 고쳐야 한다**
 - **몬스터 크기 규격과 모바일** — §3.1의 2번. 규격 변경이면 `art-asset-spec.md` §4를 고치고 적 스프라이트 노드 크기(코드)도 따라간다
-- **`tools/blender/README.md` 파일 표** — `bake_layer.py` · `inspect_meshes.py` · `measure_weapon_room.py` 행이 없다(`outline.py` · `outline.ts` · `elevation.ts`는 넣었다)
 - **정본 갱신 기록** — `wf canon`이 `ops-blender-toon.md`를 이 슬라이스의 `canon_updated`에 올렸다. G6 정본 개정 때 함께 본다
 - **세션 문서 폴더 구조화** — 지금 평면인데 `workflow.mjs`의 `planDocPath`와 `DocFs.loadSessionDocs`가 둘 다 비재귀라, 폴더로 옮기면 `approve-plan`이 막히고 `정본:` 줄 검사가 조용히 빠진다. 백로그로 빼 두는 쪽을 권했다
 - **`FootprintLogic` JSDoc** — 계약에 「Trim 켬」을 적고 긴 망토를 경고하는데 실제 씬은 `trim = false`라 성립하지 않는다. `game/assets/scripts/**`가 `qa-setup`에서 잠겨 못 고쳤다. G5 문서 §3의 3번 단계에 적어 뒀다

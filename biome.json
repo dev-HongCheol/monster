@@ -9,7 +9,9 @@
       "!**/game/temp",
       "!**/game/extensions",
       "!**/game/build",
-      "!**/game/profiles"
+      "!**/game/profiles",
+      "!**/docs/temp",
+      "!**/.gstack"
     ]
   },
   "formatter": {
