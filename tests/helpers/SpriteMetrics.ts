@@ -106,6 +106,21 @@ export function alphaHistogram(img: IRgbaImage): IAlphaHistogram {
  * @returns 알파가 있는 픽셀이 하나도 없으면 `null`
  */
 export function trimBox(img: IRgbaImage): IBox | null {
+  return visibleBox(img, 1);
+}
+
+/**
+ * 알파가 `minAlpha` 이상인 픽셀을 모두 감싸는 사각형 — **눈에 보이는 형태**의 상자다.
+ *
+ * `trimBox`가 엔진이 자르는 상자라면 이것은 사람이 보는 상자다. 생성 도구가 남기는 옅은 테두리(알파
+ * 몇 %)는 트림 상자를 부풀리지만 화면에서는 안 보이고 게임 크기로 줄이면 사라진다 — 귀신 표본 셋이
+ * 그랬다(달걀귀신은 알파 10% 미만 띠가 높이의 9%, 2026-09-17). 그린 높이를 트림 상자로 맞추면 보이는
+ * 몸이 그만큼 작아지고, 크기 판정에 올린 그림이 규격보다 작은 채로 사용자에게 간다.
+ *
+ * @param minAlpha 보이는 것으로 칠 최소 알파. 1이면 `trimBox`와 같다
+ * @returns 그런 픽셀이 없으면 `null`
+ */
+export function visibleBox(img: IRgbaImage, minAlpha: number): IBox | null {
   let minX = img.width;
   let minY = img.height;
   let maxX = -1;
@@ -113,7 +128,7 @@ export function trimBox(img: IRgbaImage): IBox | null {
 
   for (let y = 0; y < img.height; y++) {
     for (let x = 0; x < img.width; x++) {
-      if (img.data[(y * img.width + x) * 4 + 3] === 0) continue;
+      if (img.data[(y * img.width + x) * 4 + 3] < minAlpha) continue;
       if (x < minX) minX = x;
       if (x > maxX) maxX = x;
       if (y < minY) minY = y;

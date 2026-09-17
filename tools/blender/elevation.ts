@@ -20,7 +20,8 @@
  * 수가 되게 줄인다. 1440p는 두 배다.
  *
  * **고른 고도의 720p 그림은 상의 A · B 두 판을 다 뽑는다.** 화풍 게이트가 두 벌 모두를 판정하기 때문이다(G2 §5).
- * 고도 후보 시트는 A만 쓴다 — 고도 선택에 옷은 관계없다.
+ * 고도 후보 시트는 A만 쓴다 — 고도 선택에 옷은 관계없다. 마법진을 얹은 원본 크기 합성본
+ * (`player_p15_circle.png` · `player_top_b_p15_circle.png`)은 `mock.ts`가 게임 화면 흉내에 쓴다.
  *
  * **3D 칸의 그린 높이를 기대값과 견준다.** 2026-09-17 첫 시트에서 3D 칸이 세로 1.46배 늘어난 채 판정에 올라갔는데
  * (굽기 캔버스와 시트 배율의 불일치), 720p 칸의 그린 높이를 키 × cos(고도)와 견줬으면 시트 전에 잡혔다. 그래서
@@ -33,7 +34,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PLAYER_FRAME_SPEC } from '../../tests/helpers/FrameSet.ts';
-import { type IRgbaImage, trimBox } from '../../tests/helpers/SpriteMetrics.ts';
+import { type IRgbaImage, trimBox, visibleBox } from '../../tests/helpers/SpriteMetrics.ts';
 import { encodePng } from '../art/PngCodec.ts';
 import { composeGrid, compositeOver, type Rgb, sampleLikeEngine } from './ComparisonSheet.ts';
 import {
@@ -51,13 +52,13 @@ import { writeChosenSpecs } from './weapons.ts';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 /** 산출물 자리. 추적되지 않는 스크래치다. */
-const OUT_DIR = 'docs/temp/3d-gate/elevation';
+export const OUT_DIR = 'docs/temp/3d-gate/elevation';
 
 /** 고도 후보(도). 0이 지금까지의 정면 수평이고, 참고 그림은 34°였다 */
 const DEFAULT_PITCHES = [0, 15, 30, 45];
 
 /** 고른 고도(도). 후보 넷을 본 사용자가 15°를 골랐다(2026-09-17). 이 고도의 720p 크기 그림을 따로 쓴다 */
-const CHOSEN_PITCH = 15;
+export const CHOSEN_PITCH = 15;
 
 /** 상의 B 판. `DEFAULT_VRM`(상의 A)과 같은 폴더에 있다 */
 const TOP_B_VRM = path.join(path.dirname(DEFAULT_VRM), 'player_top_b.vrm');
@@ -76,7 +77,15 @@ const CELL_HEIGHT_TOLERANCE = 0.1;
 const CANVAS = { width: 600, height: PLAYER_FRAME_SPEC.height };
 
 /** 720p에서 기준 캔버스 246×493이 48×96으로 보이는 배율 */
-const SCALE_720P = { x: 48 / PLAYER_FRAME_SPEC.width, y: 96 / PLAYER_FRAME_SPEC.height };
+export const SCALE_720P = { x: 48 / PLAYER_FRAME_SPEC.width, y: 96 / PLAYER_FRAME_SPEC.height };
+
+/**
+ * 귀신 표본에서 「보이는 몸」으로 칠 최소 알파(10%). 표본 셋에 그 아래의 옅은 테두리가 있어(달걀귀신은 높이의
+ * 9%) 트림 상자로 재면 몸이 그만큼 작게 맞춰진다. 이 문턱 아래는 검정 바탕에서 안 보이고 게임 크기로 줄이면
+ * 사라진다 — 문턱 1 · 26 · 128로 잰 축소 뒤 상자가 같았다(2026-09-17). 다시 받은 두억시니는 테두리가 없어
+ * 문턱과 무관하다
+ */
+export const VISIBLE_ALPHA = 26;
 
 /** 시트 배경 — 게임 월드 카메라의 배경색(검정)과 같다(`sheet.ts`) */
 const BACKGROUND: Rgb = [0, 0, 0];
@@ -190,7 +199,7 @@ function withCircle(
 }
 
 /** 구운 파일의 실제 크기에 기준 배율을 곱해 게임 크기로 줄인다. `factor` 1이 720p, 2가 1440p */
-function toGame(img: IRgbaImage, factor: number): IRgbaImage {
+export function toGame(img: IRgbaImage, factor: number): IRgbaImage {
   return sampleLikeEngine(
     img,
     Math.max(1, Math.round(img.width * SCALE_720P.x * factor)),
@@ -215,9 +224,12 @@ function checkCellHeight(render: IRgbaImage, pitch: number, heightPx: number): v
     );
 }
 
-/** 그린 부분의 높이가 `heightPx`가 되게 엔진식으로 줄인다. 여백이 있는 귀신 표본용이다 */
-function scaleToDrawnHeight(img: IRgbaImage, heightPx: number): IRgbaImage {
-  const box = trimBox(img);
+/**
+ * 보이는 부분(`visibleBox`, 문턱 `VISIBLE_ALPHA`)의 높이가 `heightPx`가 되게 엔진식으로 줄인다. 여백과 옅은
+ * 테두리가 있는 귀신 표본용이다
+ */
+export function scaleToDrawnHeight(img: IRgbaImage, heightPx: number): IRgbaImage {
+  const box = visibleBox(img, VISIBLE_ALPHA);
   if (!box) throw new Error('그림이 비어 있다');
   const scale = heightPx / box.height;
   return sampleLikeEngine(img, Math.round(img.width * scale), Math.round(img.height * scale));
@@ -339,11 +351,13 @@ if (isMain) {
       const renderB = read(fileB);
       checkCellHeight(renderB, CHOSEN_PITCH, heightPx);
       const circleB = squash(texture, Math.max(Math.sin((CHOSEN_PITCH * Math.PI) / 180), 0.02));
-      const playerFileB = path.join(outDir, `player_top_b_p${CHOSEN_PITCH}_720p.png`);
+      const composedB = withCircle(renderB, circleB, grounds[String(CHOSEN_PITCH)]).img;
       fs.writeFileSync(
-        playerFileB,
-        encodePng(toGame(withCircle(renderB, circleB, grounds[String(CHOSEN_PITCH)]).img, 1)),
+        path.join(outDir, `player_top_b_p${CHOSEN_PITCH}_circle.png`),
+        encodePng(composedB),
       );
+      const playerFileB = path.join(outDir, `player_top_b_p${CHOSEN_PITCH}_720p.png`);
+      fs.writeFileSync(playerFileB, encodePng(toGame(composedB, 1)));
       for (const [i, img] of ghosts.entries())
         fs.writeFileSync(
           path.join(outDir, `ghost_${i + 1}_720p.png`),

@@ -31,6 +31,7 @@ import {
   readPngSize,
   residualBackgroundRgb,
   trimBox,
+  visibleBox,
 } from '../helpers/SpriteMetrics';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -148,6 +149,40 @@ describe('trimBox — Cocos의 Trim이 잘라낼 상자', () => {
 
   it('전부 투명하면 null이다', () => {
     expect(trimBox(image(2, [...px(0), ...px(0)]))).toBeNull();
+  });
+});
+
+describe('visibleBox — 눈에 보이는 형태의 상자', () => {
+  it('문턱 미만의 옅은 테두리는 상자에 넣지 않는다', () => {
+    // 알파 5짜리 테두리가 알파 200짜리 한 점을 둘러싼 3×3
+    const img = image(3, [
+      ...px(5),
+      ...px(5),
+      ...px(5),
+      ...px(5),
+      ...px(200),
+      ...px(5),
+      ...px(5),
+      ...px(5),
+      ...px(5),
+    ]);
+
+    expect(visibleBox(img, 26)).toEqual({ x: 1, y: 1, width: 1, height: 1 });
+    // 같은 그림을 트림 상자로 재면 테두리까지 캔버스 전체다
+    expect(trimBox(img)).toEqual({ x: 0, y: 0, width: 3, height: 3 });
+  });
+
+  it('문턱과 같은 알파는 보이는 것으로 친다', () => {
+    expect(visibleBox(image(2, [...px(0), ...px(26)]), 26)).toEqual({
+      x: 1,
+      y: 0,
+      width: 1,
+      height: 1,
+    });
+  });
+
+  it('문턱을 넘는 픽셀이 없으면 null이다', () => {
+    expect(visibleBox(image(2, [...px(25), ...px(0)]), 26)).toBeNull();
   });
 });
 
