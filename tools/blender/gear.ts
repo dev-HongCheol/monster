@@ -558,6 +558,12 @@ export interface IBake {
   passes?: string;
   /** 카메라 고도(도, `--pitch`). 0이면 정면 수평 */
   pitch?: number;
+  /**
+   * 층 캔버스(px). 없으면 `LAYER`(600×493). 캔버스를 키워도 픽셀/미터는 그대로다. 2026-09-17에 고도 후보를
+   * 721 높이로 굽는다고 믿고 시트를 그 비율로 줄였는데 실제로는 이 기본값으로 구워져 3D 칸이 세로로 1.46배
+   * 늘어난 채 판정에 올라갔다 — 그래서 굽는 쪽이 캔버스를 받고, 시트는 구운 파일의 실제 크기로 줄인다
+   */
+  canvas?: { width: number; height: number };
 }
 
 /** 경로 묶음 — 한 실행 안에서 한 번만 정한다. */
@@ -685,9 +691,9 @@ function bakeArgs(paths: IPaths, job: IBake): string[] {
     '--head-row',
     String(PLAYER_FRAME_SPEC.headLineY),
     '--layer-width',
-    String(LAYER.width),
+    String((job.canvas ?? LAYER).width),
     '--layer-height',
-    String(LAYER.height),
+    String((job.canvas ?? LAYER).height),
   ];
   if (job.gearSpec) args.push('--gear-spec', job.gearSpec);
   if (job.toon) args.push('--toon', job.toon);
@@ -699,12 +705,12 @@ function bakeArgs(paths: IPaths, job: IBake): string[] {
   return args;
 }
 
-/** 판정 줄을 읽어 실패면 코드와 stderr 꼬리를 담은 오류를 돌려준다. */
-function bakeFailure(job: IBake, stdout: string, stderr: string): Error | null {
+/** 판정 줄을 읽어 성공이면 파이썬이 보낸 값을, 실패면 코드와 stderr 꼬리를 담은 오류를 던진다. */
+function bakePayload(job: IBake, stdout: string, stderr: string): Record<string, unknown> {
   const line = parseGateLine(stdout);
-  if (line.ok) return null;
+  if (line.ok) return (line.payload ?? {}) as Record<string, unknown>;
   const tail = stderr.split('\n').slice(-12).join('\n');
-  return new Error(`${path.basename(job.out)}: ${line.code} ${line.message}\n${tail}`);
+  throw new Error(`${path.basename(job.out)}: ${line.code} ${line.message}\n${tail}`);
 }
 
 /**
@@ -713,17 +719,16 @@ function bakeFailure(job: IBake, stdout: string, stderr: string): Error | null {
  * `--sheet-only`면 굽지 않고 산출물이 이미 있는지만 본다. 시트 배치를 고칠 때마다 Blender를 여든
  * 번 넘게 다시 부르지 않으려는 것이다.
  */
-export function bake(paths: IPaths, job: IBake): void {
+export function bake(paths: IPaths, job: IBake): Record<string, unknown> {
   if (!paths.bakeEnabled) {
     if (!fs.existsSync(job.out)) throw new Error(`--sheet-only인데 구운 파일이 없다: ${job.out}`);
-    return;
+    return {};
   }
   const result = spawnSync(resolveBlender(), bakeArgs(paths, job), {
     encoding: 'utf-8',
     timeout: BLENDER_TIMEOUT_MS,
   });
-  const failure = bakeFailure(job, result.stdout ?? '', result.stderr ?? '');
-  if (failure) throw failure;
+  return bakePayload(job, result.stdout ?? '', result.stderr ?? '');
 }
 
 /**
@@ -733,11 +738,11 @@ export function bake(paths: IPaths, job: IBake): void {
  * 하나씩 돌리면 CPU 대부분과 GPU가 논다(2026-09-17 실측). 프로세스 하나가 1~2GB라 넷을 동시에
  * 돌려도 여유가 있다.
  */
-export function bakeAsync(paths: IPaths, job: IBake): Promise<void> {
+export function bakeAsync(paths: IPaths, job: IBake): Promise<Record<string, unknown>> {
   if (!paths.bakeEnabled) {
     if (!fs.existsSync(job.out))
       return Promise.reject(new Error(`--sheet-only인데 구운 파일이 없다: ${job.out}`));
-    return Promise.resolve();
+    return Promise.resolve({});
   }
   return new Promise((resolve, reject) => {
     const child = spawn(resolveBlender(), bakeArgs(paths, job), { windowsHide: true });
@@ -765,9 +770,11 @@ export function bakeAsync(paths: IPaths, job: IBake): Promise<void> {
     });
     child.on('close', () => {
       clearTimeout(timer);
-      const failure = bakeFailure(job, stdout, stderr);
-      if (failure) reject(failure);
-      else resolve();
+      try {
+        resolve(bakePayload(job, stdout, stderr));
+      } catch (err) {
+        reject(err);
+      }
     });
   });
 }

@@ -390,8 +390,17 @@ def main():
         detail['depth_range'] = [round(distance - 0.45, 4), round(distance + 0.45, 4)]
         detail['passes'] = outline.render_passes(passes_dir, distance - 0.45, distance + 0.45)
 
+    # 발밑 점(세계 원점 — 기준 자세의 두 발 사이 바닥)이 캔버스 어느 픽셀에 오는지. 발밑에 얹는 마법진
+    # 같은 바닥 스프라이트의 중심이 여기다. 고도가 있으면 발 행 규격과 달라져 계산으로는 못 잡는다
+    from bpy_extras.object_utils import world_to_camera_view
+    from mathutils import Vector as _Vector
+
+    ground = world_to_camera_view(bpy.context.scene, camera, _Vector((0.0, 0.0, 0.0)))
+    ground_px = [round(ground.x * layer_width, 2), round((1.0 - ground.y) * layer_height, 2)]
+
     payload = {
         'gate': 'g2-probe',
+        'ground_px': ground_px,
         'blender': bpy.app.version_string,
         'engine': engine,
         'layer': layer,
