@@ -46,7 +46,7 @@
 
 - 툰 세팅한 3D 플레이어 — 상의 A · B 모두
 - 출하 2D 플레이어 — 카메라 고도를 정하는 기준
-- 귀신 표본 — 사용자가 GPT 웹 프롬프트로 만든다. 처음엔 커밋하지 않기로 했으나(최종 관문 D17), 흉내와 시트를 다시 만들 입력이라 `art-source/enemies/2026-09-17-ghost-samples/`에 추적한다(2026-09-17 사용자 결정, 개요 §3)
+- 귀신 표본 — 사용자가 GPT 웹 프롬프트로 만든다. 처음엔 커밋하지 않기로 했으나(최종 관문 D17), 흉내와 시트를 다시 만들 입력이라 2026-09-17에 `art-source/` 아래에 추적했다가, 2026-09-19에 시험 자료를 레포 밖에 두기로 하면서 추적하지 않는 `art-drive/evidence/enemies/2026-09-17-ghost-samples/`로 옮겼다(개요 §3 · 아래 §8.7)
 
 귀신 표본으로 보는 것은 컨셉이 아니라 그리는 방식이다. 주인공은 판타지 세계에서 온 영웅이고 적은 현 지구 한국 · 중국 · 일본의 대표 귀신이라, 둘의 컨셉 대비는 의도한 것이다. 맞춰야 하는 것은 윤곽 굵기, 음영 단계, 채도, 표시 크기에서의 선명도다. 이번 라운드에서 그리는 방식이 2D 생성에서 3D 툰 렌더로 바뀌는 캐릭터는 플레이어 하나이고 적은 계속 2D로 생성하므로, 둘이 한 게임으로 읽히는지를 여기서 확인한다.
 
@@ -107,7 +107,7 @@ AI가 한다.
 | 얇은 장식 | 허리의 가는 술 다섯과 작은 고리 사슬 | 720p에서 사라지는지 |
 | 오라 | 몸을 감싸는 반투명 발광 껍데기 | 반투명이 층 합성에서 겹치는지, 프레임에 구울 만한지 |
 
-굽기는 `tools/blender/gear.ts`가 한다. 몸은 원본 음영이고 장비만 `like: Tops_CLOTH`로 상의의 음영 규칙을 받으며, 두께 없는 판이 뒷면에서 사라지지 않게 양면으로 그린다. 경우마다 `toon`으로 장비의 툰 값을 덮을 수 있고, 망토가 그 길로 그늘 문턱 0.8을 받는다(아래). 방향은 앞 · 뒤 · 3/4(yaw 45)이고, 망토 · 날개는 계단 정도 1로 올린 판을 함께 굽는다. 층 캔버스는 600×493이다. 산출물은 `docs/temp/3d-gate/gear/`에 두고, 판정에 쓴 시트 다섯은 `art-source/player/2026-09-17-3d-gate-round2-g2/sheet_<경우>.png`로 추적한다(2026-09-17).
+굽기는 `tools/blender/retired/gear.ts`가 한다(판정 뒤 물러난 자리 — §8.7). 몸은 원본 음영이고 장비만 `like: Tops_CLOTH`로 상의의 음영 규칙을 받으며, 두께 없는 판이 뒷면에서 사라지지 않게 양면으로 그린다. 경우마다 `toon`으로 장비의 툰 값을 덮을 수 있고, 망토가 그 길로 그늘 문턱 0.8을 받는다(아래). 방향은 앞 · 뒤 · 3/4(yaw 45)이고, 망토 · 날개는 계단 정도 1로 올린 판을 함께 굽는다. 층 캔버스는 600×493이다. 산출물은 `docs/temp/3d-gate/gear/`에 두고, 판정에 쓴 시트 다섯은 `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/sheet_<경우>.png`로 추적한다(2026-09-17).
 
 **망토는 첫 판을 사용자가 되돌려 다시 구웠다(2026-09-16).** 윗단이 어깨가 아니라 뒤통수에서 시작했고, 폭이 소매 폭이라 2/3로 줄여야 했으며, 판이 평평한 분홍 한 색이라 주름 그늘도 안감 색도 판정할 것이 없었다. 머리카락은 흔들림에서 움직이지 않아도 된다고 했다. 기준 자세를 재서 고쳤다 — 목 밑 z 0.744, 어깨 관절 z 0.714, 어깨 바깥 x ±0.10, 머리카락을 뺀 등 표면 y 최대 0.082.
 
@@ -175,7 +175,7 @@ AI가 한다.
 
 ### 8.3 외곽선 후보 (2026-09-17)
 
-외곽선 방식 셋을 같은 시험 세트로 구웠다. 시험 세트는 통과한 장비 경우 넷(망토 · 날개 · 화려한 장비 · 얇은 장식)에 무기를 든 기준 컷이고, 방향은 앞 · 뒤 · 3/4다. 겨냥 굵기는 493px 캔버스에서 2.75px(귀신 표본 실측 0.55~0.57%, 인계 §3.3)이고 색은 VRoid 기본 외곽선 색(선형 0.061 · 0.009 · 0.014)이다. 실행기는 `tools/blender/outline.ts`, Blender 쪽은 `outline.py`다. 산출물은 `docs/temp/3d-gate/outline/`에 두고 커밋하지 않는다.
+외곽선 방식 셋을 같은 시험 세트로 구웠다. 시험 세트는 통과한 장비 경우 넷(망토 · 날개 · 화려한 장비 · 얇은 장식)에 무기를 든 기준 컷이고, 방향은 앞 · 뒤 · 3/4다. 겨냥 굵기는 493px 캔버스에서 2.75px(귀신 표본 실측 0.55~0.57%, 인계 §3.3)이고 색은 VRoid 기본 외곽선 색(선형 0.061 · 0.009 · 0.014)이다. 실행기는 `tools/blender/retired/outline.ts`(판정 뒤 물러난 자리 — §8.7), Blender 쪽은 `outline.py`다. 산출물은 `docs/temp/3d-gate/outline/`에 두고 커밋하지 않는다.
 
 굽기 전에 애드온 노드 그룹을 읽어 정본 [`ops-blender-toon.md`](../spec/ops-blender-toon.md) §5의 미확인 둘을 닫았다 — 헐의 밀어내는 거리는 폭 값과 같고, 화면 좌표 모드는 노드에 연결돼 있지 않다. 그래서 세 방식이 같은 굵기를 겨냥하는 값이 정해졌다.
 
@@ -227,7 +227,7 @@ AI가 한다.
 
 **첫 판 시트는 3D 칸이 세로로 1.46배 늘어나 있었다(도구 결함).** 고도 후보를 600×721로 굽는다고 믿고 시트를 그 비율로 줄였는데 굽기 함수가 층 캔버스를 `gear.ts`의 기본값(600×493)으로 넘겨 실제로는 493 높이로 구워졌다. 그래서 사용자가 「3D가 다른 것보다 매우 크다」고 봤다. 굽기 인자가 캔버스를 받게 하고(`IBake.canvas`), 시트는 구운 파일의 실제 크기에 기준 배율(가로 48/246 · 세로 96/493)을 곱해 줄이도록 고쳤다. 고친 뒤 720p에서 3D 플레이어의 그린 높이는 2D와 같은 96px 안팎이다. 같은 사고가 다시 나면 시트 전에 잡히도록 실행기가 칸을 만들 때 720p 그린 높이를 검사한다(2026-09-17) — 허용 범위는 키 × cos(고도)부터 0°의 키까지, 양끝 10% 여유다. cos 한 점으로 잡으려던 첫 판은 30°에서 실측 92px가 기대 82px를 넘어 걸렸는데, 몸통은 cos만큼 짧아지지만 앞으로 나온 발끝 · 방패 · 지팡이가 sin만큼 더해지기 때문이다.
 
-비교 시트 `sheet_elevation.png`(산출물은 `docs/temp/3d-gate/elevation/`, 판정에 쓴 장은 `art-source/player/2026-09-17-3d-gate-round2-g2/`에 추적)는 줄이 720p · 1440p, 열이 3D 0° · 15° · 30° · 45°(마법진 포함) · 출하 2D 플레이어(96단위) · 도깨비(70단위) · 처녀귀신(50단위) · 마법진 원본(위에서 본 1:1)이다. 720p에서 월드 단위 하나가 1px라 플레이어는 48×96px이고, 귀신 표본은 여백이 있어 그린 부분(알파 상자)의 높이가 그 단위 수가 되게 줄였다. 귀신의 크기는 [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §4의 노드 높이(처녀귀신 50 · 도깨비 70)를 그대로 쓴 것이라, 사용자가 「플레이어에 비해 몬스터가 너무 작다」고 본 것은 시트가 아니라 그 규격의 비율이다. 배경은 게임과 같은 검정. 실행기는 `tools/blender/elevation.ts`이고 넷을 동시에 구워 14~20초 걸린다(`gear.ts`의 `bakeAsync` · `runPool`, 동시 4).
+비교 시트 `sheet_elevation.png`(산출물은 `docs/temp/3d-gate/elevation/`, 판정에 쓴 장은 `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/`)는 줄이 720p · 1440p, 열이 3D 0° · 15° · 30° · 45°(마법진 포함) · 출하 2D 플레이어(96단위) · 도깨비(70단위) · 처녀귀신(50단위) · 마법진 원본(위에서 본 1:1)이다. 720p에서 월드 단위 하나가 1px라 플레이어는 48×96px이고, 귀신 표본은 여백이 있어 그린 부분(알파 상자)의 높이가 그 단위 수가 되게 줄였다. 귀신의 크기는 [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §4의 노드 높이(처녀귀신 50 · 도깨비 70)를 그대로 쓴 것이라, 사용자가 「플레이어에 비해 몬스터가 너무 작다」고 본 것은 시트가 아니라 그 규격의 비율이다. 배경은 게임과 같은 검정. 실행기는 `tools/blender/elevation.ts`이고 넷을 동시에 구워 14~20초 걸린다(`gear.ts`의 `bakeAsync` · `runPool`, 동시 4).
 
 **고도는 15°, 마법진 지름은 캐릭터 키와 같게 정했다(사용자 판정 2026-09-17).** 참고 그림의 지름(키의 두 배)은 절반으로 줄였다. 화풍 게이트와 몬스터 크기 비율은 사용자가 게임 화면 흉내를 다른 도구(Gemini)로 직접 만들어 본다 — 그래서 실행기가 고른 고도의 플레이어 두 판(상의 A `player_p15_720p.png` · 상의 B `player_top_b_p15_720p.png` — 화풍 게이트가 두 벌 모두를 판정하므로, §5)과 귀신 둘(`ghost_1_720p.png` 도깨비 · `ghost_2_720p.png` 처녀귀신)을 720p 게임 크기 그대로 따로 쓴다. 화면은 1280×720, 플레이어 노드 48×96(15°라 그린 높이는 조금 짧다), 도깨비 70, 처녀귀신 50이 그 크기다. 몬스터 크기 비율을 바꾸려면 규격의 노드 높이를 바꾸는 일이라 따로 정한다.
 
@@ -251,7 +251,7 @@ AI가 한다.
 | 두억시니 | 40 | 75 |
 | 플레이어 | | 77 |
 
-흉내는 `tools/blender/mock.ts`가 만든다 — `mock_a_720p.png` · `mock_b_720p.png`(산출물은 `docs/temp/3d-gate/elevation/`, 판정에 쓴 장은 `art-source/player/2026-09-17-3d-gate-round2-g2/`에 추적)(상의 A · B, 1280×720 검정 바탕, 종류마다 셋). 첫 흉내는 일회성 스크립트였는데 두 번째 쓰임이라 실행기로 남겼다. 놓은 그림마다 보이는 높이를 기대값과 견주고(실측 49 · 58 · 73 · 75, 플레이어 76) 어긋나면 멈춘다.
+흉내는 `tools/blender/retired/mock.ts`가 만든다 — `mock_a_720p.png` · `mock_b_720p.png`(산출물은 `docs/temp/3d-gate/elevation/`, 판정에 쓴 장은 `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/`)(상의 A · B, 1280×720 검정 바탕, 종류마다 셋). 첫 흉내는 일회성 스크립트였는데 두 번째 쓰임이라 실행기로 남겼다. 놓은 그림마다 보이는 높이를 기대값과 견주고(실측 49 · 58 · 73 · 75, 플레이어 76) 어긋나면 멈춘다.
 
 **표본의 옅은 테두리가 크기를 속이고 있었다.** 귀신 표본 셋(달걀귀신 · 처녀귀신 · 도깨비)에 알파 10% 미만의 띠가 있어 — 달걀귀신은 높이의 9% — 알파 0 초과로 재는 트림 상자로 크기를 맞추면 보이는 몸이 그만큼 작아진다. 두억시니 표본은 그 띠가 없어 같은 방법으로 맞춘 몸이 상대적으로 컸다. 그래서 「보이는 상자」(`SpriteMetrics.visibleBox`, 문턱 알파 26)를 따로 두고 표본 크기 맞춤과 검증이 그것을 쓰게 했다. 문턱 1 · 26 · 128로 잰 상자가 게임 크기로 줄인 뒤에는 같아서 26 아래는 화면에 안 남는다. 지난 720p 표본(§8.4의 도깨비 70 · 처녀귀신 50)은 이 때문에 4~5% 작았다.
 
@@ -270,29 +270,46 @@ AI가 한다.
 
 ### 8.6 화풍 게이트 통과와 G2 정리 (2026-09-17)
 
-**화풍 게이트는 통과했다(사용자 판정 2026-09-17).** 80% 플레이어와 새 크기의 귀신 넷을 놓은 흉내 두 장(`art-source/player/2026-09-17-3d-gate-round2-g2/mock_a_720p.png` · `mock_b_720p.png`)으로 §5의 사람 판정 셋을 한 번에 봤다 — 3D 플레이어가 귀신들과 한 게임으로 읽히고(상의 A · B 모두), VRoid 기본 룩으로 읽히지 않으며, 헐 외곽선을 붙인 지팡이 대가 게임 크기에서 뭉툭하지 않다. 이것으로 §6 통과 조건 넷이 모두 닫혔다.
+**화풍 게이트는 통과했다(사용자 판정 2026-09-17).** 80% 플레이어와 새 크기의 귀신 넷을 놓은 흉내 두 장(`art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/mock_a_720p.png` · `mock_b_720p.png`)으로 §5의 사람 판정 셋을 한 번에 봤다 — 3D 플레이어가 귀신들과 한 게임으로 읽히고(상의 A · B 모두), VRoid 기본 룩으로 읽히지 않으며, 헐 외곽선을 붙인 지팡이 대가 게임 크기에서 뭉툭하지 않다. 이것으로 §6 통과 조건 넷이 모두 닫혔다.
 
 **무기 재질은 MToon으로 확정했다(같은 날).** 헐 외곽선이 MToon 머티리얼에서만 나오므로 무기를 Principled BSDF로 두면 외곽선이 없다. 흉내의 지팡이 · 방패는 이미 상의 규칙(`like: Tops_CLOTH`) · `shade_ratio` 0.6의 MToon이고 그 그림으로 통과했다. 정본에 적는 것은 G6에서 한다.
 
 **G3는 사용자가 다시 진행하라고 할 때 시작한다.** G2부터가 실제 디자인 구현이라 사용자가 결정 전체를 검토한 뒤 넘어가기로 했다. 검토용 정리는 [G2 검토 문서](2026-09-17-blender-3d-gate-round2-g2-review.md)다.
 
-**`docs/temp/3d-gate/`를 정리했다.** 판정에 실제로 쓴 시트 · 흉내와 사용자가 만든 귀신 표본 원본은 추적 경로로 옮겼고(종전 「커밋하지 않는다」를 사용자가 뒤집었다 — 개요 §3), 나머지 중간 산출물(층 탐침 · 후보 컷 · 메시 덤프 · 사양 JSON)은 도구로 다시 만들 수 있어 지웠다.
+**`docs/temp/3d-gate/`를 정리했다.** 판정에 실제로 쓴 시트 · 흉내와 사용자가 만든 귀신 표본 원본은 따로 보관하고(2026-09-17에는 `art-source/` 아래에 추적했고 2026-09-19에 추적하지 않는 `art-drive/evidence/`로 옮겼다 — §8.7), 나머지 중간 산출물(층 탐침 · 후보 컷 · 메시 덤프 · 사양 JSON)은 도구로 다시 만들 수 있어 지웠다.
 
 | 무엇 | 어디로 | 왜 남기나 |
 |---|---|---|
-| 귀신 표본 원본 넷(달걀귀신 · 처녀귀신 · 도깨비 · 두억시니) | `art-source/enemies/2026-09-17-ghost-samples/` | `elevation.ts` · `mock.ts`의 입력이다. 사용자가 GPT 웹으로 만들어 다시 만들 수 없다 |
-| 고도 후보 시트, 첫 흉내(720p · 아이폰), 최종 흉내 A · B, 720p 낱장 넷 | `art-source/player/2026-09-17-3d-gate-round2-g2/` | 고도 · 크기 · 화풍 판정의 근거 |
-| 외곽선 정면 비교 시트, 헐 시트 | `art-source/player/2026-09-17-3d-gate-round2-g2/sheet_outline_compare_front.png` · `sheet_outline_hull.png` | 외곽선 방식 판정의 근거. 뒤 · 3/4 비교 시트는 `outline.ts`로 다시 만든다 |
-| 장비 검토 세트 시트 다섯 | `art-source/player/2026-09-17-3d-gate-round2-g2/sheet_<cape·wings·armor·ornament·aura>.png` | 장비 판정의 근거 |
-| 층 합성 결과 A · B(원본 · 720p) | `art-source/player/2026-09-17-3d-gate-round2-g2/composite_<a·b>*.png` | 가림 · 층 합성 판정의 근거 |
-| 무기 후보 시트 · 채택 컷 | `art-source/player/2026-09-17-3d-gate-round2-g2/weapons_sheet.png` · `weapons_chosen.png` | G1 무기 판정의 근거 |
+| 귀신 표본 원본 넷(달걀귀신 · 처녀귀신 · 도깨비 · 두억시니) | `art-drive/evidence/enemies/2026-09-17-ghost-samples/` | `elevation.ts` · `mock.ts`의 입력이다. 사용자가 GPT 웹으로 만들어 다시 만들 수 없다 |
+| 고도 후보 시트, 첫 흉내(720p · 아이폰), 최종 흉내 A · B, 720p 낱장 넷 | `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/` | 고도 · 크기 · 화풍 판정의 근거 |
+| 외곽선 정면 비교 시트, 헐 시트 | `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/sheet_outline_compare_front.png` · `sheet_outline_hull.png` | 외곽선 방식 판정의 근거. 뒤 · 3/4 비교 시트는 `outline.ts`로 다시 만든다 |
+| 장비 검토 세트 시트 다섯 | `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/sheet_<cape·wings·armor·ornament·aura>.png` | 장비 판정의 근거 |
+| 층 합성 결과 A · B(원본 · 720p) | `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/composite_<a·b>*.png` | 가림 · 층 합성 판정의 근거 |
+| 무기 후보 시트 · 채택 컷 | `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/weapons_sheet.png` · `weapons_chosen.png` | G1 무기 판정의 근거 |
 
 다시 만드는 순서는 셋이다. 무기 사양 → 고도 실행기(Blender 굽기, 30초 안팎) → 흉내다.
 
 ```bash
-node --experimental-strip-types tools/blender/weapons.ts --dump-chosen docs/temp/3d-gate/g2
-BLENDER="C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" node --experimental-strip-types tools/blender/elevation.ts
-node --experimental-strip-types tools/blender/mock.ts
+node --experimental-strip-types tools/blender/retired/weapons.ts --dump-chosen docs/temp/3d-gate/g2
+BLENDER="C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" node --experimental-strip-types tools/blender/retired/elevation.ts
+node --experimental-strip-types tools/blender/retired/mock.ts
 ```
 
-정리 직후 빈 스크래치에서 이 순서로 다시 만든 흉내가 추적한 장과 바이트까지 같았다.
+정리 직후 빈 스크래치에서 이 순서로 다시 만든 흉내가 보관한 장과 바이트까지 같았다.
+
+### 8.7 도구와 시험 자료를 생산용과 시험용으로 갈랐다 (2026-09-19)
+
+이 슬라이스는 3D 기반 캐릭터 디자인 흐름이 되는지를 보는 작업이라, 시험하려고 만든 표본과 코드가 섞여 쌓였다. 사용자가 기준을 정했다 — **최종 디자인을 적용하거나 스킨을 더 만들 때 필요한 것만 main으로 가져가고, 나머지는 세션 문서의 기록으로만 남긴다. 시험 그림은 레포가 아니라 드라이브에 둔다.** 2026-09-17의 「판정 근거는 `art-source/`에 추적한다」를 뒤집는 결정이다(개요 §3).
+
+한 일은 넷이다.
+
+1. **시험 자료를 `art-drive/`로 옮겼다.** git이 추적하지 않는 폴더이고 README 하나만 추적한다. `production/`에는 굽기가 읽는 생산 `.vrm` 셋과 VRoid 원본이, `evidence/`에는 G2 판정 그림 · 귀신 표본 · 1라운드 자료가 있다. 생산 `.vrm`은 G0이 레포에 올리지 않기로 한 파일인데 그동안 `.gitignore`에 걸려 있지 않아 `git add` 한 번이면 커밋될 수 있었다. 드라이브에 올리는 것은 사용자가 한다.
+2. **Cocos 테스트 씬을 게임 폴더에서 뺐다.** 1라운드 그림은 정면 한 방향이고 지금 캐릭터와도 달라, 4방향 × 층으로 다시 짜는 G5에 쓸 것이 없다. G5 정리 순서에 있던 일을 앞당긴 것이고 사용자가 확인했다. 씬과 `.meta`는 `art-drive/evidence/player/2026-09-11-3d-gate/cocos-test-scene/`에 그대로 있다.
+3. **판정이 끝난 실행기를 `tools/blender/retired/`로 물렸다.** `gear.ts` · `outline.ts` · `elevation.ts` · `mock.ts` · `weapons.ts` · `sheet.ts`와 1라운드 게이트(`gate-round1.ts` · `import_vrm.py`)다. 지우지 않고 옮긴 것은 G4가 생산 굽기 도구를 세울 때 꺼내 쓸 길(`probe_layers.py`를 부르는 `bake` · 발밑 점 `ground_px` · 칸 높이 검사)이 그 안에 있어서이고, G4가 끝나면 지운다. `outline.py`와 `probe_layers.py`의 `--lineart` · `--passes`는 탈락한 후보용인데 `probe_layers.py`가 `outline`을 모듈 이름으로 import해서 옮기지 못했다. 그것도 G4에서 지운다.
+4. **확정값을 `tools/blender/BakeSpec.ts`로 모았다.** 채택한 무기 둘의 모양과 그립, 헐 1(폭 · 제외 재질 · 재질 표를 짜는 함수), 무기 · 장비 · 천 · 금속의 툰 값과 금속 matcap, 고도 15°와 마법진 지름이다. 값이 후보 실행기 안에 묻혀 있어서, 실행기를 지우면 값도 같이 사라질 자리였다. 물러난 실행기도 이 파일에서 읽으므로 값의 주인은 하나다.
+
+옮긴 뒤에 `weapons.ts --dump-chosen` · `elevation.ts --sheet-only` · `mock.ts` · `sheet.ts`를 다시 돌렸다. 무기 사양과 헐 1 툰 사양 JSON이 옮기기 전 코드가 쓴 것과 바이트까지 같았고(Blender에 들어가는 입력이 같다), 고도 시트 · 720p 낱장 넷 · 흉내 둘 · 1라운드 비교 시트도 보관한 장과 바이트까지 같았다. 1라운드 게이트 0b를 Blender로 실제로 돌려 옮긴 파이썬 스크립트가 공용 모듈을 찾는 것도 확인했다.
+
+옮기면서 도구의 낡은 설명 넷을 고쳤다. `outline.ts`의 머리 주석은 첫 판정의 오독(「입체감이 죽었다」)을 사실처럼 적고 있었고, 기본으로 굽는 판 넷이 모두 탈락한 판이라는 말이 없었다. `gear.ts`는 뺀 오라를 아직 검토 세트로 적었고, `elevation.ts` · `mock.ts`는 크기를 「알파 상자」로 잰다고 적었는데 코드는 옅은 테두리를 뺀 `visibleBox`로 잰다.
+
+구조와 파일마다의 설명은 `art-drive/README.md`와 `tools/blender/retired/README.md`가 든다. 옮기기 전의 배치는 태그 `3d-gate-round2-g2-before-cleanup`에 있다.

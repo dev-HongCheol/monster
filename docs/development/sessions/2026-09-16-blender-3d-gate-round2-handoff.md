@@ -26,7 +26,7 @@
 | G4 굽기 | 도구 일부. 15° 고도로 발 · 머리 행 규격을 다시 잡는 일이 생겼다 |
 | G5 본편 | 미착수 |
 
-작업은 전부 커밋했다. `docs/temp/3d-gate/`는 2026-09-17에 정리했다 — 판정에 쓴 시트 · 흉내 · 귀신 표본 원본은 `art-source/`로 옮겨 추적하고(§3.2), 나머지 중간 산출물은 도구로 다시 만들 수 있어 지웠다. 미추적으로 남은 것은 Cocos가 만든 `.meta` 11개(PR 승인 때 일괄 커밋)와 `art-source/player/2026-09-16-player-3d/`(생산 `.vrm` — G0 §5.7에 따라 **커밋하지 않는다**)다. `docs/development/backlog.md`에 빈 줄 하나가 더해진 수정이 남아 있는데, AI 작업에서 나온 변경이 아니라 커밋하지 않았다.
+작업은 전부 커밋했다. `docs/temp/3d-gate/`는 2026-09-17에 정리했고, 2026-09-19에 **도구와 시험 자료를 생산용과 시험용으로 갈랐다**(§3.2). 시험 자료(판정 그림 · 귀신 표본 · 1라운드 자료 · Cocos 테스트 씬)와 생산 `.vrm`은 git이 추적하지 않는 `art-drive/`에 있고, 판정이 끝난 실행기는 `tools/blender/retired/`로 물러났으며, 확정값은 `tools/blender/BakeSpec.ts`에 모였다. **`art-drive/`는 아직 드라이브에 올리지 않았다 — 이 장비에만 있으므로 올리기 전에는 지우지 않는다.** 테스트 씬을 뺐으므로 Cocos가 만든 미추적 `.meta`도 이제 없다. `docs/development/backlog.md`에 빈 줄 하나가 더해진 수정이 남아 있는데, AI 작업에서 나온 변경이 아니라 커밋하지 않았다.
 
 ## 2. 닫은 것
 
@@ -100,7 +100,9 @@ G2가 닫혔으므로 다음은 [G3 문서](2026-09-15-blender-3d-gate-round2-g3
 
 ### 3.2 G2 정리 결과 — 무엇이 어디로 갔나
 
-판정에 쓴 근거는 `art-source/player/2026-09-17-3d-gate-round2-g2/`(시트 · 흉내 · 낱장 · 층 합성 · 무기 시트)와 `art-source/enemies/2026-09-17-ghost-samples/`(귀신 표본 원본 넷)에 있고 폴더의 README가 파일마다 무엇인지 적는다. 목록과 다시 만드는 명령은 G2 §8.6. `docs/temp/3d-gate/`는 비웠고 도구가 돌면 다시 생긴다.
+판정에 쓴 근거는 `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/`(시트 · 흉내 · 낱장 · 층 합성 · 무기 시트)와 `art-drive/evidence/enemies/2026-09-17-ghost-samples/`(귀신 표본 원본 넷)에 있고 폴더의 README가 파일마다 무엇인지 적는다. 목록과 다시 만드는 명령은 G2 §8.6. `docs/temp/3d-gate/`는 비웠고 도구가 돌면 다시 생긴다.
+
+**2026-09-19에 생산용과 시험용을 갈랐다(G2 §8.7).** 사용자 기준은 「최종 디자인 적용이나 스킨 추가에 필요한 것만 main으로, 시험 자료는 세션 문서의 기록과 드라이브로」다. `art-drive/`의 구조는 `art-drive/README.md`가, 물러난 도구마다 무엇이고 G4가 무엇을 가져가야 하는지는 `tools/blender/retired/README.md`가 든다. **`tools/blender/retired/`는 G4가 끝나면 지운다** — 그 전에 G4의 생산 굽기 도구가 `retired/gear.ts`의 `bake` · `bakeAsync` · `runPool`, `retired/elevation.ts`의 `ground_px` 읽기와 칸 높이 검사를 가져가야 한다. 옮기기 전의 배치는 태그 `3d-gate-round2-g2-before-cleanup`에 있다.
 
 ### 3.3 그다음 — G4 규격과 정본
 
@@ -110,7 +112,7 @@ G2가 닫혔으므로 다음은 [G3 문서](2026-09-15-blender-3d-gate-round2-g3
 
 ### 3.4 겨냥할 수치
 
-사용자가 만든 귀신 표본 둘을 재서 목표를 뽑았다(`art-source/enemies/2026-09-17-ghost-samples/처녀귀신.png` · `도깨비.png`).
+사용자가 만든 귀신 표본 둘을 재서 목표를 뽑았다(`art-drive/evidence/enemies/2026-09-17-ghost-samples/처녀귀신.png` · `도깨비.png`).
 
 | | 처녀귀신 | 도깨비 |
 |---|---|---|
@@ -124,12 +126,12 @@ G2가 닫혔으므로 다음은 [G3 문서](2026-09-15-blender-3d-gate-round2-g3
 
 ## 4. 도구 쓰는 법
 
-전부 `tools/blender/`에 있고 Blender는 `C:\Program Files\Blender Foundation\Blender 5.2\blender.exe`다. TS 실행기는 환경 변수 `BLENDER`로 이 경로를 받는다(Git Bash 형식 경로는 Node가 못 푼다).
+생산 굽기에 쓰는 것은 `tools/blender/`에, 판정이 끝난 실행기는 `tools/blender/retired/`에 있고 Blender는 `C:\Program Files\Blender Foundation\Blender 5.2\blender.exe`다. TS 실행기는 환경 변수 `BLENDER`로 이 경로를 받는다(Git Bash 형식 경로는 Node가 못 푼다).
 
 ```bash
 # 층 하나 굽기 — layer: body · top · staff · shield · gear · whole
 blender --background --python-exit-code 1 --python tools/blender/probe_layers.py -- \
-  --base-vrm art-source/player/2026-09-16-player-3d/player_base.vrm \
+  --base-vrm art-drive/production/player/2026-09-16-player-3d/player_base.vrm \
   --layer staff --weapon-spec docs/temp/3d-gate/g2/staff_orb.json \
   --out docs/temp/3d-gate/g2/L_staff.png \
   --width 246 --height 493 --foot-row 489 --head-row 2 \
@@ -143,17 +145,18 @@ blender --background --python-exit-code 1 --python tools/blender/probe_layers.py
 - `--gear-spec <json>` — 장비(망토 · 날개 …)를 사양의 `bone`에 붙인다. `gear` 층은 몸으로 가리고, `whole`은 가림 없이 함께 굽는다. 몸에 붙는 부품(`wrap` · `cap` · `strap`, `snap`)은 `weapons.py Surface`가 몸 메시로 광선을 쏴 표면에 맞춘다 — 머리카락은 뺀다
 - `--staff-spec` · `--shield-spec` — `whole`에 무기를 든다(없으면 빼고 굽는다)
 - `--toon <json>` — 툰 사양. 키와 의미는 `toon.py` 머리 주석. `shade_threshold`(0~1)가 명세의 `shading_shift`를 대신한다. 무기(`WEAPON`) · 장비(`GEAR`)는 사양에 그 분류를 적어야 MToon으로 바뀌고, `like`로 VRoid 부위의 음영 규칙을 복사한다. `matcap_image`(절대 경로)로 금속 반사점을 준다 — `gear.ts`가 만들어 넘긴다
-- 무기 사양 JSON은 `node --experimental-strip-types tools/blender/weapons.ts --dump-chosen docs/temp/3d-gate/g2`가 뽑는다
+- 무기 사양 JSON은 `node --experimental-strip-types tools/blender/retired/weapons.ts --dump-chosen docs/temp/3d-gate/g2`가 뽑는다. 모양의 주인은 `BakeSpec.ts`이고 TS에서는 그 파일의 `writeChosenSpecs`를 바로 부른다
 
 | 도구 | 무엇 |
 |---|---|
 | `probe_layers.py` | 층 하나를 가림 전용 몸과 함께 굽거나, 기준 컷(`whole`)을 굽는다 |
 | `toon.py` | 툰 사양을 MToon 머티리얼에 입힌다 |
+| `BakeSpec.ts` | G2가 확정한 굽기 값 — 채택한 무기 둘, 헐 1과 재질 표를 짜는 함수, 무기 · 장비 · 천 · 금속의 툰 값과 금속 matcap, 고도 15°와 마법진 지름 |
 | `inspect_mtoon.py` | MToon 값 덤프 + 애드온이 어느 음영 식을 쓰는지 보고(`shading_path`). 애드온 · Blender 판을 바꾸면 먼저 돌린다 |
-| `gear.ts` | 장비 검토 세트 굽기 · 시트 · 수치 · 흔들림 재생. `--only cape,wings`, `--sheet-only`(굽지 않고 시트만). 경우별 `toon`(툰 값 덮기) · `views`(방향 — 왼쪽 측면 yaw 300은 화려한 장비만) |
-| `outline.ts` · `outline.py` | 외곽선 후보를 표(`METHODS`)로 두고 시험 세트로 굽고 시트 · 수치를 만든다. `--only hull2,post2` · `--cases cape,wings` · `--views front` · `--sheet-only`. 후처리 선은 TS가 긋고, Line Art와 패스는 `probe_layers.py`의 `--lineart` · `--passes`가 받는다 |
-| `elevation.ts` | 카메라 고도 후보를 발밑 마법진과 함께 굽고, 출하 2D · 귀신 표본과 실제 표시 크기로 나란히 놓는 비교 시트. `--pitches 0,15,30,45`. 고른 고도(15°)는 상의 B도 함께 구워 720p 그림을 두 판 다 뽑고, 3D 칸의 720p 그린 높이를 허용 범위와 견줘 배율 사고를 막는다. 다섯을 동시에 굽는다(`gear.ts`의 `bakeAsync` · `runPool`) |
-| `mock.ts` | 720p 게임 화면 흉내. 고른 고도의 플레이어(상의 A · B, 규격의 80%)와 귀신 표본 넷을 실제 표시 크기로 1280×720에 흩어 놓는다. 몬스터 크기는 `enemies.json`의 `collisionRadius`를 직선으로 옮긴 값이고 놓은 그림마다 보이는 높이를 기대값과 견준다. `elevation.ts`를 먼저 돌려야 한다 |
+| `retired/gear.ts` | 장비 검토 세트 굽기 · 시트 · 수치 · 흔들림 재생. `--only cape,wings`, `--sheet-only`(굽지 않고 시트만). 경우별 `toon`(툰 값 덮기) · `views`(방향 — 왼쪽 측면 yaw 300은 화려한 장비만) |
+| `retired/outline.ts` · `outline.py` | 외곽선 후보를 표(`METHODS`)로 두고 시험 세트로 굽고 시트 · 수치를 만든다. `--only hull2,post2` · `--cases cape,wings` · `--views front` · `--sheet-only`. 후처리 선은 TS가 긋고, Line Art와 패스는 `probe_layers.py`의 `--lineart` · `--passes`가 받는다 |
+| `retired/elevation.ts` | 카메라 고도 후보를 발밑 마법진과 함께 굽고, 출하 2D · 귀신 표본과 실제 표시 크기로 나란히 놓는 비교 시트. `--pitches 0,15,30,45`. 고른 고도(15°)는 상의 B도 함께 구워 720p 그림을 두 판 다 뽑고, 3D 칸의 720p 그린 높이를 허용 범위와 견줘 배율 사고를 막는다. 다섯을 동시에 굽는다(`gear.ts`의 `bakeAsync` · `runPool`) |
+| `retired/mock.ts` | 720p 게임 화면 흉내. 고른 고도의 플레이어(상의 A · B, 규격의 80%)와 귀신 표본 넷을 실제 표시 크기로 1280×720에 흩어 놓는다. 몬스터 크기는 `enemies.json`의 `collisionRadius`를 직선으로 옮긴 값이고 놓은 그림마다 보이는 높이를 기대값과 견준다. `elevation.ts`를 먼저 돌려야 한다 |
 | `layers.ts` | `subset`(가림 판정) · `stack`(층 합성 + 720p) · `diff`(기준 컷과의 차이) |
 | `bake_layer.py` | 층 캔버스를 달리해 굽는다(ADR 009 실증에 씀) |
 | `inspect_meshes.py` | 메시 · 머티리얼 · 정점 지문 덤프 |

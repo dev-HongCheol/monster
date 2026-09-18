@@ -4,7 +4,7 @@
 - **브랜치:** `feat/blender-3d-gate`
 - **정본:** [`art-direction.md`](../../design/spec/art-direction.md) §3.1 · [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §3 · §4 · [`ops-blender-toon.md`](../spec/ops-blender-toon.md) — 여기 적힌 결정이 G6에서 이 세 정본으로 들어간다. 아직은 이 문서와 G2 문서에만 있다
 - **원본 기록:** [G2 문서](2026-09-15-blender-3d-gate-round2-g2-toon.md) §8(수치 · 판마다의 지적과 수정), [인계 문서](2026-09-16-blender-3d-gate-round2-handoff.md), [2라운드 개요](2026-09-15-blender-3d-gate-round2-plan.md)
-- **그림:** `art-source/player/2026-09-17-3d-gate-round2-g2/` — 이 문서가 인용하는 시트와 흉내가 전부 거기 있고 폴더의 README가 파일마다 무엇인지 적는다
+- **그림:** `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/` — 이 문서가 인용하는 시트와 흉내가 전부 거기 있고 폴더의 README가 파일마다 무엇인지 적는다. **git이 추적하지 않는 폴더라** 그림을 문서에 삽입하지 못하고 경로만 적는다(2026-09-19 — 시험 자료는 레포가 아니라 드라이브에 둔다). 폴더를 옆에 열어 두고 읽는다
 
 ---
 
@@ -71,7 +71,7 @@
 
 **층 합성은 사람 눈으로 봤다.** 따로 구운 층을 겹치면 한 번에 렌더한 것과 완전히 같을 수는 없다. 앞머리나 팔의 경계 픽셀에서 몸 층은 머리와 맨살을 섞어 불투명으로 담는데, 상의 층은 그 픽셀에 알파만 남긴다. 둘을 겹치면 경계에 맨살색이 살짝 스며든 테두리가 생긴다. 이 차이를 픽셀 수로 재긴 했지만(장비별 265~838픽셀, G2 §8.2) **통과 기준은 수치가 아니라 「게임 크기에서 테두리가 보이는가」**다. 수치를 기준으로 삼으면 그 수치를 잰 측정이 항상 통과하기 때문이고, 수치는 나중에 다시 구웠을 때 나빠지지 않았는지 보는 회귀 가드로만 쓴다.
 
-![층 합성 정면 — 상의 A](../../../art-source/player/2026-09-17-3d-gate-round2-g2/composite_a.png)
+그림 — 층 합성 정면 — 상의 A: `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/composite_a.png`
 
 - `composite_a.png` · `composite_b.png` — 층 넷을 겹친 정면. 손과 지팡이 사이에 틈이 없는지, 상의 경계에 맨살색 띠가 없는지 본다.
 - `composite_a_720p.png` · `composite_b_720p.png` — 같은 것을 게임 크기로. 위에서 보인 테두리가 여기서 사라지면 통과다.
@@ -126,29 +126,29 @@
 | 얇은 장식 | 1 | 판정 완료 | 720p에서 지름 0.8cm는 사라지고 2.2cm 고리는 점으로 남는다. **2cm 급이라야 남는다** |
 | 오라 | 1 | **접음** | 몸을 감싸는 껍데기 대신 **발밑 마법진**으로. 프레임에 굽지 않고 게임 노드로 얹는다 |
 
-![망토 세 번째 판](../../../art-source/player/2026-09-17-3d-gate-round2-g2/sheet_cape.png)
+그림 — 망토 세 번째 판: `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/sheet_cape.png`
 
 **망토(`sheet_cape.png`).** 첫 판은 윗단이 뒤통수에서 시작했고 폭이 소매 폭이었으며 평평한 분홍 한 색이라 판정할 것이 없었다. 기준 자세를 재서 목 밑 높이 · 어깨 폭으로 고치고, 윗단부터 잡힌 주름과 3mm 안쪽의 안감 판을 더했다. 두 번째 판은 위치 · 폭 · 주름 · 안감이 통과했고, 흔들림이 좌우로 보이는 것(주름 위상을 돌려서 — 뒷모습에서 깊이는 안 보이고 좌우만 남는다)과 허리에 흰 상의가 비치는 것(등 뒤 10cm가 상의 옷단 안쪽)을 고쳐 세 번째 판이 통과했다.
 
-![날개 두 번째 판](../../../art-source/player/2026-09-17-3d-gate-round2-g2/sheet_wings.png)
+그림 — 날개 두 번째 판: `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/sheet_wings.png`
 
 **날개(`sheet_wings.png`).** 첫 판의 뿌리는 등을 고려한 것이 아니라 가슴 높이 4.5cm 뒤에 떠 있었고, 퍼덕임이 깊이 축 회전이라 뿌리 아랫부분이 등에서 떨어졌다 붙었다 했다. 등 표면을 재서 뿌리 중심을 날개뼈에 붙이고 경첩을 세로 모서리로 바꿔 두 번째 판이 통과했다.
 
-![화려한 장비 다섯 번째 판](../../../art-source/player/2026-09-17-3d-gate-round2-g2/sheet_armor.png)
+그림 — 화려한 장비 다섯 번째 판: `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/sheet_armor.png`
 
 **화려한 장비(`sheet_armor.png`).** 첫 판은 밝은 회색 구 두 개가 어깨 관절보다 7.7cm 위에 떠서 「흰 계란 두 개」로 보였고 반사점이 없어 금속 판정을 할 재료가 못 됐다. 사용자가 준 사진(가죽 어깨갑옷 + X자 끈 + 뿔)대로 금색 금속으로 다시 만들었다. 이후 판마다 보석이 희다(발광 채널 넘침 → 어두운 기본색 위에 파란 발광), 끈이 배까지 이어진다(허리 위 멜빵 구조로), 옆구리가 비었다(한 바퀴 투영하는 몸판), 소매 끝이 금색으로 보인다(위팔 판 제거), 왼쪽 측면 각도(순수 측면 → 정면으로 30° 튼 각) 지적을 받아 다섯 번째 판이 통과했다. **긴 머리카락이 어깨 장비를 가리는 것은 그대로 둔다** — 뿔은 존재를 알 수 있는 정도면 된다(사용자).
 
-![얇은 장식](../../../art-source/player/2026-09-17-3d-gate-round2-g2/sheet_ornament.png)
+그림 — 얇은 장식: `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/sheet_ornament.png`
 
 **얇은 장식(`sheet_ornament.png`).** 허리의 가는 술 다섯과 작은 고리 사슬이다. 720p에서 술(지름 0.8cm = 0.7px)은 사라지고 사슬(고리 2.2cm)은 점으로 남았다. 이것이 **가는 장식의 최소 굵기** 후보다 — 장비를 디자인할 때 2cm 아래 요소는 게임 크기에서 없는 것과 같다.
 
-![오라 첫 판](../../../art-source/player/2026-09-17-3d-gate-round2-g2/sheet_aura.png)
+그림 — 오라 첫 판: `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/sheet_aura.png`
 
 **오라(`sheet_aura.png`).** 몸을 감싸는 반투명 껍데기는 세 방향 모두 캔버스를 넘쳤고 층 합성 차이가 다른 경우의 수십 배였다. 사용자가 방식을 바꿨다 — 워크래프트 3 패시브처럼 **바닥에서 도는 마법진**으로 하고, 프레임에 굽지 않고 게임에서 별도 노드로 얹는다. 걷기와 무관하게 계속 돌아야 하고 패시브마다 켜고 꺼야 하므로 프레임에 넣을 수 없기 때문이다.
 
 ### 도구에 남은 것
 
-이 세트를 만들면서 두 가지가 도구에 들어갔다. **몸 표면 투영**(`weapons.py`의 `Surface` — 끈 · 판 · 뿔을 몸 메시로 광선을 쏴 표면에 붙인다. 몸이 바뀌어도 좌표 표를 다시 재지 않는다)과 **금속 matcap**(툰 사양의 `matcap_image`). 다음 장비를 만들 때 그대로 쓴다.
+이 세트를 만들면서 두 가지가 도구에 들어갔다. **몸 표면 투영**(`weapons.py`의 `Surface` — 끈 · 판 · 뿔을 몸 메시로 광선을 쏴 표면에 붙인다. 몸이 바뀌어도 좌표 표를 다시 재지 않는다)과 **금속 matcap**(툰 사양의 `matcap_image`, 그림은 `BakeSpec.ts`의 `metalMatcap`이 만든다). 다음 장비를 만들 때 그대로 쓴다.
 
 ### 뒤에 남는 것
 
@@ -175,11 +175,11 @@
 | Line Art | Grease Pencil이 윤곽 · 주름 · 재질 경계를 계산해 획을 얹는다 | 탈락 — 뭉개진다 |
 | 후처리 | 법선 · 깊이 패스를 굽고 TS가 실루엣 · 경계 · 주름에 띠를 긋는다 | 탈락 — 뭉개진다 |
 
-![외곽선 정면 비교](../../../art-source/player/2026-09-17-3d-gate-round2-g2/sheet_outline_compare_front.png)
+그림 — 외곽선 정면 비교: `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/sheet_outline_compare_front.png`
 
 사용자 판정 원문은 「헐까지만 진행하는 게 그나마 제일 3D 캐릭터를 2D화한 느낌이고, 그다음(Line Art · 후처리)부터는 너무 뭉개져서 별로다」였다. 첫 판정에서 「입체감이 많이 줄어들었어」를 AI가 음영 부피감 불만으로 잘못 읽고 머리카락 외곽선을 뺀 둘째 판(헐 2 · 헐 3)을 구웠는데, 뜻은 3D 티가 줄어 2D에 가까워졌다는 **긍정**이었다. 둘째 판은 탈락이고 머리카락 포함 헐 1이 남았다.
 
-![헐 1 — 경우 × 방향](../../../art-source/player/2026-09-17-3d-gate-round2-g2/sheet_outline_hull.png)
+그림 — 헐 1 — 경우 × 방향: `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/sheet_outline_hull.png`
 
 **몸 헐을 가림에 넣는 이유.** 헐 껍데기는 몸보다 두께만큼 크므로, 가림 전용 몸에 껍데기가 붙으면 무기가 몸 뒤를 지나는 자리에서 그 두께만큼 더 지워진다. 실측하니 정면 지팡이 층에서 67픽셀이고 게임 크기에서 안 보이는 양이라, 모디파이어 기본 동작 그대로 둔다.
 
@@ -198,7 +198,7 @@
 
 탑다운 게임이라 약간 내려다보는 각이 출하 2D · 귀신과 더 비슷할 수 있어서다. 0° · 15° · 30° · 45° 넷을 헐 외곽선을 입혀 굽고, 마법진을 얹은 채 출하 2D 플레이어 · 도깨비 · 처녀귀신과 **실제 표시 크기**(720p · 1440p)로 나란히 놓고 골랐다.
 
-![고도 후보 시트](../../../art-source/player/2026-09-17-3d-gate-round2-g2/sheet_elevation.png)
+그림 — 고도 후보 시트: `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/sheet_elevation.png`
 
 `sheet_elevation.png` — 줄은 720p · 1440p, 열은 3D 0° · 15° · 30° · 45°(마법진 포함) · 출하 2D · 도깨비 · 처녀귀신 · 마법진 원본이다. 고도가 오를수록 캐릭터는 cos만큼 짧아 보이고 마법진 타원은 sin만큼 열린다.
 
@@ -215,7 +215,7 @@
 
 화풍을 판정하려고 720p 게임 화면을 흉내 냈다. 첫 흉내(`mock_720p.png`)는 지금 규격 그대로 플레이어 96 · 도깨비 70 · 처녀귀신 50이었는데, 사용자가 보니 **플레이어가 너무 크고 몬스터가 너무 작았다.** 아이폰 16 Pro 크기로 흉내 낸 `mock_iphone16pro.png`에서는 도깨비가 실물 6.8mm · 처녀귀신 4.9mm · 플레이어 9mm였다.
 
-![첫 흉내](../../../art-source/player/2026-09-17-3d-gate-round2-g2/mock_720p.png)
+그림 — 첫 흉내: `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/mock_720p.png`
 
 ### 정한 것 셋
 
@@ -235,9 +235,9 @@
 | 두억시니 | 40 | 75 |
 | 플레이어 | | 77 |
 
-![최종 흉내 — 상의 A](../../../art-source/player/2026-09-17-3d-gate-round2-g2/mock_a_720p.png)
+그림 — 최종 흉내 — 상의 A: `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/mock_a_720p.png`
 
-![최종 흉내 — 상의 B](../../../art-source/player/2026-09-17-3d-gate-round2-g2/mock_b_720p.png)
+그림 — 최종 흉내 — 상의 B: `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/mock_b_720p.png`
 
 `mock_a_720p.png` · `mock_b_720p.png` — 플레이어 80%(실측 76px), 몬스터 종류마다 셋(실측 49 · 58 · 73 · 75). 이 두 장으로 크기와 화풍을 함께 통과시켰다.
 
@@ -285,7 +285,7 @@
 
 ## 10. 검토할 때 이렇게 본다
 
-그림은 전부 `art-source/player/2026-09-17-3d-gate-round2-g2/`에 있다. 원본 크기 그림은 다섯 배 크게 보이므로 **굵기 · 크기 판정은 720p 칸으로** 한다.
+그림은 전부 `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/`에 있다. 원본 크기 그림은 다섯 배 크게 보이므로 **굵기 · 크기 판정은 720p 칸으로** 한다.
 
 1. `composite_a_720p.png` · `composite_b_720p.png` — 층 경계에 띠가 보이나. 지팡이와 손 사이에 틈이 있나.
 2. `sheet_cape.png` · `sheet_wings.png` · `sheet_armor.png` — 720p 칸에서 망토 · 날개 · 금속으로 읽히나. 몸에 붙어 보이나.
