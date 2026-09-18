@@ -135,10 +135,10 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | 무엇 | 어디 | 추적 |
 |---|---|---|
 | 게이트 0a 스모크 PNG, 층 탐침과 물러난 실행기들의 산출물 | `docs/temp/3d-gate/<도구>/` | 안 함 — 도구로 다시 만들 수 있는 것만 둔다. **스크립트는 여기 두지 않는다** — 이 폴더는 추적되지 않아 여기 둔 스크립트는 장비 하나에만 남는다 |
-| 생산 `.vrm` 셋과 VRoid 원본 | `art-drive/production/player/2026-09-16-player-3d/` | 안 함 — 레포가 공개라 올리지 않는다. 드라이브에 둔다 |
-| 판정에 쓴 시트 · 흉내, 귀신 표본 원본, 1라운드 `.vrm` · 모션 팩 · 테스트 씬 | `art-drive/evidence/` | 안 함 — 시험 자료는 레포가 아니라 드라이브에 둔다(2026-09-19 사용자 결정) |
+| 생산 `.vrm` 셋과 VRoid 원본 | `cloud-storage/art/production/player/2026-09-16-player-3d/` | 안 함 — 레포가 공개라 올리지 않는다. 드라이브에 둔다 |
+| 판정에 쓴 시트 · 흉내, 귀신 표본 원본, 1라운드 `.vrm` · 모션 팩 · 테스트 씬 | `cloud-storage/art/evidence/` | 안 함 — 시험 자료는 레포가 아니라 드라이브에 둔다(2026-09-19 사용자 결정) |
 
-`art-drive/`의 구조와 파일마다 무엇인지는 [`art-drive/README.md`](../../art-drive/README.md)가 든다. 그 폴더는 README 하나만
+`cloud-storage/`의 구조와 파일마다 무엇인지는 [`cloud-storage/README.md`](../../cloud-storage/README.md)가 든다. 그 폴더는 README 하나만
 추적하므로 클론만 해서는 비어 있고, 다른 장비에서는 드라이브에서 받아 같은 경로에 풀어야 도구가 입력을 찾는다.
 
 `.vrm`도 `.blend`도 커밋하지 않는다. 생산 `.vrm`은 공개 레포에 올리면 누구나 내려받을 수 있고 한 번 푸시한

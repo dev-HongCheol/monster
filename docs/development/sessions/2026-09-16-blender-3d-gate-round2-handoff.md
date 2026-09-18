@@ -26,7 +26,7 @@
 | G4 굽기 | 도구 일부. 15° 고도로 발 · 머리 행 규격을 다시 잡는 일이 생겼다 |
 | G5 본편 | 미착수 |
 
-작업은 전부 커밋했다. `docs/temp/3d-gate/`는 2026-09-17에 정리했고, 2026-09-19에 **도구와 시험 자료를 생산용과 시험용으로 갈랐다**(§3.2). 시험 자료(판정 그림 · 귀신 표본 · 1라운드 자료 · Cocos 테스트 씬)와 생산 `.vrm`은 git이 추적하지 않는 `art-drive/`에 있고, 판정이 끝난 실행기는 `tools/blender/retired/`로 물러났으며, 확정값은 `tools/blender/BakeSpec.ts`에 모였다. **`art-drive/`는 아직 드라이브에 올리지 않았다 — 이 장비에만 있으므로 올리기 전에는 지우지 않는다.** 테스트 씬을 뺐으므로 Cocos가 만든 미추적 `.meta`도 이제 없다. `docs/development/backlog.md`에 빈 줄 하나가 더해진 수정이 남아 있는데, AI 작업에서 나온 변경이 아니라 커밋하지 않았다.
+작업은 전부 커밋했다. `docs/temp/3d-gate/`는 2026-09-17에 정리했고, 2026-09-19에 **도구와 시험 자료를 생산용과 시험용으로 갈랐다**(§3.2). 시험 자료(판정 그림 · 귀신 표본 · 1라운드 자료 · Cocos 테스트 씬)와 생산 `.vrm`은 git이 추적하지 않는 `cloud-storage/`에 있고, 판정이 끝난 실행기는 `tools/blender/retired/`로 물러났으며, 확정값은 `tools/blender/BakeSpec.ts`에 모였다. **`cloud-storage/`는 아직 드라이브에 올리지 않았다 — 이 장비에만 있으므로 올리기 전에는 지우지 않는다.** 테스트 씬을 뺐으므로 Cocos가 만든 미추적 `.meta`도 이제 없다. `docs/development/backlog.md`에 빈 줄 하나가 더해진 수정이 남아 있는데, AI 작업에서 나온 변경이 아니라 커밋하지 않았다.
 
 ## 2. 닫은 것
 
@@ -100,9 +100,9 @@ G2가 닫혔으므로 다음은 [G3 문서](2026-09-15-blender-3d-gate-round2-g3
 
 ### 3.2 G2 정리 결과 — 무엇이 어디로 갔나
 
-판정에 쓴 근거는 `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/`(시트 · 흉내 · 낱장 · 층 합성 · 무기 시트)와 `art-drive/evidence/enemies/2026-09-17-ghost-samples/`(귀신 표본 원본 넷)에 있고 폴더의 README가 파일마다 무엇인지 적는다. 목록과 다시 만드는 명령은 G2 §8.6. `docs/temp/3d-gate/`는 비웠고 도구가 돌면 다시 생긴다.
+판정에 쓴 근거는 `cloud-storage/art/evidence/player/2026-09-17-3d-gate-round2-g2/`(시트 · 흉내 · 낱장 · 층 합성 · 무기 시트)와 `cloud-storage/art/evidence/enemies/2026-09-17-ghost-samples/`(귀신 표본 원본 넷)에 있고 폴더의 README가 파일마다 무엇인지 적는다. 목록과 다시 만드는 명령은 G2 §8.6. `docs/temp/3d-gate/`는 비웠고 도구가 돌면 다시 생긴다.
 
-**2026-09-19에 생산용과 시험용을 갈랐다(G2 §8.7).** 사용자 기준은 「최종 디자인 적용이나 스킨 추가에 필요한 것만 main으로, 시험 자료는 세션 문서의 기록과 드라이브로」다. `art-drive/`의 구조는 `art-drive/README.md`가, 물러난 도구마다 무엇이고 G4가 무엇을 가져가야 하는지는 `tools/blender/retired/README.md`가 든다. **`tools/blender/retired/`는 G4가 끝나면 지운다** — 그 전에 G4의 생산 굽기 도구가 `retired/gear.ts`의 `bake` · `bakeAsync` · `runPool`, `retired/elevation.ts`의 `ground_px` 읽기와 칸 높이 검사를 가져가야 한다. 옮기기 전의 배치는 태그 `3d-gate-round2-g2-before-cleanup`에 있다.
+**2026-09-19에 생산용과 시험용을 갈랐다(G2 §8.7).** 사용자 기준은 「최종 디자인 적용이나 스킨 추가에 필요한 것만 main으로, 시험 자료는 세션 문서의 기록과 드라이브로」다. `cloud-storage/`의 구조는 `cloud-storage/README.md`가, 물러난 도구마다 무엇이고 G4가 무엇을 가져가야 하는지는 `tools/blender/retired/README.md`가 든다. **`tools/blender/retired/`는 G4가 끝나면 지운다** — 그 전에 G4의 생산 굽기 도구가 `retired/gear.ts`의 `bake` · `bakeAsync` · `runPool`, `retired/elevation.ts`의 `ground_px` 읽기와 칸 높이 검사를 가져가야 한다. 옮기기 전의 배치는 태그 `3d-gate-round2-g2-before-cleanup`에 있다.
 
 ### 3.3 그다음 — G4 규격과 정본
 
@@ -112,7 +112,7 @@ G2가 닫혔으므로 다음은 [G3 문서](2026-09-15-blender-3d-gate-round2-g3
 
 ### 3.4 겨냥할 수치
 
-사용자가 만든 귀신 표본 둘을 재서 목표를 뽑았다(`art-drive/evidence/enemies/2026-09-17-ghost-samples/처녀귀신.png` · `도깨비.png`).
+사용자가 만든 귀신 표본 둘을 재서 목표를 뽑았다(`cloud-storage/art/evidence/enemies/2026-09-17-ghost-samples/처녀귀신.png` · `도깨비.png`).
 
 | | 처녀귀신 | 도깨비 |
 |---|---|---|
@@ -131,7 +131,7 @@ G2가 닫혔으므로 다음은 [G3 문서](2026-09-15-blender-3d-gate-round2-g3
 ```bash
 # 층 하나 굽기 — layer: body · top · staff · shield · gear · whole
 blender --background --python-exit-code 1 --python tools/blender/probe_layers.py -- \
-  --base-vrm art-drive/production/player/2026-09-16-player-3d/player_base.vrm \
+  --base-vrm cloud-storage/art/production/player/2026-09-16-player-3d/player_base.vrm \
   --layer staff --weapon-spec docs/temp/3d-gate/g2/staff_orb.json \
   --out docs/temp/3d-gate/g2/L_staff.png \
   --width 246 --height 493 --foot-row 489 --head-row 2 \

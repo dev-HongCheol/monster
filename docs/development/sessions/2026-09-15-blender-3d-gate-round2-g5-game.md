@@ -123,7 +123,7 @@ Weapon 자식(600×701) = 93.712 × 109.487
 4. 정리 커밋을 이 순서로 쌓는다.
    1. `tests/logic/AiMatting.test.ts`의 표본을 테스트 픽스처로 옮긴다. 이 테스트는 출하 PNG를 세 곳(`:46` · `:244` · `:265`)에서 쓴다.
    2. 도구와 1라운드 단언을 정리한다. 도구를 지우는 커밋에서 그 도구를 import하는 단언도 함께 지운다.
-   3. `game/assets/test-3d-gate/`는 이 순서에서 할 일이 없다. 2026-09-19에 사용자 확인을 받아 앞당겨 뺐고, 씬은 추적하지 않는 `art-drive/evidence/player/2026-09-11-3d-gate/cocos-test-scene/`에 보관돼 있다.
+   3. `game/assets/test-3d-gate/`는 이 순서에서 할 일이 없다. 2026-09-19에 사용자 확인을 받아 앞당겨 뺐고, 씬은 추적하지 않는 `cloud-storage/art/evidence/player/2026-09-11-3d-gate/cocos-test-scene/`에 보관돼 있다.
    4. §4의 UUID 0건 검사를 통과시킨 뒤 출하 2D PNG를 지운다(사용자 확인).
 5. `pnpm wf start-verification`의 GREEN 게이트를 통과한다.
 
@@ -134,8 +134,8 @@ Weapon 자식(600×701) = 93.712 × 109.487
 | 층별 아틀라스, 굽기 스크립트 · 키프레임 정의 · 카메라 JSON, 순수 함수 · 동기화 컴포넌트 · 테스트, 개발용 옷 전환, 정본 · ADR · QA 기록 | main에 넣는다 |
 | 생산 `.vrm` · `.vroid` | G0 판정에 따른다 |
 | 출하 2D `player_4dir_*.png` · `player_staff.png` · `player_mage_bridge.png` | 지운다(사용자 확인). 뒤의 둘은 F101 대상이다 |
-| `game/assets/test-3d-gate/`와 그 `.meta` | 2026-09-19에 게임 폴더에서 뺐다(사용자 확인). `art-drive/evidence/`에 보관 |
-| `art-source/player/2026-09-11-3d-gate/`(1라운드 `character.vrm` · 비교 시트 · 모션) | 2026-09-19에 뺐다. `art-drive/evidence/player/2026-09-11-3d-gate/`에 보관 |
+| `game/assets/test-3d-gate/`와 그 `.meta` | 2026-09-19에 게임 폴더에서 뺐다(사용자 확인). `cloud-storage/art/evidence/`에 보관 |
+| `art-source/player/2026-09-11-3d-gate/`(1라운드 `character.vrm` · 비교 시트 · 모션) | 2026-09-19에 뺐다. `cloud-storage/art/evidence/player/2026-09-11-3d-gate/`에 보관 |
 | `tools/blender/gate.ts`의 1라운드 입력 경로 · 게이트 0b · 0c · 2 | 2026-09-19에 `tools/blender/retired/gate-round1.ts`로 갈랐다(`gate.ts`는 표를 밖에서 받고 0a만 든다). G4 뒤에 그 폴더와 함께 지운다 |
 | `tools/blender/import_vrm.py` · `sheet.ts` · `ComparisonSheet.ts` | `ComparisonSheet.ts`는 2라운드 도구(`layers.ts`)가 써서 남긴다. 나머지 둘은 2026-09-19에 `tools/blender/retired/`로 물렸고 G4 뒤에 그 폴더와 함께 지운다 |
 | `retarget_render.py`의 `import_motion` · `BONE_MAP` · `SWING_SCALE` | 키프레임 굽기로 대체되면 뺀다 |

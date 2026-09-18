@@ -58,7 +58,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 export const OUT_DIR = 'docs/temp/3d-gate/gear';
 
 /** 상의 A를 입은 판. `--vrm`으로 바꿀 수 있다 — 생산 `.vrm`은 커밋하지 않아 장비마다 경로가 다르다. */
-export const DEFAULT_VRM = 'art-drive/production/player/2026-09-16-player-3d/player_top_a.vrm';
+export const DEFAULT_VRM =
+  'cloud-storage/art/production/player/2026-09-16-player-3d/player_top_a.vrm';
 
 /**
  * 층 캔버스(px). 날개가 기준 몸 캔버스 246px을 가로로 넘으므로 넓힌다(ADR 009).

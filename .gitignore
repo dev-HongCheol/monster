@@ -26,11 +26,13 @@ node_modules/
 # 보관할 원본은 art-source/에 넣는다 (docs/design/spec/art-asset-spec.md §9.1)
 docs/temp/
 
-# 드라이브로 올리는 아트 자료 — 공개 레포에 올릴 수 없는 생산 `.vrm` · `.vroid`와, 판정에 쓴
-# 시험 그림 · 1라운드 자료다. 레포에는 폴더 구조를 적은 README만 추적한다. 폴더를 통째로
-# 막지 않고 내용물만 막는 것은 git이 막힌 폴더 안쪽의 예외(`!`)를 보지 않기 때문이다.
-/art-drive/*
-!/art-drive/README.md
+# 레포가 아니라 클라우드 저장소(공유 드라이브)에 두는 자료 — 공개 레포에 올릴 수 없거나 main에
+# 둘 이유가 없는데 장비 사이에 공유는 해야 하는 것이다. 지금은 `art/` 아래에 생산 `.vrm` ·
+# `.vroid`와 판정에 쓴 시험 그림 · 1라운드 자료가 있다. 레포에는 폴더 구조를 적은 README만
+# 추적한다. 폴더를 통째로 막지 않고 내용물만 막는 것은 git이 막힌 폴더 안쪽의 예외(`!`)를 보지
+# 않기 때문이다.
+/cloud-storage/*
+!/cloud-storage/README.md
 
 # 파이썬 바이트코드 — Blender가 `tools/blender/`의 모듈을 import하면서 만든다. 산출물이라
 # 커밋하지 않는다.

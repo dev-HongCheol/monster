@@ -24,18 +24,18 @@
 
 | 파일 | 무엇을 만들었나 | 어느 판정의 근거였나 | 입력 |
 |---|---|---|---|
-| `gate-round1.ts` | 1라운드 게이트 0b(VRM 임포트) · 0c(걷기 리타게팅) · 2(테스트 씬 프레임). 실행기는 `../gate.ts`의 것을 쓰고 표만 든다 | 1라운드 전체(2026-09-11 ~ 09-14) | `art-drive/evidence/player/2026-09-11-3d-gate/`의 `.vrm` · 모션 팩 |
+| `gate-round1.ts` | 1라운드 게이트 0b(VRM 임포트) · 0c(걷기 리타게팅) · 2(테스트 씬 프레임). 실행기는 `../gate.ts`의 것을 쓰고 표만 든다 | 1라운드 전체(2026-09-11 ~ 09-14) | `cloud-storage/art/evidence/player/2026-09-11-3d-gate/`의 `.vrm` · 모션 팩 |
 | `import_vrm.py` | 게이트 0b의 Blender 쪽. `gate-round1.ts`만 부른다 | 위와 같다 | 위와 같다 |
 | `sheet.ts` | 1라운드 비교 시트(3D 걷기 한 장 대 출하 2D 정면) | 1라운드 게이트 1(화풍) | 위 폴더의 `cocos-test-scene/test-3d-gate/walk_0006.png` |
 | `weapons.ts` | 지팡이 셋 · 방패 셋 후보 시트와 채택 컷. `--dump-chosen`은 채택한 둘의 사양 JSON만 쓴다 | G1 무기(2026-09-16) | 없음 — 모양이 코드에 있다 |
-| `gear.ts` | 장비 검토 세트(망토 · 날개 · 화려한 장비 · 얇은 장식)의 시트 · 층 합성 수치 · 흔들림 재생 페이지. **`probe_layers.py`를 부르는 단 하나의 TS 길(`bake` · `bakeAsync` · `runPool`)이 이 파일에 있다** | G2 장비 검토 세트(2026-09-16 ~ 09-17) | 생산 `.vrm`(`art-drive/production/`) |
+| `gear.ts` | 장비 검토 세트(망토 · 날개 · 화려한 장비 · 얇은 장식)의 시트 · 층 합성 수치 · 흔들림 재생 페이지. **`probe_layers.py`를 부르는 단 하나의 TS 길(`bake` · `bakeAsync` · `runPool`)이 이 파일에 있다** | G2 장비 검토 세트(2026-09-16 ~ 09-17) | 생산 `.vrm`(`cloud-storage/art/production/`) |
 | `outline.ts` | 외곽선 후보(헐 1 · 2 · 3, Line Art 1 · 2, 후처리 1 · 2)의 방식별 시트 · 방향별 비교 시트 · 몸 헐 가림 탐침 수치 | G2 외곽선(2026-09-17) | 위와 같다 |
-| `elevation.ts` | 카메라 고도 0 · 15 · 30 · 45° 후보와 발밑 마법진을 얹은 비교 시트, 고른 고도의 720p 낱장 | G2 고도(2026-09-17) | 생산 `.vrm`, 귀신 표본(`art-drive/evidence/enemies/`), 출하 2D 정면 |
+| `elevation.ts` | 카메라 고도 0 · 15 · 30 · 45° 후보와 발밑 마법진을 얹은 비교 시트, 고른 고도의 720p 낱장 | G2 고도(2026-09-17) | 생산 `.vrm`, 귀신 표본(`cloud-storage/art/evidence/enemies/`), 출하 2D 정면 |
 | `mock.ts` | 720p 게임 화면 흉내(상의 A · B) | G2 크기 · 화풍 게이트(2026-09-17) | `elevation.ts`의 산출물, 귀신 표본, `enemies.json` |
 
 의존은 한 방향이다: `mock.ts` → `elevation.ts` → `outline.ts` → `gear.ts`, 그리고 넷 모두 → `../BakeSpec.ts`. 그래서 넷은 함께 지운다.
 
-판정에 쓴 그림은 `art-drive/evidence/`에 있고 구조는 [`art-drive/README.md`](../../../art-drive/README.md)가 든다. 옮긴 뒤에 `weapons.ts --dump-chosen` · `elevation.ts --sheet-only` · `mock.ts` · `sheet.ts`를 다시 돌려, 무기 · 헐 1 사양 JSON과 시트 · 흉내 여덟 장이 옮기기 전 것과 바이트까지 같은 것을 확인했다(2026-09-19).
+판정에 쓴 그림은 `cloud-storage/art/evidence/`에 있고 구조는 [`cloud-storage/README.md`](../../../cloud-storage/README.md)가 든다. 옮긴 뒤에 `weapons.ts --dump-chosen` · `elevation.ts --sheet-only` · `mock.ts` · `sheet.ts`를 다시 돌려, 무기 · 헐 1 사양 JSON과 시트 · 흉내 여덟 장이 옮기기 전 것과 바이트까지 같은 것을 확인했다(2026-09-19).
 
 ## 아직 위 폴더에 남아 있는 후보 코드
 

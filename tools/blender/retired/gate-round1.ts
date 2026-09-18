@@ -4,7 +4,7 @@
  * **판정이 끝나 물러난 도구다(2026-09-19).** 2라운드는 생산 `.vrm` 셋과 스크립트 키프레임으로 다시 굽고(R2-D7),
  * 게이트 2가 굽던 자리인 Cocos 테스트 씬도 게임 폴더에서 뺐다 — 1라운드 그림은 정면 한 방향이고 지금 캐릭터와도
  * 달라서, 4방향 × 층으로 다시 짜는 G5에 쓸 것이 없다. 입력과 출력은 모두 추적하지 않는
- * `art-drive/evidence/player/2026-09-11-3d-gate/`에 있다. G4가 끝나면 지운다(`README.md`).
+ * `cloud-storage/art/evidence/player/2026-09-11-3d-gate/`에 있다. G4가 끝나면 지운다(`README.md`).
  *
  * 실행기는 `../gate.ts`의 것을 그대로 쓰고 이 파일은 표만 든다.
  *
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { CANVAS_ARGS, FRAME_ARGS, type IGateSpec, main } from '../gate.ts';
 
 /** 1라운드 입력과 산출물이 있는 폴더. 추적하지 않는다 */
-const ROUND1 = 'art-drive/evidence/player/2026-09-11-3d-gate';
+const ROUND1 = 'cloud-storage/art/evidence/player/2026-09-11-3d-gate';
 
 /** 1라운드 시험용 캐릭터 */
 const VRM = `${ROUND1}/character.vrm`;

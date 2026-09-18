@@ -26,7 +26,7 @@
  * 시트에서 배율 사고가 판정에 올라간 전례가 있다(`elevation.ts` 머리 주석).
  *
  * 흉내는 `docs/temp/`에 나오고, 판정에 쓴 장은 추적하지 않는
- * `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/`에 복사해 둔다.
+ * `cloud-storage/art/evidence/player/2026-09-17-3d-gate-round2-g2/`에 복사해 둔다.
  */
 
 import fs from 'node:fs';
@@ -57,27 +57,27 @@ const HEIGHT_TOLERANCE_PX = 1;
 /** 적 데이터 — `collisionRadius`만 쓴다 */
 const ENEMIES_JSON = 'game/assets/resources/data/enemies.json';
 
-/** 귀신 표본. 사용자가 만든 원본이고 추적하지 않는 `art-drive/evidence/`에 있다(`elevation.ts`와 같은 자리). `id`는 `enemies.json`의 것이다 */
+/** 귀신 표본. 사용자가 만든 원본이고 추적하지 않는 `cloud-storage/art/evidence/`에 있다(`elevation.ts`와 같은 자리). `id`는 `enemies.json`의 것이다 */
 const SAMPLES: readonly { id: string; label: string; file: string }[] = [
   {
     id: 'dalgyal',
     label: '달걀귀신',
-    file: 'art-drive/evidence/enemies/2026-09-17-ghost-samples/달걀귀신.png',
+    file: 'cloud-storage/art/evidence/enemies/2026-09-17-ghost-samples/달걀귀신.png',
   },
   {
     id: 'cheonyeo',
     label: '처녀귀신',
-    file: 'art-drive/evidence/enemies/2026-09-17-ghost-samples/처녀귀신.png',
+    file: 'cloud-storage/art/evidence/enemies/2026-09-17-ghost-samples/처녀귀신.png',
   },
   {
     id: 'dokkaebi',
     label: '도깨비',
-    file: 'art-drive/evidence/enemies/2026-09-17-ghost-samples/도깨비.png',
+    file: 'cloud-storage/art/evidence/enemies/2026-09-17-ghost-samples/도깨비.png',
   },
   {
     id: 'dueokshini',
     label: '두억시니',
-    file: 'art-drive/evidence/enemies/2026-09-17-ghost-samples/두억시니.png',
+    file: 'cloud-storage/art/evidence/enemies/2026-09-17-ghost-samples/두억시니.png',
   },
 ];
 

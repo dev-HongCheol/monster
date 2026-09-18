@@ -30,7 +30,7 @@
  * (굽기 캔버스와 시트 배율의 불일치), 720p 칸의 그린 높이를 키 × cos(고도)와 견줬으면 시트 전에 잡혔다. 그래서
  * 칸을 만들 때 그 검사를 하고, 어긋나면 시트를 만들지 않고 멈춘다.
  *
- * 산출물은 `docs/temp/`에 둔다. 판정에 쓴 시트와 입력인 귀신 표본 원본은 추적하지 않는 `art-drive/evidence/`에
+ * 산출물은 `docs/temp/`에 둔다. 판정에 쓴 시트와 입력인 귀신 표본 원본은 추적하지 않는 `cloud-storage/art/evidence/`에
  * 있다(2026-09-19 사용자 결정 — 시험 자료는 레포가 아니라 드라이브에 둔다). 판정은 사람이 한다 — 고도 선택과
  * 화풍 게이트(§5).
  */
@@ -99,18 +99,18 @@ const SHIPPED_2D = 'game/assets/art/player/player_4dir_front.png';
 
 /**
  * 귀신 표본과 노드 높이(720p px). 사용자가 GPT 웹으로 만든 화풍 비교용 원본이고 게임에 실릴 적 아트가 아니라
- * 추적하지 않는 `art-drive/evidence/`에 둔다(2026-09-19 사용자 결정). 다른 장비에서는 드라이브에서 받아 같은
+ * 추적하지 않는 `cloud-storage/art/evidence/`에 둔다(2026-09-19 사용자 결정). 다른 장비에서는 드라이브에서 받아 같은
  * 자리에 둔다
  */
 const GHOSTS: readonly { label: string; file: string; units: number }[] = [
   {
     label: '도깨비',
-    file: 'art-drive/evidence/enemies/2026-09-17-ghost-samples/도깨비.png',
+    file: 'cloud-storage/art/evidence/enemies/2026-09-17-ghost-samples/도깨비.png',
     units: 70,
   },
   {
     label: '처녀귀신',
-    file: 'art-drive/evidence/enemies/2026-09-17-ghost-samples/처녀귀신.png',
+    file: 'cloud-storage/art/evidence/enemies/2026-09-17-ghost-samples/처녀귀신.png',
     units: 50,
   },
 ];
