@@ -13,6 +13,10 @@
  * 돌리는 법: `node --experimental-strip-types tools/blender/gate.ts 0a`
  * 굽지 않고 이미 있는 산출물만 다시 재려면 `--judge-only`를 붙인다.
  * Blender 실행 파일은 환경 변수 `BLENDER`로 준다. 자세한 것은 `README.md`에 있다.
+ *
+ * **게이트 표는 밖에서 받는다.** 이 파일의 표에는 환경 스모크(0a)만 있다. 1라운드 입력(시험용 `.vrm` · 모션 팩)에
+ * 묶인 게이트 0b · 0c · 2는 `retired/gate-round1.ts`가 자기 표를 들고 이 파일의 `main`을 부른다(2026-09-19).
+ * 실행기를 두 벌로 복사하지 않으려는 것이다 — 복사하면 판정 줄 읽기와 시간 상한 처리를 한쪽만 고치게 된다.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -27,7 +31,7 @@ import { decodePng } from '../art/PngCodec.ts';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 /** 게이트 하나가 무엇을 부르고 무엇을 굽는가. */
-interface IGateSpec {
+export interface IGateSpec {
   /** 부를 파이썬 스크립트의 repo 상대 경로 */
   script: string;
   /** 굽는 산출물의 repo 상대 경로. `docs/temp/`는 추적되지 않는 스크래치다 */
@@ -72,13 +76,13 @@ const FRAME_PREFIX = 'walk';
  * 메시지는 크기·위치 결함을 가리키므로 원인이 두 벌의 불일치라는 것이 드러나지 않는다. 그래서
  * 스크립트는 기본값 없이 이 인자를 받고, 못 받으면 `spec-args`로 실패한다.
  */
-const CANVAS_ARGS = [
+export const CANVAS_ARGS = [
   { flag: '--width', value: String(PLAYER_FRAME_SPEC.width) },
   { flag: '--height', value: String(PLAYER_FRAME_SPEC.height) },
 ];
 
 /** 프레임을 굽는 게이트가 캔버스에 더해 넘기는 인자 — 발·머리 행과 파일 이름 접두어. */
-const FRAME_ARGS = [
+export const FRAME_ARGS = [
   ...CANVAS_ARGS,
   { flag: '--foot-row', value: String(PLAYER_FRAME_SPEC.footLineY) },
   { flag: '--head-row', value: String(PLAYER_FRAME_SPEC.headLineY) },
@@ -94,64 +98,12 @@ const FRAME_ARGS = [
  */
 const BLENDER_TIMEOUT_MS = 20 * 60 * 1000;
 
-/**
- * 게이트 표. 앞 게이트가 통과한 뒤에 다음 줄을 붙여 왔다.
- *
- * **0c와 2는 같은 스크립트를 부르고 굽는 자리만 다르다.** 0c는 `docs/temp/`에 구워 판정만
- * 하고, 2는 `game/assets/test-3d-gate/`에 구워 Cocos가 임포트할 것을 남긴다. 그래서 2를
- * 돌리기 전에 0c가 먼저 통과해야 하고, 반대로 0c를 다시 돌린다고 출하물이 바뀌지 않는다.
- */
+/** 이 파일의 게이트 표 — 환경 스모크 하나다. 1라운드 게이트는 `retired/gate-round1.ts`가 든다. */
 const GATES: Record<string, IGateSpec> = {
   '0a': {
     script: 'tools/blender/smoke.py',
     output: 'docs/temp/3d-gate/gate0a_smoke.png',
     label: '게이트 0a — 환경 스모크',
-  },
-  '0b': {
-    script: 'tools/blender/import_vrm.py',
-    output: 'docs/temp/3d-gate/gate0b_front.png',
-    label: '게이트 0b — VRM 임포트',
-    extraArgs: [
-      { flag: '--vrm', repoPath: 'art-source/player/2026-09-11-3d-gate/character.vrm' },
-      { flag: '--bones', repoPath: 'docs/temp/3d-gate/bones.json' },
-      ...CANVAS_ARGS,
-    ],
-  },
-  '0c': {
-    script: 'tools/blender/retarget_render.py',
-    output: 'docs/temp/3d-gate/walk',
-    label: '게이트 0c — 걷기 리타게팅',
-    kind: 'frames',
-    expectFrames: 8,
-    extraArgs: [
-      { flag: '--vrm', repoPath: 'art-source/player/2026-09-11-3d-gate/character.vrm' },
-      {
-        flag: '--motion',
-        repoPath: 'art-source/player/2026-09-11-3d-gate/motion/Unreal-Godot/UAL1_Standard.glb',
-      },
-      { flag: '--action', value: 'Walk_Loop' },
-      { flag: '--frames', value: '8' },
-      { flag: '--gate', value: '0c' },
-      ...FRAME_ARGS,
-    ],
-  },
-  '2': {
-    script: 'tools/blender/retarget_render.py',
-    output: 'game/assets/test-3d-gate',
-    label: '게이트 2 — 출하 프레임',
-    kind: 'frames',
-    expectFrames: 8,
-    extraArgs: [
-      { flag: '--vrm', repoPath: 'art-source/player/2026-09-11-3d-gate/character.vrm' },
-      {
-        flag: '--motion',
-        repoPath: 'art-source/player/2026-09-11-3d-gate/motion/Unreal-Godot/UAL1_Standard.glb',
-      },
-      { flag: '--action', value: 'Walk_Loop' },
-      { flag: '--frames', value: '8' },
-      { flag: '--gate', value: '2' },
-      ...FRAME_ARGS,
-    ],
   },
 };
 
@@ -291,10 +243,10 @@ function describe(line: GateLine): string {
 }
 
 /** 게이트 이름으로 표의 줄을 찾는다. 없으면 가능한 이름을 말하며 던진다. */
-function specOf(name: string): IGateSpec {
-  const spec = GATES[name];
+function specOf(gates: Record<string, IGateSpec>, name: string): IGateSpec {
+  const spec = gates[name];
   if (!spec) {
-    throw new Error(`모르는 게이트 "${name}" (가능: ${Object.keys(GATES).join(', ')})`);
+    throw new Error(`모르는 게이트 "${name}" (가능: ${Object.keys(gates).join(', ')})`);
   }
   return spec;
 }
@@ -311,8 +263,9 @@ function report(spec: IGateSpec, problems: string[], summary: string): number {
   return 0;
 }
 
-function runGate(name: string): number {
-  const spec = specOf(name);
+/** 게이트 하나를 굽고 판정해 종료 코드를 돌려준다. */
+function runGate(gates: Record<string, IGateSpec>, name: string): number {
+  const spec = specOf(gates, name);
   const blender = resolveBlender();
   const output = path.join(ROOT, spec.output);
 
@@ -403,7 +356,7 @@ function runGate(name: string): number {
 /**
  * Blender를 부르지 않고 게이트 표의 출력 자리에 이미 있는 산출물만 다시 잰다.
  *
- * 게임 폴더의 프레임을 다시 구울 때 쓰는 경로다(README 「출하 프레임 다시 굽기」). 렌더 스크립트는
+ * 게임 폴더의 프레임을 다시 구울 때 쓰는 경로다(`retired/README.md` 「1라운드 프레임 다시 굽기」). 렌더 스크립트는
  * 이미 있는 파일을 덮지 않으므로, 게이트 0c로 스크래치에 구워 판정한 뒤 그 PNG를 게임 폴더에
  * 덮어 넣는다. 그렇게 넣은 파일에는 판정 줄이 없어서, 이 모드가 없으면 게임에 실린 세트를 다시
  * 재는 도구 경로가 없다.
@@ -412,8 +365,8 @@ function runGate(name: string): number {
  * 것이다. 폴더를 훑으면 지난 실행이 남긴 여분이 섞이고, 규칙으로 만들면 빠진 장이 「파일이
  * 없다」로 드러난다.
  */
-function judgeExisting(name: string): number {
-  const spec = specOf(name);
+function judgeExisting(gates: Record<string, IGateSpec>, name: string): number {
+  const spec = specOf(gates, name);
   const output = path.join(ROOT, spec.output);
   console.log(`\n■ ${spec.label} — 판정만 (Blender를 부르지 않는다)`);
 
@@ -450,15 +403,31 @@ function assertNodeVersion(): void {
   );
 }
 
-try {
-  assertNodeVersion();
-  const name = process.argv[2];
-  if (!name) {
-    throw new Error(`사용법: gate.ts <${Object.keys(GATES).join('|')}> [--judge-only]`);
+/**
+ * 명령줄을 읽어 `gates` 표의 게이트 하나를 돌린다. 종료 코드를 직접 정한다.
+ *
+ * @param gates 이름 → 게이트. 이 파일은 자기 표를, `retired/gate-round1.ts`는 1라운드 표를 넘긴다
+ */
+export function main(gates: Record<string, IGateSpec>): void {
+  try {
+    assertNodeVersion();
+    const name = process.argv[2];
+    if (!name) {
+      throw new Error(
+        `사용법: ${path.basename(process.argv[1] ?? 'gate.ts')} <${Object.keys(gates).join('|')}> [--judge-only]`,
+      );
+    }
+    const judgeOnly = process.argv.slice(3).includes('--judge-only');
+    process.exitCode = judgeOnly ? judgeExisting(gates, name) : runGate(gates, name);
+  } catch (err) {
+    console.error(`✗ ${(err as Error).message}`);
+    process.exit(1);
   }
-  const judgeOnly = process.argv.slice(3).includes('--judge-only');
-  process.exitCode = judgeOnly ? judgeExisting(name) : runGate(name);
-} catch (err) {
-  console.error(`✗ ${(err as Error).message}`);
-  process.exit(1);
 }
+
+// 다른 표를 든 실행기가 `main`을 가져다 쓰므로, import만으로 게이트가 돌지 않게 진입점일 때만 부른다.
+const isMain =
+  process.argv[1] !== undefined &&
+  path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+
+if (isMain) main(GATES);

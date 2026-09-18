@@ -2,7 +2,10 @@
  * G2 — 카메라 고도 후보를 굽고, 발밑 마법진을 게임처럼 얹은 뒤, 출하 2D 플레이어 · 귀신 표본과 **실제 표시
  * 크기**로 나란히 놓는 비교 시트.
  *
- * 돌리는 법: `node --experimental-strip-types tools/blender/elevation.ts [--pitches 0,15,30,45] [--sheet-only]`
+ * 돌리는 법: `node --experimental-strip-types tools/blender/retired/elevation.ts [--pitches 0,15,30,45] [--sheet-only]`
+ *
+ * **판정이 끝나 물러난 도구다(2026-09-19).** 고른 고도(15°)와 마법진 지름 규칙은 `../BakeSpec.ts`가 든다. 이
+ * 파일에는 후보 넷을 굽고 비교 시트를 만드는 길이 남았다. G4가 끝나면 지운다(`README.md`).
  *
  * **마법진은 3D 장면이 아니라 이 파일이 얹는다 — 게임이 할 방식 그대로다.** 원형 그림(위에서 본 1:1)을 한 장
  * 만들고, 카메라 고도 `p`의 sin 비율로 세로를 눌러 타원으로 만든 뒤 캐릭터 발밑 점에 중심을 두고 캐릭터
@@ -16,8 +19,8 @@
  *
  * **표시 크기는 게임의 실측이다.** 720p에서 월드 단위 하나가 1px라 플레이어 노드(48×96 단위)는 48×96px이고
  * (`sheet.ts` 머리 주석), 3D 칸은 구운 파일의 실제 크기에 같은 배율(가로 48/246, 세로 96/493)을 곱해 줄인다.
- * 귀신은 노드 높이가 도깨비 70 · 처녀귀신 50 단위이고, 표본은 여백이 있어 그린 부분(알파 상자)의 높이가 그 단위
- * 수가 되게 줄인다. 1440p는 두 배다.
+ * 귀신은 노드 높이가 도깨비 70 · 처녀귀신 50 단위이고, 표본은 여백과 옅은 테두리가 있어 보이는 부분
+ * (`visibleBox`, 문턱 `VISIBLE_ALPHA`)의 높이가 그 단위 수가 되게 줄인다. 1440p는 두 배다.
  *
  * **고른 고도의 720p 그림은 상의 A · B 두 판을 다 뽑는다.** 화풍 게이트가 두 벌 모두를 판정하기 때문이다(G2 §5).
  * 고도 후보 시트는 A만 쓴다 — 고도 선택에 옷은 관계없다. 마법진을 얹은 원본 크기 합성본
@@ -27,17 +30,19 @@
  * (굽기 캔버스와 시트 배율의 불일치), 720p 칸의 그린 높이를 키 × cos(고도)와 견줬으면 시트 전에 잡혔다. 그래서
  * 칸을 만들 때 그 검사를 하고, 어긋나면 시트를 만들지 않고 멈춘다.
  *
- * 산출물은 `docs/temp/`에 두고, 판정에 쓴 시트와 귀신 표본 원본은 `art-source/`에 추적한다(2026-09-17 사용자 결정).
- * 판정은 사람이 한다 — 고도 선택과 화풍 게이트(§5).
+ * 산출물은 `docs/temp/`에 둔다. 판정에 쓴 시트와 입력인 귀신 표본 원본은 추적하지 않는 `art-drive/evidence/`에
+ * 있다(2026-09-19 사용자 결정 — 시험 자료는 레포가 아니라 드라이브에 둔다). 판정은 사람이 한다 — 고도 선택과
+ * 화풍 게이트(§5).
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLAYER_FRAME_SPEC } from '../../tests/helpers/FrameSet.ts';
-import { type IRgbaImage, trimBox, visibleBox } from '../../tests/helpers/SpriteMetrics.ts';
-import { encodePng } from '../art/PngCodec.ts';
-import { composeGrid, compositeOver, type Rgb, sampleLikeEngine } from './ComparisonSheet.ts';
+import { PLAYER_FRAME_SPEC } from '../../../tests/helpers/FrameSet.ts';
+import { type IRgbaImage, trimBox, visibleBox } from '../../../tests/helpers/SpriteMetrics.ts';
+import { encodePng } from '../../art/PngCodec.ts';
+import { CHOSEN_PITCH, CIRCLE_DIAMETER_PER_HEIGHT, writeChosenSpecs } from '../BakeSpec.ts';
+import { composeGrid, compositeOver, type Rgb, sampleLikeEngine } from '../ComparisonSheet.ts';
 import {
   bakeAsync,
   DEFAULT_VRM,
@@ -48,9 +53,8 @@ import {
   writeJson,
 } from './gear.ts';
 import { METHODS, toonSpec } from './outline.ts';
-import { writeChosenSpecs } from './weapons.ts';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /** 산출물 자리. 추적되지 않는 스크래치다. */
 export const OUT_DIR = 'docs/temp/3d-gate/elevation';
@@ -58,8 +62,7 @@ export const OUT_DIR = 'docs/temp/3d-gate/elevation';
 /** 고도 후보(도). 0이 지금까지의 정면 수평이고, 참고 그림은 34°였다 */
 const DEFAULT_PITCHES = [0, 15, 30, 45];
 
-/** 고른 고도(도). 후보 넷을 본 사용자가 15°를 골랐다(2026-09-17). 이 고도의 720p 크기 그림을 따로 쓴다 */
-export const CHOSEN_PITCH = 15;
+// 고른 고도(`CHOSEN_PITCH`, 15°)는 `../BakeSpec.ts`가 든다. 이 고도의 720p 크기 그림을 따로 쓴다.
 
 /** 상의 B 판. `DEFAULT_VRM`(상의 A)과 같은 폴더에 있다 */
 const TOP_B_VRM = path.join(path.dirname(DEFAULT_VRM), 'player_top_b.vrm');
@@ -95,23 +98,22 @@ const BACKGROUND: Rgb = [0, 0, 0];
 const SHIPPED_2D = 'game/assets/art/player/player_4dir_front.png';
 
 /**
- * 귀신 표본과 노드 높이(720p px). 사용자가 GPT 웹으로 만든 원본이고 `art-source/`에 추적한다 — 흉내와 시트를
- * 다시 만들 때 필요한 입력이라 장비 하나에만 두지 않는다(2026-09-17 사용자 결정, 종전에는 커밋하지 않았다)
+ * 귀신 표본과 노드 높이(720p px). 사용자가 GPT 웹으로 만든 화풍 비교용 원본이고 게임에 실릴 적 아트가 아니라
+ * 추적하지 않는 `art-drive/evidence/`에 둔다(2026-09-19 사용자 결정). 다른 장비에서는 드라이브에서 받아 같은
+ * 자리에 둔다
  */
 const GHOSTS: readonly { label: string; file: string; units: number }[] = [
-  { label: '도깨비', file: 'art-source/enemies/2026-09-17-ghost-samples/도깨비.png', units: 70 },
+  {
+    label: '도깨비',
+    file: 'art-drive/evidence/enemies/2026-09-17-ghost-samples/도깨비.png',
+    units: 70,
+  },
   {
     label: '처녀귀신',
-    file: 'art-source/enemies/2026-09-17-ghost-samples/처녀귀신.png',
+    file: 'art-drive/evidence/enemies/2026-09-17-ghost-samples/처녀귀신.png',
     units: 50,
   },
 ];
-
-/**
- * 마법진 지름을 캐릭터 키(px)의 몇 배로 하나. 참고 그림은 두 배쯤이었는데 후보를 본 사용자가 절반(키와 같게)으로
- * 정했다(2026-09-17).
- */
-const CIRCLE_DIAMETER_PER_HEIGHT = 1.0;
 
 /** 마법진 색(sRGB). 발광하는 파란빛이라 배경 검정 위에서 잘 보인다 */
 const CIRCLE_COLOR: Rgb = [90, 210, 255];
@@ -264,7 +266,7 @@ if (isMain) {
     for (const ghost of GHOSTS)
       if (!fs.existsSync(path.join(ROOT, ghost.file)))
         throw new Error(
-          `귀신 표본이 없다: ${ghost.file} — art-source에 추적하는 파일이다. 체크아웃을 확인한다`,
+          `귀신 표본이 없다: ${ghost.file} — 추적하지 않는 파일이다. 드라이브에서 받아 그 자리에 둔다`,
         );
 
     const outDir = path.join(ROOT, OUT_DIR);

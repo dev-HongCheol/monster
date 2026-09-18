@@ -2,11 +2,14 @@
  * G2 — 720p 게임 화면 흉내. 고른 고도의 3D 플레이어(상의 A · B)와 귀신 표본을 실제 표시 크기로 1280×720 검정
  * 바탕에 흩어 놓는다. 화풍 게이트와 몬스터 크기 비율을 사용자가 보는 그림이다 — 판정은 사람이 한다.
  *
- * 돌리는 법: `node --experimental-strip-types tools/blender/mock.ts`
+ * 돌리는 법: `node --experimental-strip-types tools/blender/retired/mock.ts`
  * 먼저 `elevation.ts`가 `player_p15_circle.png` · `player_top_b_p15_circle.png`를 구워 둬야 한다.
  *
+ * **판정이 끝나 물러난 도구다(2026-09-19).** 이 흉내로 크기와 화풍 게이트가 통과했고(2026-09-17), 여기서 정한
+ * 크기 값은 게임 데이터라 G5가 `player.json` · `enemies.json`에 쓴다. G4가 끝나면 지운다(`README.md`).
+ *
  * **플레이어는 규격(48×96)의 80%다.** 첫 흉내(2026-09-17)를 본 사용자가 플레이어가 너무 크다고 봤다. 규격
- * 자체는 아직 안 고쳤고 여기서만 줄인다 — 크기가 판정되면 규격과 판정값(피격 사각형 · 이동 원)을 따로 고친다.
+ * 자체는 아직 안 고쳤고 여기서만 줄인다 — 규격과 판정값(피격 사각형 · 이동 원)은 G5가 따로 고친다.
  * 사전 점검에서 드러난 것: 피격 사각형(36×88)은 `player.json` 고정값이라 그림을 줄여도 따라오지 않고, 이동 원
  * (지름 50)은 줄어든 몸 폭(38)보다 넓어진다. 발치 오프셋만 노드 높이에서 유도돼 저절로 따라온다.
  *
@@ -16,31 +19,27 @@
  * 50, 가장 큰 두억시니(40)는 75. 사이는 직선이다. 달걀귀신이 커졌다고 같은 배율로 전부 키우면 줄어든
  * 플레이어에 비해 큰 놈들이 너무 커진다(2026-09-17 사용자 결정).
  *
- * 크기는 그린 높이(알파 상자)로 맞춘다. 표본은 여백이 있어 캔버스 높이를 쓰면 실제보다 작아진다.
+ * 크기는 보이는 높이(`visibleBox`, 문턱 `VISIBLE_ALPHA`)로 맞춘다. 표본은 여백과 옅은 테두리가 있어 캔버스
+ * 높이나 트림 상자를 쓰면 몸이 실제보다 작게 맞춰진다.
  *
  * **놓은 뒤 수치로 검증한다.** 놓인 그림마다 720p 그린 높이를 기대값과 견주고 어긋나면 멈춘다 — 첫 고도
  * 시트에서 배율 사고가 판정에 올라간 전례가 있다(`elevation.ts` 머리 주석).
  *
- * 흉내는 `docs/temp/`에 나오고, 판정에 쓴 장은 `art-source/player/2026-09-17-3d-gate-round2-g2/`에 복사해 추적한다.
+ * 흉내는 `docs/temp/`에 나오고, 판정에 쓴 장은 추적하지 않는
+ * `art-drive/evidence/player/2026-09-17-3d-gate-round2-g2/`에 복사해 둔다.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLAYER_FRAME_SPEC } from '../../tests/helpers/FrameSet.ts';
-import { type IRgbaImage, trimBox, visibleBox } from '../../tests/helpers/SpriteMetrics.ts';
-import { encodePng } from '../art/PngCodec.ts';
-import {
-  CHOSEN_PITCH,
-  OUT_DIR,
-  SCALE_720P,
-  scaleToDrawnHeight,
-  toGame,
-  VISIBLE_ALPHA,
-} from './elevation.ts';
+import { PLAYER_FRAME_SPEC } from '../../../tests/helpers/FrameSet.ts';
+import { type IRgbaImage, trimBox, visibleBox } from '../../../tests/helpers/SpriteMetrics.ts';
+import { encodePng } from '../../art/PngCodec.ts';
+import { CHOSEN_PITCH } from '../BakeSpec.ts';
+import { OUT_DIR, SCALE_720P, scaleToDrawnHeight, toGame, VISIBLE_ALPHA } from './elevation.ts';
 import { read } from './gear.ts';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /** 720p 화면. 설계 해상도 1280×720에 높이 맞춤이라 월드 단위 하나가 1px다 */
 const SCREEN = { width: 1280, height: 720 };
@@ -58,27 +57,27 @@ const HEIGHT_TOLERANCE_PX = 1;
 /** 적 데이터 — `collisionRadius`만 쓴다 */
 const ENEMIES_JSON = 'game/assets/resources/data/enemies.json';
 
-/** 귀신 표본. 사용자가 만든 원본이고 `art-source/`에 추적한다(`elevation.ts`와 같은 자리). `id`는 `enemies.json`의 것이다 */
+/** 귀신 표본. 사용자가 만든 원본이고 추적하지 않는 `art-drive/evidence/`에 있다(`elevation.ts`와 같은 자리). `id`는 `enemies.json`의 것이다 */
 const SAMPLES: readonly { id: string; label: string; file: string }[] = [
   {
     id: 'dalgyal',
     label: '달걀귀신',
-    file: 'art-source/enemies/2026-09-17-ghost-samples/달걀귀신.png',
+    file: 'art-drive/evidence/enemies/2026-09-17-ghost-samples/달걀귀신.png',
   },
   {
     id: 'cheonyeo',
     label: '처녀귀신',
-    file: 'art-source/enemies/2026-09-17-ghost-samples/처녀귀신.png',
+    file: 'art-drive/evidence/enemies/2026-09-17-ghost-samples/처녀귀신.png',
   },
   {
     id: 'dokkaebi',
     label: '도깨비',
-    file: 'art-source/enemies/2026-09-17-ghost-samples/도깨비.png',
+    file: 'art-drive/evidence/enemies/2026-09-17-ghost-samples/도깨비.png',
   },
   {
     id: 'dueokshini',
     label: '두억시니',
-    file: 'art-source/enemies/2026-09-17-ghost-samples/두억시니.png',
+    file: 'art-drive/evidence/enemies/2026-09-17-ghost-samples/두억시니.png',
   },
 ];
 
@@ -187,7 +186,7 @@ if (isMain) {
       const file = path.join(ROOT, sample.file);
       if (!fs.existsSync(file))
         throw new Error(
-          `귀신 표본이 없다: ${sample.file} — art-source에 추적하는 파일이다. 체크아웃을 확인한다`,
+          `귀신 표본이 없다: ${sample.file} — 추적하지 않는 파일이다. 드라이브에서 받아 그 자리에 둔다`,
         );
       const expected = heightFor(row.collisionRadius, range);
       const img = scaleToDrawnHeight(read(file), expected);

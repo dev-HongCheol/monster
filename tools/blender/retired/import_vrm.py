@@ -1,6 +1,9 @@
 """
 게이트 0b — VRM 임포터가 VRoid 산출물을 읽고, 그 모델이 같은 카메라로 렌더되는가.
 
+**1라운드 게이트이고 판정이 끝나 물러났다(2026-09-19).** `retired/gate-round1.ts`의 0b가 부른다. G4가
+끝나면 지운다(`retired/README.md`).
+
 판정은 하지 않는다. 여기서 하는 일은 읽고 굽고 **실측을 보고하는 것**까지다. 알파와 상자를
 재는 것은 실행기(`gate.ts`)가 한다.
 
@@ -18,7 +21,10 @@ import sys
 # `blender --python <파일>`은 그 파일의 디렉터리를 `sys.path`에 넣어 주지 않는다. 넣지 않으면
 # 아래 import가 ModuleNotFoundError로 죽는데, 그 예외는 `_common.run`의 감싸기 **전에** 나므로
 # 판정 줄도 안 찍힌다. 실행기에게는 「판정 줄이 없다」로 보여 원인이 엉뚱한 곳을 가리킨다.
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+#
+# 넣는 것은 이 파일의 폴더(`retired/`)가 아니라 **그 위 폴더**다. 공용 모듈(`_common.py`)은 물러나지 않고
+# `tools/blender/`에 남아 있다.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import _common as common  # noqa: E402 - 위 경로 주입 뒤에 와야 한다
 

@@ -7,14 +7,18 @@
  * 판정 규칙이 실행기와 벤치에 두 벌로 갈리면 한쪽만 고쳤을 때 나머지가 낡은 채로 초록불을
  * 유지하기 때문이다.
  *
- * 돌리는 법: `node --experimental-strip-types tools/blender/sheet.ts`
+ * **1라운드 도구이고 판정이 끝나 물러났다(2026-09-19).** 3D 칸의 입력인 1라운드 걷기 프레임은 테스트 씬과 함께
+ * 게임 폴더에서 빠져 추적하지 않는 `art-drive/evidence/`로 갔다. 2라운드는 같은 비교를 `elevation.ts` ·
+ * `mock.ts`로 했다. G4가 끝나면 지운다(`README.md`).
+ *
+ * 돌리는 법: `node --experimental-strip-types tools/blender/retired/sheet.ts`
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLAYER_FRAME_SPEC } from '../../tests/helpers/FrameSet.ts';
-import { decodePng, encodePng } from '../art/PngCodec.ts';
+import { PLAYER_FRAME_SPEC } from '../../../tests/helpers/FrameSet.ts';
+import { decodePng, encodePng } from '../../art/PngCodec.ts';
 import {
   composeGrid,
   compositeOver,
@@ -22,9 +26,9 @@ import {
   maskRect,
   type Rgb,
   sampleLikeEngine,
-} from './ComparisonSheet.ts';
+} from '../ComparisonSheet.ts';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /** 시트의 한 줄 — 두 캐릭터를 몇 픽셀로 그리는가. */
 interface ISheetRow {
@@ -85,7 +89,7 @@ const GAP = 16;
 const SOURCES: readonly { label: string; file: string; face: IRect }[] = [
   {
     label: '3D',
-    file: 'game/assets/test-3d-gate/walk_0006.png',
+    file: 'art-drive/evidence/player/2026-09-11-3d-gate/cocos-test-scene/test-3d-gate/walk_0006.png',
     face: { x: 76, y: 92, width: 93, height: 65 },
   },
   {
@@ -95,8 +99,8 @@ const SOURCES: readonly { label: string; file: string; face: IRect }[] = [
   },
 ];
 
-/** 시트를 쓰는 자리. 판정 증거라 `.vrm`과 같은 폴더에 두고 커밋한다. */
-const OUTPUT = 'art-source/player/2026-09-11-3d-gate/comparison-sheet.png';
+/** 시트를 쓰는 자리. 판정 증거라 1라운드 `.vrm`과 같은 폴더에 둔다. 추적하지 않는 폴더다 */
+const OUTPUT = 'art-drive/evidence/player/2026-09-11-3d-gate/comparison-sheet.png';
 
 /**
  * 이 도구가 요구하는 Node 최소 버전.

@@ -2,29 +2,43 @@
  * 지팡이 · 방패 후보를 굽고 한 장으로 붙이는 실행기 — 사람이 하나씩 고를 비교물을 만든다.
  *
  * 무기 출처는 Blender 직접 제작으로 정했고(G0 §5.5), 누가 모델링하는지는 AI가 후보를 짜고
- * 사람이 고르는 쪽으로 정했다(2026-09-16). **모양의 정의가 이 파일의 표다.** 비율이 마음에
- * 안 들면 숫자를 고쳐 다시 굽는 것으로 끝나고, 그 표가 레포에 남으므로 구워 낸 `.blend`는
- * 파생물이 된다.
+ * 사람이 고르는 쪽으로 정했다(2026-09-16). 비율이 마음에 안 들면 숫자를 고쳐 다시 굽는 것으로
+ * 끝나고, 그 숫자가 레포에 남으므로 구워 낸 `.blend`는 파생물이 된다.
+ *
+ * **판정이 끝나 물러난 도구다(2026-09-19).** 채택한 둘의 모양은 `../BakeSpec.ts`가 들고, 이 파일에는
+ * 떨어진 넷과 후보 시트를 만드는 길만 남았다. G4가 끝나면 지운다(`README.md`).
  *
  * 후보와 시트는 판정 증거라 커밋하지 않는다. 그래서 산출물을 추적되지 않는 `docs/temp/` 아래
  * 둔다.
  *
- * 돌리는 법: `node --experimental-strip-types tools/blender/weapons.ts`
- * Blender 실행 파일은 환경 변수 `BLENDER`로 준다. 자세한 것은 `README.md`에 있다.
+ * 돌리는 법: `node --experimental-strip-types tools/blender/retired/weapons.ts`
+ * Blender 실행 파일은 환경 변수 `BLENDER`로 준다. 자세한 것은 `../README.md`에 있다.
  *
  * `--dump-chosen <폴더>`를 주면 굽지 않고 채택한 무기 둘의 사양을 `<id>.json`으로만 쓴다.
- * 층 탐침(`probe_layers.py`)과 장비 검토(`gear.ts`)가 그 JSON을 받는다.
+ * 층 탐침(`probe_layers.py`)을 손으로 부를 때 그 JSON을 넘긴다.
  */
 
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseGateLine } from '../../tests/helpers/GateLine.ts';
-import { decodePng, encodePng } from '../art/PngCodec.ts';
-import { composeGrid, compositeOver, type Rgb, sampleLikeEngine } from './ComparisonSheet.ts';
+import { parseGateLine } from '../../../tests/helpers/GateLine.ts';
+import { decodePng, encodePng } from '../../art/PngCodec.ts';
+import {
+  BOSS,
+  CHOSEN_WEAPONS,
+  GEM,
+  type IWeaponSpec,
+  METAL,
+  PLATE,
+  SHIELD_ROUND,
+  STAFF_ORB,
+  WOOD,
+  writeChosenSpecs,
+} from '../BakeSpec.ts';
+import { composeGrid, compositeOver, type Rgb, sampleLikeEngine } from '../ComparisonSheet.ts';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /**
  * 굽는 한 장의 크기(px) — 세로로 길게 둔다.
@@ -59,57 +73,6 @@ const BLENDER_TIMEOUT_MS = 10 * 60 * 1000;
 const MIN_NODE_MAJOR = 22;
 const MIN_NODE_MINOR = 6;
 
-/** 부품 하나 — 파이썬이 그대로 세우는 프리미티브다. */
-interface IPart {
-  type: 'cylinder' | 'cone' | 'sphere' | 'torus' | 'cube';
-  radius?: number;
-  radius1?: number;
-  radius2?: number;
-  depth?: number;
-  vertices?: number;
-  subdivisions?: number;
-  major_radius?: number;
-  minor_radius?: number;
-  major_segments?: number;
-  minor_segments?: number;
-  size?: number;
-  location?: readonly [number, number, number];
-  /** X · Y · Z 회전(도) */
-  rotation?: readonly [number, number, number];
-  scale?: readonly [number, number, number];
-  /** 0~255 sRGB */
-  color?: readonly [number, number, number];
-}
-
-/** 후보 하나. */
-export interface ICandidate {
-  id: string;
-  /** 사람이 읽는 이름 — 시트를 보며 고를 때 부르는 말이다 */
-  label: string;
-  parts: IPart[];
-  /**
-   * 손이 쥐는 지점 — 무기 로컬 좌표(m). 굽기가 이 점을 손 본에 맞춘다.
-   *
-   * **무기마다 다르다.** 완드는 아래쪽을, 스태프는 위쪽을, 방패는 판 중심에서 몸 쪽으로 당긴
-   * 자리를 쥔다. 그래서 굽기 코드에 한 값을 박지 않고 후보마다 들려 둔다 — 박아 두면 v2에서
-   * 칼 · 도끼 · 활이 올 때마다 그 코드를 고치게 된다.
-   *
-   * 채택한 후보에만 있다. 떨어진 후보는 쥐어 볼 일이 없어 비워 둔다.
-   */
-  grip?: readonly [number, number, number];
-}
-
-/** 나무 손잡이. */
-const WOOD: readonly [number, number, number] = [110, 80, 55];
-/** 쇠붙이 — 테두리와 갈래. */
-const METAL: readonly [number, number, number] = [170, 175, 185];
-/** 마법 보석. */
-const GEM: readonly [number, number, number] = [90, 180, 220];
-/** 방패 판. */
-const PLATE: readonly [number, number, number] = [140, 120, 95];
-/** 방패 가운데 장식. */
-const BOSS: readonly [number, number, number] = [200, 180, 120];
-
 /**
  * 키 기준 막대.
  *
@@ -125,48 +88,12 @@ const REFERENCE = { height: 1.2, offset_x: -0.45, color: [70, 70, 80] as const }
  * 셋씩 두는 이유는 하나를 보여 주면 「이것과 비슷한 다른 것」을 상상해서 고르게 되기 때문이다.
  * 좌표는 미터이고 원점이 바닥이라, 손잡이 길이를 바꾸면 `location`의 z도 절반만큼 함께 옮긴다.
  *
- * **사용자가 `staff_orb`와 `shield_round`를 골랐다(2026-09-16).** 떨어진 넷은 지우지 않고
+ * **사용자가 `staff_orb`와 `shield_round`를 골랐다(2026-09-16).** 그 둘의 모양은 `../BakeSpec.ts`가 들고
+ * 여기서는 시트의 줄 순서를 지키려고 같은 자리에 끼워 넣는다. 떨어진 넷은 지우지 않고
  * 남긴다 — 지우면 다음 사람이 같은 안을 다시 짜고, 왜 그것이 아니었는지도 사라진다.
  */
-export const CANDIDATES: readonly ICandidate[] = [
-  {
-    id: 'staff_orb',
-    label: '지팡이 A — 구슬',
-    // **전장 0.883m — 캐릭터 키(1.104m)의 5분의 4다(2026-09-16 사용자 결정).** 종전 1.362m는
-    // 키보다 23% 길어서 캔버스를 세로로 키워도 잘렸고, 눈으로도 캐릭터보다 1.5배로 읽혔다.
-    //
-    // 길이를 줄일 때 구슬과 테도 비율에 맞춰 줄였다. 대 굵기는 아래 부품 주석이 든다.
-    //
-    // 그립은 아래에서 65% 지점이다. 손이 키의 58% 높이에 있어서, 대의 아래 끝이 바닥에서
-    // 30px(0.068m) 뜨고 위 끝이 머리 아래에 온다 — 짚는 것이 아니라 들고 걷는 자리다
-    // (2026-09-16 사용자 판정). x는 화면 왼쪽으로 10px 옮긴 값이다.
-    grip: [-0.005, 0.015, 0.57],
-    parts: [
-      {
-        type: 'cylinder',
-        // 반지름 0.012는 게임 화면(720p)에서 대가 **2.1px**로 나오는 굵기다(소스 10.6px).
-        // 0.018(3.1px)은 두껍고 0.006(1.0px)은 게임 크기에서 사라질 만큼 얇았다. 그 사이를
-        // 게임 크기 축소판으로 보고 골랐고, 같은 날 G2 툰 세팅에 들어가기 전에 사용자가 이 굵기를
-        // 다시 보고 확정했다(2026-09-16).
-        radius: 0.012,
-        depth: 0.81,
-        vertices: 8,
-        location: [0, 0, 0.405],
-        color: WOOD,
-      },
-      {
-        type: 'torus',
-        major_radius: 0.032,
-        minor_radius: 0.011,
-        major_segments: 10,
-        minor_segments: 6,
-        location: [0, 0, 0.795],
-        rotation: [0, 0, 0],
-        color: METAL,
-      },
-      { type: 'sphere', radius: 0.045, subdivisions: 2, location: [0, 0, 0.838], color: GEM },
-    ],
-  },
+export const CANDIDATES: readonly IWeaponSpec[] = [
+  STAFF_ORB,
   {
     id: 'staff_crystal',
     label: '지팡이 B — 결정',
@@ -232,45 +159,7 @@ export const CANDIDATES: readonly ICandidate[] = [
       },
     ],
   },
-  {
-    id: 'shield_round',
-    label: '방패 A — 원형',
-    // **손은 판의 중심을 쥔다.** x와 z가 판 중심(0, 0.75)과 같은 값인 것이 그 뜻이다.
-    //
-    // 한동안 x를 0.05로 당겨 뒀다. 손이 몸 바깥에 있어서 중심을 손에 두면 판의 절반이 기준
-    // 캔버스를 넘기 때문이었는데, 그 자리가 뒷모습에서 중심이 아닌 것으로 드러났다(2026-09-16
-    // 사용자 판정 — 22px 어긋남). 무기 층이 자기 캔버스를 갖게 되면서 당겨 둘 이유도 사라졌다
-    // (ADR 009). 넘치는 것은 캔버스를 키워 받는다.
-    //
-    // y만 0.07로 물려 둔다. **손이 판 뒤에 통째로 들어가야** 하기 때문이다. 판의 반두께가
-    // 0.0225라 y를 0.02로 두면 손 앞면이 판의 뒷면에 걸쳐, 정면 렌더에서 손가락이 방패를 뚫고
-    // 나온다(2026-09-16 사용자 판정). 방패를 쥔 손은 앞에서 보이면 안 된다.
-    grip: [0, 0.07, 0.75],
-    // **크기를 절반으로 줄였다(2026-09-16 사용자 판정).** 바깥 반지름이 0.282일 때 방패가 몸을
-    // 거의 다 가렸다. 지금은 0.141이고 지름이 키의 25%다.
-    parts: [
-      {
-        type: 'cylinder',
-        radius: 0.13,
-        depth: 0.0225,
-        vertices: 16,
-        location: [0, 0, 0.75],
-        rotation: [90, 0, 0],
-        color: PLATE,
-      },
-      {
-        type: 'torus',
-        major_radius: 0.13,
-        minor_radius: 0.011,
-        major_segments: 16,
-        minor_segments: 6,
-        location: [0, 0, 0.75],
-        rotation: [90, 0, 0],
-        color: METAL,
-      },
-      { type: 'sphere', radius: 0.035, subdivisions: 2, location: [0, -0.015, 0.75], color: BOSS },
-    ],
-  },
+  SHIELD_ROUND,
   {
     id: 'shield_heater',
     label: '방패 B — 방패꼴',
@@ -328,8 +217,8 @@ export const CANDIDATES: readonly ICandidate[] = [
 /** 굽는 시점. 정면은 실루엣, 3/4는 두께를 본다. */
 const VIEWS = ['front', 'three_quarter'] as const;
 
-/** 사용자가 고른 둘(2026-09-16). 게임 크기 장에는 이 둘만 넣는다. */
-const CHOSEN = ['staff_orb', 'shield_round'] as const;
+/** 사용자가 고른 둘(2026-09-16). 게임 크기 장에는 이 둘만 넣는다. 모양은 `../BakeSpec.ts`가 든다. */
+const CHOSEN = CHOSEN_WEAPONS.map((weapon) => weapon.id);
 
 /**
  * 게임이 캐릭터를 그리는 크기.
@@ -343,7 +232,7 @@ const CHOSEN = ['staff_orb', 'shield_round'] as const;
  *
  * **지팡이 대의 굵기는 이 크기로 보고 정했다.** 처음에는 대가 1~2px로 보여도 툰 외곽선이 두껍게
  * 보이게 할 수 있어 굵기 판단을 G2로 미뤘는데, 같은 날 반지름을 0.012(720p에서 2.1px)로 고친 판을
- * 사용자가 확정했다(2026-09-16). 값과 근거는 `staff_orb`의 대 부품 주석이 든다.
+ * 사용자가 확정했다(2026-09-16). 값과 근거는 `../BakeSpec.ts`의 `STAFF_ORB` 대 부품 주석이 든다.
  */
 const GAME_SIZES = [
   { label: '1440p 96×192', width: 96, height: 192 },
@@ -419,34 +308,14 @@ function bake(outDir: string, specPath: string): void {
   throw new Error(`${line.code} ${line.message}\n${tail}`);
 }
 
-/**
- * 채택한 무기의 사양을 파이썬이 읽을 JSON으로 쓰고 경로들을 돌려준다.
- *
- * **그립이 없으면 던진다.** 층 탐침이 그립으로 무기를 손에 맞추는데, 그립이 빠진 사양은 무기
- * 원점을 손에 붙여 지팡이가 손목에서 위로만 솟는 그림을 조용히 굽는다.
- *
- * @param dir 쓸 폴더. 없으면 만든다
- */
-export function writeChosenSpecs(dir: string): string[] {
-  fs.mkdirSync(dir, { recursive: true });
-  return CHOSEN.map((id) => {
-    const found = CANDIDATES.find((c) => c.id === id);
-    if (!found) throw new Error(`채택한 무기 ${id}가 후보 표에 없다`);
-    if (!found.grip) throw new Error(`채택한 무기 ${id}에 grip이 없다`);
-    const file = path.join(dir, `${id}.json`);
-    fs.writeFileSync(file, `${JSON.stringify(found, null, 2)}\n`, 'utf-8');
-    return file;
-  });
-}
-
 /** 구운 한 장을 시트 칸으로 줄이고 배경 위에 얹는다. */
 function toCell(file: string): ReturnType<typeof compositeOver> {
   const img = decodePng(fs.readFileSync(file));
   return compositeOver(sampleLikeEngine(img, CELL.width, CELL.height), BACKGROUND);
 }
 
-// **이 파일을 import해도 굽기가 돌지 않게 한다.** 후보 표(`CANDIDATES`)가 무기 모양의 정본이라
-// 다른 도구가 그것을 읽어 가는데, 진입점 가드가 없으면 import만으로 Blender가 열두 번 돈다.
+// **이 파일을 import해도 굽기가 돌지 않게 한다.** 진입점 가드가 없으면 후보 표(`CANDIDATES`)를 읽으려고
+// import한 것만으로 Blender가 열두 번 돈다.
 const isMain =
   process.argv[1] !== undefined &&
   path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));

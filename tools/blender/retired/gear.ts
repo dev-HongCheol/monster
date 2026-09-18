@@ -1,10 +1,15 @@
 /**
  * 장비 검토 세트를 굽고 사람이 볼 시트와 흔들림 재생 페이지를 만드는 실행기.
  *
- * 플레이어는 몸 · 상의 · 무기를 층으로 굽는데, 나중에 붙을 망토 · 날개 · 화려한 장비 · 오라가 같은
- * 방식에서 깨지는지는 아직 아무도 보지 않았다(G2 검토 세트, 2026-09-16 사용자 요청). 이 파일의 표가
+ * 플레이어는 몸 · 상의 · 무기를 층으로 굽는데, 나중에 붙을 망토 · 날개 · 화려한 장비 · 얇은 장식이 같은
+ * 방식에서 깨지는지를 기본 도형으로 만들어 구워 본 검토 세트다(G2, 2026-09-16 사용자 요청). 이 파일의 표가
  * 그 예외 경우들이다. 모양은 실제 아트가 아니라 기본 도형이고, 보는 것은 예쁜지가 아니라 **이 굽기
  * 방식에서 깨지는지**다.
+ *
+ * **판정이 끝나 물러난 도구다(2026-09-19).** 네 경우 모두 판정을 받았고(2026-09-17), 거기서 나온 천 · 금속
+ * 재질 값과 금속 matcap은 `../BakeSpec.ts`로 옮겼다. 이 파일의 `bake` · `bakeAsync` · `runPool`은
+ * `probe_layers.py`를 부르는 단 하나의 TS 길이라 G4가 생산 굽기 도구를 세울 때 가져간다. G4가 끝나면 지운다
+ * (`README.md`).
  *
  * 경우마다 세 가지를 만든다.
  *
@@ -18,7 +23,7 @@
  * 몸의 음영은 VRoid가 내보낸 원본 그대로 둔다(2026-09-16 사용자 판정). 장비만 `toon.py`의 `like`로
  * 상의와 같은 음영 규칙을 받는다. 판정은 사람이 하고, 산출물은 추적하지 않는 `docs/temp/`에 둔다.
  *
- * 돌리는 법: `node --experimental-strip-types tools/blender/gear.ts [--only 경우id,경우id] [--vrm 경로] [--sheet-only]`
+ * 돌리는 법: `node --experimental-strip-types tools/blender/retired/gear.ts [--only 경우id,경우id] [--vrm 경로] [--sheet-only]`
  * Blender 실행 파일은 환경 변수 `BLENDER`로 준다. 한 경우에 Blender를 스무 번 가까이 부른다.
  */
 
@@ -26,10 +31,18 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLAYER_FRAME_SPEC } from '../../tests/helpers/FrameSet.ts';
-import { parseGateLine } from '../../tests/helpers/GateLine.ts';
-import type { IRgbaImage } from '../../tests/helpers/SpriteMetrics.ts';
-import { decodePng, encodePng } from '../art/PngCodec.ts';
+import { PLAYER_FRAME_SPEC } from '../../../tests/helpers/FrameSet.ts';
+import { parseGateLine } from '../../../tests/helpers/GateLine.ts';
+import type { IRgbaImage } from '../../../tests/helpers/SpriteMetrics.ts';
+import { decodePng, encodePng } from '../../art/PngCodec.ts';
+import {
+  CLOTH_TOON,
+  GEAR_TOON,
+  type IToonSpec,
+  METAL_TOON,
+  metalMatcap,
+  writeChosenSpecs,
+} from '../BakeSpec.ts';
 import {
   composeGrid,
   compositeOver,
@@ -37,16 +50,15 @@ import {
   pixelDiff,
   type Rgb,
   sampleLikeEngine,
-} from './ComparisonSheet.ts';
-import { writeChosenSpecs } from './weapons.ts';
+} from '../ComparisonSheet.ts';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /** 산출물 자리. 추적되지 않는 스크래치다. */
 export const OUT_DIR = 'docs/temp/3d-gate/gear';
 
 /** 상의 A를 입은 판. `--vrm`으로 바꿀 수 있다 — 생산 `.vrm`은 커밋하지 않아 장비마다 경로가 다르다. */
-export const DEFAULT_VRM = 'art-source/player/2026-09-16-player-3d/player_top_a.vrm';
+export const DEFAULT_VRM = 'art-drive/production/player/2026-09-16-player-3d/player_top_a.vrm';
 
 /**
  * 층 캔버스(px). 날개가 기준 몸 캔버스 246px을 가로로 넘으므로 넓힌다(ADR 009).
@@ -438,7 +450,7 @@ export const CASES: readonly IGearCase[] = [
     ],
     spec: cape(0.06, 0),
     hardEdge: true,
-    toon: { shade_threshold: 0.8 },
+    toon: CLOTH_TOON,
     flutter: {
       view: 'back',
       at: (t) => cape(0.06 + 0.05 * Math.sin(2 * Math.PI * t), 2 * Math.PI * t),
@@ -472,13 +484,9 @@ export const CASES: readonly IGearCase[] = [
     spec: armor(),
     hardEdge: false,
     views: ['front', 'back', 'three_quarter', 'left'],
-    // 금속 — 어두운 음영색(기본색의 35%) · 넓은 그늘 · 도구가 만든 금속 matcap의 반사점
-    toon: {
-      shade_ratio: 0.35,
-      shade_threshold: 0.5,
-      matcap: [1, 1, 1],
-      matcap_image: 'matcap_gold.png',
-    },
+    // 금속 — 어두운 음영색(기본색의 35%) · 넓은 그늘 · 도구가 만든 금속 matcap의 반사점. 값은 `../BakeSpec.ts`가
+    // 들고, 여기서는 matcap 그림을 쓸 파일 이름만 더한다(`gearSettings`가 절대 경로로 바꾼다)
+    toon: { ...METAL_TOON, matcap_image: 'matcap_gold.png' },
   },
   {
     id: 'ornament',
@@ -524,22 +532,16 @@ export const CASES: readonly IGearCase[] = [
 // 회전이 걷기 주기와 무관해야 하고, 바닥 원판은 층 캔버스를 넘치며(첫 판 오라가 세 방향 모두 넘쳤다),
 // 패시브마다 켜고 꺼야 한다. 굽기 쪽에서 정할 것은 카메라 고도 하나라, 그 후보 시트에 원판을 넣는다.
 
-/** 툰 사양 — `toon.py`가 읽는다. `materials`의 키는 분류(`GEAR`)다. */
-export interface IToonSpec {
-  id: string;
-  materials: Record<string, Record<string, unknown>>;
-}
-
-/** 장비에 입히는 툰 사양. 몸은 건드리지 않고(`*` 없음) 장비만 상의의 음영 규칙을 받는다. */
+/** 장비에 입히는 툰 사양. 몸은 건드리지 않고(`*` 없음) 장비만 상의의 음영 규칙을 받는다. 값은 `../BakeSpec.ts`가 든다. */
 export const TOON_ORIGINAL: IToonSpec = {
   id: 'gear_original',
-  materials: { GEAR: { like: 'Tops_CLOTH', double_sided: true } },
+  materials: { GEAR: GEAR_TOON },
 };
 
 /** 딱딱한 경계 판. 장비의 계단 정도만 1로 올린다. */
 const TOON_HARD: IToonSpec = {
   id: 'gear_hard',
-  materials: { GEAR: { like: 'Tops_CLOTH', double_sided: true, shading_toony: 1 } },
+  materials: { GEAR: { ...GEAR_TOON, shading_toony: 1 } },
 };
 
 /** 굽기 한 번의 인자. */
@@ -628,41 +630,6 @@ function toonFor(paths: IPaths, item: IGearCase): { original: string; hard: stri
     ),
     hard: writeJson(path.join(paths.outDir, `toon_hard_${item.id}.json`), merged(TOON_HARD)),
   };
-}
-
-/**
- * 금속용 matcap. 구 법선에 따라 따뜻한 반사점 하나와 약한 보조 반사, 넓은 그라디언트를 준다.
- *
- * 애드온의 matcap 항은 더해지기만 해서 어둡게는 못 하므로(`toon.py`) 어두운 면은 `shade_ratio`가 만들고,
- * 여기서는 밝은 반사만 든다. 원 밖은 검정(효과 없음)이다. 값을 파일로 두지 않고 만드는 이유는 산출물
- * 자리가 추적되지 않는 폴더라서다.
- */
-function metalMatcap(size: number): IRgbaImage {
-  const unit = (v: [number, number, number]): [number, number, number] => {
-    const n = Math.hypot(v[0], v[1], v[2]);
-    return [v[0] / n, v[1] / n, v[2] / n];
-  };
-  const key = unit([-0.45, 0.65, 0.6]);
-  const fill = unit([0.6, -0.3, 0.75]);
-  const data = new Uint8Array(size * size * 4);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const nx = ((x + 0.5) / size) * 2 - 1;
-      const ny = 1 - ((y + 0.5) / size) * 2;
-      const r2 = nx * nx + ny * ny;
-      const at = (y * size + x) * 4;
-      data[at + 3] = 255;
-      if (r2 > 1) continue;
-      const nz = Math.sqrt(1 - r2);
-      const d1 = Math.max(0, nx * key[0] + ny * key[1] + nz * key[2]);
-      const d2 = Math.max(0, nx * fill[0] + ny * fill[1] + nz * fill[2]);
-      const v = Math.min(1, d1 ** 60 * 0.95 + d2 ** 25 * 0.3 + d1 * 0.12);
-      data[at] = Math.round(v * 255);
-      data[at + 1] = Math.round(v * 0.96 * 255);
-      data[at + 2] = Math.round(v * 0.85 * 255);
-    }
-  }
-  return { width: size, height: size, data };
 }
 
 /** 굽기 한 번의 Blender 인자. 동기 · 비동기 굽기가 같은 줄을 쓴다 */

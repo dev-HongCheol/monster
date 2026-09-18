@@ -1,23 +1,28 @@
 /**
  * G2 — 외곽선 방식 후보(인버티드 헐 · Line Art · 후처리)를 같은 시험 세트로 굽고 시트로 만든다.
  *
- * 돌리는 법: `node --experimental-strip-types tools/blender/outline.ts [--only hull2,post2] [--cases cape,wings] [--views front] [--sheet-only]`
+ * 돌리는 법: `node --experimental-strip-types tools/blender/retired/outline.ts [--only hull2,post2] [--cases cape,wings] [--views front] [--sheet-only]`
+ *
+ * **판정이 끝나 물러난 도구다(2026-09-19).** 채택한 것은 헐 1이고 그 값은 `../BakeSpec.ts`의 `CHOSEN_HULL`이
+ * 든다. 이 파일에는 떨어진 판들과 비교 시트를 만드는 길이 남았다. G4가 끝나면 지운다(`README.md`).
  *
  * 시험 세트는 장비 검토 세트에서 통과한 경우(`gear.ts`의 CASES, 정적 사양)와 무기를 든 기준 컷이고, 방향은
  * 기본 앞 · 뒤 · 3/4다. 겨냥 굵기는 493px 캔버스에서 2.75px(귀신 표본 실측 0.55~0.57%, G2 인계 §3.3)이고,
  * 방식마다 그 굵기를 만드는 값이 다르다 — 헐은 폭 0.0062m, Line Art는 반지름 0.0031m, 후처리는 픽셀 그대로
  * 2.75다(`ops-blender-toon.md` §5 · §5.1).
  *
- * **후보는 표(`METHODS`)로 두고 한 방식에 여러 판을 둔다.** 첫 판(2026-09-17)의 판정이 셋 다 되돌아왔다 —
- * 헐은 머리카락 가닥과 손가락까지 같은 굵기 · 같은 색으로 둘러 입체감이 죽었고(VRoid는 머리카락에 외곽선을
- * 안 두고 재질마다 색을 따로 둔다), Line Art는 평면 음영 메시의 모든 변이 날카로운 변으로 잡혀 격자가
- * 그어졌고, 후처리는 깊이 · 주름 가장자리가 실루엣의 세 배 넘게 잡혀 뭉개졌다. 둘째 판은 그 원인을 하나씩
- * 뺀 것이고, 첫 판도 표에 남겨 기록으로 다시 구울 수 있게 한다.
+ * **후보는 표(`METHODS`)로 두고 한 방식에 여러 판을 둔다.** 첫 판(2026-09-17) 뒤에 둘째 판을 더했다. Line Art는
+ * 평면 음영 메시의 모든 변이 날카로운 변으로 잡혀 격자가 그어졌고, 후처리는 깊이 · 주름 가장자리가 실루엣의
+ * 세 배 넘게 잡혀 뭉개져서, 둘째 판은 그 원인을 하나씩 뺐다. 헐의 둘째 판(헐 2 · 헐 3)은 오독에서 나왔다 —
+ * 사용자의 「입체감이 많이 줄어들었어」를 AI가 음영 부피감 불만으로 읽고 머리카락 외곽선을 빼거나 줄였는데,
+ * 그 말은 3D 티가 줄어 2D에 가까워졌다는 긍정이었다. **최종 판정은 헐 1이다.** Line Art와 후처리는 둘째 판도
+ * 뭉개져 탈락했다. 떨어진 판도 표에 남겨 비교 시트를 다시 구울 수 있게 한다.
  *
  * **방식마다 층과 기준 컷을 따로 굽는다.** 외곽선은 가림과 함께 고른다(G2 §3) — 층을 가림 전용 몸으로 구우면
  * 방식에 따라 가림 뒤에 외곽선이 남거나 사라진다. 그래서 몸 · 지팡이 · 방패 · 장비 층을 방식별로 굽고, 겹친 것과
- * 무기 든 기준 컷의 픽셀 차이를 적는다. 헐은 몸 헐을 가림 전용에 넣을지가 열려 있어(정본 §5) 정면 지팡이 층을
- * 몸 헐 켬 · 끔으로 구워 지워진 픽셀 수를 센다. 후처리 판들은 렌더를 공유하고 선만 다시 긋는다.
+ * 무기 든 기준 컷의 픽셀 차이를 적는다. 헐은 몸 헐을 가림 전용에 넣을지를 정하려고 정면 지팡이 층을 몸 헐
+ * 켬 · 끔으로 구워 지워진 픽셀 수를 센다 — 67픽셀이라 게임 크기에서 안 보여 포함으로 정했다(2026-09-17).
+ * 후처리 판들은 렌더를 공유하고 선만 다시 긋는다.
  *
  * **후처리는 이 파일이 긋는다.** Blender가 법선 · 깊이 패스를 내주면(`outline.py`), 실루엣(알파 경계) · 물체 경계
  * (깊이 불연속) · 주름(법선 각)을 가장자리로 잡고 그 둘레 2.75px 띠를 색으로 덮는다. 픽셀 굵기가 정확하고 게임
@@ -29,10 +34,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLAYER_FRAME_SPEC } from '../../tests/helpers/FrameSet.ts';
-import type { IRgbaImage } from '../../tests/helpers/SpriteMetrics.ts';
-import { encodePng } from '../art/PngCodec.ts';
-import { composeGrid, layerOver, pixelDiff, type Rgb } from './ComparisonSheet.ts';
+import type { IRgbaImage } from '../../../tests/helpers/SpriteMetrics.ts';
+import { encodePng } from '../../art/PngCodec.ts';
+import {
+  CHOSEN_HULL,
+  hullMaterials,
+  type IHull,
+  PX_PER_M,
+  OUTLINE_WIDTH_M as WIDTH_M,
+  OUTLINE_WIDTH_PX as WIDTH_PX,
+  writeChosenSpecs,
+} from '../BakeSpec.ts';
+import { composeGrid, layerOver, pixelDiff, type Rgb } from '../ComparisonSheet.ts';
 import {
   bake,
   CASES,
@@ -50,24 +63,14 @@ import {
   type ViewId,
   writeJson,
 } from './gear.ts';
-import { writeChosenSpecs } from './weapons.ts';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /** 산출물 자리. 추적되지 않는 스크래치다. 방식마다 하위 폴더를 갖는다. */
 const OUT_DIR = 'docs/temp/3d-gate/outline';
 
-/** 겨냥 굵기(px, 493px 캔버스). 귀신 표본 둘의 윤곽선이 긴 변의 0.55~0.57%였다. */
-const WIDTH_PX = 2.75;
-
-/** 기준 자세 키(m, 2026-09-16 실측). 캔버스 픽셀과 미터를 잇는 유일한 값이다 */
-const MODEL_HEIGHT_M = 1.104;
-
-/** 캔버스의 픽셀/미터. 머리 행에서 발 행까지가 키다 */
-const PX_PER_M = (PLAYER_FRAME_SPEC.footLineY - PLAYER_FRAME_SPEC.headLineY) / MODEL_HEIGHT_M;
-
-/** 겨냥 굵기를 미터로 — 헐의 폭이자 Line Art 지름이다 */
-const WIDTH_M = WIDTH_PX / PX_PER_M;
+// 겨냥 굵기(`WIDTH_PX` 2.75px · `WIDTH_M` 그 미터 값)와 픽셀/미터(`PX_PER_M`)는 `../BakeSpec.ts`가 든다. 헐의 폭이자
+// Line Art의 지름이고 후처리 띠의 픽셀 굵기라 세 방식이 같은 값을 쓴다.
 
 /**
  * 외곽선 색(선형 RGB). VRoid가 피부 · 옷에 내보내는 외곽선 색이다(2026-09-17 실측 — 머리카락은 외곽선
@@ -84,9 +87,6 @@ const ALPHA_EDGE = 128;
 /** 채널 차가 이 값을 넘어야 바뀐 픽셀로 센다. `gear.ts` · `layers.ts`와 같은 값이다. */
 const DIFF_THRESHOLD = 12;
 
-/** 헐이 재질 분류마다 받는 폭(m). `null`이면 그 분류는 외곽선 없음 */
-type HullWidths = Record<string, number | null>;
-
 /** 후처리 가장자리 판정 값. 깊이는 0~1(0.9m 범위) 단위라 0.012 ≈ 1.1cm, 0.037 ≈ 3.3cm */
 interface IPostRule {
   depthJump: number;
@@ -100,7 +100,7 @@ export interface IMethod {
   kind: 'hull' | 'lineart' | 'post';
   /** 렌더가 놓이는 하위 폴더. 후처리 판들은 렌더를 공유한다 */
   renderDir: string;
-  hull?: { widths: HullWidths; lightingMix: number };
+  hull?: IHull;
   lineart?: Record<string, unknown>;
   post?: IPostRule;
 }
@@ -116,14 +116,14 @@ const LINEART_BASE = {
   silhouette: 'NONE',
 };
 
-/** 후보 표. 첫 판 셋은 기록용이고 `DEFAULT_METHODS`가 지금 판정할 판이다. */
+/** 후보 표. 채택한 것은 `hull`(헐 1)이고 그 값은 `../BakeSpec.ts`가 든다. 나머지는 탈락한 판이다. */
 export const METHODS: readonly IMethod[] = [
   {
     id: 'hull',
     label: '헐 1 — 전부 같은 굵기 · 같은 색',
     kind: 'hull',
     renderDir: 'hull',
-    hull: { widths: { '*': WIDTH_M, EYE: null, FACE: null }, lightingMix: 0 },
+    hull: CHOSEN_HULL,
   },
   {
     id: 'hull2',
@@ -169,7 +169,10 @@ export const METHODS: readonly IMethod[] = [
   },
 ];
 
-/** `--only`를 안 주면 굽는 판. 첫 판 판정(2026-09-17)의 원인을 뺀 둘째 판이다 */
+/**
+ * `--only`를 안 주면 굽는 판. 첫 판 판정(2026-09-17) 뒤에 더한 둘째 판이고 **넷 다 탈락했다.** 채택한 헐 1을 다시
+ * 구우려면 `--only hull`을 준다
+ */
 const DEFAULT_METHODS = ['hull2', 'hull3', 'lineart2', 'post2'];
 
 /** 선형 0~1을 sRGB 8비트로. 후처리 색에 쓴다. */
@@ -185,35 +188,15 @@ const OUTLINE_COLOR_SRGB: Rgb = [
 ];
 
 /**
- * 몸(VRoid 재질) · 무기 · 장비가 받는 툰 값. 헐이면 분류마다 외곽선 폭을 주고 색은 재질 것을 둔다 —
- * 무기 · 장비는 `like`가 상의의 외곽선 색을 복사해 오므로 같은 색이 된다.
+ * 몸(VRoid 재질) · 무기 · 장비가 받는 툰 값. 헐이면 재질 표를 `../BakeSpec.ts`의 `hullMaterials`가 짠다 —
+ * 생산 굽기가 같은 함수로 같은 표를 짜야 후보 시트에서 고른 그림과 굽는 그림이 같다. 헐이 아닌 방식은 몸을
+ * 건드리지 않고 장비 값만 든다.
  */
 export function toonSpec(paths: IPaths, method: IMethod, item: IGearCase | null, bodyHull = true) {
   const gear = item ? gearSettings(paths, item) : { ...TOON_ORIGINAL.materials.GEAR };
-  const materials: Record<string, Record<string, unknown>> = { GEAR: gear };
-  if (method.kind === 'hull' && method.hull) {
-    const { widths, lightingMix } = method.hull;
-    const entry = (width: number | null | undefined): Record<string, unknown> =>
-      width == null
-        ? { outline_mode: 'none' }
-        : {
-            outline_mode: 'worldCoordinates',
-            outline_width: width,
-            outline_lighting_mix: lightingMix,
-          };
-    // 몸 헐을 끄는 판은 가림 탐침용이다. VRoid 기본값(0.8mm)도 남기지 않도록 `none`을 준다
-    materials['*'] = bodyHull ? entry(widths['*']) : { outline_mode: 'none' };
-    for (const [klass, width] of Object.entries(widths)) {
-      if (klass !== '*') materials[klass] = entry(width);
-    }
-    // 무기는 헐이 MToon에서만 나오므로 상의 규칙으로 바꾼다. 재질 확정(열린 항목)과는 별개다
-    materials.WEAPON = {
-      like: 'Tops_CLOTH',
-      shade_ratio: 0.6,
-      ...entry(widths.WEAPON ?? widths['*']),
-    };
-    materials.GEAR = { ...gear, ...entry(widths.GEAR ?? widths['*']) };
-  }
+  const materials: Record<string, Record<string, unknown>> = method.kind === 'hull' && method.hull
+    ? hullMaterials(method.hull, gear, bodyHull)
+    : { GEAR: gear };
   return {
     id: `outline_${method.id}_${item ? item.id : 'body'}${bodyHull ? '' : '_nohull'}`,
     materials,
