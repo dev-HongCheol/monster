@@ -75,13 +75,15 @@
 | VRM 애드온 zip의 SHA-256 | `5d6f8fb5c9bf836f0e77b9af501f17fbe35801dd353fef509fc917c64ac7c9ac` | **태그는 재작성될 수 있어** 태그 이름만으로는 같은 파일임을 보장하지 못한다 |
 | VRM 애드온 지원 범위 | `blender_version_min = 4.2.0` · `blender_version_max = 5.3.0` | 매니페스트에서 직접 읽었다. 상한이 배타적이라 5.2.1이 지원 범위 최상단이다 |
 | VRM 애드온 등록 이름 | `bl_ext.user_default.vrm` | 4.2 이후 확장 체계의 모듈 이름이다. 게이트 0b가 이 이름으로 등록 여부를 확인한다 |
-| VRoid Studio | **2.3.0** | — |
+| VRoid Studio | **2.3.0** (릴리스 2025-07-23) | 고른 판이 아니라 winget이 준 판이고, 공식 최신은 v2.14.0이다(2026-09-19 확인). 옷 판을 새로 내보낼 때 판이 달라지지 않게 고정한다 — 표 아래 참고 |
 | VRM 내보내기 버전 | **1.0** | 내보내기 버전이 갈리면 임포터가 읽는 골격이 달라진다 |
 | VRoid 내보내기 감축 설정 | 폴리곤·머티리얼·뼈 줄이기 **전부 끔** | 구조 보존이 우선이다. 감축은 텍스처 해상도로만 한다 |
 | Cocos Creator | **3.8.8** | — |
 | GPU와 드라이버 | **NVIDIA GeForce RTX 3070 Ti**, 드라이버 32.0.15.9186 | EEVEE는 GPU를 타므로, 투명 렌더가 깨졌을 때 첫 단서가 여기다 |
 
-**설치는 전부 winget으로 했다.** Blender는 `BlenderFoundation.Blender --version 5.2.1`, VRoid는 `pixivInc.VRoidStudio`다. 애드온은 `blender --command extension install-file --repo user_default --enable <zip>`으로 넣었다. 그래서 이 환경은 명령 세 줄로 다시 세울 수 있다.
+**설치는 전부 winget으로 했다.** Blender는 `BlenderFoundation.Blender --version 5.2.1`, VRoid는 `pixivInc.VRoidStudio --version 2.3.0`이다. 애드온은 `blender --command extension install-file --repo user_default --enable <zip>`으로 넣었다. 그래서 이 환경은 명령 세 줄로 다시 세울 수 있다.
+
+**VRoid의 `--version 2.3.0`은 2026-09-19에 붙였다.** 2026-09-11에는 판을 지정하지 않고 깔았는데, winget 매니페스트의 최신이 2.3.0이라 그 판이 들어왔다. 같은 날 공식 사이트가 내려 주는 판은 v2.14.0이었으므로, 2.3.0은 고른 것이 아니라 매니페스트가 낡아서 생긴 고정이다. 판을 지정하지 않은 채로 두면 매니페스트가 갱신된 날부터 다른 장비에는 다른 판이 깔린다. 모든 층은 맨살 판을 가림 전용으로 쓰므로(§12의 G1), 새 판의 VRoid가 몸 메시를 조금이라도 다르게 내보내면 그 판으로 만든 옷 판의 몸이 기존 맨살 판과 어긋나고 가림에 구멍이나 겹침이 생긴다. 판이 바뀌면 실제로 어긋나는지는 재 보지 않았다. 그래서 판을 올리게 되면 세 판을 같은 판으로 다시 내보내고 판끼리의 일치 측정부터 다시 한다. winget에서 2.3.0이 내려가면 매니페스트가 가리키던 공식 배포 주소(`https://download.vroid.com/dist/0E03cQckxU/VRoidStudio-v2.3.0-win.exe`)나 공식 사이트의 「Past versions」에서 받는다.
 
 **`.vrm`은 커밋한다.** 커밋하지 않으면 사슬의 출발점이 이 장비에만 남는다. 크기 상한은 50MB이고 넘으면 텍스처 해상도를 낮춘 판을 넣는다 — git 히스토리는 영구라 넣고 나서 무겁다고 뺄 수 없고, Git LFS는 쓰지 않는다.
 
