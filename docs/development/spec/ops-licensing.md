@@ -4,7 +4,7 @@
 
 - **최초 작성:** 2026-08-20
 - **상태:** CONFIRMED
-- **이력:** 2026-08-20 — 신설 · 2026-08-22 배경 제거가 fal 매팅으로 옮겨 가 §2 표에서 `rembg` 행을 「과거에 쓴 것」으로 내리고 `bria/background/remove`를 「지금 쓰는 것」으로 세웠다. §2.1의 모델 명시 함정은 폴백용으로 남기되 실효 표시를 달았다 · 2026-09-14 §2 표에 플레이어 3D 경로가 쓰는 도구 셋(VRoid Studio · VRM Add-on for Blender · Quaternius Universal Animation Library)을 더했다. VRoid는 원문을 직접 열지 못해 「미확인」으로 올렸다 · 2026-09-15 VRoid Studio 행을 이용약관(2026-06-24 개정판)과 가이드라인 원문으로 확인해 고치고, Blender 행과 지팡이 · 방패 3D 모델 행을 더했다. VRoid의 세부 조건과 생산 판의 VRM 메타 값은 §2.2를 새로 세워 모았다
+- **이력:** 2026-08-20 — 신설 · 2026-08-22 배경 제거가 fal 매팅으로 옮겨 가 §2 표에서 `rembg` 행을 「과거에 쓴 것」으로 내리고 `bria/background/remove`를 「지금 쓰는 것」으로 세웠다. §2.1의 모델 명시 함정은 폴백용으로 남기되 실효 표시를 달았다 · 2026-09-14 §2 표에 플레이어 3D 경로가 쓰는 도구 셋(VRoid Studio · VRM Add-on for Blender · Quaternius Universal Animation Library)을 더했다. VRoid는 원문을 직접 열지 못해 「미확인」으로 올렸다 · 2026-09-15 VRoid Studio 행을 이용약관(2026-06-24 개정판)과 가이드라인 원문으로 확인해 고치고, Blender 행과 지팡이 · 방패 3D 모델 행을 더했다. VRoid의 세부 조건과 생산 판의 VRM 메타 값은 §2.2를 새로 세워 모았다 · 2026-09-19 §2.2에서 「미확인」으로 남겨 뒀던 VRoid Plus를 약관 개정 이력과 v2.14.0 공지 원문으로 확인해 고쳤다. 광고를 없애는 구독이라 프리셋 항목의 조건과 무관하다. 같은 날 §2 표에 ChatGPT 웹 행을 더하고, 출력 권리의 양도 · 입력 권리의 보증 · 걸리는 금지 행위 셋과 「VRoid 프리셋 텍스처를 생성 입력으로 넣지 않는다」는 규칙을 §2.3에 모았다. Blender 행에는 공개한 bpy 스크립트에 GPL-3.0-or-later를 붙였다는 것을 적었다
 
 ---
 
@@ -33,6 +33,7 @@
 |---|---|---|---|
 | **fal.ai** (플랫폼) | 아트 생성 전반 | 이용약관 2026-07-31판이 적용된다. 상업 이용을 막는 조항은 없고, 제약은 §3에 모았다 | 2026-08-20 · [약관](https://fal.ai/legal/terms-of-service) |
 | **`openai/gpt-image-2`** · **`/edit`** | 플레이어 4방향 시트와 그 파생본 전부 | 모델 페이지 사양표의 License 칸이 `Commercial use via fal Partner agreement`. 편집 엔드포인트에도 같은 `Commercial use` 표시가 붙는다 | 2026-08-20 · [모델](https://fal.ai/models/openai/gpt-image-2) · [편집](https://fal.ai/models/openai/gpt-image-2/edit) |
+| **ChatGPT 웹** (OpenAI 개인용 서비스) | 2D 이미지 생성 — 사용자가 웹에서 직접 만든다(2026-09-15 결정). 첫 산출물은 화풍 비교에 쓴 귀신 표본이다. fal 경유 생성을 대신하지만, 출하된 플레이어 4방향 아트가 fal에서 나왔으므로 위 fal 행들은 그 근거로 남는다 | 이용약관이 출력의 권리를 이용자에게 양도하고, 상업 이용을 막는 조항은 없다. 다만 출력이 독창적이지 않을 수 있다고 적고, 넣는 입력의 권리는 이용자가 보증해야 한다. 조항 인용과 이 프로젝트가 지킬 것은 §2.3에 있다 | 2026-09-19 · [이용약관](https://openai.com/policies/terms-of-use/) |
 | **SDXL 1.0 base + 자체 LoRA** | `player_mage_bridge.png` 한 장(유료 전환 이전) | `openrail++`이고 자체 학습 LoRA를 배포하지 않으므로 게임에 걸리지 않는다. 원문 확인표는 §1이 가리키는 복구 매뉴얼이 든다 | 2026-07-21 |
 | **rembg** (로컬) | **과거에 쓴 것** — `player_mage_bridge.png` 한 장의 배경 제거 | 코드는 MIT지만 **모델 가중치는 각자 다른 라이선스**다. 이 장비가 받아 둔 것은 `u2net.onnx` 하나이고 그 출처인 [U-2-Net](https://github.com/xuebinqin/U-2-Net)은 Apache-2.0이라 상업 사용에 문제가 없다. **다만 아래 함정이 있다.** 2026-08-22에 배경 제거가 fal 매팅으로 옮겨 가 이 경로는 더 쓰지 않지만, 근거를 대는 그 PNG가 아직 레포에 추적 중이라 행을 지우지 않는다 | 2026-08-20 · [rembg](https://github.com/danielgatis/rembg) |
 | **`bria/background/remove`** (fal) | **지금 쓰는 것** — 캐릭터 배경 제거 | 모델 페이지에 `Commercial use` 표시가 붙는다. BRIA는 자체 배포판이 유료 계약을 요구하지만 **fal 경유에는 그 조건이 붙지 않는다.** 후보 둘을 숫자로 견줘 2026-08-22에 채택했고, 판정 항목은 `art-generation-playbook.md` §8.5가 든다 | 2026-08-20 |
@@ -40,7 +41,7 @@
 | **Spine** | 리깅(아직 결제 전) | 에디터 라이선스가 런타임을 제품에 넣을 권한을 함께 준다 — 런타임은 별도 구매가 아니다. 재배포물에 라이선스와 저작권 고지를 포함해야 한다. 등급·요금은 §1이 가리키는 사양서가 든다 | 2026-08-20 · [런타임 라이선스](https://esotericsoftware.com/spine-runtimes-license) |
 | **Cocos Creator** | 엔진 | 게임 개발 목적의 사용이 무료이고 로열티가 없다. 사용자 서비스 약관이 유료화 시 사전 공지를 약속한다. 스플래시·크레딧 표기 의무 조항은 없고 상표 사용 제한만 있다 | 2026-08-20 · [약관](https://download.cocos.com/CocosUdc/agreement/Cocos_User_Service_Agreement_en_20220901.html) |
 | **VRoid Studio** | 플레이어 3D 마스터(`.vrm`) | 만든 캐릭터의 렌더를 게임에 싣고 그 게임을 팔아도 된다. 다만 pixiv가 제공하는 기본 모델 · 의상 · 프리셋은 CC0가 아니다. pixiv가 권리를 가진 채 이용을 허락하는 것이고, 특별 조항이 표시된 항목은 그 조항을 따른다. 제공 콘텐츠로 아바타를 만들어 내는 앱에는 별도 라이선스가 필요하고, 다른 제작자의 에셋은 그 에셋의 조건을 따른다. 원문 인용, 생산 판의 VRM 메타 값, 원본을 공개하지 않는 이유는 §2.2에 있다 | 2026-09-15 · [이용약관](https://policies.pixiv.net/en.html#vroidstudio) · [가이드라인](https://vroid.com/en/studio/guidelines) |
-| **Blender** | `.vrm`을 층별 프레임으로 굽기, 지팡이 · 방패 모델링 — `tools/blender/` | 프로그램은 GPL이지만 Blender로 만든 결과물에는 GPL이 붙지 않는다. 라이선스 페이지가 「What you create with Blender is your sole property」라고 적고, 그 대상에 이미지 · 영상과 `.blend` 등 데이터 파일을 넣는다. GPL이 따라붙는 것은 Blender를 배포하거나 Blender 파이썬 API를 쓰는 스크립트를 공개할 때이고, 그런 스크립트는 GPL 호환 라이선스로 공유해야 한다. 공개 레포에 있는 `tools/blender/`의 파이썬 스크립트가 여기에 해당한다 | 2026-09-15 · [라이선스](https://www.blender.org/about/license/) |
+| **Blender** | `.vrm`을 층별 프레임으로 굽기, 지팡이 · 방패 모델링 — `tools/blender/` | 프로그램은 GPL이지만 Blender로 만든 결과물에는 GPL이 붙지 않는다. 라이선스 페이지가 「What you create with Blender is your sole property」라고 적고, 그 대상에 이미지 · 영상과 `.blend` 등 데이터 파일을 넣는다. GPL이 따라붙는 것은 Blender를 배포하거나 Blender 파이썬 API를 쓰는 스크립트를 공개할 때이고, 그런 스크립트는 GPL 호환 라이선스로 공유해야 한다. 공개 레포에 있는 `tools/blender/`의 파이썬 스크립트가 여기에 해당한다. 그래서 그 스크립트들에만 GPL-3.0-or-later를 붙였다(2026-09-19). 범위는 루트 `LICENSE` §2가 들고, 같은 폴더의 TypeScript 실행기 · 사양 JSON · 구운 결과물은 거기 들지 않는다 | 2026-09-15 · [라이선스](https://www.blender.org/about/license/) |
 | **지팡이 · 방패 3D 모델** | 기본 무기 층의 원본 | Blender에서 직접 만든다. 외부 모델이나 생성 서비스를 거치지 않으므로 권리가 전부 이 프로젝트에 있고 따라붙는 약관이 없다. 외부 모델을 받게 되면 `.glb` · `.obj`로만 받고, 받기 전에 이 표에 행을 붙인다. `.blend`를 받지 않는 것은 파일에 든 파이썬이 열 때 자동 실행되는 공격 경로가 되기 때문이다. 기각: AI 3D 생성(Meshy · Tripo) · 커미션(2026-09-15) | 2026-09-15 |
 | **VRM Add-on for Blender** | `.vrm`을 Blender로 들여오기 — `tools/blender/` | MIT와 GPL-3.0 가운데 골라 쓰는 이중 라이선스다. Blender 안에서 도구로만 쓰고 게임에 싣지 않으므로 게임 쪽에 붙는 의무가 없다. 판을 고정하는 방법은 `tools/blender/README.md`가 든다 | 2026-09-11 · [확장 페이지](https://extensions.blender.org/add-ons/vrm/) |
 | **Quaternius Universal Animation Library** | 걷기 모션 원본 — `tools/blender/`가 리타게팅한다 | CC0 1.0(퍼블릭 도메인 헌정)이라 표기 의무도 재배포 제한도 없다. 그래서 받은 파일을 라이선스 파일과 함께 `art-source/`에 커밋한다 | 2026-09-14 · 동봉 `License.txt` · [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
@@ -76,7 +77,17 @@
 > The Company will grant Users a non-exclusive, perpetual, worldwide, non-transferable, non-sublicensable license to use, duplicate, archive, modify, and display Provided Content, subject to restrictions common to all licenses, for (1) any purpose and (2) any use, except where different license conditions are specified and displayed for individual items of Provided Content.
 > — [VRoid Studio 이용약관](https://policies.pixiv.net/en.html#vroidstudio) 제13조 1항 (2026-06-24 개정판, 2026-09-15 확인)
 
-그래서 캐릭터와 옷은 VRoid 기본 프리셋, 그것을 직접 고친 것, 직접 만든 텍스처로만 구성하고, 별도 라이선스가 표시된 항목은 쓰지 않는다. 2026-06-24에 생긴 유료 서비스 VRoid Plus의 항목에 별도 조건이 붙는지는 확인하지 않았으므로, 항목을 고를 때마다 그 표시를 본다.
+그래서 캐릭터와 옷은 VRoid 기본 프리셋, 그것을 직접 고친 것, 직접 만든 텍스처로만 구성하고, 별도 라이선스가 표시된 항목은 쓰지 않는다. 표시는 항목마다 붙으므로 항목을 고를 때마다 본다.
+
+**유료 구독 VRoid Plus는 프리셋 항목의 조건과 무관하다.** 약관의 유료 서비스 조항(제4조 · 제5조)은 VRoid Plus를 들이면서 생겼고, 공지와 도움말이 적는 VRoid Plus의 혜택은 iPad판의 광고를 없애는 것 하나다. 그래서 항목을 고를 때 볼 것은 구독 여부가 아니라 그 항목에 표시된 특별 조항이다.
+
+> In connection with the introduction of the paid service VRoid Plus, the fee provisions have been revised and new articles regarding paid services, cancellation, and data management have been added.
+> — [VRoid Studio 이용약관](https://policies.pixiv.net/en.html#vroidstudio) 개정 이력 (2026-09-19 확인)
+
+> A new subscription service, VRoid Plus, is now available. … Subscribing to a plan removes ads from the app.
+> — [VRoid Studio v2.14.0 공지](https://vroid.com/en/studio/notice/7roAawRAU0e1ntT8nNuQr9)의 iPad판 항목 (2026-06-29판, 2026-09-19 확인)
+
+도움말 센터의 「About VRoid Plus」도 같은 내용이다. 그 페이지는 봇 확인 화면에서 멈춰 자동으로 열리지 않으므로 브라우저에서 직접 열어 확인했다.
 
 **기본 프리셋을 고친 의상은 따로 팔 수 있다.** v2 스킨 판매가 이 조건에 기댄다. 게임이 파는 것은 모델 데이터가 아니라 구운 2D 층이라, 위의 「이미지를 게임에 써서 수익을 내는」 허용에도 함께 들어간다.
 
@@ -111,6 +122,42 @@
 
 **생산 `.vrm` · `.vroid`는 공개 레포에 올리지 않는다.** 약관만 보면 공개가 금지되지는 않는다. 가이드라인이 내보낸 모델 데이터를 팔아도 된다고 적기 때문이다. 그래도 올리지 않는 것은, 공개하면 누구나 플레이어 캐릭터와 상의 판(v2 유료 스킨의 원형)을 내려받아 쓸 수 있고, 한 번 푸시한 파일은 PR ref에 남아 되돌릴 수 없어서다. 두 파일을 어디에 두는지는 §1이 가리키는 사양서가 든다.
 
+### 2.3 ChatGPT 웹으로 만든 그림에 붙는 조건
+
+판정의 근거는 OpenAI 이용약관(개인용 서비스, 2026-01-01 발효판)의 한국어판이다. API와 기업용 서비스에는 별도의 사업자 약관이 적용되므로, 이 절은 사용자가 웹에서 직접 만든 그림에만 해당한다. 약관 페이지는 봇 확인 화면에서 멈춰 자동으로 열리지 않으므로 브라우저에서 직접 연 본문으로 확인했다. 약관이 함께 지키라고 적는 사용 정책과 공유 및 공개 정책은 열지 않았다.
+
+**출력의 권리는 OpenAI가 이용자에게 양도한다.** fal 약관에는 없던 문장이다(§4).
+
+> 귀하와 OpenAI 간에 관련 법률이 허용하는 한도 내에서, 귀하는 (a) 입력에 대한 소유권을 유지하고 (b) 출력을 소유합니다. 당사는 출력에 대한 모든 권리, 소유권 및 이권을 이로써 귀하에게 양도합니다.
+> — [OpenAI 이용약관](https://openai.com/policies/terms-of-use/) 「콘텐츠의 소유권」 (2026-01-01 발효판, 2026-09-19 확인)
+
+**그 양도가 독점을 뜻하지는 않는다.** 넘어오는 것은 OpenAI가 가진 권리이고, 그 그림에 저작권이 성립하는지는 약관이 정하지 않는다. 같은 약관이 다른 이용자도 비슷한 출력을 받을 수 있다고 적는다.
+
+> 서비스와 인공지능의 일반적인 특성상, 출력은 독창적이지 않을 수 있으며 다른 사용자들도 서비스로부터 유사한 출력을 받을 수 있습니다. 위 조항에 따른 당사의 양도는 다른 사용자의 출력이나 제3자 출력에 적용되지 않습니다.
+> — [OpenAI 이용약관](https://openai.com/policies/terms-of-use/) 「콘텐츠 유사성」 (2026-01-01 발효판, 2026-09-19 확인)
+
+그래서 유료 스킨을 파는 관점의 결론은 §4와 같다. 제3자가 비슷한 그림을 내놓아도 이 약관에서는 막을 근거가 나오지 않고, 근거가 생기는 자리는 사람 손이 더해진 부분이다.
+
+**넣는 것의 권리는 우리가 보증한다.**
+
+> 귀하는 서비스에 입력을 제공하는 데 필요한 모든 권리, 라이선스 및 권한을 보유하고 있음을 진술하고 보장합니다.
+> — [OpenAI 이용약관](https://openai.com/policies/terms-of-use/) 「귀하의 콘텐츠」 (2026-01-01 발효판, 2026-09-19 확인)
+
+그래서 **VRoid가 제공한 프리셋 텍스처를 레퍼런스나 편집 원본으로 넣지 않는다.** 프리셋은 pixiv가 권리를 가진 채 재허락할 수 없는 조건으로 이용을 허락한 것이고(§2.2), VRoid Studio 약관에는 제3자 생성 서비스에 올리는 경우를 다룬 조항이 없다(2026-09-19에 VRoid Studio 절 전체를 검색해 확인). 허락도 금지도 적혀 있지 않은 자리에서 위 보증을 서게 되므로, 옷 텍스처는 빈 UV나 우리가 그린 원본 위에서 새로 만든다. 약관 해석에 기대지 않고 위험이 생길 자리 자체를 없애는 규칙이다.
+
+**넣은 것과 받은 것은 OpenAI의 모델 학습에 쓰일 수 있고, 설정으로 끌 수 있다.** 미공개 캐릭터의 그림을 레퍼런스로 넣게 되므로, 생성에 쓰는 계정은 학습 이용을 꺼 둔다.
+
+> 귀하의 콘텐츠를 당사의 모델을 학습시키는 데 사용하지 않기를 원한다면, 이 문서의 설명에 따라 거부할 수 있습니다.
+> — [OpenAI 이용약관](https://openai.com/policies/terms-of-use/) 「거부」 (2026-01-01 발효판, 2026-09-19 확인)
+
+**금지 행위 가운데 이 프로젝트에 걸리는 것은 셋이다.**
+
+| 약관이 금지하는 것 | 이 프로젝트에서 뜻하는 것 |
+|---|---|
+| 「출력이 사람이 생성한 것이 아님에도 불구하고 사람이 생성하였다고 하는 행위」 | 상점의 AI 고지(§6)와 같은 방향이다. 생성물을 손그림이라고 소개하지 않는다 |
+| 「OpenAI와 경쟁하는 모델을 개발하기 위해 출력을 사용하는 행위」 | fal 경유 때와 같다(§3). 받은 그림을 이미지 생성 모델의 학습 씨앗으로 쓰지 않는다 |
+| 「자동으로 또는 프로그래밍 방식으로 데이터나 출력(아래에 정의됨)을 추출하는 행위」 | 웹 화면을 스크립트나 브라우저 자동화로 돌려 그림을 받지 않는다. 생성은 사람이 웹에서 직접 한다 |
+
 ## 3. 생성에 붙는 제약 — fal 경유
 
 약관이 금지하는 것 중 이 프로젝트에 실제로 걸리는 것은 둘이다.
@@ -135,6 +182,8 @@ fal 약관에서 소유권을 명시하는 문장은 하나뿐이고, 그 대상
 > — fal.ai Terms of Service §6(c) (2026-07-31판, 2026-08-20 확인)
 
 Output Content에 대응하는 문장은 약관 어디에도 없다. 상업적으로 쓸 권리는 파트너 계약이 주지만, **그 결과물이 누구 것인지는 계약이 정해 주지 않는다.** 유료 스킨을 파는 관점에서 이것이 뜻하는 바는 하나다 — 제3자가 우리 스프라이트를 그대로 가져다 써도 fal 약관에서는 들 근거가 나오지 않는다. 근거가 생기는 자리는 사람 손이 더해진 부분이고, 그 논지는 §1이 가리키는 아트 방향 정본이 이미 든다. **이 문단은 "찾았는데 없더라"를 기록해 두는 것이 목적이다.** 적어 두지 않으면 다음 사람이 같은 조사를 처음부터 반복한다.
+
+**ChatGPT 웹은 이 점이 다르다.** OpenAI 이용약관은 출력의 권리를 이용자에게 양도한다고 적는다(§2.3). 다만 그 양도도 독점을 주지는 않으므로, 근거가 생기는 자리가 사람 손이 더해진 부분이라는 위 결론은 두 경로에서 같다.
 
 **우리 입력에서 파생된 익명 데이터는 fal의 모델 개발에 쓰일 수 있다.** 약관 §2가 Usage Data를 "익명화 또는 집계된 데이터로서 Customer Input에 기반하거나 그로부터 파생된 것을 포함할 수 있다"고 정의하고, §6(d)가 그 Usage Data를 자사 AI 모델의 설계·개발에 쓸 수 있다고 정한다. 우리가 넣은 이미지 자체를 학습에 쓴다는 조항은 아니지만 — §6(a)의 라이선스는 목적이 서비스 제공으로 한정된다 — 파생 데이터 축은 열려 있다.
 
