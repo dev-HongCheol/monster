@@ -15,7 +15,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "SEE LICENSE IN LICENSE",
   "packageManager": "pnpm@10.15.1",
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json}": "biome check --write --no-errors-on-unmatched"
