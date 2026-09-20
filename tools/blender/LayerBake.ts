@@ -13,6 +13,7 @@
 
 import { createHash } from 'node:crypto';
 import { PLAYER_FRAME_SPEC } from '../../tests/helpers/FrameSet.ts';
+import { type IRgbaImage, visibleBox } from '../../tests/helpers/SpriteMetrics.ts';
 import { frameName } from './Atlas.ts';
 import { CHOSEN_HULL, CHOSEN_PITCH, GEAR_TOON, hullMaterials, type IToonSpec } from './BakeSpec.ts';
 import {
@@ -185,6 +186,115 @@ export function bodyCanvasWidth(neededPx: number, baseWidth: number): number {
   return wanted % 2 === baseWidth % 2 ? wanted : wanted + 1;
 }
 
+/** 캔버스 크기(px). */
+export interface ICanvas {
+  width: number;
+  height: number;
+}
+
+/**
+ * 무기 층이 몸 층 캔버스보다 사방으로 더 갖는 여유(px). 지팡이는 머리 위로, 방패는 몸 옆으로 나간다.
+ *
+ * **양쪽에 같은 값을 더하므로 홀짝이 몸 층과 저절로 같다.** 홀짝이 다르면 캔버스 중심이 픽셀 격자에서 반 칸
+ * 밀려 무기가 손에서 0.5px 어긋난다(G4 §3.1). 몸 층이 264×493이면 600×701이 되어 G3의 판정 화면을 굽던
+ * 캔버스와 같다. 값이 모자라면 `layerSetCheck`가 「변에 닿았다」로 굽기를 세운다 — 조용히 잘리지 않는다.
+ */
+const WEAPON_REACH_PX = { x: 168, y: 104 };
+
+/**
+ * 층이 굽는 캔버스. 몸과 상의는 몸 층 캔버스를 같이 쓰고 무기는 그보다 넉넉하다. 캔버스를 키워도 인물은 안
+ * 커진다 — 픽셀 크기는 카메라 기록의 것 하나이고, 캔버스가 크면 주변이 더 보일 뿐이다(ADR 009).
+ *
+ * @param bodyCanvas 카메라 기록의 몸 층 캔버스
+ */
+export function layerCanvas(layer: BakeLayer, bodyCanvas: ICanvas): ICanvas {
+  if (layer === 'staff' || layer === 'shield') {
+    return {
+      width: bodyCanvas.width + WEAPON_REACH_PX.x * 2,
+      height: bodyCanvas.height + WEAPON_REACH_PX.y * 2,
+    };
+  }
+  return { width: bodyCanvas.width, height: bodyCanvas.height };
+}
+
+/** 층 하나를 굽는 데 드는 것 — 굽는 쪽의 층 이름과, 더 들여올 상의 판이나 들 무기. */
+export interface ILayerSource {
+  /** `bake_motion.py`의 `--layer` 값 */
+  pythonLayer: 'body' | 'top' | 'staff' | 'shield';
+  /** 상의 층이 `--top-vrm`으로 들여올 판 */
+  topModel?: 'topA' | 'topB';
+  /** 무기 층이 사양을 받을 무기 */
+  weapon?: 'staff' | 'shield';
+}
+
+/**
+ * 게임이 쓰는 층 이름을 굽는 쪽의 입력으로 옮긴다. 상의 A · B는 굽는 쪽에서는 같은 층(`top`)이고 들여오는 판만
+ * 다르다 — 옷을 한 벌 더하는 일이 굽는 코드를 안 건드리고 판 하나를 더 넘기는 일이 되게 하려는 것이다.
+ */
+export function layerSource(layer: BakeLayer): ILayerSource {
+  if (layer === 'topA' || layer === 'topB') return { pythonLayer: 'top', topModel: layer };
+  if (layer === 'staff' || layer === 'shield') return { pythonLayer: layer, weapon: layer };
+  return { pythonLayer: 'body' };
+}
+
+/**
+ * 이 알파부터 내용으로 센다. `FrameSet.ts`의 `faintUpTo`(16 이하는 내용이 아니다)와 같은 잣대여야 한다 —
+ * 카메라를 맞출 때와 판정할 때의 잣대가 다르면, 맞춘 행과 판정이 읽는 행이 안티앨리어싱 술만큼 어긋난다.
+ */
+export const CONTENT_ALPHA = 17;
+
+/**
+ * 상의 · 무기 층의 (방향, 동작) 세트 하나에 거는 검사. 위반을 문장으로 돌려주고 비어 있으면 통과다.
+ *
+ * 몸 층의 규칙(`frameSetCheck`)을 그대로 걸 수 없다. 이 층들은 몸보다 작게 구워지는 것이 정상이라 머리 · 발
+ * 행이 없고, 뒷모습에서 몸에 다 가린 무기처럼 **비는 것이 정상인 장**이 있다. 그래서 세 가지만 본다.
+ *
+ * - 장 수와 캔버스가 선언과 같다. 다르면 아틀라스의 원본 크기와 게임 노드의 크기가 갈린다.
+ * - 내용이 캔버스 변에 닿지 않는다. 닿은 그림은 잘린 그림과 구별할 수 없고, 무기가 캔버스에 들어오는지를
+ *   가르는 실제 관문이 이것이다.
+ * - 세트가 통째로 비지 않는다. 전부 비었으면 가려진 것이 아니라 사양이나 층 선택이 틀린 것이다.
+ *
+ * @param frames 구운 프레임. 렌더 순서대로 온다
+ * @param expected 기대하는 장 수와 캔버스
+ */
+export function layerSetCheck(
+  frames: readonly IRgbaImage[],
+  expected: { count: number; canvas: ICanvas },
+): string[] {
+  const problems: string[] = [];
+  if (frames.length !== expected.count) {
+    problems.push(`프레임이 ${frames.length}장인데 ${expected.count}장이어야 한다`);
+  }
+  let filled = 0;
+  for (const [index, img] of frames.entries()) {
+    if (img.width !== expected.canvas.width || img.height !== expected.canvas.height) {
+      problems.push(
+        `${index}번 장의 캔버스가 ${img.width}×${img.height}인데 ${expected.canvas.width}×${expected.canvas.height}이어야 한다`,
+      );
+      continue;
+    }
+    const box = visibleBox(img, CONTENT_ALPHA);
+    if (!box) continue;
+    filled++;
+    const touches =
+      box.x === 0 ||
+      box.y === 0 ||
+      box.x + box.width === img.width ||
+      box.y + box.height === img.height;
+    if (touches) {
+      problems.push(
+        `${index}번 장의 내용이 캔버스 변에 닿았다 — 잘렸을 수 있다. 층 캔버스를 키운다`,
+      );
+    }
+  }
+  if (frames.length > 0 && filled === 0) {
+    problems.push(
+      '세트의 프레임이 전부 비었다 — 가려진 것이 아니라 사양이나 층 선택이 틀린 것이다',
+    );
+  }
+  return problems;
+}
+
 /** 굽기 결과를 바꾸는 입력의 지문 — 카메라 기록에 적어 두고 굽기 전에 지금 입력과 견준다. */
 export interface IBakeInputs {
   /** `bakeDefinition()`의 지문 */
@@ -201,7 +311,7 @@ export interface IBakeInputs {
 export interface ICameraRecord {
   camera: ICameraPose;
   /** 몸 층의 캔버스(px). 세로는 기준 그대로이고 가로는 옆걸음의 보폭을 담도록 넓힌 값이다(`bodyCanvasWidth`) */
-  bodyCanvas: { width: number; height: number };
+  bodyCanvas: ICanvas;
   /** 발밑 점(세계 원점)이 기준 캔버스에서 놓이는 높이(위에서부터의 연속 좌표, px). 게임의 발치와 마법진 중심이다 */
   groundRow: number;
   inputs: IBakeInputs;
@@ -217,10 +327,30 @@ export interface IBakeDefinition {
 }
 
 /**
+ * 무기 · 장비가 음영 규칙을 복사해 올 VRoid 부위. G2의 확정값(`WEAPON_TOON` · `GEAR_TOON`)은 상의를 지목하는데
+ * 생산 굽기는 하의로 바꿔 넘긴다.
+ *
+ * 무기 층은 맨살 판으로 굽고(맨살 몸이 가림 전용이다) 맨살 판에는 상의 머티리얼이 없어서, 상의를 지목하면
+ * 굽는 쪽이 `toon-spec`으로 죽는다. 하의는 맨살 판과 상의 판 모두에 있다. 복사해 오는 값 — 음영 경계 · 림 ·
+ * 외곽선 모드와 색 — 열두 항목이 하의와 상의 A · B에서 같다는 것은 `inspect_mtoon.py` 덤프로 확인했다
+ * (2026-09-21). VRoid에서 옷을 바꿔 새 판을 내보내면 이 같음이 깨질 수 있으므로 그때 다시 덤프해 견준다.
+ */
+const LIKE_PART = 'Bottoms_CLOTH';
+
+/**
  * 모든 층이 입는 툰 사양. 외곽선 헐이 실루엣을 넓히므로 카메라를 맞출 때도 이 사양으로 굽는다.
+ *
+ * 층마다 사양을 달리하지 않는다. 사양이 하나여야 굽기 정의의 지문도 하나이고, 어느 층이 어느 사양으로
+ * 구워졌는지를 따로 기록하지 않아도 된다.
  */
 export function bakeToon(): IToonSpec {
-  return { id: 'g4_final_look', materials: hullMaterials(CHOSEN_HULL, GEAR_TOON) };
+  const materials = hullMaterials(CHOSEN_HULL, GEAR_TOON);
+  for (const klass of ['WEAPON', 'GEAR']) {
+    if (materials[klass]?.like !== undefined) {
+      materials[klass] = { ...materials[klass], like: LIKE_PART };
+    }
+  }
+  return { id: 'g4_final_look', materials };
 }
 
 /** 지금 코드가 쥔 굽기 정의. 이 가운데 하나라도 바뀌면 모든 층을 다시 굽는다. */

@@ -36,7 +36,7 @@ import {
   restoreFrame,
   writePlist,
 } from '../../tools/blender/Atlas';
-import { CHOSEN_PITCH } from '../../tools/blender/BakeSpec';
+import { CHOSEN_PITCH, OUTLINE_WIDTH_M, WEAPON_TOON } from '../../tools/blender/BakeSpec';
 import {
   composeGrid,
   compositeOver,
@@ -51,12 +51,16 @@ import {
   BAKE_FACINGS,
   BAKE_LAYERS,
   bakeDefinition,
+  bakeToon,
   bodyCanvasWidth,
   definitionHash,
   fitCamera,
   type IBakeInputs,
   type ICameraPose,
   layerBakeJobs,
+  layerCanvas,
+  layerSetCheck,
+  layerSource,
   projectRow,
   staleReasons,
 } from '../../tools/blender/LayerBake';
@@ -1715,6 +1719,77 @@ describe('bodyCanvasWidth — 몸 층의 캔버스 가로를 실측에서 낸다
   });
 });
 
+describe('layerCanvas · layerSource — 층마다 어느 캔버스에 무엇을 굽나', () => {
+  const bodyCanvas = { width: 264, height: 493 };
+
+  it('몸과 상의는 몸 층 캔버스에 굽는다', () => {
+    for (const layer of ['body', 'topA', 'topB'] as const) {
+      expect(layerCanvas(layer, bodyCanvas)).toEqual(bodyCanvas);
+    }
+  });
+
+  it('무기는 몸보다 넉넉한 캔버스에 굽고 홀짝은 몸 층과 같다', () => {
+    // 지팡이는 머리 위로, 방패는 몸 옆으로 나간다. 홀짝이 다르면 중심이 반 픽셀 밀려 손에서 어긋난다
+    for (const layer of ['staff', 'shield'] as const) {
+      const canvas = layerCanvas(layer, bodyCanvas);
+      expect(canvas.width).toBeGreaterThan(bodyCanvas.width);
+      expect(canvas.height).toBeGreaterThan(bodyCanvas.height);
+      expect(canvas.width % 2).toBe(bodyCanvas.width % 2);
+      expect(canvas.height % 2).toBe(bodyCanvas.height % 2);
+    }
+  });
+
+  it('상의 A · B는 같은 굽기 층(top)이고 들여오는 판만 다르다', () => {
+    expect(layerSource('topA')).toEqual({ pythonLayer: 'top', topModel: 'topA' });
+    expect(layerSource('topB')).toEqual({ pythonLayer: 'top', topModel: 'topB' });
+  });
+
+  it('무기 층은 그 무기의 사양만 받는다', () => {
+    expect(layerSource('staff')).toEqual({ pythonLayer: 'staff', weapon: 'staff' });
+    expect(layerSource('shield')).toEqual({ pythonLayer: 'shield', weapon: 'shield' });
+    expect(layerSource('body')).toEqual({ pythonLayer: 'body' });
+  });
+});
+
+describe('layerSetCheck — 상의 · 무기 층의 세트에 거는 검사', () => {
+  const canvas = { width: W, height: H };
+  /** 가운데에 점 하나가 있는 장 */
+  const dot = () => frame(W, H, (x, y) => (x === 4 && y === 5 ? 255 : 0));
+  const empty = () => frame(W, H, () => 0);
+
+  it('빈 장은 허용한다 — 뒷모습에서 몸에 다 가린 무기는 비는 것이 정상이다', () => {
+    expect(layerSetCheck([dot(), empty(), dot()], { count: 3, canvas })).toEqual([]);
+  });
+
+  it('세트가 통째로 비면 걸린다', () => {
+    const problems = layerSetCheck([empty(), empty()], { count: 2, canvas });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/전부 비었다/);
+  });
+
+  it('장 수가 기대와 다르면 걸린다', () => {
+    expect(layerSetCheck([dot()], { count: 2, canvas })[0]).toMatch(/1장/);
+  });
+
+  it('캔버스가 선언한 크기와 다른 장을 말한다', () => {
+    const problems = layerSetCheck([dot(), frame(W + 2, H, () => 255)], { count: 2, canvas });
+    expect(problems.some((p) => p.includes('1번'))).toBe(true);
+  });
+
+  it('내용이 캔버스 변에 닿은 장을 말한다 — 잘린 것과 구별할 수 없다', () => {
+    const touching = frame(W, H, (x, y) => (x === 0 && y === 5 ? 255 : 0));
+    const problems = layerSetCheck([dot(), touching], { count: 2, canvas });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/1번/);
+    expect(problems[0]).toMatch(/변에 닿았다/);
+  });
+
+  it('옅은 술(알파 16 이하)은 내용으로 안 센다', () => {
+    const faint = frame(W, H, (x, y) => (x === 0 ? 10 : x === 4 && y === 5 ? 255 : 0));
+    expect(layerSetCheck([faint], { count: 1, canvas })).toEqual([]);
+  });
+});
+
 describe('bakeDefinition · definitionHash — 카메라를 잡은 입력의 지문', () => {
   it('키 순서가 달라도 같은 값이면 지문이 같다', () => {
     expect(definitionHash({ a: 1, b: { c: [1, 2], d: 'x' } })).toBe(
@@ -1735,6 +1810,17 @@ describe('bakeDefinition · definitionHash — 카메라를 잡은 입력의 지
     expect(definition.frameSpec).toEqual(PLAYER_FRAME_SPEC);
     // 외곽선 헐이 실루엣을 넓히므로 툰 사양이 바뀌면 합집합 행도 바뀐다
     expect(Object.keys(definition.toon.materials).length).toBeGreaterThan(0);
+  });
+
+  it('무기 · 장비의 음영 규칙은 모든 굽기 장면에 있는 부위(하의)에서 복사한다', () => {
+    // 무기 층은 맨살 판으로 굽는데 맨살 판에는 상의 머티리얼이 없다. 상의를 지목하면 굽는 쪽이 `toon-spec`으로
+    // 죽는다(2026-09-21). 하의는 맨살 판과 상의 판 모두에 있고, 복사하는 열두 값이 상의 A · B와 같다(같은 날 실측)
+    const { materials } = bakeToon();
+    expect(materials.WEAPON.like).toBe('Bottoms_CLOTH');
+    expect(materials.GEAR.like).toBe('Bottoms_CLOTH');
+    // 음영색 비율과 외곽선은 G2가 확정한 값 그대로다
+    expect(materials.WEAPON.shade_ratio).toBe(WEAPON_TOON.shade_ratio);
+    expect(materials.WEAPON.outline_width).toBe(OUTLINE_WIDTH_M);
   });
 
   it('걸음 값을 하나 고치면 지문이 바뀐다', () => {

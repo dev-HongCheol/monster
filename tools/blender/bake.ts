@@ -11,6 +11,8 @@
  *
  *   camera            맨살 몸을 구워 합집합의 머리 · 발 행을 재고, 그 둘이 규격 행에 오는 카메라를
  *                     `tools/blender/camera.json`에 쓴다. 동작 · 고도 · 모델 · 도구 판을 바꾼 뒤에 다시 돌린다
+ *   layers            다섯 층을 네 방향으로 굽고 G4 §4의 판정을 건다. 카메라 기록의 입력 지문이 지금 입력과
+ *                     다르면 굽지 않는다. `--only body,staff`로 층을 골라 구울 수 있다
  *
  *   --model-dir <폴더>  생산 `.vrm` 셋(`player_base` · `player_top_a` · `player_top_b`)이 있는 폴더.
  *                     커밋하지 않는 파일이라 장비마다 자리가 다를 수 있다
@@ -22,23 +24,36 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLAYER_FRAME_SPEC, unionRowCheck } from '../../tests/helpers/FrameSet.ts';
+import {
+  frameSetCheck,
+  type IFrameMeasurement,
+  PLAYER_FRAME_SPEC,
+  unionRowCheck,
+} from '../../tests/helpers/FrameSet.ts';
 import { type IRgbaImage, visibleBox } from '../../tests/helpers/SpriteMetrics.ts';
 import { decodePng } from '../art/PngCodec.ts';
-import { MODEL_HEIGHT_M } from './BakeSpec.ts';
+import { parseFrameName } from './Atlas.ts';
+import { MODEL_HEIGHT_M, writeChosenSpecs } from './BakeSpec.ts';
 import { runBlender, runPool, writeJson } from './BlenderRun.ts';
 import {
+  BAKE_ACTIONS,
   bakeDefinition,
   bakeToon,
   bodyCanvasWidth,
+  CONTENT_ALPHA,
   definitionHash,
   fitCamera,
   type IBakeInputs,
   type ICameraPose,
   type ICameraRecord,
+  type ICanvas,
   type ILayerBakeJob,
   layerBakeJobs,
+  layerCanvas,
+  layerSetCheck,
+  layerSource,
   projectRow,
+  staleReasons,
 } from './LayerBake.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -59,12 +74,6 @@ const MODEL_FILES = {
   topB: 'player_top_b.vrm',
 } as const;
 type ModelName = keyof typeof MODEL_FILES;
-
-/**
- * 이 알파부터 내용으로 센다. `FrameSet.ts`의 `faintUpTo`(16 이하는 내용이 아니다)와 같은 잣대여야 한다 —
- * 카메라를 맞출 때와 판정할 때의 잣대가 다르면, 맞춘 행과 판정이 읽는 행이 안티앨리어싱 술만큼 어긋난다.
- */
-const CONTENT_ALPHA = 17;
 
 /**
  * 카메라를 맞추려고 잴 때의 캔버스 배율과 물러남. 잰 행은 정수라 임시 캔버스의 픽셀 하나만큼 모르므로
@@ -123,18 +132,23 @@ function writePythonCamera(
   });
 }
 
-/** 굽기 일감 하나를 돌린다. 앞 실행의 그림이 남아 있으면 굽는 쪽이 덮어쓰기를 거부하므로 폴더를 먼저 비운다. */
-function bake(
-  job: ILayerBakeJob,
-  shared: {
-    outDir: string;
-    vrm: string;
-    camera: string;
-    toon: string;
-    canvas: { width: number; height: number };
-  },
-): Promise<Record<string, unknown>> {
-  const dir = path.join(shared.outDir, job.facing);
+/** 굽기들이 나눠 쓰는 입력 — 산출 폴더, 모델 판, 카메라 기록(파이썬용), 툰 사양, 무기 사양. */
+interface IBakeShared {
+  outDir: string;
+  models: Record<ModelName, string>;
+  camera: string;
+  toon: string;
+  /** 무기 사양 JSON의 경로. 무기 층을 안 구우면 없어도 된다 */
+  weapons?: Record<'staff' | 'shield', string>;
+  canvas: ICanvas;
+}
+
+/**
+ * 굽기 일감 하나를 돌린다. 그림은 `<outDir>/<층>/<방향>/`에 쓴다. 앞 실행의 그림이 남아 있으면 굽는 쪽이
+ * 덮어쓰기를 거부하므로 폴더를 먼저 비운다.
+ */
+function bake(job: ILayerBakeJob, shared: IBakeShared): Promise<Record<string, unknown>> {
+  const dir = frameDir(shared.outDir, job);
   fs.rmSync(dir, { recursive: true, force: true });
   const definition = writeJson(
     path.join(shared.outDir, 'defs', `${job.layer}_${job.facing}.json`),
@@ -143,13 +157,21 @@ function bake(
       frames: job.frames,
     },
   );
+  const source = layerSource(job.layer);
+  const extra: string[] = [];
+  if (source.topModel) extra.push('--top-vrm', shared.models[source.topModel]);
+  if (source.weapon) {
+    if (!shared.weapons) throw new Error(`${job.layer} 층을 굽는데 무기 사양을 안 받았다`);
+    extra.push(`--${source.weapon}-spec`, shared.weapons[source.weapon]);
+  }
   return runBlender(
     path.join(ROOT, 'tools/blender/bake_motion.py'),
     [
       '--layer',
-      'body',
+      source.pythonLayer,
+      ...extra,
       '--vrm',
-      shared.vrm,
+      shared.models.base,
       '--frames',
       definition,
       '--out-dir',
@@ -175,6 +197,11 @@ function bake(
     ],
     `${job.layer}/${job.facing}`,
   );
+}
+
+/** 일감의 그림이 놓이는 폴더. */
+function frameDir(outDir: string, job: ILayerBakeJob): string {
+  return path.join(outDir, job.layer, job.facing);
 }
 
 /** 구운 프레임 한 장을 읽는다. */
@@ -238,7 +265,7 @@ async function commandCamera(): Promise<void> {
       (job) => () =>
         bake(job, {
           outDir: probeDir,
-          vrm: models.base,
+          models,
           camera: probeCamera,
           toon,
           canvas: probeCanvas,
@@ -252,7 +279,7 @@ async function commandCamera(): Promise<void> {
   const reach = new Map<string, number>();
   for (const job of jobs) {
     for (const frame of job.frames) {
-      const edges = contentEdges(readFrame(path.join(probeDir, job.facing), frame.name));
+      const edges = contentEdges(readFrame(frameDir(probeDir, job), frame.name));
       if (!edges) throw new Error(`재는 굽기의 프레임이 비었다: ${job.facing}/${frame.name}`);
       if (
         edges.top === 0 ||
@@ -304,7 +331,7 @@ async function commandCamera(): Promise<void> {
       (job) => () =>
         bake(job, {
           outDir: verifyDir,
-          vrm: models.base,
+          models,
           camera: verifyCamera,
           toon,
           canvas: bodyCanvas,
@@ -315,7 +342,7 @@ async function commandCamera(): Promise<void> {
   const problems: string[] = [];
   const sets = jobs.map((job) =>
     job.frames.map((frame, index) => {
-      const edges = contentEdges(readFrame(path.join(verifyDir, job.facing), frame.name));
+      const edges = contentEdges(readFrame(frameDir(verifyDir, job), frame.name));
       if (edges && (edges.left === 0 || edges.right === bodyCanvas.width - 1)) {
         problems.push(`${job.facing}/${frame.name}: 몸이 몸 층 캔버스의 옆 변에 닿았다`);
       }
@@ -360,8 +387,23 @@ async function commandCamera(): Promise<void> {
   }
 
   // 4. 기록
-  const inputs: IBakeInputs = {
-    definition: definitionHash(definition),
+  const record: ICameraRecord = {
+    camera,
+    bodyCanvas,
+    groundRow,
+    inputs: currentInputs(models, tools),
+  };
+  writeJson(path.join(ROOT, CAMERA_FILE), record);
+  console.log(`✓ ${CAMERA_FILE}`);
+}
+
+/** 지금 입력의 지문. 도구 판은 Blender를 돌려 봐야 알므로 받은 값을 그대로 넣는다. */
+function currentInputs(
+  models: Record<ModelName, string>,
+  tools: { blender: string; vrmAddon: string },
+): IBakeInputs {
+  return {
+    definition: definitionHash(bakeDefinition()),
     models: Object.fromEntries(
       (Object.entries(models) as [ModelName, string][]).map(([name, file]) => [
         name,
@@ -371,15 +413,145 @@ async function commandCamera(): Promise<void> {
     blender: tools.blender,
     vrmAddon: tools.vrmAddon,
   };
-  const record: ICameraRecord = { camera, bodyCanvas, groundRow, inputs };
-  writeJson(path.join(ROOT, CAMERA_FILE), record);
-  console.log(`✓ ${CAMERA_FILE}`);
+}
+
+/** 카메라 기록을 읽는다. 없으면 먼저 돌릴 명령을 말하며 던진다. */
+function readCameraRecord(): ICameraRecord {
+  const file = path.join(ROOT, CAMERA_FILE);
+  if (!fs.existsSync(file)) {
+    throw new Error(`카메라 기록이 없다: ${CAMERA_FILE} — \`bake.ts camera\`를 먼저 돌린다`);
+  }
+  return JSON.parse(fs.readFileSync(file, 'utf-8')) as ICameraRecord;
+}
+
+/**
+ * 걷기 한 장의 발 밑선이 발 행에서 위로 벗어나도 되는 줄 수. 고도가 있으면 뒤로 뻗은 발과 든 발이 화면에서
+ * 위로 올라가므로 고도 0 때보다 넉넉해야 한다 — 실측은 가장 높이 뜬 장이 466행(발 행에서 23줄)이었다
+ * (2026-09-21). 세트가 통째로 허용 폭 밖에 선 굽기를 잡는 것이 목적이라, 실측에 몇 줄의 여유만 둔다.
+ */
+const FOOT_LINE_TOLERANCE = 26;
+
+/**
+ * 다섯 층을 네 방향으로 굽고 G4 §4의 판정을 건다. 그림은 `docs/temp/3d-gate/g4/layers/<층>/<방향>/`에 쓴다.
+ *
+ * 굽기 전에 카메라 기록의 입력 지문을 지금 입력과 견줘, 다르면 굽지 않는다(`staleReasons`). 도구 판은
+ * 굽는 쪽이 기록과 견줘 `camera-stale`로 거부한다.
+ */
+async function commandLayers(): Promise<void> {
+  const models = modelPaths();
+  const record = readCameraRecord();
+  const stale = staleReasons(
+    record.inputs,
+    currentInputs(models, { blender: record.inputs.blender, vrmAddon: record.inputs.vrmAddon }),
+  );
+  if (stale.length > 0) {
+    for (const reason of stale) console.error(`✗ ${reason}`);
+    throw new Error(
+      '카메라를 잡은 뒤에 입력이 바뀌었다 — `bake.ts camera`로 다시 잡고 모든 층을 굽는다',
+    );
+  }
+
+  const only = option('only')?.split(',');
+  const jobs = layerBakeJobs().filter((job) => !only || only.includes(job.layer));
+  const outDir = path.join(ROOT, SCRATCH, 'layers');
+  fs.mkdirSync(outDir, { recursive: true });
+  const toon = writeJson(path.join(outDir, 'specs', 'toon.json'), bakeToon());
+  const [staff, shield] = writeChosenSpecs(path.join(outDir, 'specs'));
+  const camera = writePythonCamera(path.join(outDir, 'specs', 'camera.json'), record.camera, {
+    blender: record.inputs.blender,
+    vrmAddon: record.inputs.vrmAddon,
+  });
+
+  console.log(`굽기 ${jobs.length}건 (층 × 방향, 한 건에 ${jobs[0]?.frames.length ?? 0}장)`);
+  const started = Date.now();
+  const payloads = await runPool(
+    jobs.map(
+      (job) => () =>
+        bake(job, {
+          outDir,
+          models,
+          camera,
+          toon,
+          weapons: { staff, shield },
+          canvas: layerCanvas(job.layer, record.bodyCanvas),
+        }),
+    ),
+  );
+  const bakeSeconds = Math.round((Date.now() - started) / 1000);
+
+  const problems: string[] = [];
+  const bodySets: IFrameMeasurement[][] = [];
+  for (const [i, job] of jobs.entries()) {
+    const canvas = layerCanvas(job.layer, record.bodyCanvas);
+    const label = `${job.layer}/${job.facing}`;
+
+    // 모든 층 — 기록된 카메라로 구워졌는가. 발밑 점은 캔버스 중심에서 같은 거리만큼 떨어져 있어야 한다
+    const expectedGround =
+      projectRow(record.camera, PLAYER_FRAME_SPEC.height, [0, 0, 0]) +
+      (canvas.height - PLAYER_FRAME_SPEC.height) / 2;
+    const [groundX, groundY] = payloads[i].ground_px as [number, number];
+    if (Math.abs(groundY - expectedGround) > 0.05 || Math.abs(groundX - canvas.width / 2) > 0.05) {
+      problems.push(
+        `${label}: 발밑 점이 (${groundX}, ${groundY})인데 (${canvas.width / 2}, ${expectedGround.toFixed(2)})이어야 한다 — 기록된 카메라로 구워지지 않았다`,
+      );
+    }
+
+    for (const action of BAKE_ACTIONS) {
+      const named = job.frames.filter((frame) => parseFrameName(frame.name)?.action === action);
+      const frames = named.map((frame) => readFrame(frameDir(outDir, job), frame.name));
+      if (job.layer === 'body') {
+        const report = frameSetCheck(frames, {
+          count: named.length,
+          width: canvas.width,
+          height: canvas.height,
+          footLineY: PLAYER_FRAME_SPEC.footLineY,
+          footLineTolerance: FOOT_LINE_TOLERANCE,
+        });
+        problems.push(...report.problems.map((p) => `${label} ${action}: ${p}`));
+        bodySets.push(report.frames);
+      } else {
+        problems.push(
+          ...layerSetCheck(frames, { count: named.length, canvas }).map(
+            (p) => `${label} ${action}: ${p}`,
+          ),
+        );
+      }
+    }
+  }
+  if (bodySets.length > 0) {
+    problems.push(...unionRowCheck(bodySets, PLAYER_FRAME_SPEC).problems.map((p) => `body: ${p}`));
+  }
+
+  // 비용 기록(G4 §8) — 굽기 벽시계 시간과 층별 PNG 바이트
+  const bytes = new Map<string, number>();
+  for (const job of jobs) {
+    for (const frame of job.frames) {
+      const size = fs.statSync(path.join(frameDir(outDir, job), `${frame.name}.png`)).size;
+      bytes.set(job.layer, (bytes.get(job.layer) ?? 0) + size);
+    }
+  }
+  for (const [layer, total] of bytes) {
+    console.log(`  ${layer.padEnd(6)} PNG 합계 ${(total / 1024).toFixed(0)}KB`);
+  }
+  console.log(`굽기 ${bakeSeconds}초 · 프레임 ${jobs.length * (jobs[0]?.frames.length ?? 0)}장`);
+  writeJson(path.join(outDir, 'report.json'), {
+    bakeSeconds,
+    bytes: Object.fromEntries(bytes),
+    problems,
+  });
+
+  if (problems.length > 0) {
+    for (const problem of problems) console.error(`✗ ${problem}`);
+    throw new Error(`판정 ${problems.length}건이 떨어졌다`);
+  }
+  console.log('✓ 다섯 층이 §4 판정을 통과했다');
 }
 
 async function main(): Promise<void> {
   const command = process.argv[2];
   if (command === 'camera') return commandCamera();
-  throw new Error(`명령을 모른다: ${command ?? '(없음)'} — camera 중 하나를 준다`);
+  if (command === 'layers') return commandLayers();
+  throw new Error(`명령을 모른다: ${command ?? '(없음)'} — camera · layers 중 하나를 준다`);
 }
 
 main().catch((err: Error) => {
