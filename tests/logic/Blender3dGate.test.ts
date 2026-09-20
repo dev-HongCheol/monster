@@ -47,11 +47,13 @@ import {
 } from '../../tools/blender/ComparisonSheet';
 import {
   bump,
-  GAIT_CANDIDATES,
+  CHOSEN_GAIT,
+  CHOSEN_MOTION,
   gaitFrame,
   hipsLift,
   IDLE_BAKED,
   IDLE_PLAYBACK,
+  type IGaitSpec,
   idleFrame,
   legAngles,
   legPoints,
@@ -1260,11 +1262,35 @@ describe('pixelDiff — 두 그림이 픽셀마다 얼마나 다른가', () => {
 // 결함들이다 — 주기가 안 이어져 이음새에서 튀는 것, 좌우 다리가 반 주기로 안 맞는 것, 디딘 발이 허공에
 // 뜨거나 땅을 뚫는 것, 정면에서 발바닥이 보이는 것(1라운드 H는 16°였다).
 
+/**
+ * 뛰기 픽스처. 채택한 것은 걷기라 생산 값만으로는 두 발이 뜨는 경로(`hop` · `stanceEnd` · `thighLead`)가 돌지
+ * 않는다. 그 경로가 식에 남아 있는 동안은 여기서 돌려 본다 — 값은 떨어진 후보 「질주」의 것이다.
+ */
+const RUN_FIXTURE: IGaitSpec = {
+  id: 'run_fixture',
+  label: '뛰기 픽스처',
+  thighSwing: 30,
+  thighBias: 12,
+  thighLead: 0.1,
+  stanceEnd: 0.3,
+  kneeStance: 34,
+  kneeStanceWidth: 0.4,
+  kneeSwing: 110,
+  footStrike: 0,
+  footOff: 38,
+  hop: 0.05,
+  lean: 16,
+  twist: 6,
+};
+
+/** 단언을 거는 걸음새 — 채택한 걷기와 뛰기 픽스처. */
+const GAITS: readonly IGaitSpec[] = [CHOSEN_GAIT, RUN_FIXTURE];
+
 /** 촘촘한 위상 표본. 프레임 수(6 · 8)의 위상이 전부 들어가도록 24의 배수로 잡는다. */
 const DENSE_PHASES = Array.from({ length: 48 }, (_, i) => i / 48);
 
 /** 그 위상에서 허리를 맞춘 뒤 두 발 가운데 낮은 쪽의 발바닥 높이(m). */
-function lowestSole(spec: (typeof GAIT_CANDIDATES)[number], phase: number): number {
+function lowestSole(spec: IGaitSpec, phase: number): number {
   const lift = hipsLift(spec, PLAYER_LEG_RIG, phase);
   const left = legPoints(PLAYER_LEG_RIG, legAngles(spec, phase), lift);
   const right = legPoints(PLAYER_LEG_RIG, legAngles(spec, phase + 0.5), lift);
@@ -1307,7 +1333,7 @@ describe('samplePhases · mergedPhases — 프레임 수와 위상', () => {
 });
 
 describe('legAngles — 위상에서 한쪽 다리의 각도', () => {
-  it.each(GAIT_CANDIDATES)('$id: 주기의 끝이 처음으로 이어진다', (spec) => {
+  it.each(GAITS)('$id: 주기의 끝이 처음으로 이어진다', (spec) => {
     const start = legAngles(spec, 0);
     const end = legAngles(spec, 0.9999);
     for (const key of ['thigh', 'shin', 'foot', 'toe'] as const) {
@@ -1315,7 +1341,7 @@ describe('legAngles — 위상에서 한쪽 다리의 각도', () => {
     }
   });
 
-  it.each(GAIT_CANDIDATES)('$id: 이웃 위상 사이에서 어떤 관절도 튀지 않는다', (spec) => {
+  it.each(GAITS)('$id: 이웃 위상 사이에서 어떤 관절도 튀지 않는다', (spec) => {
     // 48등분이면 한 칸이 0.02 주기다. 가장 빠른 관절(질주의 무릎 110°)도 한 칸에 15°를 넘지 않아야
     // 프레임 사이가 이어져 보인다. 혹의 경계를 잘못 잡으면 한 칸에서 수십 도가 튄다.
     for (let i = 0; i < DENSE_PHASES.length; i++) {
@@ -1327,14 +1353,14 @@ describe('legAngles — 위상에서 한쪽 다리의 각도', () => {
     }
   });
 
-  it.each(GAIT_CANDIDATES)('$id: 발끝을 드는 각이 어느 위상에서도 5°를 넘지 않는다', (spec) => {
+  it.each(GAITS)('$id: 발끝을 드는 각이 어느 위상에서도 5°를 넘지 않는다', (spec) => {
     // 정면에서 발바닥이 카메라를 향하는 각이 곧 이 값이다(G3 §5 통과 조건)
     for (const phase of DENSE_PHASES) {
       expect(legAngles(spec, phase).foot).toBeLessThanOrEqual(5);
     }
   });
 
-  it.each(GAIT_CANDIDATES)('$id: 무릎은 뒤로만 접힌다', (spec) => {
+  it.each(GAITS)('$id: 무릎은 뒤로만 접힌다', (spec) => {
     // 정강이 각이 허벅지 각보다 크면 무릎이 앞으로 꺾인 것이다
     for (const phase of DENSE_PHASES) {
       const { thigh, shin } = legAngles(spec, phase);
@@ -1344,29 +1370,27 @@ describe('legAngles — 위상에서 한쪽 다리의 각도', () => {
 });
 
 describe('hipsLift — 디딘 발을 땅에 놓는 허리 높이', () => {
-  it.each(GAIT_CANDIDATES)('$id: 어느 발도 땅을 1.5cm 넘게 뚫지 않는다', (spec) => {
+  it.each(GAITS)('$id: 어느 발도 땅을 1.5cm 넘게 뚫지 않는다', (spec) => {
     // 1.5cm는 720p 게임 크기에서 1px이다. 그 안쪽은 화면에서 안 보인다
     for (const phase of DENSE_PHASES) {
       expect(lowestSole(spec, phase)).toBeGreaterThan(-0.015);
     }
   });
 
-  it.each(
-    GAIT_CANDIDATES.filter((spec) => spec.hop === 0),
-  )('$id: 걷기는 늘 한 발이 땅에 있다', (spec) => {
+  it.each(GAITS.filter((spec) => spec.hop === 0))('$id: 걷기는 늘 한 발이 땅에 있다', (spec) => {
     for (const phase of DENSE_PHASES) {
       expect(lowestSole(spec, phase)).toBeLessThan(0.015);
     }
   });
 
   it.each(
-    GAIT_CANDIDATES.filter((spec) => spec.hop > 0),
+    GAITS.filter((spec) => spec.hop > 0),
   )('$id: 뛰기는 두 발이 다 뜨는 위상이 있다', (spec) => {
     const highest = Math.max(...DENSE_PHASES.map((phase) => lowestSole(spec, phase)));
     expect(highest).toBeGreaterThan(0.02);
   });
 
-  it.each(GAIT_CANDIDATES)('$id: 허리 높이가 이웃 위상 사이에서 튀지 않는다', (spec) => {
+  it.each(GAITS)('$id: 허리 높이가 이웃 위상 사이에서 튀지 않는다', (spec) => {
     // 접지할 발을 끊어서 바꾸면 그 위상에서 허리가 한 칸(0.02 주기)에 5cm 넘게 튄다. 뛰기는 디딘 직후 무릎이
     // 눌리며 한 칸에 1.6cm까지 정상으로 내려가므로 문턱을 2.5cm에 둔다
     for (let i = 0; i < DENSE_PHASES.length; i++) {
@@ -1376,7 +1400,7 @@ describe('hipsLift — 디딘 발을 땅에 놓는 허리 높이', () => {
     }
   });
 
-  it.each(GAIT_CANDIDATES)('$id: 앞 절반과 뒤 절반의 허리 높이가 같다', (spec) => {
+  it.each(GAITS)('$id: 앞 절반과 뒤 절반의 허리 높이가 같다', (spec) => {
     for (const phase of [0, 0.1, 0.25, 0.4]) {
       expect(hipsLift(spec, PLAYER_LEG_RIG, phase)).toBeCloseTo(
         hipsLift(spec, PLAYER_LEG_RIG, phase + 0.5),
@@ -1387,7 +1411,7 @@ describe('hipsLift — 디딘 발을 땅에 놓는 허리 높이', () => {
 });
 
 describe('gaitFrame — 굽는 쪽이 그대로 입히는 프레임', () => {
-  const spec = GAIT_CANDIDATES[0];
+  const spec = CHOSEN_GAIT;
 
   it('부모 본이 자식보다 앞에 온다', () => {
     const names = gaitFrame(spec, PLAYER_LEG_RIG, 0.3).bones.map(([name]) => name);
@@ -1429,7 +1453,7 @@ describe('gaitFrame — 굽는 쪽이 그대로 입히는 프레임', () => {
   });
 
   it('머리는 늘 각도 0으로 되돌린다', () => {
-    for (const candidate of GAIT_CANDIDATES) {
+    for (const candidate of GAITS) {
       const head = new Map(gaitFrame(candidate, PLAYER_LEG_RIG, 0.4).bones).get('J_Bip_C_Head');
       expect(head).toEqual([0, 0, 0]);
     }
@@ -1444,19 +1468,40 @@ describe('gaitFrame — 굽는 쪽이 그대로 입히는 프레임', () => {
 });
 
 describe('stepLength — 굽기 전에 보폭을 어림한다', () => {
-  it('허벅지를 크게 흔드는 걷기가 보폭도 크다', () => {
-    const calm = GAIT_CANDIDATES.find((spec) => spec.id === 'walk_calm');
-    const brisk = GAIT_CANDIDATES.find((spec) => spec.id === 'walk_brisk');
-    if (!calm || !brisk) throw new Error('걷기 후보 둘이 없다');
-    expect(stepLength(brisk, PLAYER_LEG_RIG)).toBeGreaterThan(stepLength(calm, PLAYER_LEG_RIG));
+  it('허벅지를 크게 흔들수록 보폭이 크다', () => {
+    const wider = { ...CHOSEN_GAIT, thighSwing: CHOSEN_GAIT.thighSwing + 8 };
+    expect(stepLength(wider, PLAYER_LEG_RIG)).toBeGreaterThan(
+      stepLength(CHOSEN_GAIT, PLAYER_LEG_RIG),
+    );
+  });
+
+  it('채택한 걷기의 한 걸음은 게임 단위로 21 안팎이다', () => {
+    // 미끄러짐 배수(한 주기 이동 거리 ÷ 두 걸음)의 분모다. 값을 고치면 QA에 적은 5.6배도 다시 잰다
+    const units = stepLength(CHOSEN_GAIT, PLAYER_LEG_RIG) * (77 / 1.104);
+    expect(units).toBeGreaterThan(20);
+    expect(units).toBeLessThan(23);
   });
 
   it('다리 길이의 두 배를 넘지 않는다', () => {
     const leg = Math.abs(PLAYER_LEG_RIG.thigh[1]) + Math.abs(PLAYER_LEG_RIG.shin[1]);
-    for (const spec of GAIT_CANDIDATES) {
+    for (const spec of GAITS) {
       expect(stepLength(spec, PLAYER_LEG_RIG)).toBeGreaterThan(0);
       expect(stepLength(spec, PLAYER_LEG_RIG)).toBeLessThan(2 * leg);
     }
+  });
+});
+
+describe('CHOSEN_MOTION — 굽기와 재생의 확정값', () => {
+  it('걷기 장 수로 위상을 나누면 왼발 디딤(0)과 오른발 디딤(0.5)이 둘 다 프레임에 들어간다', () => {
+    const phases = samplePhases(CHOSEN_MOTION.walkFrames);
+    expect(phases).toContain(0);
+    expect(phases).toContain(0.5);
+  });
+
+  it('좌우 각은 완전 측면(90°)에서 정면 쪽으로 튼 각이다', () => {
+    // 60° 아래는 옆으로 걸을 때 게걸음으로 보여 떨어졌다(2026-09-20)
+    expect(CHOSEN_MOTION.sideYaw).toBeGreaterThan(60);
+    expect(CHOSEN_MOTION.sideYaw).toBeLessThanOrEqual(90);
   });
 });
 

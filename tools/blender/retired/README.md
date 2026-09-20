@@ -18,6 +18,8 @@
 | 장비 기본 재질, 천 · 금속이 덮는 값, 금속 matcap | `GEAR_TOON` · `CLOTH_TOON` · `METAL_TOON` · `metalMatcap` | `gear.ts` |
 | 카메라 고도 15°, 마법진 지름 = 캐릭터 키 | `CHOSEN_PITCH` · `CIRCLE_DIAMETER_PER_HEIGHT` | `elevation.ts` |
 
+동작의 확정값은 `BakeSpec.ts`가 아니라 [`../MotionSpec.ts`](../MotionSpec.ts)에 있다 — 채택한 걷기(`CHOSEN_GAIT`), 프레임으로 굽는 대기(`IDLE_BAKED` · `IDLE_PLAYBACK`), 걷기 8장 · 10fps · 좌우 75°(`CHOSEN_MOTION`). 자세를 내는 식과 한 파일에 있어야 값을 고쳤을 때 단언이 함께 돌기 때문이다. 정한 도구는 `motion.ts`다.
+
 크기(플레이어 80% · 몬스터는 `collisionRadius`의 직선)는 `mock.ts`가 정했지만 굽기 값이 아니라 게임 데이터라 `BakeSpec.ts`에 없다. G5가 `player.json` · `enemies.json`에 쓴다.
 
 ## 파일마다 무엇인가
@@ -33,7 +35,9 @@
 | `elevation.ts` | 카메라 고도 0 · 15 · 30 · 45° 후보와 발밑 마법진을 얹은 비교 시트, 고른 고도의 720p 낱장 | G2 고도(2026-09-17) | 생산 `.vrm`, 귀신 표본(`cloud-storage/art/evidence/enemies/`), 출하 2D 정면 |
 | `mock.ts` | 720p 게임 화면 흉내(상의 A · B) | G2 크기 · 화풍 게이트(2026-09-17) | `elevation.ts`의 산출물, 귀신 표본, `enemies.json` |
 
-의존은 한 방향이다: `mock.ts` → `elevation.ts` → `outline.ts` → `gear.ts`, 그리고 넷 모두 → `../BakeSpec.ts`. 그래서 넷은 함께 지운다.
+| `motion.ts` · `motion_preview.html` | 걷기 · 뛰기 후보 넷과 대기를 다섯 방향으로 굽고, G3 §5의 수치를 재고, 나란히 재생하는 화면(`docs/temp/3d-gate/g3/preview.html`)을 만든다. 떨어진 후보 셋의 값이 이 파일에 있다. `--only` · `--views` · `--page-only` | G3 동작(2026-09-20) — 걷기 A · 8장 · 10fps · 좌우 75° · 대기는 프레임 | 생산 `.vrm`. 굽는 쪽은 `../bake_motion.py`, 부르는 길은 `../BlenderRun.ts` |
+
+의존은 한 방향이다: `mock.ts` → `elevation.ts` → `outline.ts` → `gear.ts`, 그리고 넷 모두 → `../BakeSpec.ts`. 그래서 넷은 함께 지운다. `motion.ts`는 그 넷과 무관하고 `../MotionSpec.ts` · `../BakeSpec.ts` · `../BlenderRun.ts`만 쓴다.
 
 판정에 쓴 그림은 `cloud-storage/art/evidence/`에 있고 구조는 [`cloud-storage/README.md`](../../../cloud-storage/README.md)가 든다. 옮긴 뒤에 `weapons.ts --dump-chosen` · `elevation.ts --sheet-only` · `mock.ts` · `sheet.ts`를 다시 돌려, 무기 · 헐 1 사양 JSON과 시트 · 흉내 여덟 장이 옮기기 전 것과 바이트까지 같은 것을 확인했다(2026-09-19).
 
@@ -51,7 +55,8 @@
 
 이 폴더를 지우기 전에 생산 도구가 가져가야 하는 것이다. 값은 이미 `BakeSpec.ts`에 있으므로 여기 적는 것은 **길**이다.
 
-- `gear.ts`의 `bakeArgs` · `bake` · `bakeAsync` · `runPool` — `probe_layers.py`에 인자를 넘기고, 판정 줄을 읽고, 넷씩 동시에 굽는 길. 한 장 11초 중 렌더는 2~3초뿐이라 동시에 굽지 않으면 CPU와 GPU가 논다.
+- `gear.ts`의 `bakeArgs` · `bake` · `bakeAsync` · `runPool` — `probe_layers.py`에 인자를 넘기고, 판정 줄을 읽고, 넷씩 동시에 굽는 길. 한 장 11초 중 렌더는 2~3초뿐이라 동시에 굽지 않으면 CPU와 GPU가 논다. **부르는 부분과 풀은 G3에서 일반형으로 떼어 `../BlenderRun.ts`에 뒀다**(`runBlender` · `runPool`). 남은 것은 `probe_layers.py`의 인자를 짜는 `bakeArgs`다.
+- `motion.ts`의 `bake`가 `../bake_motion.py`에 넘기는 인자 — 생산 `.vrm` · 키프레임 정의 JSON · 방향 · 고도 · 툰 사양 · 규격 넷 · 층 캔버스. G4의 층 굽기는 여기에 층 선택과 가림을 더한 것이다.
 - `elevation.ts`가 판정 줄에서 읽는 `ground_px` — 고도가 있으면 발밑 점이 발 행 규격(489행)에서 올라가(15°에서 485.1행) 계산으로는 못 잡는다. G4가 발 · 머리 행 규격을 15°로 다시 잡을 때 필요하다.
 - `elevation.ts`의 `checkCellHeight` — 굽기 캔버스와 표시 배율이 어긋난 사고(3D 칸이 세로 1.46배로 판정에 올라감)를 막는 검사. 같은 검사를 생산 굽기 뒤에 둔다.
 

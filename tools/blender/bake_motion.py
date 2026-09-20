@@ -19,7 +19,7 @@ G3 — 키프레임 정의가 준 자세를 프레임마다 입혀 한 프로세
 
 **재는 값은 모델 좌표로 돌려준다.** 방향(`--yaw`)은 모델을 돌려 만들므로 월드 좌표로 재면 방향마다 축이
 달라진다. G3 §4가 「모델 기준의 좌우 축으로 잰다」고 정한 것도 같은 이유다. 판정은 하지 않는다 — 재는 것은
-실행기(`motion.ts`)다.
+실행기(`retired/motion.ts`, G4부터는 생산 굽기 도구)다.
 
 돌리는 법과 실패 코드 표는 `tools/blender/README.md`에 있다.
 """
@@ -192,7 +192,7 @@ def main():
         raise common.GateError('vrm-path', '`-- --vrm <경로>`를 받지 못했다')
     if not frames_path or not os.path.exists(frames_path):
         raise common.GateError(
-            'motion-path', '키프레임 정의 JSON이 없다: {0} — `motion.ts`를 거쳐 부른다'.format(frames_path)
+            'motion-path', '키프레임 정의 JSON이 없다: {0} — `MotionSpec.ts`의 값을 JSON으로 써서 넘기는 실행기를 거쳐 부른다'.format(frames_path)
         )
     if not out_dir:
         raise common.GateError('output-path', '`-- --out-dir <폴더>`를 받지 못했다')

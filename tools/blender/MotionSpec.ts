@@ -1,5 +1,5 @@
 /**
- * G3 — 걷기 · 대기 동작의 키프레임 정의. 모션 파일을 옮기지 않고 위상(0~1)에서 관절 각도를 식으로 낸다.
+ * G3가 확정한 동작 — 걷기 · 대기의 키프레임 정의. 모션 파일을 옮기지 않고 위상(0~1)에서 관절 각도를 식으로 낸다.
  *
  * **모션 파일을 버린 이유.** 1라운드는 성인 걷기 모션을 4등신 골격에 옮겼는데, 원본이 허벅지 회전 안에 좌우
  * 흔들림을 앞뒤 흔들림과 섞어 두었고 발뒤꿈치를 디딜 때 발끝을 들었다. 관절마다 비율로 줄여도 한 관절의 회전이
@@ -11,7 +11,7 @@
  * 그래서 발 각도 0은 「정강이가 어디를 보든 발바닥은 수평」이고, 무릎을 굽혀도 발이 따라 돌지 않는다.
  *
  * **Blender는 굽기만 한다.** 각도 · 허리 높이 · 접지 계산이 전부 이 파일에 있어서 vitest가 단언한다. 파이썬은
- * 받은 값을 입히고 실제 발목 · 발바닥 좌표를 돌려줄 뿐이고, 그 좌표로 재는 것도 TS(`motion.ts`)다.
+ * 받은 값을 입히고 실제 발목 · 발바닥 좌표를 돌려줄 뿐이고, 그 좌표로 재는 것도 TS(`retired/motion.ts`)다.
  *
  * 좌표는 (앞, 위) 평면이다. 앞은 캐릭터가 바라보는 쪽(Blender −Y), 위는 Blender +Z. 각도는 도 단위이고
  * **양수가 「아래로 늘어진 것이 앞으로 가는」 방향**이다 — 허벅지 +20°면 무릎이 앞으로 나가고, 발 +4°면
@@ -446,85 +446,58 @@ export function slideRatio(
 }
 
 /**
- * 걷기 · 뛰기 후보(2026-09-20). 사람이 나란히 재생해 보고 하나를 고른다.
+ * 채택한 걷기 — 후보 A 「차분한 걷기」(2026-09-20 사용자 판정).
  *
- * **걷기 둘에 뛰기 둘을 섞은 이유.** 게임의 이동 속도는 초당 300단위이고 캐릭터 표시 높이는 77이라, 1초에
- * 키의 3.9배를 간다(키 1.7m로 치면 초속 6.6m — 전력 질주다). 걷기 보폭은 두 걸음에 40단위 안팎이라 12fps
- * 8장(0.67초) 동안 200단위를 가면 보폭의 다섯 배를 미끄러진다. 걷는 모양이 이 속도와 어울리는지는 봐야 알 수
- * 있으므로 뛰는 모양을 함께 둔다.
+ * 걷기 둘 · 뛰기 둘을 정면 · 옆 · 뒤에서 나란히 재생해 보고 골랐다. 게임의 이동 속도(초당 300단위)는 표시 높이
+ * 77의 3.9배라 이 보폭(한 걸음 21.3단위)으로는 8장 · 10fps 한 주기에 보폭의 5.6배를 미끄러진다. 그래서 뛰는
+ * 모양을 함께 냈는데, 바닥을 그 속도로 흘려 놓고 본 사용자가 걷는 쪽을 골랐다. 떨어진 후보 셋의 값은
+ * `retired/motion.ts`에 있다.
+ *
+ * **G4는 이 값으로 굽고, 굽기마다 이 정의의 해시를 카메라 기록과 견준다.** 값을 고치면 모든 층을 다시 구워야 한다.
  */
-export const GAIT_CANDIDATES: readonly IGaitSpec[] = [
-  {
-    id: 'walk_calm',
-    label: 'A 차분한 걷기',
-    thighSwing: 22,
-    thighBias: 0,
-    thighLead: 0,
-    stanceEnd: 0.5,
-    kneeStance: 8,
-    kneeStanceWidth: 0.24,
-    kneeSwing: 50,
-    footStrike: 4,
-    footOff: 18,
-    hop: 0,
-    lean: 2,
-    twist: 2,
-  },
-  {
-    id: 'walk_brisk',
-    label: 'B 빠른 걸음',
-    thighSwing: 28,
-    thighBias: 2,
-    thighLead: 0,
-    stanceEnd: 0.5,
-    kneeStance: 12,
-    kneeStanceWidth: 0.24,
-    kneeSwing: 62,
-    footStrike: 4,
-    footOff: 24,
-    hop: 0,
-    lean: 5,
-    twist: 4,
-  },
-  {
-    id: 'jog',
-    label: 'C 가볍게 뛰기',
-    thighSwing: 24,
-    thighBias: 8,
-    thighLead: 0.08,
-    stanceEnd: 0.34,
-    kneeStance: 28,
-    kneeStanceWidth: 0.4,
-    kneeSwing: 85,
-    footStrike: 0,
-    footOff: 30,
-    hop: 0.03,
-    lean: 9,
-    twist: 5,
-  },
-  {
-    id: 'dash',
-    label: 'D 질주',
-    thighSwing: 30,
-    thighBias: 12,
-    thighLead: 0.1,
-    stanceEnd: 0.3,
-    kneeStance: 34,
-    kneeStanceWidth: 0.4,
-    kneeSwing: 110,
-    footStrike: 0,
-    footOff: 38,
-    hop: 0.05,
-    lean: 16,
-    twist: 6,
-  },
-];
+export const CHOSEN_GAIT: IGaitSpec = {
+  id: 'walk_calm',
+  label: 'A 차분한 걷기',
+  thighSwing: 22,
+  thighBias: 0,
+  thighLead: 0,
+  stanceEnd: 0.5,
+  kneeStance: 8,
+  kneeStanceWidth: 0.24,
+  kneeSwing: 50,
+  footStrike: 4,
+  footOff: 18,
+  hop: 0,
+  lean: 2,
+  twist: 2,
+};
 
-/** 프레임으로 굽는 대기 후보. 「한 장 + 숨쉬기」와 나란히 놓고 견준다. */
+/**
+ * 채택한 대기 — 프레임으로 굽는다(2026-09-20 사용자 판정).
+ *
+ * 서 있는 한 장, 한 장에 코드로 세로 배율을 흔드는 숨쉬기, 프레임 셋을 나란히 봤고 프레임이 훨씬 자연스럽다는
+ * 판정을 받았다. 굽는 장은 셋이고 네 박자로 재생한다(`IDLE_PLAYBACK`). 아틀라스 용량이 한도에 걸리면 첫 장만
+ * 남겨 정지로 되돌릴 수 있다 — 걷기 프레임과 게임 코드는 그대로다.
+ */
 export const IDLE_BAKED: IIdleSpec = {
   id: 'idle_baked',
-  label: '대기 — 프레임 4장',
+  label: '대기 — 프레임',
   kneeFlex: 30,
   chestPitch: 1.5,
   shoulderLift: 2.5,
 };
+
+/**
+ * 굽기와 재생의 확정값(2026-09-20 사용자 판정).
+ *
+ * - `walkFrames` — 걷기 한 방향의 장 수. 6장과 8장을 같은 주기에서 골라 견줬다.
+ * - `walkFps` — 걷기 재생 속도. 굽기에 박히지 않는 값이라 G5의 동기화 컴포넌트가 속성으로 받고, 인게임에서
+ *   다시 맞출 수 있다. 8장이면 한 주기가 0.8초다.
+ * - `idleFps` — 대기 재생 속도. 후보 화면의 기본값이고 사용자가 따로 고르지 않았다. 역시 G5에서 맞춘다.
+ * - `sideYaw` — 좌우 방향에서 모델을 돌리는 각(도). 90°가 완전 측면이고 75°는 거기서 정면으로 15° 튼 각이다.
+ *   오른쪽은 이 값, 왼쪽은 360에서 뺀 값으로 **따로** 굽는다 — 지팡이와 방패를 서로 다른 손에 들어서 좌우를
+ *   반전하면 손이 바뀐다. 규격 정본이 적은 3/4 각도(45~60°)는 걷는 모습에서 게걸음으로 보여 떨어졌다: 게임은
+ *   캐릭터를 화면에서 가로로 옮기는데 몸이 틀어져 있으면 다리가 카메라 쪽 대각선으로 디딘다. 완전 측면은 걷는
+ *   방향과는 맞지만 카메라 반대쪽 손의 물건이 몸에 거의 가려서, 15°만 틀었다.
+ */
+export const CHOSEN_MOTION = { walkFrames: 8, walkFps: 10, idleFps: 3, sideYaw: 75 } as const;

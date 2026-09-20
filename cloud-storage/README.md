@@ -71,9 +71,10 @@ cloud-storage/
 | `player/2026-09-11-3d-gate/` | `character.vrm`(1라운드 시험용 캐릭터) · `comparison-sheet.png`(3D 대 출하 2D 비교 시트) · `motion/`(Quaternius Universal Animation Library, CC0 — 라이선스 파일 포함) | 1라운드 게이트 0b · 0c · 1 · 2 (2026-09-11 ~ 09-14) |
 | `player/2026-09-11-3d-gate/cocos-test-scene/` | `game/assets/`에서 빼낸 `test-3d-gate/` 폴더와 그 폴더의 `.meta`. 씬 · 걷기 클립 · 걷기 프레임 여덟 장과 Cocos가 만든 `.meta`가 그대로 있다 | 1라운드 게이트 2(엔진 안에서 걷기가 재생되나). 되살리려면 두 항목을 `game/assets/` 아래로 복사한다 — `.meta`가 함께 있어 UUID 참조가 유지된다 |
 | `player/2026-09-17-3d-gate-round2-g2/` | 층 합성 · 장비 검토 세트 다섯 · 외곽선 비교 · 고도 후보 · 게임 화면 흉내 · 무기 후보 시트. 파일마다 무엇인지는 그 폴더의 README가 적는다 | 2라운드 G2 전부(2026-09-16 ~ 09-17) |
+| `player/2026-09-20-3d-gate-round2-g3/` | 걷기 · 뛰기 후보 넷과 대기를 다섯 방향(정면 · 오른쪽 90° · 75° · 60° · 뒤)으로 구운 프레임, 나란히 재생하는 `preview.html`, 실측 JSON. 파일마다 무엇인지는 그 폴더의 README가 적는다 | 2라운드 G3 — 걷기 A · 8장 · 10fps, 좌우 75°, 대기는 프레임(2026-09-20) |
 | `enemies/2026-09-17-ghost-samples/` | 사용자가 GPT 웹으로 만든 달걀귀신 · 처녀귀신 · 도깨비 · 두억시니. **게임에 실릴 적 아트가 아니라 화풍 비교용이다** | G2 외곽선 굵기 목표(긴 변의 0.55~0.57%) · 고도 · 크기 · 화풍 게이트 |
 
-이 자료를 읽는 도구는 모두 `tools/blender/retired/`로 물러난 것들이다(`elevation.ts` · `mock.ts` · `sheet.ts` · `gate-round1.ts`). 어느 도구가 어느 파일을 읽는지는 [`tools/blender/retired/README.md`](../tools/blender/retired/README.md)가 든다. 그 도구들이 G4 뒤에 지워지면 이 자료는 입력 노릇이 끝나고 기록으로만 남는다.
+이 자료를 읽는 도구는 모두 `tools/blender/retired/`로 물러난 것들이다(`elevation.ts` · `mock.ts` · `sheet.ts` · `gate-round1.ts`). G3 폴더는 도구가 읽는 입력이 아니라 `retired/motion.ts`의 산출물을 복사해 둔 것이다. 어느 도구가 어느 파일을 읽는지는 [`tools/blender/retired/README.md`](../tools/blender/retired/README.md)가 든다. 그 도구들이 G4 뒤에 지워지면 이 자료는 입력 노릇이 끝나고 기록으로만 남는다.
 
 ## 문서에서 이 폴더를 가리킬 때
 

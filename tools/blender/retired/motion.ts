@@ -5,6 +5,11 @@
  * 나란히 재생해 사람이 고른다(G3 §3). 화면에서 바꿔 볼 수 있는 것은 굽기에 박히지 않는 값들이다 — 프레임 수
  * (6 · 8장, 같은 주기에서 골라 쓴다), 재생 속도, 표시 크기, 이동 흉내, 발밑 마법진의 회전.
  *
+ * **판정은 끝났다(2026-09-20).** 사용자가 후보 A 「차분한 걷기」 · 8장 · 10fps · 좌우 75° · 대기는 프레임으로
+ * 골랐고, 고른 값은 `../MotionSpec.ts`의 `CHOSEN_GAIT` · `IDLE_BAKED` · `CHOSEN_MOTION`이 든다. 이 실행기는 후보를
+ * 견주려고 있던 것이라 `retired/`로 물러났고 G4가 끝나면 폴더와 함께 지운다. 걷기를 다시 다듬게 되면 그때까지는
+ * 이 실행기로 후보를 다시 구워 볼 수 있다.
+ *
  * 재는 것은 G3 §5의 둘(정면에서 발바닥이 카메라를 향하는 각, 발목의 좌우 이동)과 접지 오차 · 머리 오르내림
  * · 미끄러짐 배수다. 파이썬이 모델 좌표로 돌려준 본 위치를 여기서 잰다. 통과 · 탈락을 가르지는 않는다 — 사람이
  * 고른 뒤 그 후보의 수치를 QA 문서에 적는다.
@@ -12,7 +17,7 @@
  * 돌리는 법 (레포 루트에서):
  *
  *   BLENDER='C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' \
- *     node --experimental-strip-types tools/blender/motion.ts
+ *     node --experimental-strip-types tools/blender/retired/motion.ts
  *
  *   --vrm <경로>         옷 입은 판(기본: 상의 A). 생산 `.vrm`은 커밋하지 않아 장비마다 경로가 다를 수 있다
  *   --only a,b           그 후보만 굽는다(`walk_calm` · `walk_brisk` · `jog` · `dash` · `idle`)
@@ -25,7 +30,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLAYER_FRAME_SPEC } from '../../tests/helpers/FrameSet.ts';
+import { PLAYER_FRAME_SPEC } from '../../../tests/helpers/FrameSet.ts';
 import {
   CHOSEN_HULL,
   CHOSEN_PITCH,
@@ -34,22 +39,23 @@ import {
   hullMaterials,
   MODEL_HEIGHT_M,
   writeChosenSpecs,
-} from './BakeSpec.ts';
-import { runBlender, runPool, writeJson } from './BlenderRun.ts';
+} from '../BakeSpec.ts';
+import { runBlender, runPool, writeJson } from '../BlenderRun.ts';
 import {
-  GAIT_CANDIDATES,
+  CHOSEN_GAIT,
   gaitFrame,
   IDLE_BAKED,
   IDLE_PLAYBACK,
+  type IGaitSpec,
   type IMotionFrame,
   idleFrame,
   mergedPhases,
   PLAYER_LEG_RIG,
   standFrame,
   stepLength,
-} from './MotionSpec.ts';
+} from '../MotionSpec.ts';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /** 산출물 자리. 추적되지 않는 스크래치다. */
 const OUT_DIR = 'docs/temp/3d-gate/g3';
@@ -68,6 +74,65 @@ const GAME_HEIGHT_UNITS = 77;
 
 /** 게임의 이동 속도(월드 단위/초) — `game/assets/resources/data/player.json`의 `speed`. */
 const GAME_SPEED_UNITS = 300;
+
+/**
+ * 걷기 · 뛰기 후보(2026-09-20). 첫째가 채택한 A이고 나머지 셋은 떨어졌다.
+ *
+ * **걷기 둘에 뛰기 둘을 섞은 이유.** 게임의 이동 속도는 초당 300단위이고 캐릭터 표시 높이는 77이라, 1초에
+ * 키의 3.9배를 간다(키 1.7m로 치면 초속 6.6m — 전력 질주다). 걷기 보폭은 두 걸음에 40단위 안팎이라 한 주기
+ * 동안 보폭의 네댓 배를 미끄러진다. 걷는 모양이 이 속도와 어울리는지는 봐야 알 수 있어서 뛰는 모양을 함께 냈다.
+ */
+const GAIT_CANDIDATES: readonly IGaitSpec[] = [
+  CHOSEN_GAIT,
+  {
+    id: 'walk_brisk',
+    label: 'B 빠른 걸음',
+    thighSwing: 28,
+    thighBias: 2,
+    thighLead: 0,
+    stanceEnd: 0.5,
+    kneeStance: 12,
+    kneeStanceWidth: 0.24,
+    kneeSwing: 62,
+    footStrike: 4,
+    footOff: 24,
+    hop: 0,
+    lean: 5,
+    twist: 4,
+  },
+  {
+    id: 'jog',
+    label: 'C 가볍게 뛰기',
+    thighSwing: 24,
+    thighBias: 8,
+    thighLead: 0.08,
+    stanceEnd: 0.34,
+    kneeStance: 28,
+    kneeStanceWidth: 0.4,
+    kneeSwing: 85,
+    footStrike: 0,
+    footOff: 30,
+    hop: 0.03,
+    lean: 9,
+    twist: 5,
+  },
+  {
+    id: 'dash',
+    label: 'D 질주',
+    thighSwing: 30,
+    thighBias: 12,
+    thighLead: 0.1,
+    stanceEnd: 0.3,
+    kneeStance: 34,
+    kneeStanceWidth: 0.4,
+    kneeSwing: 110,
+    footStrike: 0,
+    footOff: 38,
+    hop: 0.05,
+    lean: 16,
+    twist: 6,
+  },
+];
 
 /** 걷기 프레임 수 후보. 같은 주기에서 골라 쓰므로 한 번만 굽는다(`mergedPhases`). */
 const FRAME_COUNTS = [6, 8] as const;
@@ -361,7 +426,10 @@ async function main(): Promise<void> {
 
   if (!fs.existsSync(metricsFile)) throw new Error(`--page-only인데 실측이 없다: ${metricsFile}`);
   const data = JSON.parse(fs.readFileSync(metricsFile, 'utf-8')) as IPageData;
-  const template = fs.readFileSync(path.join(ROOT, 'tools/blender/motion_preview.html'), 'utf-8');
+  const template = fs.readFileSync(
+    path.join(ROOT, 'tools/blender/retired/motion_preview.html'),
+    'utf-8',
+  );
   const page = path.join(outDir, 'preview.html');
   fs.writeFileSync(page, template.replace('/*__DATA__*/null', JSON.stringify(data)), 'utf-8');
 

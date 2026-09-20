@@ -18,7 +18,7 @@ G4에서 대기 방식 · 프레임 수 · 아틀라스 계약 · 형제 순서�
 
 | 함수 | 하는 일 | RED 단언 |
 |---|---|---|
-| `advanceAnim(state, {facing, moving, ticking, dt}, {fps, counts})` | 시계와 프레임 번호 | 동작이 바뀌면 0 · 걷는 중 방향 전환은 번호 유지 · ticking이 거짓이면 시간 정지 · 번호는 `floor(elapsed * fps) % count`이고 elapsed는 한 주기 나머지라 큰 dt는 여러 장을 건너뜀 · G3에서 정한 대기 방식 |
+| `advanceAnim(state, {facing, moving, ticking, dt}, {fps, counts})` | 시계와 프레임 번호 | 동작이 바뀌면 0 · 걷는 중 방향 전환은 번호 유지 · ticking이 거짓이면 시간 정지 · 번호는 `floor(elapsed * fps) % count`이고 elapsed는 한 주기 나머지라 큰 dt는 여러 장을 건너뜀 · 대기는 프레임이고(G3) 구운 세 장을 0 → 1 → 2 → 1 순서로 돈다 — 번호를 그대로 쓰지 않고 재생 순서표를 거친다 · 걷기 10fps · 대기 3fps가 기본값(`MotionSpec.ts`의 `CHOSEN_MOTION` · `IDLE_PLAYBACK`과 같은 값을 단언한다) |
 | `frameName(layer, action, facing, index)` | 확장자 없는 프레임 이름 | 모든 조합에서 아틀라스 작성기와 같은 문자열 |
 | `validateLayers(namesByLayer)` | 층별 프레임 수 검사 | (방향, 동작)별 불일치 목록 |
 | `resolveLayerFrame(found, prev, reported)` | 빠진 프레임 처리 | null이면 직전 프레임 유지 · 이름별로 한 번만 로그 |
@@ -131,7 +131,7 @@ Player
 - **중심은 발밑 점이고 캐릭터 뒤에 그린다.** 캐릭터가 마법진을 가리고 앞부분만 발 아래로 보인다.
 - **판정에 닿지 않는다.** 시각 층이라 Player의 `UITransform`을 바꾸지 않는다(§2.5).
 
-아직 없는 것이 셋이다. 텍스처 그림이 없다 — G2 시트의 절차 그림(고리 둘 · 방사선 · 룬 자리)은 크기 확인용이다. 회전 속도와 무늬 밀도를 정하지 않았다 — G2는 정지 그림으로만 봤으므로 G3의 후보 재생 화면에서 절차 그림을 함께 돌려 보고 정한다. v1에서 무엇이 마법진을 켜고 끄는지도 정하지 않았다 — 구현 전에 사용자가 정한다.
+아직 없는 것이 셋이다. 텍스처 그림이 없다 — G2 시트의 절차 그림(고리 둘 · 방사선 · 룬 자리)은 크기 확인용이다. 회전 속도와 무늬 밀도를 정하지 않았다 — G3의 후보 재생 화면에 절차 그림을 돌려 볼 수 있게 했지만(회전 0~180°/초, 무늬 8 · 12 · 20갈래) 사용자가 값을 고르지 않았고, 그 화면은 좌우 각도를 75°로 정하는 데 쓰였다. 그 화면은 `cloud-storage/art/evidence/player/2026-09-20-3d-gate-round2-g3/preview.html`에 있으니 값을 정할 때 다시 연다. v1에서 무엇이 마법진을 켜고 끄는지도 정하지 않았다 — 구현 전에 사용자가 정한다.
 
 ## 3. 씬 창과 정리 순서 — start-verification 전
 
