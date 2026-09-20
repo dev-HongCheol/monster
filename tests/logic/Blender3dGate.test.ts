@@ -46,6 +46,21 @@ import {
   sampleLikeEngine,
 } from '../../tools/blender/ComparisonSheet';
 import {
+  bump,
+  GAIT_CANDIDATES,
+  gaitFrame,
+  hipsLift,
+  IDLE_BAKED,
+  idleFrame,
+  legAngles,
+  legPoints,
+  mergedPhases,
+  PLAYER_LEG_RIG,
+  samplePhases,
+  standFrame,
+  stepLength,
+} from '../../tools/blender/MotionSpec';
+import {
   frameSetCheck,
   frameSetIntegrity,
   PLAYER_FRAME_SPEC,
@@ -1236,5 +1251,235 @@ describe('pixelDiff — 두 그림이 픽셀마다 얼마나 다른가', () => {
         12,
       ),
     ).toThrow();
+  });
+});
+
+// ── G3 걷기 · 대기의 키프레임 정의 ─────────────────────────────────────────────────────────────
+// 자세를 내는 식이 전부 TS에 있어서 굽지 않고도 단언할 수 있다. 여기서 막는 것은 굽고 나서야 보이던
+// 결함들이다 — 주기가 안 이어져 이음새에서 튀는 것, 좌우 다리가 반 주기로 안 맞는 것, 디딘 발이 허공에
+// 뜨거나 땅을 뚫는 것, 정면에서 발바닥이 보이는 것(1라운드 H는 16°였다).
+
+/** 촘촘한 위상 표본. 프레임 수(6 · 8)의 위상이 전부 들어가도록 24의 배수로 잡는다. */
+const DENSE_PHASES = Array.from({ length: 48 }, (_, i) => i / 48);
+
+/** 그 위상에서 허리를 맞춘 뒤 두 발 가운데 낮은 쪽의 발바닥 높이(m). */
+function lowestSole(spec: (typeof GAIT_CANDIDATES)[number], phase: number): number {
+  const lift = hipsLift(spec, PLAYER_LEG_RIG, phase);
+  const left = legPoints(PLAYER_LEG_RIG, legAngles(spec, phase), lift);
+  const right = legPoints(PLAYER_LEG_RIG, legAngles(spec, phase + 0.5), lift);
+  return Math.min(left.lowest, right.lowest);
+}
+
+describe('bump — 끝이 0이고 주기를 넘어 이어지는 혹', () => {
+  it('중심에서 1이고 폭의 절반 밖에서 0이다', () => {
+    expect(bump(0.3, 0.3, 0.2)).toBeCloseTo(1, 9);
+    expect(bump(0.4, 0.3, 0.2)).toBe(0);
+    expect(bump(0.2, 0.3, 0.2)).toBe(0);
+  });
+
+  it('위상 0을 중심으로 두면 1 직전에서도 값이 있다', () => {
+    expect(bump(0.95, 0, 0.2)).toBeCloseTo(bump(0.05, 0, 0.2), 9);
+    expect(bump(0.95, 0, 0.2)).toBeGreaterThan(0);
+  });
+
+  it('폭이 0이면 어디서도 0이다 — 걷기의 뜨는 구간이 이 경우다', () => {
+    expect(bump(0.5, 0.5, 0)).toBe(0);
+  });
+});
+
+describe('samplePhases · mergedPhases — 프레임 수와 위상', () => {
+  it('0부터 같은 간격으로 나눈다', () => {
+    expect(samplePhases(8)).toEqual([0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875]);
+  });
+
+  it('2 미만이거나 정수가 아니면 던진다', () => {
+    expect(() => samplePhases(1)).toThrow();
+    expect(() => samplePhases(6.5)).toThrow();
+  });
+
+  it('6장과 8장을 합치면 겹치는 위상(0 · 0.5)을 한 번만 굽는다', () => {
+    const { phases, picks } = mergedPhases([6, 8]);
+    expect(phases).toHaveLength(12);
+    expect(picks[6].map((i) => phases[i])).toEqual(samplePhases(6));
+    expect(picks[8].map((i) => phases[i])).toEqual(samplePhases(8));
+  });
+});
+
+describe('legAngles — 위상에서 한쪽 다리의 각도', () => {
+  it.each(GAIT_CANDIDATES)('$id: 주기의 끝이 처음으로 이어진다', (spec) => {
+    const start = legAngles(spec, 0);
+    const end = legAngles(spec, 0.9999);
+    for (const key of ['thigh', 'shin', 'foot', 'toe'] as const) {
+      expect(Math.abs(start[key] - end[key])).toBeLessThan(0.5);
+    }
+  });
+
+  it.each(GAIT_CANDIDATES)('$id: 이웃 위상 사이에서 어떤 관절도 튀지 않는다', (spec) => {
+    // 48등분이면 한 칸이 0.02 주기다. 가장 빠른 관절(질주의 무릎 110°)도 한 칸에 15°를 넘지 않아야
+    // 프레임 사이가 이어져 보인다. 혹의 경계를 잘못 잡으면 한 칸에서 수십 도가 튄다.
+    for (let i = 0; i < DENSE_PHASES.length; i++) {
+      const a = legAngles(spec, DENSE_PHASES[i]);
+      const b = legAngles(spec, DENSE_PHASES[(i + 1) % DENSE_PHASES.length]);
+      for (const key of ['thigh', 'shin', 'foot', 'toe'] as const) {
+        expect(Math.abs(a[key] - b[key])).toBeLessThan(15);
+      }
+    }
+  });
+
+  it.each(GAIT_CANDIDATES)('$id: 발끝을 드는 각이 어느 위상에서도 5°를 넘지 않는다', (spec) => {
+    // 정면에서 발바닥이 카메라를 향하는 각이 곧 이 값이다(G3 §5 통과 조건)
+    for (const phase of DENSE_PHASES) {
+      expect(legAngles(spec, phase).foot).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it.each(GAIT_CANDIDATES)('$id: 무릎은 뒤로만 접힌다', (spec) => {
+    // 정강이 각이 허벅지 각보다 크면 무릎이 앞으로 꺾인 것이다
+    for (const phase of DENSE_PHASES) {
+      const { thigh, shin } = legAngles(spec, phase);
+      expect(shin).toBeLessThanOrEqual(thigh + 1e-9);
+    }
+  });
+});
+
+describe('hipsLift — 디딘 발을 땅에 놓는 허리 높이', () => {
+  it.each(GAIT_CANDIDATES)('$id: 어느 발도 땅을 1.5cm 넘게 뚫지 않는다', (spec) => {
+    // 1.5cm는 720p 게임 크기에서 1px이다. 그 안쪽은 화면에서 안 보인다
+    for (const phase of DENSE_PHASES) {
+      expect(lowestSole(spec, phase)).toBeGreaterThan(-0.015);
+    }
+  });
+
+  it.each(
+    GAIT_CANDIDATES.filter((spec) => spec.hop === 0),
+  )('$id: 걷기는 늘 한 발이 땅에 있다', (spec) => {
+    for (const phase of DENSE_PHASES) {
+      expect(lowestSole(spec, phase)).toBeLessThan(0.015);
+    }
+  });
+
+  it.each(
+    GAIT_CANDIDATES.filter((spec) => spec.hop > 0),
+  )('$id: 뛰기는 두 발이 다 뜨는 위상이 있다', (spec) => {
+    const highest = Math.max(...DENSE_PHASES.map((phase) => lowestSole(spec, phase)));
+    expect(highest).toBeGreaterThan(0.02);
+  });
+
+  it.each(GAIT_CANDIDATES)('$id: 허리 높이가 이웃 위상 사이에서 튀지 않는다', (spec) => {
+    // 접지할 발을 끊어서 바꾸면 그 위상에서 허리가 한 칸(0.02 주기)에 5cm 넘게 튄다. 뛰기는 디딘 직후 무릎이
+    // 눌리며 한 칸에 1.6cm까지 정상으로 내려가므로 문턱을 2.5cm에 둔다
+    for (let i = 0; i < DENSE_PHASES.length; i++) {
+      const a = hipsLift(spec, PLAYER_LEG_RIG, DENSE_PHASES[i]);
+      const b = hipsLift(spec, PLAYER_LEG_RIG, DENSE_PHASES[(i + 1) % DENSE_PHASES.length]);
+      expect(Math.abs(a - b)).toBeLessThan(0.025);
+    }
+  });
+
+  it.each(GAIT_CANDIDATES)('$id: 앞 절반과 뒤 절반의 허리 높이가 같다', (spec) => {
+    for (const phase of [0, 0.1, 0.25, 0.4]) {
+      expect(hipsLift(spec, PLAYER_LEG_RIG, phase)).toBeCloseTo(
+        hipsLift(spec, PLAYER_LEG_RIG, phase + 0.5),
+        9,
+      );
+    }
+  });
+});
+
+describe('gaitFrame — 굽는 쪽이 그대로 입히는 프레임', () => {
+  const spec = GAIT_CANDIDATES[0];
+
+  it('부모 본이 자식보다 앞에 온다', () => {
+    const names = gaitFrame(spec, PLAYER_LEG_RIG, 0.3).bones.map(([name]) => name);
+    const parentFirst = (parent: string, child: string) =>
+      expect(names.indexOf(parent)).toBeLessThan(names.indexOf(child));
+    parentFirst('J_Bip_C_Spine', 'J_Bip_C_UpperChest');
+    parentFirst('J_Bip_C_UpperChest', 'J_Bip_C_Head');
+    for (const side of ['L', 'R']) {
+      parentFirst(`J_Bip_${side}_UpperLeg`, `J_Bip_${side}_LowerLeg`);
+      parentFirst(`J_Bip_${side}_LowerLeg`, `J_Bip_${side}_Foot`);
+      parentFirst(`J_Bip_${side}_Foot`, `J_Bip_${side}_ToeBase`);
+    }
+  });
+
+  it('오른다리는 왼다리의 반 주기 뒤 자세다', () => {
+    const now = new Map(gaitFrame(spec, PLAYER_LEG_RIG, 0.2).bones);
+    const later = new Map(gaitFrame(spec, PLAYER_LEG_RIG, 0.7).bones);
+    for (const part of ['UpperLeg', 'LowerLeg', 'Foot', 'ToeBase']) {
+      expect(now.get(`J_Bip_R_${part}`)).toEqual(later.get(`J_Bip_L_${part}`));
+    }
+  });
+
+  it('다리는 앞뒤 평면에서만 돈다 — 좌우 성분이 식에 없다', () => {
+    // 1라운드의 「춤추는 느낌」은 허벅지 회전에 섞인 좌우 흔들림이었다. 여기서는 Y · Z가 늘 0이다
+    for (const phase of DENSE_PHASES) {
+      for (const [name, angles] of gaitFrame(spec, PLAYER_LEG_RIG, phase).bones) {
+        if (!name.includes('Leg') && !name.includes('Foot') && !name.includes('Toe')) continue;
+        expect(angles[1]).toBe(0);
+        expect(angles[2]).toBe(0);
+      }
+    }
+  });
+
+  it('앞으로 나간 다리는 Blender X로 음수다', () => {
+    // 부호를 뒤집는 곳이 한 군데(`toBlenderX`)라, 여기가 틀리면 캐릭터가 뒤로 걷는다
+    const bones = new Map(gaitFrame(spec, PLAYER_LEG_RIG, 0).bones);
+    expect(bones.get('J_Bip_L_UpperLeg')?.[0]).toBeLessThan(0);
+    expect(bones.get('J_Bip_R_UpperLeg')?.[0]).toBeGreaterThan(0);
+  });
+
+  it('머리는 늘 각도 0으로 되돌린다', () => {
+    for (const candidate of GAIT_CANDIDATES) {
+      const head = new Map(gaitFrame(candidate, PLAYER_LEG_RIG, 0.4).bones).get('J_Bip_C_Head');
+      expect(head).toEqual([0, 0, 0]);
+    }
+  });
+
+  it('같은 입력이면 같은 JSON을 낸다 — G4가 정의의 해시로 카메라를 고정한다', () => {
+    const a = JSON.stringify(gaitFrame(spec, PLAYER_LEG_RIG, 1 / 3));
+    const b = JSON.stringify(gaitFrame(spec, PLAYER_LEG_RIG, 1 / 3));
+    expect(a).toBe(b);
+    expect(a).not.toContain('-0,');
+  });
+});
+
+describe('stepLength — 굽기 전에 보폭을 어림한다', () => {
+  it('허벅지를 크게 흔드는 걷기가 보폭도 크다', () => {
+    const calm = GAIT_CANDIDATES.find((spec) => spec.id === 'walk_calm');
+    const brisk = GAIT_CANDIDATES.find((spec) => spec.id === 'walk_brisk');
+    if (!calm || !brisk) throw new Error('걷기 후보 둘이 없다');
+    expect(stepLength(brisk, PLAYER_LEG_RIG)).toBeGreaterThan(stepLength(calm, PLAYER_LEG_RIG));
+  });
+
+  it('다리 길이의 두 배를 넘지 않는다', () => {
+    const leg = Math.abs(PLAYER_LEG_RIG.thigh[1]) + Math.abs(PLAYER_LEG_RIG.shin[1]);
+    for (const spec of GAIT_CANDIDATES) {
+      expect(stepLength(spec, PLAYER_LEG_RIG)).toBeGreaterThan(0);
+      expect(stepLength(spec, PLAYER_LEG_RIG)).toBeLessThan(2 * leg);
+    }
+  });
+});
+
+describe('idleFrame · standFrame — 대기', () => {
+  it('서 있는 한 장은 아무 본도 돌리지 않는다', () => {
+    expect(standFrame()).toEqual({ phase: 0, hips: [0, 0, 0], bones: [] });
+  });
+
+  it('숨을 다 들이쉰 위상(0.5)에서 몸이 정지 높이로 올라온다', () => {
+    expect(idleFrame(IDLE_BAKED, PLAYER_LEG_RIG, 0.5).hips[2]).toBeCloseTo(0, 4);
+    expect(idleFrame(IDLE_BAKED, PLAYER_LEG_RIG, 0).hips[2]).toBeLessThan(0);
+  });
+
+  it('몸이 내려앉는 폭이 720p 게임 크기에서 0.5~1.5px이다', () => {
+    // 그보다 작으면 굽는 의미가 없고(안 보인다), 크면 숨쉬기가 아니라 앉았다 일어서기로 보인다
+    const unitsPerMeter = 77 / 1.104;
+    const sink = -idleFrame(IDLE_BAKED, PLAYER_LEG_RIG, 0).hips[2] * unitsPerMeter;
+    expect(sink).toBeGreaterThan(0.5);
+    expect(sink).toBeLessThan(1.5);
+  });
+
+  it('두 다리가 같은 각으로 굽는다', () => {
+    const bones = new Map(idleFrame(IDLE_BAKED, PLAYER_LEG_RIG, 0).bones);
+    expect(bones.get('J_Bip_L_UpperLeg')).toEqual(bones.get('J_Bip_R_UpperLeg'));
+    expect(bones.get('J_Bip_L_LowerLeg')).toEqual(bones.get('J_Bip_R_LowerLeg'));
   });
 });

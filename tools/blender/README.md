@@ -89,11 +89,11 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `bad-gate-payload` | `GATE_OK`의 JSON을 읽을 수 없거나 `GATE_FAIL`에 실패 코드가 없다 | 굽기는 끝났는데 보고가 깨진 것이다. 파이썬 쪽 `gate_ok`·`gate_fail` 호출을 본다 | `gate.ts` |
 | `spec-args` | 규격 인자(`--width`·`--height`·`--foot-row`·`--head-row`)가 빠졌거나 정수가 아니다 | 실행기(`gate.ts`)를 거쳐 부른다. 손으로 부를 때는 `PLAYER_FRAME_SPEC`의 값을 그대로 준다 | `_common.py` |
 | `vrm-addon-missing` | VRM 임포터 확장이 켜져 있지 않거나 `poll()`이 거부한다 | 확장을 켜고 다시 돌린다. `read_factory_settings`가 사용자 설치 확장을 떨어뜨리므로 스크립트가 초기화 뒤 다시 켠다 | `_common.py` |
-| `vrm-path` | `.vrm` 경로가 없거나(`--vrm`이 빠진 경우 포함), 임포트가 실패했거나, 골격·메시가 없다 | `--vrm`이 빠졌으면 실행기(`gate.ts`)를 거쳐 부른다. 파일이 있는데 임포트가 실패하거나 골격·메시가 없으면 VRoid에서 **VRM 1.0**으로 감축 없이 다시 내보낸다 | `_common.py` · `retired/import_vrm.py` · `retarget_render.py` |
-| `camera-framing` | 인물 높이가 0이거나, 발·머리 행을 하나만 줬거나, 두 행 사이로 키를 맞춘 배율에서 인물 폭이 여백 안에 안 들어온다 | 높이가 0이면 임포트가 메시를 실제로 들여왔는지 본다. 폭이 넘치면 메시지의 픽셀 폭을 보고 팔 자세(`BASE_ARM_POSE`)나 의상 폭을 줄인다 — 배율을 줄여 맞추면 인물이 출하 아트보다 작아진다 | `_common.py` |
-| `motion-path` | 모션 파일이 없거나(`--motion`이 빠진 경우 포함), 형식을 모르거나, 아마추어가 없다 | glb·gltf·fbx만 받는다. 경로를 확인한다 | `retarget_render.py` |
-| `motion-action` | 그 이름의 액션이 없거나, 길이가 0이거나, `--frames`가 1 이상의 정수가 아니다 | 액션이 없으면 메시지가 걷기로 보이는 액션 이름을 함께 주니 `--action`에 그것을 넘긴다. `--frames` 오류면 1 이상의 정수를 준다 | `retarget_render.py` |
-| `retarget-bone` | 대응표의 본을 한쪽 골격에서 못 찾았거나, `SWING_CHAIN`이 적은 부모가 모션 골격의 실제 부모와 다르다 | 못 찾았으면 메시지가 그쪽을 `모션:`·`대상:` 접두어로 말하니 `BONE_MAP`을 그 이름에 맞춘다. 부모가 다르면 메시지가 실제 부모 이름을 말하니 `SWING_CHAIN`을 그 이름에 맞춘다 | `retarget_render.py` |
+| `vrm-path` | `.vrm` 경로가 없거나(`--vrm`이 빠진 경우 포함), 임포트가 실패했거나, 골격·메시가 없다 | `--vrm`이 빠졌으면 실행기(`gate.ts`)를 거쳐 부른다. 파일이 있는데 임포트가 실패하거나 골격·메시가 없으면 VRoid에서 **VRM 1.0**으로 감축 없이 다시 내보낸다 | `_common.py` · `retired/import_vrm.py` · `retarget_render.py` · `bake_motion.py` |
+| `camera-framing` | 인물 높이가 0이거나, 발·머리 행을 하나만 줬거나, 두 행 사이로 키를 맞춘 배율에서 인물 폭이 여백 안에 안 들어온다 | 높이가 0이면 임포트가 메시를 실제로 들여왔는지 본다. 폭이 넘치면 메시지의 픽셀 폭을 보고 팔 자세(`BASE_ARM_POSE`)나 의상 폭을 줄인다 — 배율을 줄여 맞추면 인물이 출하 아트보다 작아진다. 층 캔버스의 홀짝이 기준과 다른 경우도 여기로 온다 | `_common.py` · `probe_layers.py` · `bake_motion.py` |
+| `motion-path` | 모션 파일이 없거나(`--motion`이 빠진 경우 포함), 형식을 모르거나, 아마추어가 없다. 동작 굽기에서는 키프레임 정의 JSON(`--frames`)이 없는 경우다 | glb·gltf·fbx만 받는다. 경로를 확인한다. 키프레임 정의는 손으로 쓰지 않고 `motion.ts`를 거쳐 부른다 | `retarget_render.py` · `bake_motion.py` |
+| `motion-action` | 그 이름의 액션이 없거나, 길이가 0이거나, `--frames`가 1 이상의 정수가 아니다 | 액션이 없으면 메시지가 걷기로 보이는 액션 이름을 함께 주니 `--action`에 그것을 넘긴다. `--frames` 오류면 1 이상의 정수를 준다. 동작 굽기에서는 키프레임 정의에 프레임이 하나도 없는 경우다 | `retarget_render.py` · `bake_motion.py` |
+| `retarget-bone` | 대응표의 본을 한쪽 골격에서 못 찾았거나, `SWING_CHAIN`이 적은 부모가 모션 골격의 실제 부모와 다르다 | 못 찾았으면 메시지가 그쪽을 `모션:`·`대상:` 접두어로 말하니 `BONE_MAP`을 그 이름에 맞춘다. 부모가 다르면 메시지가 실제 부모 이름을 말하니 `SWING_CHAIN`을 그 이름에 맞춘다. 동작 굽기에서는 키프레임 정의가 쓰는 본(`J_Bip_*`)이 이 골격에 없는 경우다 | `retarget_render.py` · `bake_motion.py` |
 | `weapon-spec` | 무기 후보 표가 없거나, 후보가 0개거나, 부품이 없거나, 모르는 부품 종류·시점·재질 묶음이다. 층 탐침에서는 layer 값이 틀렸거나, `gear` 층에 `--gear-spec`이 없거나, 장비 사양에 `bone`이 없는 경우도 여기로 온다 | 채택한 무기 사양은 `BakeSpec.ts`의 `writeChosenSpecs`가, 후보 표와 장비 사양은 `retired/weapons.ts`·`retired/gear.ts`가 만드므로 그쪽을 거쳐 부른다. 부품 종류를 늘리려면 `weapons.py`의 `build_part`에 분기를 더한다 | `weapons.py` · `probe_layers.py` |
 | `toon-spec` | 툰 사양에 모르는 키가 있거나, `shade_threshold`가 0~1 밖이거나, `like`가 지목한 VRoid 부위가 장면에 없다 | 메시지가 아는 키·있는 부위를 함께 준다. 값이 그림에서 무엇을 하는지는 `docs/development/spec/ops-blender-toon.md`에 있다 — 명세 이름(`shading_shift`)을 받지 않는 이유도 거기 있다 | `toon.py` |
 | `mtoon-inspect` | `.vrm`에 MToon 노드 그룹이 없다 | MToon 머티리얼로 내보낸 판인지 확인한다 | `inspect_mtoon.py` |
@@ -124,6 +124,11 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `outline.py` | 탈락한 외곽선 후보의 Blender 쪽 조각. Line Art(Grease Pencil) 오브젝트를 세우고, 후처리용 법선 · 깊이 패스를 재질을 갈아 끼워 한 장씩 굽는다. 채택한 인버티드 헐은 이 파일이 아니라 툰 사양이 켠다. `probe_layers.py`가 모듈 이름으로 import해서 `retired/`로 옮기지 못했고 G4에서 그 인자와 함께 지운다 | 있음 |
 | `bake_layer.py` | G4 층 굽기. 층 캔버스(`--layer-width` · `--layer-height`)를 기준 몸 규격과 달리 주더라도 카메라는 기준 규격으로만 계산해 캐릭터 크기를 같게 둔다 — 캔버스를 키우면 캐릭터가 커지는 것이 아니라 주변이 더 보일 뿐이고, 모든 층의 캔버스 중심이 같은 월드 점에 놓인다. ADR 009의 실증에 썼다 | 있음 |
 | `inspect_meshes.py` | G1 메시 · 머티리얼 · 정점 지문 덤프. 판끼리 몸이 같은지 보려고 메시마다 정점 수와 좌표 지문(소수점 다섯 자리로 반올림한 뒤 sha256)을 적어 낸다. 덤프를 견주는 실행기는 아직 없다 — 2라운드 G1 측정은 일회성 스크립트로 했고 정리하며 지웠다 | 있음 |
+| `MotionSpec.ts` | **G3 걷기 · 대기의 키프레임 정의.** 모션 파일을 옮기지 않고 위상(0~1)에서 관절 각도 · 허리 높이 · 접지를 식으로 낸다. 다리를 앞뒤 평면에서만 돌리므로 1라운드의 좌우 흔들림이 식에 없고, 발끝을 드는 각은 5°에서 막는다. 후보 넷(`GAIT_CANDIDATES`)과 다리 치수(`PLAYER_LEG_RIG`)를 든다. 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
+| `bake_motion.py` | G3 동작 굽기. `MotionSpec.ts`가 낸 프레임별 각도를 그대로 입혀 **한 프로세스에서 여러 장**을 굽고, 본 위치와 변형된 발바닥 높이를 모델 좌표로 돌려준다. 자세 계산은 하지 않는다. 팔은 프레임마다 `BASE_ARM_POSE`로 다시 입히고 무기는 손 위치로 다시 놓는다 | 있음 |
+| `BlenderRun.ts` | Blender를 띄워 굽기 스크립트 하나를 돌리고 판정 줄의 값을 돌려준다(`runBlender`). 여러 굽기를 동시에 돌리는 풀(`runPool`)도 든다. `retired/gear.ts`의 `bakeAsync`가 `probe_layers.py`에 묶여 있어서 부르는 부분만 일반형으로 뗐다 — G4의 생산 굽기도 이것을 쓴다 | 있음 |
+| `motion.ts` | G3 실행기. 걷기 후보와 대기를 세 방향으로 굽고, G3 §5의 수치(정면에서 발바닥이 보이는 각 · 발목 좌우 이동)와 접지 오차 · 머리 오르내림을 재고, 나란히 재생하는 화면을 `docs/temp/3d-gate/g3/preview.html`로 만든다. `--only` · `--views` · `--page-only`. 사람이 고른 뒤에는 후보 비교가 필요 없어지므로 G4 뒤에 `retired/`와 함께 정리한다 | 있음 |
+| `motion_preview.html` | `motion.ts`가 실측을 박아 쓰는 재생 화면의 틀. 프레임 수(6 · 8장) · 재생 속도 · 표시 크기 · 이동 흉내 · 발밑 마법진 회전 · 숨쉬기 폭을 화면에서 바꿔 본다. 직접 열면 데이터가 없어 비어 있다 | 있음 |
 | `measure_weapon_room.py` | G1 무기 자리 측정. 기준 자세(`retarget_render.BASE_ARM_POSE`)를 입힌 몸의 세계 좌표 상자와 두 손의 세계 좌표를 덤프한다. A 포즈로 재면 손이 게임에 안 나오는 자리에 있으므로 굽기와 같은 자세로 잰다. 남는 자리를 픽셀로 환산하는 것은 실행기 몫이다 | 있음 |
 
 **`smoke.py`가 독립인 것이 설계다.** 공용 모듈을 거치면 애드온이나 모델 때문에 난 실패가 환경
