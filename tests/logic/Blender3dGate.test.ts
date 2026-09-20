@@ -36,7 +36,12 @@ import {
   restoreFrame,
   writePlist,
 } from '../../tools/blender/Atlas';
-import { CHOSEN_PITCH, OUTLINE_WIDTH_M, WEAPON_TOON } from '../../tools/blender/BakeSpec';
+import {
+  CHOSEN_PITCH,
+  OUTLINE_WIDTH_M,
+  STAFF_ORB,
+  WEAPON_TOON,
+} from '../../tools/blender/BakeSpec';
 import {
   composeGrid,
   compositeOver,
@@ -1534,12 +1539,20 @@ describe('idleFrame · standFrame — 대기', () => {
     expect(idleFrame(IDLE_BAKED, PLAYER_LEG_RIG, 0).hips[2]).toBeLessThan(0);
   });
 
-  it('몸이 내려앉는 폭이 720p 게임 크기에서 0.5~1.5px이다', () => {
-    // 그보다 작으면 굽는 의미가 없고(안 보인다), 크면 숨쉬기가 아니라 앉았다 일어서기로 보인다
+  it('무릎은 정말 살짝만 굽혔다 편다 — 사용자가 본 후보 14°와 6° 사이다', () => {
+    // 처음 값은 30°였다. 게임 크기에서 몸이 1px쯤 오르내리게 하려던 값인데, 크게 보면 숨쉬기가 아니라 앉았다
+    // 일어서기로 보였다(2026-09-21 사용자 판정). 30 · 20 · 14 · 10 · 6°를 나란히 재생해 10°를 골랐다
+    expect(IDLE_BAKED.kneeFlex).toBeLessThan(14);
+    expect(IDLE_BAKED.kneeFlex).toBeGreaterThan(6);
+  });
+
+  it('고른 굽힘에서는 몸이 게임 크기로 반 픽셀도 안 내려앉는다', () => {
+    // 굽힘을 줄인 대가다 — 사용자가 720p · 1440p 보기에서 이 폭을 함께 보고 받았다. 몸의 오르내림이 아니라
+    // 무릎 · 가슴 · 어깨의 작은 움직임이 대기를 만든다. 0이면 다리가 아예 안 움직여 굽는 뜻이 없다
     const unitsPerMeter = 77 / 1.104;
     const sink = -idleFrame(IDLE_BAKED, PLAYER_LEG_RIG, 0).hips[2] * unitsPerMeter;
-    expect(sink).toBeGreaterThan(0.5);
-    expect(sink).toBeLessThan(1.5);
+    expect(sink).toBeGreaterThan(0);
+    expect(sink).toBeLessThan(0.5);
   });
 
   it('들이쉬는 절반과 내쉬는 절반이 같은 자세라 세 장만 굽는다', () => {
@@ -1716,6 +1729,26 @@ describe('bodyCanvasWidth — 몸 층의 캔버스 가로를 실측에서 낸다
     for (const needed of [250.2, 251.2, 252.9, 300]) {
       expect(bodyCanvasWidth(needed, 246) - needed).toBeGreaterThanOrEqual(4);
     }
+  });
+});
+
+describe('STAFF_ORB.grip — 지팡이는 손목이 아니라 손 안에 선다', () => {
+  /**
+   * 기준 자세의 오른손에서, 손목(손 본의 머리)에서 손가락이 감싼 자리의 중심까지(모델 좌표, m).
+   * 2026-09-21에 본 좌표로 쟀다 — 바깥(−x)으로 0.0175, 앞(−y)으로 0.0592.
+   */
+  const TUNNEL = { out: 0.0175, forward: 0.0592 };
+
+  it('그립의 x · y가 손목과 손가락이 감싼 자리의 중심 사이에 있다', () => {
+    // 굽기는 그립 점을 손목에 맞추므로, 그립을 키우면 지팡이가 그만큼 −방향(바깥 · 앞)으로 간다. 처음 값은
+    // x −0.005 · y 0.015라 지팡이가 손목에서 앞으로 1.5cm, 안쪽으로 0.5cm에 섰고, 옆에서 보면 손이 아니라
+    // 손목에 들린 것처럼 보였다(2026-09-21 사용자 판정). 중심보다 멀리 두면 지팡이의 축이 손가락이 감싼
+    // 자리를 벗어나 손가락 쪽으로 넘어간다
+    const [x, y] = STAFF_ORB.grip ?? [Number.NaN, Number.NaN];
+    expect(x).toBeGreaterThan(0);
+    expect(x).toBeLessThanOrEqual(TUNNEL.out);
+    expect(y).toBeGreaterThanOrEqual(0.03);
+    expect(y).toBeLessThanOrEqual(TUNNEL.forward);
   });
 });
 

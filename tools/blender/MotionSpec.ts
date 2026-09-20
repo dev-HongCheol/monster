@@ -97,7 +97,7 @@ export interface IGaitSpec {
 export interface IIdleSpec {
   id: string;
   label: string;
-  /** 무릎을 굽혀 몸을 내리는 각(가장 내려간 프레임). 게임 크기에서 몸이 1px쯤 오르내리게 하는 값이다 */
+  /** 무릎을 굽혀 몸을 내리는 각(가장 내려간 프레임, 도). 크면 숨쉬기가 아니라 앉았다 일어서기로 보인다 */
   kneeFlex: number;
   /** 가슴을 뒤로 젖히는 각 — 숨을 들이쉴 때 */
   chestPitch: number;
@@ -348,8 +348,9 @@ export function standFrame(): IMotionFrame {
 /**
  * 프레임으로 굽는 대기의 한 장. 위상 0이 숨을 다 내쉰 자세(= 서 있는 한 장)이고 0.5가 다 들이쉰 자세다.
  *
- * 무릎을 굽혀 몸을 내리는 것은 숨쉬기만으로는 게임 크기에서 아무것도 안 움직이기 때문이다. 어깨를 2.5° 올리면
- * 손이 3mm쯤 오르는데 720p에서 0.2px다. 2D 게임의 대기가 몸 전체를 한 픽셀 오르내리는 것도 같은 사정이다.
+ * 무릎을 굽히는 것은 가슴과 어깨만 움직이면 하체가 굳어 보이기 때문이다. 다만 굽힘으로 몸 전체를 오르내리게
+ * 하지는 않는다 — 게임 크기에서 몸이 1px쯤 오르내리게 굽히면(30°) 크게 볼 때 앉았다 일어서기로 보인다
+ * (2026-09-21 사용자 판정). 채택한 굽힘에서 몸은 720p에서 반 픽셀도 안 내려앉는다(`IDLE_BAKED`).
  */
 export function idleFrame(spec: IIdleSpec, rig: ILegRig, phase: number): IMotionFrame {
   const p = wrapPhase(phase);
@@ -478,11 +479,16 @@ export const CHOSEN_GAIT: IGaitSpec = {
  * 서 있는 한 장, 한 장에 코드로 세로 배율을 흔드는 숨쉬기, 프레임 셋을 나란히 봤고 프레임이 훨씬 자연스럽다는
  * 판정을 받았다. 굽는 장은 셋이고 네 박자로 재생한다(`IDLE_PLAYBACK`). 아틀라스 용량이 한도에 걸리면 첫 장만
  * 남겨 정지로 되돌릴 수 있다 — 걷기 프레임과 게임 코드는 그대로다.
+ *
+ * **무릎 굽힘은 10°다(2026-09-21 사용자 판정).** G3에서 고를 때는 30°였는데, 생산 캐릭터를 층으로 구워 겹친
+ * 화면에서 굽힘이 너무 크다는 판정을 받았다. 30 · 20 · 14 · 10 · 6°를 정면과 오른쪽에서 나란히 재생해 골랐다.
+ * 굽힘을 줄인 만큼 몸이 내려앉는 폭도 준다 — 30°의 0.99px(720p)에서 0.15px(720p) · 0.29px(1440p)로. 사용자가
+ * 게임 크기 보기에서 그 폭을 함께 보고 받았다.
  */
 export const IDLE_BAKED: IIdleSpec = {
   id: 'idle_baked',
   label: '대기 — 프레임',
-  kneeFlex: 30,
+  kneeFlex: 10,
   chestPitch: 1.5,
   shoulderLift: 2.5,
 };
