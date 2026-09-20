@@ -54,7 +54,7 @@
 <table class="grid" id="gaits"></table>
 
 <h2>대기 — 세 방식</h2>
-<p class="note">가운데가 「한 장 + 코드 숨쉬기」(구운 그림은 서 있는 한 장뿐이고 게임이 세로 배율을 흔든다), 오른쪽이 「프레임 4장」이다. 숨쉬기의 기준점은 발밑이라 발은 안 움직인다.</p>
+<p class="note">가운데가 「한 장 + 코드 숨쉬기」(구운 그림은 서 있는 한 장뿐이고 게임이 세로 배율을 흔든다), 오른쪽이 「프레임」이다 — 들이쉬는 절반과 내쉬는 절반이 같은 자세를 되짚으므로 세 장만 굽고 0 → 1 → 2 → 1로 재생한다. 숨쉬기의 기준점은 발밑이라 발은 안 움직인다.</p>
 <div id="bar2" style="display:flex;gap:8px 20px;flex-wrap:wrap;padding:4px 20px 10px;">
   <label>숨쉬기 폭 <input type="range" id="amp" min="0" max="4" step="0.25" value="1.5"><output id="ampOut"></output></label>
   <label>숨쉬기 주기 <input type="range" id="period" min="1" max="4" step="0.1" value="2.4"><output id="periodOut"></output></label>
@@ -160,14 +160,14 @@ function build() {
 
   const idles = document.getElementById('idles');
   if (DATA.idle) {
-    idles.innerHTML = '<tr><th></th><th>서 있는 한 장 (정지)</th><th>한 장 + 코드 숨쉬기</th><th>프레임 ' + DATA.idleFrames + '장</th></tr>';
+    idles.innerHTML = '<tr><th></th><th>서 있는 한 장 (정지)</th><th>한 장 + 코드 숨쉬기</th><th>프레임 (구운 것 ' + DATA.idleBaked + '장, ' + DATA.idleOrder.length + '박자로 재생)</th></tr>';
     DATA.views.forEach((v) => {
       const tr = document.createElement('tr');
       const th = document.createElement('th');
       th.className = 'name'; th.textContent = v.label; tr.appendChild(th);
       const stand = [load('idle/' + v.id + '/stand.png')];
       const baked = [];
-      for (let i = 0; i < DATA.idleFrames; i++) baked.push(load('idle/' + v.id + '/b_' + pad(i) + '.png'));
+      for (let i = 0; i < DATA.idleBaked; i++) baked.push(load('idle/' + v.id + '/b_' + pad(i) + '.png'));
       [['still', stand], ['code', stand], ['baked', baked]].forEach((pair) => {
         const td = document.createElement('td');
         makeCell(td, v.id, pair[0], pair[1]);
@@ -179,7 +179,8 @@ function build() {
 }
 
 /* 방향마다 바닥이 흐르는 방향(화면 기준 단위 벡터). 캐릭터가 가는 쪽의 반대다. */
-const FLOW = { front: [0, -1], back: [0, 1], side: [-1, 0] };
+const FLOW = {};
+if (DATA) DATA.views.forEach((v) => { FLOW[v.id] = v.flow; });
 
 function draw(cell, t) {
   const s = DATA.gameScale * state.zoom;
@@ -219,7 +220,7 @@ function draw(cell, t) {
     const picks = DATA.picks[state.count];
     img = cell.images[picks[Math.floor(t * state.fps) % picks.length]];
   } else if (cell.kind === 'baked') {
-    img = cell.images[Math.floor(t * state.idleFps) % cell.images.length];
+    img = cell.images[DATA.idleOrder[Math.floor(t * state.idleFps) % DATA.idleOrder.length]];
   } else {
     img = cell.images[0];
     if (cell.kind === 'code') sy = 1 + (state.amp / 100) * Math.sin((2 * Math.PI * t) / state.period);

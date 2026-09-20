@@ -51,6 +51,7 @@ import {
   gaitFrame,
   hipsLift,
   IDLE_BAKED,
+  IDLE_PLAYBACK,
   idleFrame,
   legAngles,
   legPoints,
@@ -1475,6 +1476,16 @@ describe('idleFrame · standFrame — 대기', () => {
     const sink = -idleFrame(IDLE_BAKED, PLAYER_LEG_RIG, 0).hips[2] * unitsPerMeter;
     expect(sink).toBeGreaterThan(0.5);
     expect(sink).toBeLessThan(1.5);
+  });
+
+  it('들이쉬는 절반과 내쉬는 절반이 같은 자세라 세 장만 굽는다', () => {
+    // 0.25와 0.75가 같은 그림이어야 0 → 1 → 2 → 1 재생이 네 장 재생과 같다. 식을 비대칭으로 바꾸면 여기서 걸린다
+    const rising = idleFrame(IDLE_BAKED, PLAYER_LEG_RIG, 0.25);
+    const falling = idleFrame(IDLE_BAKED, PLAYER_LEG_RIG, 0.75);
+    expect(falling.hips).toEqual(rising.hips);
+    expect(falling.bones).toEqual(rising.bones);
+    expect(IDLE_PLAYBACK.phases).toEqual([0, 0.25, 0.5]);
+    expect(IDLE_PLAYBACK.order).toEqual([0, 1, 2, 1]);
   });
 
   it('두 다리가 같은 각으로 굽는다', () => {

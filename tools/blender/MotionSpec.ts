@@ -381,6 +381,15 @@ export function idleFrame(spec: IIdleSpec, rig: ILegRig, phase: number): IMotion
   };
 }
 
+/**
+ * 프레임으로 굽는 대기를 굽는 위상과 재생 순서.
+ *
+ * 숨쉬기는 들이쉬는 절반과 내쉬는 절반이 같은 자세를 거꾸로 지나가므로, 네 박자(0 · 0.25 · 0.5 · 0.75) 가운데
+ * 0.25와 0.75가 같은 그림이다. 그래서 세 장만 굽고 0 → 1 → 2 → 1로 되짚어 재생한다. 네 장을 다 구우면 층마다
+ * 방향 넷에 한 장씩, 이미 있는 것과 똑같은 그림을 아틀라스에 더 싣게 된다.
+ */
+export const IDLE_PLAYBACK = { phases: [0, 0.25, 0.5], order: [0, 1, 2, 1] } as const;
+
 /** 프레임 `count`장의 위상 — 0부터 같은 간격. 0이 왼발 디딤, 0.5가 오른발 디딤이다. */
 export function samplePhases(count: number): number[] {
   if (!Number.isInteger(count) || count < 2)

@@ -16,7 +16,7 @@
  *
  *   --vrm <경로>         옷 입은 판(기본: 상의 A). 생산 `.vrm`은 커밋하지 않아 장비마다 경로가 다를 수 있다
  *   --only a,b           그 후보만 굽는다(`walk_calm` · `walk_brisk` · `jog` · `dash` · `idle`)
- *   --views front,side   그 방향만 굽는다(`front` · `side` · `back`)
+ *   --views front,back   그 방향만 굽는다(`front` · `right60` · `right45` · `back`)
  *   --page-only          굽지 않고 이미 있는 `metrics.json`으로 화면만 다시 만든다
  *
  * 산출물은 추적하지 않는 `docs/temp/3d-gate/g3/`에 쓴다. `preview.html`을 브라우저로 연다.
@@ -40,11 +40,11 @@ import {
   GAIT_CANDIDATES,
   gaitFrame,
   IDLE_BAKED,
+  IDLE_PLAYBACK,
   type IMotionFrame,
   idleFrame,
   mergedPhases,
   PLAYER_LEG_RIG,
-  samplePhases,
   standFrame,
   stepLength,
 } from './MotionSpec.ts';
@@ -72,14 +72,19 @@ const GAME_SPEED_UNITS = 300;
 /** 걷기 프레임 수 후보. 같은 주기에서 골라 쓰므로 한 번만 굽는다(`mergedPhases`). */
 const FRAME_COUNTS = [6, 8] as const;
 
-/** 프레임으로 굽는 대기의 장 수(G4 §8 추정과 같다). */
-const IDLE_FRAMES = 4;
-
-/** 방향. 모델을 돌려 만든다. 옆모습 90°는 캐릭터가 화면 오른쪽을 보는 순수 측면이다. */
+/**
+ * 방향. 모델을 돌려 만든다. `flow`는 이동 흉내에서 바닥이 흐르는 방향(화면 기준)으로, 캐릭터가 가는 쪽의 반대다.
+ *
+ * **좌우는 순수 측면(90°)이 아니다.** 규격 정본이 좌우를 3/4 각도로 정했고(`art-asset-spec.md` §3.4 — 내려다보는
+ * 시점에서는 3/4가 더 자연스럽게 읽힌다), G2의 가림 탐침도 45° · 315°로 구웠다. 장비 검토에서는 사용자가 「정면으로
+ * 약간 튼 측면」을 골라 순수 측면에서 30° 튼 각(왼쪽 300°)을 썼다. 게임의 좌우가 그 둘 중 어느 각인지는 아직
+ * 숫자로 못 박히지 않았으므로 둘 다 굽는다. 첫 판은 90°로 구웠다가 계획과 다르다는 지적을 받았다(2026-09-20).
+ */
 const VIEWS = [
-  { id: 'front', label: '정면', yaw: 0 },
-  { id: 'side', label: '옆(오른쪽)', yaw: 90 },
-  { id: 'back', label: '뒤', yaw: 180 },
+  { id: 'front', label: '정면', yaw: 0, flow: [0, -1] },
+  { id: 'right60', label: '오른쪽 — 정면으로 30° 튼 측면', yaw: 60, flow: [-1, 0] },
+  { id: 'right45', label: '오른쪽 — 3/4', yaw: 45, flow: [-1, 0] },
+  { id: 'back', label: '뒤', yaw: 180, flow: [0, 1] },
 ] as const;
 
 type ViewId = (typeof VIEWS)[number]['id'];
@@ -224,10 +229,12 @@ interface IPageData {
   unitsPerMeter: number;
   pitchDeg: number;
   circleDiameterUnits: number;
-  views: { id: ViewId; label: string }[];
+  views: { id: ViewId; label: string; flow: readonly [number, number] }[];
   picks: Record<number, number[]>;
   phaseCount: number;
-  idleFrames: number;
+  /** 대기 프레임을 재생하는 순서 — 구운 장의 번호다 */
+  idleOrder: readonly number[];
+  idleBaked: number;
   /** 방향마다 발밑 점(캔버스 px) — 마법진의 중심이자 숨쉬기 배율의 기준점이다 */
   ground: Partial<Record<ViewId, [number, number]>>;
   gaits: { id: string; label: string; stepUnits: number; hop: number; metrics: IMotionMetrics }[];
@@ -274,7 +281,7 @@ async function main(): Promise<void> {
         { ...standFrame(), name: 'stand' },
         ...named(
           'b',
-          samplePhases(IDLE_FRAMES).map((phase) => idleFrame(IDLE_BAKED, PLAYER_LEG_RIG, phase)),
+          IDLE_PLAYBACK.phases.map((phase) => idleFrame(IDLE_BAKED, PLAYER_LEG_RIG, phase)),
         ),
       ];
       for (const view of views) jobs.push({ id: 'idle', view, frames });
@@ -334,10 +341,11 @@ async function main(): Promise<void> {
       unitsPerMeter,
       pitchDeg: CHOSEN_PITCH,
       circleDiameterUnits: GAME_HEIGHT_UNITS * CIRCLE_DIAMETER_PER_HEIGHT,
-      views: VIEWS.map((v) => ({ id: v.id, label: v.label })),
+      views: VIEWS.map((v) => ({ id: v.id, label: v.label, flow: v.flow })),
       picks,
       phaseCount: phases.length,
-      idleFrames: IDLE_FRAMES,
+      idleOrder: IDLE_PLAYBACK.order,
+      idleBaked: IDLE_PLAYBACK.phases.length,
       ground: { ...(previous?.ground ?? {}), ...ground },
       gaits: gaitRows,
       idle: idleMetrics ? { id: 'idle', label: IDLE_BAKED.label, metrics: idleMetrics } : null,
