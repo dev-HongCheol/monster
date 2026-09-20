@@ -13,6 +13,8 @@
  *                     `tools/blender/camera.json`에 쓴다. 동작 · 고도 · 모델 · 도구 판을 바꾼 뒤에 다시 돌린다
  *   layers            다섯 층을 네 방향으로 굽고 G4 §4의 판정을 건다. 카메라 기록의 입력 지문이 지금 입력과
  *                     다르면 굽지 않는다. `--only body,staff`로 층을 골라 구울 수 있다
+ *   preview           구운 층을 게임의 형제 순서로 겹쳐 재생하는 화면(`docs/temp/3d-gate/g4/preview.html`)을
+ *                     쓴다. 굽지 않는다
  *
  *   --model-dir <폴더>  생산 `.vrm` 셋(`player_base` · `player_top_a` · `player_top_b`)이 있는 폴더.
  *                     커밋하지 않는 파일이라 장비마다 자리가 다를 수 있다
@@ -37,6 +39,8 @@ import { MODEL_HEIGHT_M, writeChosenSpecs } from './BakeSpec.ts';
 import { runBlender, runPool, writeJson } from './BlenderRun.ts';
 import {
   BAKE_ACTIONS,
+  BAKE_FACINGS,
+  BAKE_LAYERS,
   bakeDefinition,
   bakeToon,
   bodyCanvasWidth,
@@ -55,6 +59,7 @@ import {
   projectRow,
   staleReasons,
 } from './LayerBake.ts';
+import { CHOSEN_MOTION, IDLE_PLAYBACK } from './MotionSpec.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -82,6 +87,12 @@ type ModelName = keyof typeof MODEL_FILES;
  */
 const PROBE_SCALE = 4;
 const PROBE_ZOOM_OUT = 1.2;
+
+/** 게임이 그리는 플레이어 높이(월드 단위, G2 크기 결정 — G5 §2.6). 720p에서 1단위가 1px이다. */
+const GAME_HEIGHT_UNITS = 77;
+
+/** 합성 화면의 칸 제목. */
+const FACING_LABEL = { front: '정면', right: '오른쪽', back: '뒤', left: '왼쪽' } as const;
 
 /** 명령줄 인자에서 `--name 값`을 읽는다. */
 function option(name: string): string | undefined {
@@ -547,11 +558,57 @@ async function commandLayers(): Promise<void> {
   console.log('✓ 다섯 층이 §4 판정을 통과했다');
 }
 
+/**
+ * 구운 층을 게임의 형제 순서로 겹쳐 재생하는 화면을 쓴다. 굽지 않는다 — `layers`가 구운 그림을 읽는다.
+ *
+ * 돌아서는 모습과 층끼리의 가림은 그림 한 장으로 판정할 수 없어서, 사람이 브라우저에서 방향 · 상의 · 무기를
+ * 바꿔 가며 본다(G4 §5). 화면이 읽는 값은 전부 여기서 박아 넣는다 — 템플릿에 규격값을 적어 두면 카메라를
+ * 다시 잡았을 때 화면만 옛 값으로 남는다.
+ */
+function commandPreview(): void {
+  const record = readCameraRecord();
+  if (!fs.existsSync(path.join(ROOT, SCRATCH, 'layers'))) {
+    throw new Error(`구운 층이 없다: ${SCRATCH}/layers — \`bake.ts layers\`를 먼저 돌린다`);
+  }
+  const layers = Object.fromEntries(
+    BAKE_LAYERS.map((layer) => [layer, layerCanvas(layer, record.bodyCanvas)]),
+  );
+  const sizes = Object.values(layers);
+  const data = {
+    root: 'layers',
+    stage: {
+      width: Math.max(...sizes.map((size) => size.width)),
+      height: Math.max(...sizes.map((size) => size.height)),
+    },
+    layers,
+    facings: BAKE_FACINGS.map((f) => ({ id: f.id, label: `${FACING_LABEL[f.id]} (${f.yaw}°)` })),
+    frames: { walk: CHOSEN_MOTION.walkFrames, idle: IDLE_PLAYBACK.phases.length },
+    idleOrder: IDLE_PLAYBACK.order,
+    fps: { walk: CHOSEN_MOTION.walkFps, idle: CHOSEN_MOTION.idleFps },
+    groundRow: record.groundRow,
+    bodyHeight: PLAYER_FRAME_SPEC.height,
+    gameHeightUnits: GAME_HEIGHT_UNITS,
+  };
+  const template = fs.readFileSync(path.join(ROOT, 'tools/blender/layers_preview.html'), 'utf-8');
+  // 자리표시자가 정확히 한 번 있어야 한다. 주석에 같은 문자열이 하나 더 있으면 `replace`가 그쪽을 바꿔
+  // 화면이 값 없이 뜨는데, 굽기도 명령도 멀쩡히 끝나서 브라우저를 열기 전에는 드러나지 않는다
+  const placeholder = '/*__DATA__*/null';
+  if (template.split(placeholder).length !== 2) {
+    throw new Error(`layers_preview.html에 자리표시자 ${placeholder}가 정확히 한 번 있어야 한다`);
+  }
+  const page = path.join(ROOT, SCRATCH, 'preview.html');
+  fs.writeFileSync(page, template.replace(placeholder, JSON.stringify(data)), 'utf-8');
+  console.log(`✓ ${SCRATCH}/preview.html`);
+}
+
 async function main(): Promise<void> {
   const command = process.argv[2];
   if (command === 'camera') return commandCamera();
   if (command === 'layers') return commandLayers();
-  throw new Error(`명령을 모른다: ${command ?? '(없음)'} — camera · layers 중 하나를 준다`);
+  if (command === 'preview') return commandPreview();
+  throw new Error(
+    `명령을 모른다: ${command ?? '(없음)'} — camera · layers · preview 중 하나를 준다`,
+  );
 }
 
 main().catch((err: Error) => {
