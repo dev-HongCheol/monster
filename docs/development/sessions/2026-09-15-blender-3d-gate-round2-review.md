@@ -3,7 +3,7 @@
 - **작성일:** 2026-09-15
 - **브랜치:** `feat/blender-3d-gate`
 - **정본:** [`art-direction.md`](../../design/spec/art-direction.md) §3.1 · §3.2 · §6 · [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §3 · §9.1.1 · [`ops-licensing.md`](../spec/ops-licensing.md) §2 — 이 리뷰가 검토한 계획이 플레이어 트랙을 3D 층별 프레임으로 바꾼다
-- **계획:** [개요](2026-09-15-blender-3d-gate-round2-plan.md) — 리뷰가 수용한 항목과 최종 관문 결정은 개요와 게이트 문서 본문에 녹였다
+- **계획:** [개요](2026-09-11-blender-3d-gate-plan.md) — 리뷰가 수용한 항목과 최종 관문 결정은 개요와 게이트 문서 본문에 녹였다
 - **읽는 법:** 이 기록 안의 절 번호(§4 · §10 · §11 · §12 등)와 「Implementation plan」은 게이트별 문서로 나누기 전의 계획 문서(커밋 `db3d94d`)를 가리킨다. 나누면서 절 번호가 바뀌었지만, 리뷰 당시의 판단을 그대로 남기려고 기록 본문은 고치지 않았다.
 
 ---

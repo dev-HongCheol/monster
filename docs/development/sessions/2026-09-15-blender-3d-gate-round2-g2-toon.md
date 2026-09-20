@@ -4,7 +4,7 @@
 - **브랜치:** `feat/blender-3d-gate`
 - **상태:** **통과(2026-09-17)** — §6 통과 조건 넷이 모두 닫혔다. 판정 결과는 QA 문서 §12, 사람이 읽는 정리는 [G2 검토 문서](2026-09-17-blender-3d-gate-round2-g2-review.md)다.
 - **정본:** [`art-direction.md`](../../design/spec/art-direction.md) §3.1 · [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §3 — 3D 렌더의 화풍 설정과 층 구성이 플레이어 규격에 들어간다
-- **개요:** [2라운드 계획 개요](2026-09-15-blender-3d-gate-round2-plan.md)
+- **개요:** [계획 개요](2026-09-11-blender-3d-gate-plan.md)
 
 ---
 

@@ -4,7 +4,7 @@
 - **브랜치:** `feat/blender-3d-gate`
 - **상태:** 진행 전 — qa-setup 단계, G2 통과 뒤
 - **정본:** [`art-direction.md`](../../design/spec/art-direction.md) §3.2 — 플레이어 동작을 만드는 방식이 스크립트 키프레임으로 바뀐다
-- **개요:** [2라운드 계획 개요](2026-09-15-blender-3d-gate-round2-plan.md)
+- **개요:** [계획 개요](2026-09-11-blender-3d-gate-plan.md)
 
 ---
 

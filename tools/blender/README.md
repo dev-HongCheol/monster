@@ -1,8 +1,8 @@
 # Blender 게이트 — 실행 계약
 
-3D 마스터에서 걷기 프레임을 구워 게임 화면까지 닿는지 보는 판정 도구다. 계획은
+3D 마스터에서 플레이어의 층별 프레임을 굽고, 구운 결과를 판정하는 도구다. 계획 개요는
 [`2026-09-11-blender-3d-gate-plan.md`](../../docs/development/sessions/2026-09-11-blender-3d-gate-plan.md)이고
-확인 항목과 멈춤 규칙은 [`blender-3d-gate-test.md`](../../docs/qa/blender-3d-gate-test.md)가 든다.
+게이트별 판정 기준과 결과는 [`blender-3d-gate-test.md`](../../docs/qa/blender-3d-gate-test.md)가 든다.
 
 **판정은 파이썬에 없다.** Blender 쪽은 굽기만 하고 재는 것은 전부 TypeScript다. `tools/**/*.ts`는
 타입체크·lint·vitest 셋을 다 지나가지만 `.py`는 어느 그물에도 안 걸리기 때문이고, 그래서 판정이

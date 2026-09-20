@@ -4,7 +4,7 @@
 - **브랜치:** `feat/blender-3d-gate`
 - **상태:** 통과(2026-09-16) — 세 판을 받아 §4의 측정 넷을 마쳤다. 무기 상자 비율은 위험 표시를 남기고 [ADR 009](../../decisions/009-visual-bounds-exceed-body.md)로 닫았다
 - **정본:** [`art-direction.md`](../../design/spec/art-direction.md) §6 — 이 게이트가 만드는 캐릭터와 기본 무기의 외형 정본이다
-- **개요:** [2라운드 계획 개요](2026-09-15-blender-3d-gate-round2-plan.md)
+- **개요:** [계획 개요](2026-09-11-blender-3d-gate-plan.md)
 
 ---
 

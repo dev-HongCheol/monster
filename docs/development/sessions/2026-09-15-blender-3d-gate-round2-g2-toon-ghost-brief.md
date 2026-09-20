@@ -4,7 +4,7 @@
 - **브랜치:** `feat/blender-3d-gate`
 - **상태:** 작성 완료 — 사용자가 GPT에 넣어 표본 두 장을 만들면 G2 §4 비교 시트에 들어간다
 - **정본:** 없음 — 이 문서는 정본을 바꾸지 않고 [`art-direction.md`](../../design/spec/art-direction.md) §2 · §4 · §5와 [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §4의 조건을 GPT가 읽을 형태로 옮겨 적은 것이다. 적 생성 절차의 정본 자리는 [`art-generation-playbook.md`](../../design/spec/art-generation-playbook.md)이고, 그 문서가 fal.ai · 플레이어 2D 기준이라 지금은 받을 수 없다. 승격은 백로그 `F108`이 든다
-- **개요:** [2라운드 계획 개요](2026-09-15-blender-3d-gate-round2-plan.md) · [G2 문서](2026-09-15-blender-3d-gate-round2-g2-toon.md)
+- **개요:** [계획 개요](2026-09-11-blender-3d-gate-plan.md) · [G2 문서](2026-09-15-blender-3d-gate-round2-g2-toon.md)
 
 ---
 
@@ -98,7 +98,7 @@
 | 표시 크기 35~80단위, 식별 포인트 하나 | `art-direction.md` §5 3항 · `art-asset-spec.md` §4.4 |
 | 주조색 `tint` 값과 색 방향 | `art-direction.md` §4.1 표 |
 | 탱크는 어둡고 채도 낮게, 스워머는 밝고 작게 | `art-direction.md` §4.1 명도 규약 |
-| 두 장을 같은 화풍 · 조명으로, 비교 목적 | 2라운드 계획 개요 최종 관문 D17 · G2 §4 |
+| 두 장을 같은 화풍 · 조명으로, 비교 목적 | 계획 개요 최종 관문 D17 · G2 §4 |
 
 ## 4. 결과가 나오면
 
