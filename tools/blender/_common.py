@@ -526,6 +526,86 @@ def setup_camera(
     return camera
 
 
+def assert_camera_record(record):
+    """
+    카메라 기록이 쓸 수 있는 것인지 본다 — 값이 다 있는지, 그리고 도구 판이 기록과 같은지.
+
+    **도구 판이 기록과 다르면 굽지 않는다.** Blender나 VRM 애드온을 올리면 임포트 결과나 음영 식이 달라질 수
+    있는데, 키프레임과 모델의 지문은 그대로라 그것만으로는 새 층이 옛 층과 섞이는 것을 못 잡는다. 기록에
+    판이 없으면(카메라를 맞추려고 재는 굽기) 견주지 않는다. `.vrm`을 불러오기 전에 부른다 — 불러오기가
+    한 번 굽기의 대부분이라, 거부할 것이면 먼저 거부한다.
+
+    @param record `{'pitch_deg', 'aim_z', 'per_pixel_m'}`와, 있으면 `'blender'` · `'vrm_addon'`
+    """
+    for key in ('pitch_deg', 'aim_z', 'per_pixel_m'):
+        if not isinstance(record.get(key), (int, float)):
+            raise GateError('camera-record', '카메라 기록에 {0}이 없거나 수가 아니다'.format(key))
+    if record['per_pixel_m'] <= 0:
+        raise GateError('camera-record', '카메라 기록의 per_pixel_m이 0 이하다')
+
+    for key, running in (('blender', bpy.app.version_string), ('vrm_addon', vrm_addon_version())):
+        recorded = record.get(key)
+        if recorded is not None and recorded != running:
+            raise GateError(
+                'camera-stale',
+                '카메라를 잡을 때의 {0} 판은 {1}인데 지금은 {2}다 — 카메라를 다시 잡고 모든 층을 다시 굽는다'.format(
+                    key, recorded, running
+                ),
+            )
+
+
+def setup_recorded_camera(record, width_px, height_px):
+    """
+    기록된 카메라를 그대로 세운다. 몸 상자를 재지 않는다 — G4의 생산 굽기가 쓰는 길이다.
+
+    `setup_camera`는 굽는 자리에서 몸 상자를 재서 카메라를 잡는다. 그러면 굽기마다 카메라가 새로 계산되어,
+    입력 하나를 고친 뒤 일부 층만 다시 구웠을 때 층끼리 크기와 위치가 조용히 어긋난다. 그래서 생산 굽기는
+    카메라를 한 번만 잡아 기록해 두고(`LayerBake.ts`의 `fitCamera` · `ICameraRecord`) 모든 층이 그 기록을 받는다.
+
+    **겨냥점은 몸 상자의 중심이 아니라 루트 축 위의 점 `(0, 0, aim_z)`다.** 상자 중심을 겨냥하면 오른손 지팡이 ·
+    왼손 방패 · 75° 방향 때문에 몸통이 방향마다 옆으로 밀리고, 노드 원점을 중심으로 잡는 게임의 피격 사각형과
+    그림이 방향마다 어긋난다.
+
+    @param record `assert_camera_record`를 지난 기록
+    @param width_px 이 층의 캔버스 가로. `ortho_scale`은 긴 변을 덮으므로 픽셀 크기에 긴 변을 곱한다
+    @param height_px 이 층의 캔버스 세로
+    @returns 카메라 오브젝트
+    """
+    from math import cos, radians, sin
+
+    data = bpy.data.cameras.new('GateCamera')
+    data.type = 'ORTHO'
+    data.ortho_scale = record['per_pixel_m'] * max(width_px, height_px)
+
+    # 직교라 거리는 그림을 안 바꾼다. 날개처럼 카메라 쪽으로 나오는 장비가 카메라 뒤로 넘어가지만 않으면 된다
+    distance = 4.0
+    tilt = radians(record['pitch_deg'])
+    camera = bpy.data.objects.new('GateCamera', data)
+    camera.location = (0.0, -distance * cos(tilt), record['aim_z'] + distance * sin(tilt))
+    camera.rotation_euler = (1.5707963 - tilt, 0.0, 0.0)
+    scene = bpy.context.scene
+    scene.collection.objects.link(camera)
+    scene.camera = camera
+    return camera
+
+
+def vrm_addon_version():
+    """켜진 VRM 애드온의 판. 확장 매니페스트에서 읽고, 없으면 `None`."""
+    from importlib import import_module
+
+    module = vrm_addon_module()
+    if module is None:
+        return None
+    manifest = os.path.join(os.path.dirname(import_module(module).__file__), 'blender_manifest.toml')
+    if not os.path.exists(manifest):
+        return None
+    with open(manifest, encoding='utf-8') as handle:
+        for line in handle:
+            if line.strip().startswith('version'):
+                return line.split('=', 1)[1].strip().strip('"')
+    return None
+
+
 def setup_lights():
     """툰 판정 전 단계의 기본 조명. 정면 하나와 보조 하나로 실루엣이 보이게만 한다."""
     scene = bpy.context.scene

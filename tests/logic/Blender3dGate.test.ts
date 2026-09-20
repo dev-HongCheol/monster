@@ -36,6 +36,7 @@ import {
   restoreFrame,
   writePlist,
 } from '../../tools/blender/Atlas';
+import { CHOSEN_PITCH } from '../../tools/blender/BakeSpec';
 import {
   composeGrid,
   compositeOver,
@@ -45,6 +46,20 @@ import {
   pixelDiff,
   sampleLikeEngine,
 } from '../../tools/blender/ComparisonSheet';
+import {
+  actionFrames,
+  BAKE_FACINGS,
+  BAKE_LAYERS,
+  bakeDefinition,
+  bodyCanvasWidth,
+  definitionHash,
+  fitCamera,
+  type IBakeInputs,
+  type ICameraPose,
+  layerBakeJobs,
+  projectRow,
+  staleReasons,
+} from '../../tools/blender/LayerBake';
 import {
   bump,
   CHOSEN_GAIT,
@@ -1537,5 +1552,244 @@ describe('idleFrame · standFrame — 대기', () => {
     const bones = new Map(idleFrame(IDLE_BAKED, PLAYER_LEG_RIG, 0).bones);
     expect(bones.get('J_Bip_L_UpperLeg')).toEqual(bones.get('J_Bip_R_UpperLeg'));
     expect(bones.get('J_Bip_L_LowerLeg')).toEqual(bones.get('J_Bip_R_LowerLeg'));
+  });
+});
+
+describe('layerBakeJobs — 다섯 층을 네 방향으로 굽는 일감', () => {
+  it('층 다섯 × 방향 넷이라 스무 건이고, 한 건이 걷기 8장과 대기 3장을 함께 굽는다', () => {
+    const jobs = layerBakeJobs();
+    expect(jobs).toHaveLength(BAKE_LAYERS.length * BAKE_FACINGS.length);
+    for (const job of jobs) {
+      expect(job.frames).toHaveLength(CHOSEN_MOTION.walkFrames + IDLE_PLAYBACK.phases.length);
+    }
+  });
+
+  it('좌우는 고른 각으로 따로 굽는다 — 오른쪽 75°, 왼쪽은 그 반대편 285°', () => {
+    const yaw = new Map(BAKE_FACINGS.map((f) => [f.id, f.yaw]));
+    expect(yaw.get('front')).toBe(0);
+    expect(yaw.get('right')).toBe(CHOSEN_MOTION.sideYaw);
+    expect(yaw.get('back')).toBe(180);
+    expect(yaw.get('left')).toBe(360 - CHOSEN_MOTION.sideYaw);
+  });
+
+  it('프레임 이름이 아틀라스 규칙 그대로라 이름에서 층 · 동작 · 방향을 되읽을 수 있다', () => {
+    const names: string[] = [];
+    for (const job of layerBakeJobs()) {
+      for (const frame of job.frames) {
+        const parts = parseFrameName(frame.name);
+        expect(parts?.layer).toBe(job.layer);
+        expect(parts?.facing).toBe(job.facing);
+        expect(['walk', 'idle']).toContain(parts?.action);
+        names.push(frame.name);
+      }
+    }
+    expect(new Set(names).size).toBe(names.length);
+    // 게임에 들어간 plist에 거는 검사와 같은 잣대다 — 굽는 쪽이 처음부터 그 잣대를 지킨다
+    expect(checkFrameCounts(names)).toEqual([]);
+  });
+
+  it('같은 방향이면 모든 층이 같은 자세를 굽는다', () => {
+    // 층마다 자세가 다르면 겹쳤을 때 상의와 무기가 몸에서 떨어진다. 이름만 다르고 자세는 같아야 한다
+    const poses = (layer: string) =>
+      layerBakeJobs()
+        .filter((job) => job.layer === layer && job.facing === 'front')
+        .flatMap((job) => job.frames.map(({ phase, hips, bones }) => ({ phase, hips, bones })));
+    for (const layer of BAKE_LAYERS) expect(poses(layer)).toEqual(poses('body'));
+  });
+
+  it('걷기는 채택한 걸음의 위상 여덟, 대기는 구운 위상 셋이다', () => {
+    expect(actionFrames('walk').map((f) => f.phase)).toEqual(
+      samplePhases(CHOSEN_MOTION.walkFrames),
+    );
+    expect(actionFrames('idle').map((f) => f.phase)).toEqual([...IDLE_PLAYBACK.phases]);
+    expect(actionFrames('walk')[0]).toEqual(gaitFrame(CHOSEN_GAIT, PLAYER_LEG_RIG, 0));
+  });
+});
+
+describe('projectRow — 고도가 있는 직교 카메라에서 점이 놓이는 행', () => {
+  /** 고도 0에서 키 1.104m를 2행과 489행 사이에 채우는 카메라. `_common.setup_camera`와 같은 식이다 */
+  const perPixelM = 1.104 / (PLAYER_FRAME_SPEC.footLineY - PLAYER_FRAME_SPEC.headLineY);
+  const level: ICameraPose = {
+    pitchDeg: 0,
+    aimZ: (PLAYER_FRAME_SPEC.footLineY + 0.5 - PLAYER_FRAME_SPEC.height / 2) * perPixelM,
+    perPixelM,
+  };
+
+  it('고도 0이면 발밑(z 0)이 발 행의 픽셀 중심에, 정수리가 머리 행의 픽셀 중심에 온다', () => {
+    expect(projectRow(level, PLAYER_FRAME_SPEC.height, [0, 0, 0])).toBeCloseTo(489.5, 6);
+    expect(projectRow(level, PLAYER_FRAME_SPEC.height, [0, 0, 1.104])).toBeCloseTo(2.5, 6);
+  });
+
+  it('고도 0이면 앞뒤 위치(y)가 행을 바꾸지 않는다', () => {
+    expect(projectRow(level, PLAYER_FRAME_SPEC.height, [0, 0.3, 0.5])).toBeCloseTo(
+      projectRow(level, PLAYER_FRAME_SPEC.height, [0, -0.3, 0.5]),
+      6,
+    );
+  });
+
+  it('내려다보면 카메라에서 먼 점(y가 큰 쪽)이 같은 높이여도 화면에서 위로 간다', () => {
+    // 방향마다 발 밑선이 달라지는 원인이 이것이다 — 앞으로 내디딘 발은 아래로, 뒤로 뻗은 발은 위로 간다
+    const tilted: ICameraPose = { ...level, pitchDeg: CHOSEN_PITCH };
+    const far = projectRow(tilted, PLAYER_FRAME_SPEC.height, [0, 0.1, 0]);
+    const near = projectRow(tilted, PLAYER_FRAME_SPEC.height, [0, -0.1, 0]);
+    expect(far).toBeLessThan(near);
+    // 0.2m 떨어진 두 점의 행 차이는 sin(15°) × 0.2m ÷ 픽셀 크기다
+    expect(near - far).toBeCloseTo((Math.sin((15 * Math.PI) / 180) * 0.2) / perPixelM, 4);
+  });
+});
+
+describe('fitCamera — 맨살 몸 합집합의 머리 · 발 행에서 카메라를 맞춘다', () => {
+  /** 잴 때 쓰는 넉넉한 캔버스. 기준의 세 배로 구워 행을 1/3px까지 읽는다 */
+  const PROBE_HEIGHT = 1479;
+  const provisional: ICameraPose = {
+    pitchDeg: CHOSEN_PITCH,
+    aimZ: 0.55,
+    perPixelM: 1.104 / 487 / 3,
+  };
+  /** 합집합의 맨 위와 맨 아래를 만드는 두 점 — 정수리는 몸 뒤쪽, 발끝은 카메라 쪽에 있다 */
+  const top: [number, number, number] = [0, 0.04, 1.12];
+  const bottom: [number, number, number] = [0, -0.09, 0.0];
+  const measured = {
+    topRow: Math.floor(projectRow(provisional, PROBE_HEIGHT, top)),
+    bottomRow: Math.floor(projectRow(provisional, PROBE_HEIGHT, bottom)),
+  };
+
+  it('맞춘 카메라로 다시 구우면 합집합이 머리 2행 · 발 489행의 픽셀 중심에 온다', () => {
+    const fitted = fitCamera(provisional, PROBE_HEIGHT, measured, PLAYER_FRAME_SPEC);
+    // 잰 행이 1/3px 단위라 맞춘 결과도 그만큼까지만 정확하다. 픽셀 중심에서 ±0.5 안이면 그 행으로 읽힌다
+    const topAt = projectRow(fitted, PLAYER_FRAME_SPEC.height, top);
+    const bottomAt = projectRow(fitted, PLAYER_FRAME_SPEC.height, bottom);
+    expect(Math.abs(topAt - 2.5)).toBeLessThan(0.34);
+    expect(Math.abs(bottomAt - 489.5)).toBeLessThan(0.34);
+  });
+
+  it('고도는 바꾸지 않는다 — 고도는 G2가 고른 값이고 맞추는 것은 배율과 높이뿐이다', () => {
+    const fitted = fitCamera(
+      provisional,
+      PROBE_HEIGHT,
+      { topRow: 10, bottomRow: 1400 },
+      PLAYER_FRAME_SPEC,
+    );
+    expect(fitted.pitchDeg).toBe(CHOSEN_PITCH);
+  });
+
+  it('고도가 있으면 발밑 점(세계 원점)이 발 행보다 위에 온다', () => {
+    // 발끝이 카메라 쪽으로 나와 있어 합집합의 맨 아래는 발끝이고, 두 발 사이 바닥은 그보다 뒤(위)다.
+    // 게임의 발치 기준점과 마법진 중심이 발 행이 아니라 이 점이어야 하는 이유다
+    const fitted = fitCamera(provisional, PROBE_HEIGHT, measured, PLAYER_FRAME_SPEC);
+    const ground = projectRow(fitted, PLAYER_FRAME_SPEC.height, [0, 0, 0]);
+    expect(ground).toBeLessThan(489);
+    expect(ground).toBeGreaterThan(470);
+  });
+
+  it('잰 행이 뒤집혔거나 같으면 던진다', () => {
+    expect(() =>
+      fitCamera(provisional, PROBE_HEIGHT, { topRow: 500, bottomRow: 500 }, PLAYER_FRAME_SPEC),
+    ).toThrow(/합집합/);
+  });
+});
+
+describe('bodyCanvasWidth — 몸 층의 캔버스 가로를 실측에서 낸다', () => {
+  it('옆걸음의 보폭이 기준 가로를 넘으면 여백을 두고 넓힌다', () => {
+    // 2026-09-21 실측 — 75° 방향 걷기에서 루트 축 기준으로 259.2px을 차지했다(기준 246)
+    expect(bodyCanvasWidth(259.2, PLAYER_FRAME_SPEC.width)).toBe(264);
+  });
+
+  it('기준보다 좁게 나와도 기준 아래로 내려가지 않는다', () => {
+    // 층 캔버스는 기준보다 작을 수 없다(G4 §3.1) — 몸 층이 곧 기준이다
+    expect(bodyCanvasWidth(187.1, PLAYER_FRAME_SPEC.width)).toBe(PLAYER_FRAME_SPEC.width);
+  });
+
+  it('가로의 홀짝을 기준과 맞춘다', () => {
+    // 홀짝이 다르면 캔버스 중심이 픽셀 격자에서 반 칸 밀려 층끼리 0.5px 어긋난다
+    for (const needed of [250.2, 251.2, 252.9, 300]) {
+      expect(bodyCanvasWidth(needed, 246) % 2).toBe(0);
+      expect(bodyCanvasWidth(needed, 247) % 2).toBe(1);
+    }
+  });
+
+  it('차지하는 폭보다 양쪽으로 2px 이상 넓다', () => {
+    for (const needed of [250.2, 251.2, 252.9, 300]) {
+      expect(bodyCanvasWidth(needed, 246) - needed).toBeGreaterThanOrEqual(4);
+    }
+  });
+});
+
+describe('bakeDefinition · definitionHash — 카메라를 잡은 입력의 지문', () => {
+  it('키 순서가 달라도 같은 값이면 지문이 같다', () => {
+    expect(definitionHash({ a: 1, b: { c: [1, 2], d: 'x' } })).toBe(
+      definitionHash({ b: { d: 'x', c: [1, 2] }, a: 1 }),
+    );
+  });
+
+  it('값이 하나라도 다르면 지문이 다르다', () => {
+    expect(definitionHash({ a: 1, b: [1, 2] })).not.toBe(definitionHash({ a: 1, b: [2, 1] }));
+  });
+
+  it('굽기 정의가 동작 · 고도 · 방향 · 규격 · 툰 사양을 전부 든다', () => {
+    const definition = bakeDefinition();
+    expect(definition.pitchDeg).toBe(CHOSEN_PITCH);
+    expect(definition.frames.walk).toHaveLength(CHOSEN_MOTION.walkFrames);
+    expect(definition.frames.idle).toHaveLength(IDLE_PLAYBACK.phases.length);
+    expect(definition.facings).toEqual(BAKE_FACINGS);
+    expect(definition.frameSpec).toEqual(PLAYER_FRAME_SPEC);
+    // 외곽선 헐이 실루엣을 넓히므로 툰 사양이 바뀌면 합집합 행도 바뀐다
+    expect(Object.keys(definition.toon.materials).length).toBeGreaterThan(0);
+  });
+
+  it('걸음 값을 하나 고치면 지문이 바뀐다', () => {
+    const definition = bakeDefinition();
+    const walk = definition.frames.walk.map((f, i) =>
+      i === 3 ? { ...f, hips: [f.hips[0], f.hips[1], f.hips[2] + 0.001] } : f,
+    );
+    const nudged = { ...definition, frames: { ...definition.frames, walk } };
+    expect(definitionHash(nudged)).not.toBe(definitionHash(definition));
+  });
+});
+
+describe('staleReasons — 카메라를 잡은 뒤에 입력이 바뀌었는가', () => {
+  const recorded: IBakeInputs = {
+    definition: 'aaa',
+    models: { base: 'm0', topA: 'm1', topB: 'm2' },
+    blender: '5.2.1',
+    vrmAddon: '4.7.1',
+  };
+
+  it('전부 같으면 이유가 없다', () => {
+    expect(staleReasons(recorded, structuredClone(recorded))).toEqual([]);
+  });
+
+  it('굽기 정의가 바뀌면 걸린다', () => {
+    const reasons = staleReasons(recorded, { ...recorded, definition: 'bbb' });
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toMatch(/굽기 정의/);
+  });
+
+  it('모델 판 하나가 바뀌면 그 판의 이름을 말한다', () => {
+    const reasons = staleReasons(recorded, {
+      ...recorded,
+      models: { ...recorded.models, topA: 'changed' },
+    });
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toMatch(/topA/);
+  });
+
+  it('기록에 없던 판을 굽거나 기록된 판이 빠져도 걸린다', () => {
+    expect(
+      staleReasons(recorded, { ...recorded, models: { ...recorded.models, topC: 'm3' } })[0],
+    ).toMatch(/topC/);
+    expect(staleReasons(recorded, { ...recorded, models: { base: 'm0', topA: 'm1' } })[0]).toMatch(
+      /topB/,
+    );
+  });
+
+  it('Blender나 VRM 애드온의 판이 바뀌면 두 판을 함께 말한다', () => {
+    // 도구를 올리면 임포트 결과나 음영 식이 달라질 수 있는데, 키프레임과 모델의 지문은 그대로라 이것 없이는 안 걸린다
+    const blender = staleReasons(recorded, { ...recorded, blender: '5.3.0' });
+    expect(blender[0]).toContain('5.2.1');
+    expect(blender[0]).toContain('5.3.0');
+    const addon = staleReasons(recorded, { ...recorded, vrmAddon: '4.8.0' });
+    expect(addon[0]).toContain('4.7.1');
+    expect(addon[0]).toContain('4.8.0');
   });
 });

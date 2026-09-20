@@ -19,7 +19,16 @@ G3 — 키프레임 정의가 준 자세를 프레임마다 입혀 한 프로세
 
 **재는 값은 모델 좌표로 돌려준다.** 방향(`--yaw`)은 모델을 돌려 만들므로 월드 좌표로 재면 방향마다 축이
 달라진다. G3 §4가 「모델 기준의 좌우 축으로 잰다」고 정한 것도 같은 이유다. 판정은 하지 않는다 — 재는 것은
-실행기(`retired/motion.ts`, G4부터는 생산 굽기 도구)다.
+실행기(`retired/motion.ts`, G4부터는 생산 굽기 도구 `bake.ts`)다.
+
+**G4의 층 굽기도 이 파일이 한다(`--layer`).** `body`는 맨살 판만, `top`은 상의 판(`--top-vrm`)에서 `Tops`
+머티리얼의 면만, `staff` · `shield`는 그 무기만 굽는다. 몸이 아닌 층은 맨살 몸을 가림 전용(Holdout)으로 두어
+몸에 가려진 픽셀이 투명하게 나온다(`probe_layers.py` 머리 주석). `whole`은 받은 판에 받은 무기를 들려 가림 없이
+한 장으로 굽는 기준 컷이고, `--layer`를 안 주면 이것이다. 상의 층은 골격이 둘이라 프레임마다 두 골격에 같은
+자세를 입힌다 — 한쪽만 입히면 상의가 몸에서 떨어진다.
+
+**`--camera`를 주면 몸 상자를 재지 않고 기록된 카메라를 그대로 쓴다.** 생산 굽기는 늘 이 길이다. 이유와
+기록의 모양은 `_common.setup_recorded_camera`에 있다.
 
 돌리는 법과 실패 코드 표는 `tools/blender/README.md`에 있다.
 """
@@ -45,6 +54,12 @@ FOOT_GROUPS = {
     'L': ('J_Bip_L_Foot', 'J_Bip_L_ToeBase'),
     'R': ('J_Bip_R_Foot', 'J_Bip_R_ToeBase'),
 }
+
+# 굽는 층. `whole`은 층이 아니라 가림 없이 한 장으로 굽는 기준 컷이다.
+LAYERS = ('body', 'top', 'staff', 'shield', 'whole')
+
+# 층마다 드는 무기. `whole`은 받은 것을 전부 들고, 몸 · 상의 층은 아무것도 안 든다.
+LAYER_WEAPONS = {'staff': ('staff',), 'shield': ('shield',), 'whole': ('staff', 'shield')}
 
 # 좌표를 돌려주는 본. 발목 좌우 이동 · 머리 흔들림 · 손 위치를 실행기가 잰다.
 REPORT_BONES = (
@@ -187,9 +202,20 @@ def main():
     out_dir = common.parse_arg(args, 'out-dir')
     yaw = float(common.parse_arg(args, 'yaw') or 0.0)
     pitch = float(common.parse_arg(args, 'pitch') or 0.0)
+    layer = common.parse_arg(args, 'layer') or 'whole'
+    top_vrm = common.parse_arg(args, 'top-vrm')
+    camera_path = common.parse_arg(args, 'camera')
 
     if not vrm:
         raise common.GateError('vrm-path', '`-- --vrm <경로>`를 받지 못했다')
+    if layer not in LAYERS:
+        raise common.GateError(
+            'weapon-spec', 'layer는 {0} 중 하나여야 한다 (받은 값 {1})'.format(' · '.join(LAYERS), layer)
+        )
+    if layer == 'top' and not top_vrm:
+        raise common.GateError('vrm-path', '상의 층에는 `--top-vrm <경로>`가 필요하다')
+    if camera_path and not os.path.exists(camera_path):
+        raise common.GateError('camera-record', '카메라 기록이 없다: {0}'.format(camera_path))
     if not frames_path or not os.path.exists(frames_path):
         raise common.GateError(
             'motion-path', '키프레임 정의 JSON이 없다: {0} — `MotionSpec.ts`의 값을 JSON으로 써서 넘기는 실행기를 거쳐 부른다'.format(frames_path)
@@ -220,6 +246,12 @@ def main():
     common.assert_version()
     engine = common.pick_eevee()
 
+    record = None
+    if camera_path:
+        with open(camera_path, encoding='utf-8') as handle:
+            record = json.load(handle)
+        common.assert_camera_record(record)
+
     armature = common.import_vrm(vrm)
     # 모델 축 = 월드 축이어야 `apply_model_delta_pose`의 각도와 `measure`의 좌표가 계획대로 읽힌다
     identity = Matrix.Identity(4)
@@ -233,30 +265,64 @@ def main():
         raise common.GateError('vrm-path', '`Body` 메시가 없다 — 발바닥을 잴 수 없다')
     feet = foot_vertex_indices(body)
 
+    detail = {}
+    armatures = [armature]
+    # 상의 층은 상의 판을 하나 더 들여와 `Tops` 머티리얼의 면만 남긴다(`probe_layers.keep_only_materials`의
+    # 주석이 이유를 든다). 얼굴 · 머리카락은 맨살 판 것이 이미 있으므로 지운다 — 두 벌을 겹치면 같은 자리에
+    # 두 번 그려져 알파 경계가 두꺼워진다.
+    if layer == 'top':
+        top_armature, added = common.append_vrm(top_vrm)
+        armatures.append(top_armature)
+        kept = 0
+        for obj in added:
+            if obj.type != 'MESH':
+                continue
+            if obj.name.startswith('Body'):
+                kept = probe.keep_only_materials(obj, 'Tops')
+            else:
+                bpy.data.objects.remove(obj, do_unlink=True)
+        detail['top_faces'] = kept
+
     # 기준 자세(팔 · 손가락)로 몸 상자를 잰다. 카메라는 걷는 자세가 아니라 이 자세에 맞춘다 — 후보마다
     # 카메라가 달라지면 나란히 놓았을 때 인물 크기가 후보마다 다르다. 걷기의 오르내림은 층 캔버스 여백이 받는다.
-    common.apply_world_delta_pose(armature, retarget.BASE_ARM_POSE, retarget.BASE_POSE_ORDER)
-    common.apply_local_pose(armature, retarget.BASE_FINGER_POSE, 'XYZ')
+    # (기록된 카메라를 받으면 이 상자는 쓰지 않는다.)
+    for each in armatures:
+        common.apply_world_delta_pose(each, retarget.BASE_ARM_POSE, retarget.BASE_POSE_ORDER)
+        common.apply_local_pose(each, retarget.BASE_FINGER_POSE, 'XYZ')
     bpy.context.view_layer.update()
     body_lo, body_hi = common.object_bounds(body_objects)
 
     if yaw:
-        armature.matrix_world = Matrix.Rotation(radians(yaw), 4, 'Z') @ armature.matrix_world
+        for each in armatures:
+            each.matrix_world = Matrix.Rotation(radians(yaw), 4, 'Z') @ each.matrix_world
     bpy.context.view_layer.update()
 
     # 무기는 기준 자세의 손에 붙이고, 손에서 무기 원점까지의 거리를 기억해 프레임마다 다시 놓는다
     carried = []
     for kind, flag in (('staff', 'staff-spec'), ('shield', 'shield-spec')):
+        if kind not in LAYER_WEAPONS.get(layer, ()):
+            continue
         path = common.parse_arg(args, flag)
         if not path:
-            continue
+            # 기준 컷은 받은 무기만 든다. 무기 층은 그 무기가 곧 내용이라 사양이 없으면 구울 것이 없다
+            if layer == 'whole':
+                continue
+            raise common.GateError('weapon-spec', '{0} 층에는 `--{1} <경로>`가 필요하다'.format(layer, flag))
         with open(path, encoding='utf-8') as handle:
             weapon = probe.attach_weapon(armature, json.load(handle), probe.WEAPON_HAND[kind], yaw)
         hand = armature.pose.bones[probe.WEAPON_HAND[kind]]
         offset = weapon.matrix_world.translation - (armature.matrix_world @ hand.head)
         carried.append((weapon, hand, offset.copy()))
 
-    detail = {}
+    # 몸이 아닌 층은 맨살 몸을 가림 전용으로 둔다. `--no-holdout`은 층이 비어 나올 때 가려져서인지 애초에
+    # 없어서인지를 가르는 수단이다 — 둘은 고칠 곳이 완전히 다르다.
+    skip_holdout = common.parse_arg(args, 'no-holdout') is not None
+    held_out = 0
+    if layer in ('top', 'staff', 'shield') and not skip_holdout:
+        held_out = probe.move_to_holdout(body_objects)
+    detail['held_out_objects'] = held_out
+
+    # 툰 사양은 무기를 붙인 **뒤에** 입힌다. 앞에서 입히면 뒤에 세운 부품만 Principled BSDF로 남는다
     toon_path = common.parse_arg(args, 'toon')
     toon_spec = None
     if toon_path:
@@ -265,11 +331,16 @@ def main():
         detail['toon'] = toon_spec.get('id')
         detail['toon_materials'] = len(toon.apply_to_materials(toon_spec))
 
-    camera = common.setup_camera(
-        body_lo, body_hi, base_width, base_height, foot_row=foot_row, head_row=head_row, pitch=pitch
-    )
-    per_pixel = (body_hi.z - body_lo.z) / float(foot_row - head_row)
-    camera.data.ortho_scale = per_pixel * max(layer_width, layer_height)
+    if record is not None:
+        camera = common.setup_recorded_camera(record, layer_width, layer_height)
+        per_pixel = record['per_pixel_m']
+        pitch = record['pitch_deg']
+    else:
+        camera = common.setup_camera(
+            body_lo, body_hi, base_width, base_height, foot_row=foot_row, head_row=head_row, pitch=pitch
+        )
+        per_pixel = (body_hi.z - body_lo.z) / float(foot_row - head_row)
+        camera.data.ortho_scale = per_pixel * max(layer_width, layer_height)
     if toon_spec is None or toon.setup_lights(toon_spec) is None:
         common.setup_lights()
 
@@ -280,7 +351,8 @@ def main():
 
     measured = []
     for frame in frames:
-        apply_frame(armature, frame)
+        for each in armatures:
+            apply_frame(each, frame)
         for weapon, hand, offset in carried:
             placed = weapon.matrix_world.copy()
             placed.translation = (armature.matrix_world @ hand.head) + offset
@@ -300,7 +372,9 @@ def main():
     payload = {
         'gate': 'g3-motion',
         'id': definition.get('id'),
+        'layer': layer,
         'blender': bpy.app.version_string,
+        'vrm_addon': common.vrm_addon_version(),
         'engine': engine,
         'yaw': yaw,
         'pitch': pitch,

@@ -107,18 +107,8 @@ def shading_path(bpy):
 
 
 def addon_version():
-    """켜진 VRM 애드온의 판. 확장 매니페스트에서 읽고, 없으면 `None`."""
-    module = common.vrm_addon_module()
-    if module is None:
-        return None
-    manifest = os.path.join(os.path.dirname(import_module(module).__file__), 'blender_manifest.toml')
-    if not os.path.exists(manifest):
-        return None
-    with open(manifest, encoding='utf-8') as handle:
-        for line in handle:
-            if line.strip().startswith('version'):
-                return line.split('=', 1)[1].strip().strip('"')
-    return None
+    """켜진 VRM 애드온의 판. 읽는 길은 `_common.vrm_addon_version`이 든다 — 생산 굽기도 같은 값을 기록한다."""
+    return common.vrm_addon_version()
 
 
 def main():
