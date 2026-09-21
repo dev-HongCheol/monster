@@ -21,6 +21,9 @@
  *   compare           층을 게임의 순서(방향마다 다르다 — `LayerBake.ts`의 `STACK_ORDER`)로 겹친 그림을 기준 컷과
  *                     견줘 구멍과 앞에 잘못 보인 픽셀을 센다. 굽지 않는다. 층이나 기준 컷이 지금 입력으로 구운
  *                     것이 아니면 재지 않는다. `--same-order`를 주면 모든 방향을 정면의 순서로 겹쳐 잰다
+ *   atlas             구운 층을 층 × 동작 단위로 아틀라스(PNG + cocos2d 포맷 2 plist)에 담아
+ *                     `docs/temp/3d-gate/g4/atlas/`에 쓰고, 원본 크기 · 프레임 수 · 왕복을 검사한 뒤 바이트를 찍는다.
+ *                     굽지 않는다. 게임 폴더에는 넣지 않는다
  *
  *   --model-dir <폴더>  생산 `.vrm` 셋(`player_base` · `player_top_a` · `player_top_b`)이 있는 폴더.
  *                     커밋하지 않는 파일이라 장비마다 자리가 다를 수 있다
@@ -39,12 +42,23 @@ import {
   unionRowCheck,
 } from '../../tests/helpers/FrameSet.ts';
 import { type IRgbaImage, visibleBox } from '../../tests/helpers/SpriteMetrics.ts';
-import { decodePng } from '../art/PngCodec.ts';
-import { frameName, parseFrameName } from './Atlas.ts';
+import { decodePng, encodePng } from '../art/PngCodec.ts';
+import { normalizeAlpha } from '../art/Postprocess.ts';
+import {
+  buildAtlas,
+  checkFrameCounts,
+  checkSourceSizes,
+  frameName,
+  type IAtlasEntry,
+  parseFrameName,
+  restoreFrame,
+  writePlist,
+} from './Atlas.ts';
 import { CHOSEN_WEAPONS, MODEL_HEIGHT_M, writeChosenSpecs } from './BakeSpec.ts';
 import { runBlender, runPool, writeJson } from './BlenderRun.ts';
 import {
   alphaOverlap,
+  atlasGroups,
   BAKE_ACTIONS,
   BAKE_FACINGS,
   BAKE_LAYERS,
@@ -900,6 +914,106 @@ function commandCompare(): void {
 }
 
 /**
+ * 아틀라스를 담는 설정(G4 §6). 가로 상한 2048은 몸 걷기 32장이 한 장에 들어가는 크기이고, 여백 2px은 가장자리를
+ * 1px 늘려 둔 것(extrude)이 이웃 칸에 닿지 않는 최소값이다. 밉맵을 켜는 판은 축소 단계에서 이웃 프레임이 번지므로
+ * 여백을 8로 늘려야 한다 — 그 비교는 Cocos 임포트 때 한다.
+ */
+const ATLAS_PACK = { maxWidth: 2048, padding: 2 };
+
+/**
+ * 구운 층을 층 × 동작 단위로 아틀라스에 담고, 담은 것을 검사한 뒤 바이트를 찍는다. 굽지 않는다. 산출물은
+ * 추적하지 않는 `docs/temp/3d-gate/g4/atlas/`에 쓴다 — 게임 폴더에 넣는 것은 용량 판단(G4 §8) 뒤의 일이다.
+ *
+ * 검사는 셋이다. 원본 크기가 그 층이 선언한 캔버스인가(`checkSourceSizes`), 층별 (방향, 동작) 프레임 수가
+ * 같은가(`checkFrameCounts`), plist에 적은 값만으로 되돌린 프레임이 담기 전과 바이트까지 같은가(`restoreFrame`).
+ * 셋째가 실제 그림에서 `offset`의 부호와 반 픽셀을 붙든다 — 틀리면 판정은 통과하는데 게임 안 발치만 어긋난다.
+ */
+function commandAtlas(): void {
+  const record = readCameraRecord();
+  const stamp = bakeStamp(record.inputs, CHOSEN_WEAPONS);
+  const layersDir = path.join(ROOT, SCRATCH, 'layers');
+  const outDir = path.join(ROOT, SCRATCH, 'atlas');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const problems: string[] = [];
+  const entries: IAtlasEntry[] = [];
+  const rows: Record<string, unknown>[] = [];
+  const bytesByLayer = new Map<string, number>();
+  let gpuBytes = 0;
+  for (const group of atlasGroups()) {
+    const inputs = group.frames.map((frame) => {
+      const dir = path.join(layersDir, group.layer, frame.facing);
+      assertStamp(dir, stamp, 'bake.ts layers');
+      return { name: frame.name, image: readFrame(dir, frame.name) };
+    });
+    const atlas = buildAtlas(inputs, ATLAS_PACK);
+    for (const [i, entry] of atlas.entries.entries()) {
+      // 작성기가 트림 전에 옅은 알파를 누르므로 담기 전 그림도 같은 잣대로 눌러 견준다
+      const before = normalizeAlpha(inputs[i].image, { faintUpTo: CONTENT_ALPHA - 1 });
+      const after = restoreFrame(atlas.image, entry);
+      if (Buffer.compare(Buffer.from(before.data), Buffer.from(after.data)) !== 0) {
+        problems.push(`${entry.name}: plist 값으로 되돌린 프레임이 담기 전과 다르다`);
+      }
+    }
+    entries.push(...atlas.entries);
+
+    const png = encodePng(atlas.image);
+    const textureFileName = `${group.id}.png`;
+    fs.writeFileSync(path.join(outDir, textureFileName), png);
+    const plist = writePlist(atlas.entries, {
+      textureFileName,
+      textureSize: { width: atlas.image.width, height: atlas.image.height },
+    });
+    fs.writeFileSync(path.join(outDir, `${group.id}.plist`), plist, 'utf-8');
+
+    const bytes = png.length + Buffer.byteLength(plist, 'utf-8');
+    bytesByLayer.set(group.layer, (bytesByLayer.get(group.layer) ?? 0) + bytes);
+    gpuBytes += atlas.image.width * atlas.image.height * 4;
+    rows.push({
+      id: group.id,
+      frames: inputs.length,
+      width: atlas.image.width,
+      height: atlas.image.height,
+      pngBytes: png.length,
+      plistBytes: Buffer.byteLength(plist, 'utf-8'),
+    });
+    console.log(
+      `  ${group.id.padEnd(12)} ${String(inputs.length).padStart(2)}장 · ${atlas.image.width}×${atlas.image.height} · PNG ${(png.length / 1024).toFixed(0)}KB`,
+    );
+  }
+
+  const declared = Object.fromEntries(
+    BAKE_LAYERS.map((layer) => [layer, layerCanvas(layer, record.bodyCanvas)]),
+  );
+  problems.push(...checkSourceSizes(entries, PLAYER_FRAME_SPEC, declared));
+  problems.push(...checkFrameCounts(entries.map((entry) => entry.name)));
+
+  let total = 0;
+  for (const [layer, bytes] of bytesByLayer) {
+    total += bytes;
+    console.log(`  ${layer.padEnd(6)} 합계 ${(bytes / 1024).toFixed(0)}KB`);
+  }
+  console.log(
+    `파일 ${rows.length * 2}개(PNG · plist) · 합계 ${(total / 1024 / 1024).toFixed(2)}MB · GPU 메모리(RGBA) ${(gpuBytes / 1024 / 1024).toFixed(1)}MB`,
+  );
+  writeJson(path.join(outDir, 'report.json'), {
+    pack: ATLAS_PACK,
+    atlases: rows,
+    bytesByLayer: Object.fromEntries(bytesByLayer),
+    totalBytes: total,
+    gpuBytes,
+    problems,
+  });
+
+  if (problems.length > 0) {
+    for (const problem of problems) console.error(`✗ ${problem}`);
+    throw new Error(`아틀라스 검사 ${problems.length}건이 떨어졌다`);
+  }
+  console.log(`✓ ${SCRATCH}/atlas — 원본 크기 · 프레임 수 · 왕복 검사를 통과했다`);
+}
+
+/**
  * 구운 층을 게임의 형제 순서로 겹쳐 재생하는 화면을 쓴다. 굽지 않는다 — `layers`가 구운 그림을 읽는다.
  *
  * 돌아서는 모습과 층끼리의 가림은 그림 한 장으로 판정할 수 없어서, 사람이 브라우저에서 방향 · 상의 · 무기를
@@ -953,8 +1067,9 @@ async function main(): Promise<void> {
   if (command === 'overlap') return commandOverlap();
   if (command === 'reference') return commandReference();
   if (command === 'compare') return commandCompare();
+  if (command === 'atlas') return commandAtlas();
   throw new Error(
-    `명령을 모른다: ${command ?? '(없음)'} — camera · layers · preview · overlap · reference · compare 중 하나를 준다`,
+    `명령을 모른다: ${command ?? '(없음)'} — camera · layers · preview · overlap · reference · compare · atlas 중 하나를 준다`,
   );
 }
 

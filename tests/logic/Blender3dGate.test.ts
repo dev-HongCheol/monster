@@ -55,6 +55,7 @@ import {
 import {
   actionFrames,
   alphaOverlap,
+  atlasGroups,
   BAKE_FACINGS,
   BAKE_LAYERS,
   bakeDefinition,
@@ -2215,6 +2216,42 @@ describe('stackOrder — 방향마다 층을 겹치는 순서', () => {
       expect(order[0]).toBe('body');
       expect([...order].sort()).toEqual(['body', 'shield', 'staff', 'top']);
     }
+  });
+});
+
+describe('atlasGroups — 구운 프레임을 층 × 동작 단위로 묶는다', () => {
+  it('층 다섯 × 동작 둘이라 열 묶음이다', () => {
+    const groups = atlasGroups();
+
+    expect(groups).toHaveLength(BAKE_LAYERS.length * 2);
+    expect(new Set(groups.map((group) => group.id)).size).toBe(groups.length);
+    expect(groups.map((group) => group.id)).toContain('body_walk');
+    expect(groups.map((group) => group.id)).toContain('shield_idle');
+  });
+
+  it('한 묶음에 네 방향의 그 동작 프레임이 전부 들어간다', () => {
+    // 방향까지 나누면 아틀라스가 마흔 개로 늘어 빌드 파일이 불어난다(G4 §6)
+    for (const group of atlasGroups()) {
+      const count =
+        group.action === 'walk' ? CHOSEN_MOTION.walkFrames : IDLE_PLAYBACK.phases.length;
+      expect(group.frames).toHaveLength(BAKE_FACINGS.length * count);
+      for (const frame of group.frames) {
+        expect(parseFrameName(frame.name)).toMatchObject({
+          layer: group.layer,
+          action: group.action,
+          facing: frame.facing,
+        });
+      }
+    }
+  });
+
+  it('묶음을 다 합치면 굽는 프레임 전부이고 겹치는 이름이 없다', () => {
+    // 빠진 프레임은 게임이 그 이름을 못 찾아 직전 프레임에 멈추고, 겹친 이름은 plist에서 뒤엣것이 앞엣것을 덮는다
+    const packed = atlasGroups().flatMap((group) => group.frames.map((frame) => frame.name));
+    const baked = layerBakeJobs().flatMap((job) => job.frames.map((frame) => frame.name));
+
+    expect(new Set(packed).size).toBe(packed.length);
+    expect([...packed].sort()).toEqual([...baked].sort());
   });
 });
 

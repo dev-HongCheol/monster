@@ -108,6 +108,39 @@ function namedFrames(layer: string, facing: BakeFacing): INamedFrame[] {
   );
 }
 
+/** 아틀라스 한 장에 담는 묶음 — 한 층의 한 동작, 네 방향 전부. */
+export interface IAtlasGroup {
+  /** 아틀라스 파일의 이름(확장자 없음). `<층>_<동작>`이다 */
+  id: string;
+  layer: BakeLayer;
+  action: BakeAction;
+  /** 담는 프레임. 방향 순서대로, 한 방향 안에서는 번호 순서대로다 */
+  frames: { facing: BakeFacing; name: string }[];
+}
+
+/**
+ * 구운 프레임을 아틀라스 단위로 묶는다. 단위는 층 × 동작이다(G4 §6).
+ *
+ * 방향까지 나누면 아틀라스가 마흔 개로 늘어 빌드 파일이 불어나고, 층 하나로 합치면 몸 층이 2048 텍스처를 넘는다.
+ * 이름은 굽기 일감과 같은 함수(`frameName`)에서 낸다 — 묶음의 이름이 구운 파일의 이름과 갈리면 그 프레임은
+ * 아틀라스에서 빠지고, 게임은 그 이름을 못 찾아 직전 프레임에 멈춘다.
+ */
+export function atlasGroups(): IAtlasGroup[] {
+  const groups: IAtlasGroup[] = [];
+  for (const layer of BAKE_LAYERS) {
+    for (const action of BAKE_ACTIONS) {
+      const frames = BAKE_FACINGS.flatMap((facing) =>
+        actionFrames(action).map((_, index) => ({
+          facing: facing.id,
+          name: frameName(layer, action, facing.id, index),
+        })),
+      );
+      groups.push({ id: `${layer}_${action}`, layer, action, frames });
+    }
+  }
+  return groups;
+}
+
 /** 기준 컷의 프레임 이름에서 층 자리에 오는 말. 굽는 쪽의 `--layer whole`과 같다. */
 export const REFERENCE_LAYER = 'whole';
 
