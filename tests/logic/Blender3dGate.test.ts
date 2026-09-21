@@ -78,6 +78,7 @@ import {
   stackVerdict,
   staleReasons,
 } from '../../tools/blender/LayerBake';
+import { type IModelDump, matchModels } from '../../tools/blender/ModelMatch';
 import {
   bump,
   CHOSEN_GAIT,
@@ -2283,5 +2284,102 @@ describe('referenceBakeJobs — 기준 컷은 층과 같은 자세를 한 장으
         like?.frames.map((f) => f.name.replace(/^body_/, 'whole_')),
       );
     }
+  });
+});
+
+describe('matchModels — 두 판이 같은 몸인가', () => {
+  const SKIN = 'N00_000_00_Body_00_SKIN (Instance)';
+  const BONES = ['J_Bip_C_Hips', 'J_Bip_C_Head', 'J_Bip_L_Hand'];
+
+  /** 덤프 하나를 짠다. 맨살 점은 `skin`, 상의 점은 `tops`로 받는다 */
+  function dump(over: {
+    bones?: string[];
+    skin?: string[];
+    tops?: string[];
+    face?: string;
+    hair?: string | null;
+  }): IModelDump {
+    const byMaterial: Record<string, string[]> = {
+      [SKIN]: over.skin ?? ['0,0,0', '0,0,1', '0,1,0'],
+    };
+    if (over.tops) byMaterial['N00_004_01_Tops_01_CLOTH (Instance)'] = over.tops;
+    const meshes: IModelDump['meshes'] = [
+      { name: 'Body', vertices: 3, digest: 'body', byMaterial },
+      { name: 'Face', vertices: 2, digest: over.face ?? 'face', byMaterial: {} },
+    ];
+    if (over.hair !== null) {
+      meshes.push({ name: 'Hair', vertices: 2, digest: over.hair ?? 'hair', byMaterial: {} });
+    }
+    return { vrm: 'x.vrm', bones: over.bones ?? BONES, meshes };
+  }
+
+  it('같은 몸이면 문제가 없고 코어 본 수와 맨살 점 수를 돌려준다', () => {
+    const match = matchModels(dump({}), dump({}));
+
+    expect(match.problems).toEqual([]);
+    expect(match).toMatchObject({ coreBones: 3, skinInLess: 3, skinInMore: 3, skinRemoved: 0 });
+  });
+
+  it('옷을 더 입은 판의 맨살이 덜 입은 판의 부분집합이면 통과하고, 지워진 점을 센다', () => {
+    // VRoid는 옷 아래의 살을 지운 채 내보낸다. 그래서 정점 수는 판마다 다른 것이 정상이고, 같은 몸인지는
+    // 「더 입은 판에 남은 살이 전부 덜 입은 판에도 있는가」로 본다(G1 실측 — 흰 티 아래 708점, 나시 아래 327점)
+    const less = dump({ skin: ['0,0,0', '0,0,1', '0,1,0', '1,0,0'] });
+    const more = dump({ skin: ['0,0,0', '0,1,0'], tops: ['5,5,5'] });
+
+    const match = matchModels(less, more);
+
+    expect(match.problems).toEqual([]);
+    expect(match.skinRemoved).toBe(2);
+    expect(match.skinOutside).toBe(0);
+  });
+
+  it('더 입은 판에만 있는 맨살 점이 있으면 걸린다', () => {
+    // 모든 층이 덜 입은 판을 가림 전용 몸으로 쓴다. 더 입은 판의 살이 그 밖으로 나가 있으면 가림이 그만큼
+    // 어긋나 구멍이나 겹침이 생기는데, 굽기는 끝까지 돌고 그림도 멀쩡해 보인다
+    const less = dump({ skin: ['0,0,0', '0,0,1'] });
+    const more = dump({ skin: ['0,0,0', '9,9,9'] });
+
+    const match = matchModels(less, more);
+
+    expect(match.skinOutside).toBe(1);
+    expect(match.problems).toHaveLength(1);
+    expect(match.problems[0]).toMatch(/1개/);
+  });
+
+  it('코어 본이 한쪽에만 있으면 그 이름을 말한다', () => {
+    const match = matchModels(dump({}), dump({ bones: ['J_Bip_C_Hips', 'J_Bip_C_Head'] }));
+
+    expect(match.problems).toHaveLength(1);
+    expect(match.problems[0]).toContain('J_Bip_L_Hand');
+  });
+
+  it('흔들림 본이 다른 것은 문제가 아니다 — 옷마다 붙는 수가 다르다', () => {
+    const match = matchModels(
+      dump({}),
+      dump({ bones: [...BONES, 'J_Sec_L_TopsUpperArm_01', 'J_Sec_Hair1_03'] }),
+    );
+
+    expect(match.problems).toEqual([]);
+    expect(match.coreBones).toBe(3);
+  });
+
+  it('얼굴이나 머리카락의 좌표 지문이 다르면 걸린다', () => {
+    // 화면에 보이는 얼굴 · 머리카락은 맨살 판의 것이고 상의 층만 다른 판에서 온다. 두 판의 머리가 다르면
+    // 상의 층이 다른 머리에 가려진 채로 구워진다
+    expect(matchModels(dump({}), dump({ face: 'other' })).problems[0]).toMatch(/Face/);
+    expect(matchModels(dump({}), dump({ hair: 'other' })).problems[0]).toMatch(/Hair/);
+  });
+
+  it('메시가 한쪽에 없으면 걸린다', () => {
+    expect(matchModels(dump({}), dump({ hair: null })).problems[0]).toMatch(/Hair/);
+  });
+
+  it('맨살 머티리얼을 못 찾으면 통과시키지 않는다', () => {
+    // 빈 집합은 무엇의 부분집합이기도 하다. 머티리얼 이름이 바뀌어 맨살을 못 고른 것을 「같은 몸」으로 읽으면
+    // 이 검사는 아무것도 안 보면서 통과만 한다
+    const blank = dump({});
+    blank.meshes[0].byMaterial = { 'N00_001_01_Bottoms_01_CLOTH (Instance)': ['0,0,0'] };
+
+    expect(matchModels(dump({}), blank).problems[0]).toMatch(/맨살/);
   });
 });
