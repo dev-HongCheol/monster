@@ -570,6 +570,64 @@ export function stackVerdict(
   return { holes, misdrawn, unmatched, fringe };
 }
 
+/** 굽는 쪽이 프레임마다 돌려주는 장비의 자리 — 모델 좌표(m). */
+export interface IGearFrame {
+  gear: Record<
+    string,
+    {
+      /** 장비가 붙은 본 */
+      bone: string;
+      /** 장비의 원점 */
+      origin: number[];
+      /** 장비 위의 한 점(원점에서 장비의 로컬 +z로 0.1m) */
+      up: number[];
+      /** 붙은 본의 머리와 꼬리 */
+      head: number[];
+      tail: number[];
+    }
+  >;
+}
+
+/** `gearFollow`의 결과. */
+export interface IGearFollow {
+  /** 장비의 두 점에서 본의 두 끝까지, 네 거리가 프레임 사이에 벌어진 폭 가운데 가장 큰 것(m). 0이어야 한다 */
+  spread: number;
+  /** 장비의 원점이 첫 프레임에서 가장 멀리 간 거리(m). 다리에 붙은 장비가 걷는 동안 0이면 안 따라간 것이다 */
+  travel: number;
+}
+
+/**
+ * 장비가 붙은 본을 회전까지 따라갔는지를 굽는 쪽이 돌려준 점 넷으로 잰다.
+ *
+ * 본을 강체로 따라간 장비는 그 위의 어느 점이든 본의 머리 · 꼬리에서 늘 같은 거리에 있다. **원점 하나만 봐서는
+ * 회전이 안 드러난다** — 무기를 옮기는 식(본 머리에 거리만 더한다)으로 따라간 장비도 원점은 본 머리에서 늘 같은
+ * 거리에 있는데, 그 장비는 본이 돌아도 곧게 서 있어서 굽은 정강이를 부츠가 뚫고 나온다. 장비 위의 둘째 점과 본의
+ * 꼬리까지 넣어야 그 경우에 거리가 변한다. 굽는 쪽은 파이썬이라 어떤 검사에도 안 걸리므로 판정을 여기 둔다.
+ *
+ * @param frames 굽는 쪽이 돌려준 프레임들
+ * @param gear 볼 장비의 이름
+ * @throws 그 이름의 장비가 없는 프레임이 있으면
+ */
+export function gearFollow(frames: readonly IGearFrame[], gear: string): IGearFollow {
+  const distance = (a: readonly number[], b: readonly number[]): number =>
+    Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+  const gaps: number[][] = [[], [], [], []];
+  let travel = 0;
+  for (const [index, frame] of frames.entries()) {
+    const at = frame.gear[gear];
+    if (!at) throw new Error(`gearFollow: ${index}번 프레임에 장비 ${gear}가 없다`);
+    gaps[0].push(distance(at.origin, at.head));
+    gaps[1].push(distance(at.origin, at.tail));
+    gaps[2].push(distance(at.up, at.head));
+    gaps[3].push(distance(at.up, at.tail));
+    const first = frames[0].gear[gear];
+    if (first) travel = Math.max(travel, distance(at.origin, first.origin));
+  }
+  const spread = Math.max(...gaps.map((each) => Math.max(...each) - Math.min(...each)));
+  return { spread, travel };
+}
+
 /** 굽기 결과를 바꾸는 입력의 지문 — 카메라 기록에 적어 두고 굽기 전에 지금 입력과 견준다. */
 export interface IBakeInputs {
   /** `bakeDefinition()`의 지문 */

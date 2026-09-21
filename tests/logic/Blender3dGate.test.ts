@@ -65,8 +65,10 @@ import {
   centerOnCanvas,
   definitionHash,
   fitCamera,
+  gearFollow,
   type IBakeInputs,
   type ICameraPose,
+  type IGearFrame,
   layerBakeJobs,
   layerCanvas,
   layerSetCheck,
@@ -2381,5 +2383,49 @@ describe('matchModels — 두 판이 같은 몸인가', () => {
     blank.meshes[0].byMaterial = { 'N00_001_01_Bottoms_01_CLOTH (Instance)': ['0,0,0'] };
 
     expect(matchModels(dump({}), blank).problems[0]).toMatch(/맨살/);
+  });
+});
+
+describe('gearFollow — 장비가 붙은 본을 회전까지 따라갔는가', () => {
+  /** 무릎(머리)을 축으로 앞뒤 평면에서 `deg`만큼 굽은 정강이와, 그 본에 붙은 장비의 한 프레임 */
+  function shinFrame(deg: number, rigid: boolean): IGearFrame {
+    const t = (deg * Math.PI) / 180;
+    const head = [0.1, 0, 0.5 + deg * 0.001];
+    // 본의 축은 아래(−z)를 향하고 y-z 평면에서 돈다
+    const along = (len: number, side: number) => [
+      head[0],
+      head[1] + len * Math.sin(t) + side * Math.cos(t),
+      head[2] - len * Math.cos(t) + side * Math.sin(t),
+    ];
+    const tail = along(0.4, 0);
+    const origin = rigid ? along(0.2, 0.05) : [head[0], head[1] + 0.05, head[2] - 0.2];
+    const up = rigid ? along(0.1, 0.05) : [origin[0], origin[1], origin[2] + 0.1];
+    return { gear: { boot: { bone: 'J_Bip_L_LowerLeg', origin, up, head, tail } } };
+  }
+  const swing = [0, 20, 45, 10];
+
+  it('본을 회전까지 따라간 장비는 본의 두 끝에서 늘 같은 거리에 있다', () => {
+    const follow = gearFollow(
+      swing.map((deg) => shinFrame(deg, true)),
+      'boot',
+    );
+
+    expect(follow.spread).toBeLessThan(1e-9);
+    expect(follow.travel).toBeGreaterThan(0.05);
+  });
+
+  it('위치만 따라간 장비는 본이 돌 때 꼬리와의 거리가 변한다', () => {
+    // 무기를 옮기는 식(손 위치에 거리만 더한다)을 장비에 쓰면 이렇게 된다. 부츠가 곧게 선 채로 굽은
+    // 정강이를 뚫고 나오는데, 원점은 무릎에서 늘 같은 거리라 원점만 봐서는 드러나지 않는다
+    const follow = gearFollow(
+      swing.map((deg) => shinFrame(deg, false)),
+      'boot',
+    );
+
+    expect(follow.spread).toBeGreaterThan(0.01);
+  });
+
+  it('그 이름의 장비가 없는 프레임이 있으면 던진다', () => {
+    expect(() => gearFollow([shinFrame(0, true), { gear: {} }], 'boot')).toThrow(/boot/);
   });
 });

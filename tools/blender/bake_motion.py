@@ -30,6 +30,18 @@ G3 — 키프레임 정의가 준 자세를 프레임마다 입혀 한 프로세
 **`--camera`를 주면 몸 상자를 재지 않고 기록된 카메라를 그대로 쓴다.** 생산 굽기는 늘 이 길이다. 이유와
 기록의 모양은 `_common.setup_recorded_camera`에 있다.
 
+**장비(`--gear-spec`)는 무기와 달리 붙은 본을 회전까지 그대로 따라간다.** 무기는 손이 어디로 가든 곧게 서 있어야
+해서 위치만 옮기지만, 부츠나 다리에 붙는 조각은 정강이가 굽으면 함께 기울어야 한다. 위치만 옮기면 걷는 동안
+부츠가 곧게 선 채로 다리를 뚫고 나온다. 그래서 기준 자세에서 세운 뒤 「본에서 본 장비의 자리」를 기억해 두고,
+프레임마다 그 본의 지금 자세에 그 자리를 다시 곱한다. 본에 부모로 붙이지 않는 이유는 `probe_layers.attach_weapon`의
+주석에 있다(본의 꼬리가 원점이 되어 자리가 밀린다). 사양은 조각 하나(`bone` · `parts`)이거나 조각 여럿
+(`pieces`)이다 — 두 다리에 따로 붙는 부츠처럼 본이 여럿인 장비가 있어서다. `gear` 층은 맨살 몸을 가림 전용으로
+두고 장비만 굽고, `whole`은 받은 장비를 함께 굽는다. G4 §12의 슬롯 범위 탐침이 쓴다.
+
+**`top` 층이 남기는 머티리얼은 `--keep-material`로 바꾼다(기본 `Tops`).** 하의 · 신발도 상의처럼 `Body` 메시
+안에 머티리얼로만 갈려 있어서, 옷을 전부 끈 판을 몸으로 두고 맨살 판에서 `Bottoms`나 `Shoes`의 면만 가져오면
+그 층이 된다.
+
 돌리는 법과 실패 코드 표는 `tools/blender/README.md`에 있다.
 """
 
@@ -56,7 +68,10 @@ FOOT_GROUPS = {
 }
 
 # 굽는 층. `whole`은 층이 아니라 가림 없이 한 장으로 굽는 기준 컷이다.
-LAYERS = ('body', 'top', 'staff', 'shield', 'whole')
+LAYERS = ('body', 'top', 'staff', 'shield', 'gear', 'whole')
+
+# 맨살 몸을 가림 전용으로 두고 굽는 층. 몸 층과 기준 컷만 빠진다.
+HELD_OUT_LAYERS = ('top', 'staff', 'shield', 'gear')
 
 # 층마다 드는 무기. `whole`은 받은 것을 전부 들고, 몸 · 상의 층은 아무것도 안 든다.
 LAYER_WEAPONS = {'staff': ('staff',), 'shield': ('shield',), 'whole': ('staff', 'shield')}
@@ -147,6 +162,17 @@ def foot_vertex_indices(body):
     return found
 
 
+def gear_pieces(spec):
+    """장비 사양을 조각의 목록으로 편다. 조각 하나짜리 사양(`bone` · `parts`)과 여럿짜리(`pieces`)를 둘 다 받는다."""
+    pieces = spec.get('pieces') or [spec]
+    for piece in pieces:
+        if not piece.get('bone'):
+            raise common.GateError(
+                'weapon-spec', '장비 조각에 붙일 본(`bone`)이 없다: {0}'.format(piece.get('id', '(이름 없음)'))
+            )
+    return pieces
+
+
 def measure(armature, body, feet):
     """
     지금 자세에서 본 위치와 발바닥을 모델 좌표로 잰다.
@@ -204,6 +230,8 @@ def main():
     pitch = float(common.parse_arg(args, 'pitch') or 0.0)
     layer = common.parse_arg(args, 'layer') or 'whole'
     top_vrm = common.parse_arg(args, 'top-vrm')
+    keep_material = common.parse_arg(args, 'keep-material') or 'Tops'
+    gear_spec_path = common.parse_arg(args, 'gear-spec')
     camera_path = common.parse_arg(args, 'camera')
 
     if not vrm:
@@ -214,6 +242,10 @@ def main():
         )
     if layer == 'top' and not top_vrm:
         raise common.GateError('vrm-path', '상의 층에는 `--top-vrm <경로>`가 필요하다')
+    if layer == 'gear' and not gear_spec_path:
+        raise common.GateError('weapon-spec', 'gear 층에는 `--gear-spec <경로>`가 필요하다')
+    if gear_spec_path and not os.path.exists(gear_spec_path):
+        raise common.GateError('weapon-spec', '장비 사양이 없다: {0}'.format(gear_spec_path))
     if camera_path and not os.path.exists(camera_path):
         raise common.GateError('camera-record', '카메라 기록이 없다: {0}'.format(camera_path))
     if not frames_path or not os.path.exists(frames_path):
@@ -278,10 +310,11 @@ def main():
             if obj.type != 'MESH':
                 continue
             if obj.name.startswith('Body'):
-                kept = probe.keep_only_materials(obj, 'Tops')
+                kept = probe.keep_only_materials(obj, keep_material)
             else:
                 bpy.data.objects.remove(obj, do_unlink=True)
         detail['top_faces'] = kept
+        detail['keep_material'] = keep_material
 
     # 기준 자세(팔 · 손가락)로 몸 상자를 잰다. 카메라는 걷는 자세가 아니라 이 자세에 맞춘다 — 후보마다
     # 카메라가 달라지면 나란히 놓았을 때 인물 크기가 후보마다 다르다. 걷기의 오르내림은 층 캔버스 여백이 받는다.
@@ -314,11 +347,24 @@ def main():
         offset = weapon.matrix_world.translation - (armature.matrix_world @ hand.head)
         carried.append((weapon, hand, offset.copy()))
 
+    # 장비도 기준 자세에서 세우고, 본에서 본 장비의 자리를 기억해 프레임마다 그 본의 자세에 다시 곱한다.
+    # 몸 목록을 넘기는 것은 몸 표면에 붙는 부품(`wrap` · `cap` …)이 몸 메시에 광선을 쏘기 때문이다
+    followers = []
+    if gear_spec_path and layer in ('gear', 'whole'):
+        with open(gear_spec_path, encoding='utf-8') as handle:
+            gear_spec = json.load(handle)
+        for piece in gear_pieces(gear_spec):
+            gear = probe.attach_weapon(armature, piece, piece['bone'], yaw, body_objects)
+            bone = armature.pose.bones[piece['bone']]
+            seat = (armature.matrix_world @ bone.matrix).inverted() @ gear.matrix_world
+            followers.append((gear, bone, seat))
+        detail['gear'] = [gear.name for gear, _, _ in followers]
+
     # 몸이 아닌 층은 맨살 몸을 가림 전용으로 둔다. `--no-holdout`은 층이 비어 나올 때 가려져서인지 애초에
     # 없어서인지를 가르는 수단이다 — 둘은 고칠 곳이 완전히 다르다.
     skip_holdout = common.parse_arg(args, 'no-holdout') is not None
     held_out = 0
-    if layer in ('top', 'staff', 'shield') and not skip_holdout:
+    if layer in HELD_OUT_LAYERS and not skip_holdout:
         held_out = probe.move_to_holdout(body_objects)
     detail['held_out_objects'] = held_out
 
@@ -357,6 +403,8 @@ def main():
             placed = weapon.matrix_world.copy()
             placed.translation = (armature.matrix_world @ hand.head) + offset
             weapon.matrix_world = placed
+        for gear, bone, seat in followers:
+            gear.matrix_world = (armature.matrix_world @ bone.matrix) @ seat
         bpy.context.view_layer.update()
 
         out_path = common.assert_output_path(os.path.join(out_dir, frame['name'] + '.png'))
@@ -364,6 +412,20 @@ def main():
         common.render_still(out_path)
 
         row = measure(armature, body, feet)
+        # 장비가 붙은 본을 회전까지 따라갔는지는 실행기가 판정한다(`LayerBake.ts`의 `gearFollow`). 그러려면 점이
+        # 넷 필요하다 — 장비의 원점과 장비 위의 한 점, 본의 머리와 꼬리. 원점 하나만으로는 회전이 안 드러난다:
+        # 위치만 옮겨 따라간 장비도 원점은 본 머리에서 늘 같은 거리에 있다. 좌표는 전부 모델 좌표다
+        to_model = armature.matrix_world.inverted()
+        row['gear'] = {
+            gear.name: {
+                'bone': bone.name,
+                'origin': [round(v, 5) for v in (to_model @ gear.matrix_world.translation)],
+                'up': [round(v, 5) for v in (to_model @ (gear.matrix_world @ Vector((0.0, 0.0, 0.1))))],
+                'head': [round(v, 5) for v in bone.head],
+                'tail': [round(v, 5) for v in bone.tail],
+            }
+            for gear, bone, _ in followers
+        }
         row['name'] = frame['name']
         row['phase'] = frame.get('phase')
         measured.append(row)
