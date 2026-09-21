@@ -125,7 +125,7 @@ J_Bip_L_Thumb1  (  25, -20, -30)
 
 **G4에서 남은 일 — 이 순서로 한다.**
 
-1. **슬롯 범위 탐침(G4 §12)과 판 일치 비교 실행기(G4 §2의 5번).** 탐침에는 사용자가 VRoid에서 옷을 전부 끈 맨살 판을 하나 더 내보내야 한다(사람 작업). 큰 무기는 넣지 않고, 부피 있는 하의는 허벅지 · 정강이 강체 조각으로 세운다(§6.1). **걷기 프레임으로 장비를 굽는 길이 아직 없다** — 장비 층(`--gear-spec`)은 `probe_layers.py`에만 있고 그 스크립트는 자세가 한 판이다. 하의 · 신발 · 겹침 탐침은 걷기가 있어야 하므로 `bake_motion.py`에 장비 층을 더하는 것이 이 항목의 첫 일이다. 겹침 탐침은 `overlap` · `compare`와 같은 식으로 재고, 「넓은 소매 × 지팡이」에서는 뒷모습과 좌우의 겹치는 순서가 지금 표 그대로 되는지를 함께 본다(G4 §5.1이 그 탐침으로 미뤘다).
+1. **슬롯 범위 탐침(G4 §12).** 탐침에는 사용자가 VRoid Studio에서 옷을 전부 끈 판을 하나 더 내보내야 한다(사람 작업 — `player_base.vroid`를 열어 하의 · 신발을 끄고 기존 판과 같은 설정으로 `player_bare.vrm`을 같은 폴더에 내보낸다. `.vroid`는 덮어 저장하지 않는다. 2026-09-21에 안내했다). 판이 오면 **먼저 판 일치 비교 실행기로 기존 맨살 판과 같은 몸인지 본다** — `match.ts --less player_bare.vrm --more player_base.vrm`. 실행기는 섰고 지금 세 판에서 G1의 값(코어 본 52 · 지워진 점 708 · 327 · 밖의 점 0)을 그대로 냈다(G4 §2의 5번). 큰 무기는 넣지 않고, 부피 있는 하의는 허벅지 · 정강이 강체 조각으로 세운다(§6.1). **걷기 프레임으로 장비를 굽는 길이 아직 없다** — 장비 층(`--gear-spec`)은 `probe_layers.py`에만 있고 그 스크립트는 자세가 한 판이다. 하의 · 신발 · 겹침 탐침은 걷기가 있어야 하므로 `bake_motion.py`에 장비 층을 더하는 것이 이 항목의 첫 일이다. 겹침 탐침은 `overlap` · `compare`와 같은 식으로 재고, 「넓은 소매 × 지팡이」에서는 뒷모습과 좌우의 겹치는 순서가 지금 표 그대로 되는지를 함께 본다(G4 §5.1이 그 탐침으로 미뤘다).
 2. **G4를 닫는다.** 닫기 전에 확인용 씬(`game/assets/scenes/scene-2d.scene`)이 없어졌는지 `git status`로 보고, 남아 있으면 사용자에게 알린다 — 남은 채로 `PR 승인`까지 가면 새 `.meta`를 모아 커밋할 때 그 씬의 `.meta`가 딸려 들어간다. 게임 폴더 검사(`bake.ts check-atlas` — plist 10개 · 220장, 2026-09-21 통과)의 결과를 QA §8에 적고, `tools/blender/retired/`를 지우고(`outline.py`와 `probe_layers.py`의 `--lineart` · `--passes`도 함께), QA §8의 자동 검증 항목과 §12 판정표, 개요의 상태 줄과 게이트 표, 이 문서 §1 · §3을 그 커밋에 함께 고친다. 지우기 전에 `retired/README.md` 「G4가 가져갈 것」을 확인한다 — 부르는 길과 동시 실행 풀(`BlenderRun.ts`), 발밑 점 읽기(`bake.ts`가 계산값과 견준다)는 가져왔고, 시트 칸의 높이 검사(`checkCellHeight`)는 생산 도구에 시트가 없어 가져올 자리가 없다.
 3. 그 뒤가 QA 2라운드 본문(에디터 조립 순서 · 수동 체크리스트)과 G5의 RED 테스트이고, `pnpm wf ready-impl`로 implementation에 들어간다.
 
@@ -208,6 +208,7 @@ blender --background --python-exit-code 1 --python tools/blender/probe_layers.py
 | `layers.ts` | `subset`(가림 판정) · `stack`(층 합성 + 720p) · `diff`(기준 컷과의 차이) |
 | `bake_layer.py` | 층 캔버스를 달리해 굽는다(ADR 009 실증에 씀) |
 | `inspect_meshes.py` | 메시 · 머티리얼 · 정점 지문 덤프 |
+| `ModelMatch.ts` · `match.ts` | 두 판이 같은 몸인지 가른다 — 코어 본, 얼굴 · 머리카락의 좌표 지문, 더 입은 판의 맨살이 덜 입은 판의 부분집합인가. `match.ts --less <덜 입은 판> --more <더 입은 판>`, 같은 몸이 아니면 종료 코드 1 |
 | `measure_weapon_room.py` | 기준 자세의 손 위치와 몸 상자 |
 | `MotionSpec.ts` | G3가 확정한 동작 — 걷기(`CHOSEN_GAIT`) · 대기(`IDLE_BAKED` · `IDLE_PLAYBACK`) · 걷기 8장 · 10fps · 좌우 75°(`CHOSEN_MOTION`). 위상에서 관절 각도 · 허리 높이 · 접지를 내는 식도 여기 있다 |
 | `bake_motion.py` | 키프레임 정의 JSON을 받아 한 프로세스에서 여러 장을 굽고 본 위치 · 발바닥 높이를 모델 좌표로 돌려준다. 자세 계산은 하지 않는다. G4의 층 굽기도 이 파일이 한다 — `--layer`(`body` · `top` · `staff` · `shield` · `whole`)로 층을 고르면 몸이 아닌 층은 맨살 몸을 가림 전용으로 두고, `--camera <json>`을 주면 기록된 카메라를 그대로 쓴다 |
