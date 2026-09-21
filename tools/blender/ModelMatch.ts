@@ -12,6 +12,13 @@
  * 맨살은 번호가 아니라 **좌표의 집합**으로 견주고, 잣대는 「옷을 더 입은 판에 남은 살이 전부 덜 입은 판에도
  * 있는가」다 — 덜 입은 판이 상위 집합이라는 것이 가림 전용 몸으로 쓸 때 필요한 성질 그대로다.
  *
+ * **모델이 통째로 옮겨져 있으면 그 이동을 빼고 견준다.** 신발을 벗긴 판은 VRoid가 밑창 높이만큼 모델 전체를
+ * 내려서 내보낸다(2026-09-21 실측 — 옷을 전부 끈 판이 맨살 판보다 16.23mm 낮았고, 얼굴 · 머리카락 · 발목 위의
+ * 맨살은 그만큼 옮기면 전부 맞았다). 좌표를 그대로 견주면 같은 몸인데도 모든 점이 어긋난다. 이동은 얼굴 메시의
+ * 무게중심 차이로 잰다 — 얼굴은 옷과 무관한 강체라, 같은 모델이면 그 차이가 곧 모델의 이동이다. 다른 모델이면
+ * 이 값은 뜻이 없지만, 그때는 바로 뒤의 얼굴 비교가 떨어진다. 잰 이동은 결과에 돌려준다 — 굽기가 두 판을 같은
+ * 자리에 세우려면 이 값이 필요하다.
+ *
  * 덤프는 파이썬이 하고 판정은 여기서 한다. 파이썬은 타입체크 · 린트 · vitest 어디에도 안 걸린다
  * (`README.md` 「판정은 파이썬에 없다」). 명세는 `tests/logic/Blender3dGate.test.ts`다.
  */
@@ -20,7 +27,7 @@
 export interface IMeshDump {
   name: string;
   vertices: number;
-  /** 정점 좌표를 소수점 다섯 자리로 반올림해 순서대로 접은 sha256 */
+  /** 정점 좌표를 소수점 다섯 자리로 반올림해 순서대로 접은 sha256. 판정은 쓰지 않는다 — 이동이 있으면 뜻이 없다 */
   digest: string;
   /** 머티리얼마다 그 면이 쓰는 정점 좌표(`x,y,z` 문자열, 정렬돼 있고 겹치지 않는다) */
   byMaterial: Record<string, string[]>;
@@ -33,9 +40,21 @@ export interface IModelDump {
   meshes: IMeshDump[];
 }
 
+/** `matchModels`의 선택지. */
+export interface IMatchOptions {
+  /**
+   * 이 높이(m, 더 입은 판의 좌표) 아래의 맨살은 부분집합 검사에서 뺀다. 신발 속의 발은 굽에 맞춰 세워져 있어
+   * 맨발과 모양이 다르므로, 신발을 벗긴 판과 견줄 때 발목 높이를 준다. 기본은 빼지 않는다 — 조용히 빼면 다른
+   * 자리의 어긋남까지 묻힌다
+   */
+  ignoreBelowZ?: number;
+}
+
 /** `matchModels`의 결과. `problems`가 비어 있으면 같은 몸이다. */
 export interface IModelMatch {
   problems: string[];
+  /** 더 입은 판이 덜 입은 판보다 옮겨져 있는 거리(m) — 더 입은 판의 좌표에서 이 값을 빼면 덜 입은 판의 좌표다 */
+  offset: [number, number, number];
   /** 두 판이 함께 가진 코어 본 수 */
   coreBones: number;
   /** 덜 입은 판의 맨살 점 수 */
@@ -44,8 +63,10 @@ export interface IModelMatch {
   skinInMore: number;
   /** 덜 입은 판에는 있는데 더 입은 판에는 없는 맨살 점 — 옷 아래에서 VRoid가 지운 살이다. 문제가 아니다 */
   skinRemoved: number;
-  /** 더 입은 판에만 있는 맨살 점 — 0이어야 한다 */
+  /** 더 입은 판에만 있는 맨살 점 — 0이어야 한다. `ignoreBelowZ` 아래의 점은 세지 않는다 */
   skinOutside: number;
+  /** `ignoreBelowZ` 때문에 검사에서 뺀, 더 입은 판에만 있는 맨살 점 */
+  skinIgnored: number;
 }
 
 /**
@@ -55,34 +76,100 @@ export interface IModelMatch {
  */
 const CORE_BONE_PREFIX = 'J_Bip_';
 
-/** 좌표 지문이 같아야 하는 메시. 옷과 무관한 부위다. */
-const SAME_DIGEST_MESHES = ['Face', 'Hair'] as const;
+/** 모양이 같아야 하는 메시. 옷과 무관한 부위다. */
+const SAME_SHAPE_MESHES = ['Face', 'Hair'] as const;
 
 /** 몸 메시에서 맨살 머티리얼을 고르는 말. VRoid의 이름은 `N00_000_00_Body_00_SKIN (Instance)` 꼴이다. */
 const SKIN_MATERIAL = '_SKIN';
+
+/**
+ * 두 좌표를 같은 점으로 보는 거리(m, 축마다). 덤프가 좌표를 소수점 다섯 자리로 반올림하므로 두 판의 같은 점이
+ * 반올림만으로 0.01mm까지 벌어지고, 이동을 뺄 때 그 오차가 한 번 더 실린다. 0.05mm는 그보다 넉넉하고 실제
+ * 형상 차이(발 모양은 mm 단위로 다르다)보다 훨씬 작다.
+ */
+const SAME_POINT_M = 5e-5;
+
+type Point = readonly [number, number, number];
 
 /** 이름이 `prefix`로 시작하는 메시. Blender가 같은 이름에 `.001`을 붙일 수 있어 앞머리로 찾는다. */
 function findMesh(dump: IModelDump, prefix: string): IMeshDump | undefined {
   return dump.meshes.find((mesh) => mesh.name.startsWith(prefix));
 }
 
-/** 몸 메시의 맨살 좌표. 맨살 머티리얼이 없으면 `null`. */
-function skinCoords(dump: IModelDump): Set<string> | null {
-  const body = findMesh(dump, 'Body');
-  if (!body) return null;
-  const names = Object.keys(body.byMaterial).filter((name) => name.includes(SKIN_MATERIAL));
-  if (names.length === 0) return null;
-  return new Set(names.flatMap((name) => body.byMaterial[name]));
+/** 메시에서 이름에 `needle`이 든 머티리얼의 좌표를 읽는다. `needle`이 비면 전부다. */
+function pointsOf(mesh: IMeshDump, needle = ''): Point[] {
+  return Object.entries(mesh.byMaterial)
+    .filter(([name]) => name.includes(needle))
+    .flatMap(([, coords]) =>
+      coords.map((text) => {
+        const [x, y, z] = text.split(',').map(Number);
+        return [x, y, z] as const;
+      }),
+    );
+}
+
+/** 점들의 무게중심. */
+function centroid(points: readonly Point[]): Point {
+  const sum = [0, 0, 0];
+  for (const point of points) for (let axis = 0; axis < 3; axis++) sum[axis] += point[axis];
+  return [sum[0] / points.length, sum[1] / points.length, sum[2] / points.length];
 }
 
 /**
- * 두 판이 같은 몸인지 본다. 코어 본이 같은가, 얼굴 · 머리카락의 좌표 지문이 같은가, 더 입은 판의 맨살이 덜 입은
- * 판의 부분집합인가.
+ * 점 집합을 「허용 거리 안에 같은 점이 있는가」로 물을 수 있게 격자에 담는다. 반올림된 좌표는 문자열로 맞대면
+ * 경계에 걸린 점이 어긋나므로, 칸을 허용 거리보다 크게 잡고 이웃 칸까지 본다.
+ */
+function pointLookup(points: readonly Point[]): (point: Point) => boolean {
+  const cell = SAME_POINT_M * 2;
+  const grid = new Map<string, Point[]>();
+  const keyOf = (x: number, y: number, z: number) => `${x},${y},${z}`;
+  for (const point of points) {
+    const key = keyOf(
+      Math.floor(point[0] / cell),
+      Math.floor(point[1] / cell),
+      Math.floor(point[2] / cell),
+    );
+    const bucket = grid.get(key);
+    if (bucket) bucket.push(point);
+    else grid.set(key, [point]);
+  }
+  return (point) => {
+    const cx = Math.floor(point[0] / cell);
+    const cy = Math.floor(point[1] / cell);
+    const cz = Math.floor(point[2] / cell);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          const bucket = grid.get(keyOf(cx + dx, cy + dy, cz + dz));
+          if (
+            bucket?.some(
+              (other) =>
+                Math.abs(other[0] - point[0]) <= SAME_POINT_M &&
+                Math.abs(other[1] - point[1]) <= SAME_POINT_M &&
+                Math.abs(other[2] - point[2]) <= SAME_POINT_M,
+            )
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+}
+
+/**
+ * 두 판이 같은 몸인지 본다. 코어 본이 같은가, 얼굴 · 머리카락의 모양이 같은가, 더 입은 판의 맨살이 덜 입은 판의
+ * 부분집합인가. 좌표는 모델의 이동(얼굴의 무게중심 차이)을 뺀 뒤에 견준다.
  *
  * @param less 옷을 덜 입은 판 — 가림 전용 몸으로 쓰이는 쪽
  * @param more 옷을 더 입은 판
  */
-export function matchModels(less: IModelDump, more: IModelDump): IModelMatch {
+export function matchModels(
+  less: IModelDump,
+  more: IModelDump,
+  options: IMatchOptions = {},
+): IModelMatch {
   const problems: string[] = [];
 
   const coreOf = (dump: IModelDump) =>
@@ -98,43 +185,80 @@ export function matchModels(less: IModelDump, more: IModelDump): IModelMatch {
     problems.push(`더 입은 판에만 있는 코어 본: ${onlyMore.join(' · ')}`);
   }
 
-  for (const name of SAME_DIGEST_MESHES) {
+  // 이동은 얼굴로 잰다. 얼굴이 한쪽에 없으면 0으로 두고, 없다는 것은 아래 모양 비교가 말한다
+  const lessFace = findMesh(less, 'Face');
+  const moreFace = findMesh(more, 'Face');
+  let offset: [number, number, number] = [0, 0, 0];
+  if (lessFace && moreFace) {
+    const a = centroid(pointsOf(lessFace));
+    const b = centroid(pointsOf(moreFace));
+    offset = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  }
+  const toLess = (point: Point): Point => [
+    point[0] - offset[0],
+    point[1] - offset[1],
+    point[2] - offset[2],
+  ];
+
+  for (const name of SAME_SHAPE_MESHES) {
     const a = findMesh(less, name);
     const b = findMesh(more, name);
     if (!a || !b) {
       problems.push(`${name} 메시가 ${a ? '더' : '덜'} 입은 판에 없다`);
-    } else if (a.digest !== b.digest) {
+      continue;
+    }
+    const lessPoints = pointsOf(a);
+    const morePoints = pointsOf(b).map(toLess);
+    const inLess = pointLookup(lessPoints);
+    const inMore = pointLookup(morePoints);
+    const missing =
+      morePoints.filter((point) => !inLess(point)).length +
+      lessPoints.filter((point) => !inMore(point)).length;
+    if (missing > 0) {
       problems.push(
-        `${name} 메시의 좌표 지문이 다르다 (정점 ${a.vertices} · ${b.vertices}) — 두 판이 다른 모델에서 나왔다`,
+        `${name} 메시의 모양이 다르다 — 서로 없는 점이 ${missing}개다(${lessPoints.length} · ${morePoints.length}점). 두 판이 다른 모델에서 나왔다`,
       );
     }
   }
 
-  const lessSkin = skinCoords(less);
-  const moreSkin = skinCoords(more);
+  const lessBody = findMesh(less, 'Body');
+  const moreBody = findMesh(more, 'Body');
+  const lessSkin = lessBody ? pointsOf(lessBody, SKIN_MATERIAL) : [];
+  const moreSkin = moreBody ? pointsOf(moreBody, SKIN_MATERIAL) : [];
   let skinRemoved = 0;
   let skinOutside = 0;
-  if (!lessSkin || !moreSkin) {
+  let skinIgnored = 0;
+  if (lessSkin.length === 0 || moreSkin.length === 0) {
     // 빈 집합은 무엇의 부분집합이기도 하다. 못 고른 것을 「같은 몸」으로 읽으면 이 검사가 아무것도 안 보면서 통과한다
     problems.push(
-      `${lessSkin ? '더' : '덜'} 입은 판의 몸 메시에서 맨살 머티리얼(이름에 ${SKIN_MATERIAL})을 못 찾았다 — 머티리얼 이름이 바뀌었는지 덤프를 본다`,
+      `${lessSkin.length === 0 ? '덜' : '더'} 입은 판의 몸 메시에서 맨살 머티리얼(이름에 ${SKIN_MATERIAL})을 못 찾았다 — 머티리얼 이름이 바뀌었는지 덤프를 본다`,
     );
   } else {
-    for (const point of moreSkin) if (!lessSkin.has(point)) skinOutside++;
-    skinRemoved = lessSkin.size - (moreSkin.size - skinOutside);
+    const inLess = pointLookup(lessSkin);
+    const heights: number[] = [];
+    let matched = 0;
+    for (const point of moreSkin) {
+      if (inLess(toLess(point))) matched++;
+      else if (options.ignoreBelowZ !== undefined && point[2] < options.ignoreBelowZ) skinIgnored++;
+      else heights.push(point[2]);
+    }
+    skinOutside = heights.length;
+    skinRemoved = lessSkin.length - matched;
     if (skinOutside > 0) {
       problems.push(
-        `더 입은 판의 맨살 점 ${skinOutside}개가 덜 입은 판에 없다 — 덜 입은 판을 가림 전용 몸으로 쓰면 그 자리의 가림이 어긋난다`,
+        `더 입은 판의 맨살 점 ${skinOutside}개가 덜 입은 판에 없다(높이 ${Math.min(...heights).toFixed(3)} ~ ${Math.max(...heights).toFixed(3)}m) — 덜 입은 판을 가림 전용 몸으로 쓰면 그 자리의 가림이 어긋난다`,
       );
     }
   }
 
   return {
     problems,
+    offset,
     coreBones: [...lessBones].filter((bone) => moreBones.has(bone)).length,
-    skinInLess: lessSkin?.size ?? 0,
-    skinInMore: moreSkin?.size ?? 0,
+    skinInLess: lessSkin.length,
+    skinInMore: moreSkin.length,
     skinRemoved,
     skinOutside,
+    skinIgnored,
   };
 }

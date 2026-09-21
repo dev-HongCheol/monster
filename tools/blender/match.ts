@@ -11,6 +11,10 @@
  *
  *   --less   옷을 덜 입은 판 — 가림 전용 몸으로 쓰이는 쪽(`player_base.vrm`, 옷을 전부 끈 판)
  *   --more   옷을 더 입은 판(`player_top_a.vrm` …). 맨살 판과 옷을 전부 끈 판을 견줄 때는 맨살 판이 이쪽이다
+ *   --ignore-below <m>  이 높이 아래의 맨살은 부분집합 검사에서 뺀다. 신발을 벗긴 판과 견줄 때 발목 높이(0.1)를
+ *            준다 — 신발 속의 발은 굽에 맞춰 세워져 있어 맨발과 모양이 다르다. 뺀 점의 수는 결과에 찍는다
+ *
+ * 두 판이 통째로 옮겨져 있으면(신발을 벗긴 판은 밑창만큼 내려간다) 그 이동을 빼고 견주고, 잰 이동을 찍는다.
  *
  * 덤프는 추적하지 않는 `docs/temp/3d-gate/g4/match/`에 쓴다.
  */
@@ -53,18 +57,25 @@ async function main(): Promise<void> {
   // 두 덤프는 서로 기다릴 것이 없다. Blender 시작과 `.vrm` 불러오기가 한 판에 10초쯤이다
   const [less, more] = await Promise.all([dump(lessPath), dump(morePath)]);
 
-  const match = matchModels(less, more);
+  const at = process.argv.indexOf('--ignore-below');
+  const ignoreBelowZ = at >= 0 ? Number(process.argv[at + 1]) : undefined;
+  if (ignoreBelowZ !== undefined && !Number.isFinite(ignoreBelowZ)) {
+    throw new Error('--ignore-below에는 높이(m)를 숫자로 준다');
+  }
+
+  const match = matchModels(less, more, { ignoreBelowZ });
   console.log(`덜 입은 판 ${path.basename(lessPath)} · 더 입은 판 ${path.basename(morePath)}`);
   console.log(
-    `  코어 본 ${match.coreBones}개 일치 · 맨살 점 ${match.skinInLess} · ${match.skinInMore} — 옷 아래에서 지워진 점 ${match.skinRemoved} · 덜 입은 판 밖의 점 ${match.skinOutside}`,
+    `  더 입은 판의 이동 (${match.offset.map((v) => `${(v * 1000).toFixed(2)}mm`).join(', ')}) · 코어 본 ${match.coreBones}개 일치`,
+  );
+  console.log(
+    `  맨살 점 ${match.skinInLess} · ${match.skinInMore} — 덜 입은 판에만 있는 점 ${match.skinRemoved} · 더 입은 판에만 있는 점 ${match.skinOutside}${ignoreBelowZ === undefined ? '' : ` · ${ignoreBelowZ}m 아래라 뺀 점 ${match.skinIgnored}`}`,
   );
   if (match.problems.length > 0) {
     for (const problem of match.problems) console.error(`✗ ${problem}`);
     throw new Error('두 판은 같은 몸이 아니다 — 한쪽을 가림 전용 몸으로 쓰면 가림이 어긋난다');
   }
-  console.log(
-    '✓ 같은 몸이다 — 코어 본 · 얼굴과 머리카락의 좌표 지문 · 맨살의 부분집합 관계를 통과했다',
-  );
+  console.log('✓ 같은 몸이다 — 코어 본 · 얼굴과 머리카락의 모양 · 맨살의 부분집합 관계를 통과했다');
 }
 
 main().catch((err: Error) => {
