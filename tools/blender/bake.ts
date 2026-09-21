@@ -23,7 +23,10 @@
  *                     것이 아니면 재지 않는다. `--same-order`를 주면 모든 방향을 정면의 순서로 겹쳐 잰다
  *   atlas             구운 층을 층 × 동작 단위로 아틀라스(PNG + cocos2d 포맷 2 plist)에 담아
  *                     `docs/temp/3d-gate/g4/atlas/`에 쓰고, 원본 크기 · 프레임 수 · 왕복을 검사한 뒤 바이트를 찍는다.
- *                     굽지 않는다. 게임 폴더에는 넣지 않는다
+ *                     굽지 않는다. `--install`을 주면 검사를 통과한 것을 게임 폴더
+ *                     (`game/assets/art/player/layers/`)에 넣는다 — PNG와 plist만 쓰고 `.meta`는 건드리지 않는다.
+ *                     `--padding 8`은 밉맵을 켜는 판의 여백이다
+ *   check-atlas       게임 폴더에 들어간 plist를 읽어 원본 크기 · 층별 프레임 수 · 빠진 프레임을 검사한다(G4 §7)
  *
  *   --model-dir <폴더>  생산 `.vrm` 셋(`player_base` · `player_top_a` · `player_top_b`)이 있는 폴더.
  *                     커밋하지 않는 파일이라 장비마다 자리가 다를 수 있다
@@ -51,6 +54,7 @@ import {
   frameName,
   type IAtlasEntry,
   parseFrameName,
+  parsePlist,
   restoreFrame,
   writePlist,
 } from './Atlas.ts';
@@ -916,13 +920,18 @@ function commandCompare(): void {
 /**
  * 아틀라스를 담는 설정(G4 §6). 가로 상한 2048은 몸 걷기 32장이 한 장에 들어가는 크기이고, 여백 2px은 가장자리를
  * 1px 늘려 둔 것(extrude)이 이웃 칸에 닿지 않는 최소값이다. 밉맵을 켜는 판은 축소 단계에서 이웃 프레임이 번지므로
- * 여백을 8로 늘려야 한다 — 그 비교는 Cocos 임포트 때 한다.
+ * 여백을 8로 늘려야 한다(`--padding 8`). 밉맵을 켠 판과 끈 판의 비교는 걷기가 게임에서 재생돼야 보이므로 G5의
+ * 인게임 확인에서 한다.
  */
 const ATLAS_PACK = { maxWidth: 2048, padding: 2 };
 
+/** 게임에 싣는 아틀라스의 자리. Cocos는 `game/assets/` 아래만 임포트한다. */
+const GAME_ATLAS_DIR = 'game/assets/art/player/layers';
+
 /**
  * 구운 층을 층 × 동작 단위로 아틀라스에 담고, 담은 것을 검사한 뒤 바이트를 찍는다. 굽지 않는다. 산출물은
- * 추적하지 않는 `docs/temp/3d-gate/g4/atlas/`에 쓴다 — 게임 폴더에 넣는 것은 용량 판단(G4 §8) 뒤의 일이다.
+ * 추적하지 않는 `docs/temp/3d-gate/g4/atlas/`에 쓰고, `--install`을 주면 검사를 통과한 것을 게임 폴더에도 넣는다
+ * (`installAtlases`). `--padding <px>`로 칸 사이 여백을 바꾼다.
  *
  * 검사는 셋이다. 원본 크기가 그 층이 선언한 캔버스인가(`checkSourceSizes`), 층별 (방향, 동작) 프레임 수가
  * 같은가(`checkFrameCounts`), plist에 적은 값만으로 되돌린 프레임이 담기 전과 바이트까지 같은가(`restoreFrame`).
@@ -935,6 +944,12 @@ function commandAtlas(): void {
   const outDir = path.join(ROOT, SCRATCH, 'atlas');
   fs.rmSync(outDir, { recursive: true, force: true });
   fs.mkdirSync(outDir, { recursive: true });
+  const pack = { ...ATLAS_PACK, padding: Number(option('padding') ?? ATLAS_PACK.padding) };
+  if (!Number.isInteger(pack.padding) || pack.padding < ATLAS_PACK.padding) {
+    throw new Error(
+      `--padding은 ${ATLAS_PACK.padding} 이상의 정수여야 한다 — 그보다 좁으면 늘려 둔 가장자리가 이웃 칸에 닿는다`,
+    );
+  }
 
   const problems: string[] = [];
   const entries: IAtlasEntry[] = [];
@@ -947,7 +962,7 @@ function commandAtlas(): void {
       assertStamp(dir, stamp, 'bake.ts layers');
       return { name: frame.name, image: readFrame(dir, frame.name) };
     });
-    const atlas = buildAtlas(inputs, ATLAS_PACK);
+    const atlas = buildAtlas(inputs, pack);
     for (const [i, entry] of atlas.entries.entries()) {
       // 작성기가 트림 전에 옅은 알파를 누르므로 담기 전 그림도 같은 잣대로 눌러 견준다
       const before = normalizeAlpha(inputs[i].image, { faintUpTo: CONTENT_ALPHA - 1 });
@@ -998,7 +1013,7 @@ function commandAtlas(): void {
     `파일 ${rows.length * 2}개(PNG · plist) · 합계 ${(total / 1024 / 1024).toFixed(2)}MB · GPU 메모리(RGBA) ${(gpuBytes / 1024 / 1024).toFixed(1)}MB`,
   );
   writeJson(path.join(outDir, 'report.json'), {
-    pack: ATLAS_PACK,
+    pack,
     atlases: rows,
     bytesByLayer: Object.fromEntries(bytesByLayer),
     totalBytes: total,
@@ -1011,6 +1026,115 @@ function commandAtlas(): void {
     throw new Error(`아틀라스 검사 ${problems.length}건이 떨어졌다`);
   }
   console.log(`✓ ${SCRATCH}/atlas — 원본 크기 · 프레임 수 · 왕복 검사를 통과했다`);
+
+  if (process.argv.includes('--install')) {
+    installAtlases(
+      outDir,
+      rows.map((row) => String(row.id)),
+    );
+  }
+}
+
+/**
+ * 담은 아틀라스를 게임 폴더에 넣는다. **PNG와 plist만 쓰고 `.meta`는 읽지도 만들지도 지우지도 않는다.**
+ *
+ * `.meta`는 Cocos가 자산을 임포트하며 만드는 것이고 그 안의 UUID를 씬과 프리팹이 참조한다. 다시 구워 넣을 때
+ * `.meta`를 함께 지우면 Cocos가 UUID를 새로 매겨, 파일은 멀쩡한데 씬의 참조만 전부 끊긴다. 그래서 같은 이름의
+ * 파일을 덮어쓰기만 한다. 폴더에 있는데 이번 묶음에 없는 파일은 지우지 않고 알리기만 한다 — 지우는 것은 그
+ * 파일의 `.meta`와 씬 참조를 함께 봐야 하는 사람의 일이다.
+ *
+ * @param fromDir 담은 아틀라스가 있는 폴더
+ * @param ids 넣을 아틀라스의 이름(확장자 없음)
+ */
+function installAtlases(fromDir: string, ids: readonly string[]): void {
+  const gameDir = path.join(ROOT, GAME_ATLAS_DIR);
+  fs.mkdirSync(gameDir, { recursive: true });
+
+  let added = 0;
+  let replaced = 0;
+  let waitingMeta = 0;
+  const wanted = new Set<string>();
+  for (const id of ids) {
+    for (const ext of ['png', 'plist']) {
+      const file = `${id}.${ext}`;
+      wanted.add(file);
+      const target = path.join(gameDir, file);
+      if (fs.existsSync(target)) replaced++;
+      else added++;
+      fs.copyFileSync(path.join(fromDir, file), target);
+      if (!fs.existsSync(`${target}.meta`)) waitingMeta++;
+    }
+  }
+  console.log(`✓ ${GAME_ATLAS_DIR} — 새로 넣음 ${added} · 덮어씀 ${replaced}`);
+  if (waitingMeta > 0) {
+    console.log(
+      `  ${waitingMeta}개가 아직 .meta가 없다 — Cocos 에디터를 열면 임포트하며 만든다. 손으로 만들지 않는다`,
+    );
+  }
+  const strays = fs
+    .readdirSync(gameDir)
+    .filter((file) => !file.endsWith('.meta') && !wanted.has(file));
+  for (const file of strays) {
+    console.log(`  ! ${GAME_ATLAS_DIR}/${file}은 이번 묶음에 없다 — 지우지 않았다`);
+  }
+}
+
+/**
+ * 게임 폴더에 들어간 아틀라스를 검사한다(G4 §7). 굽기 폴더가 아니라 **게임에 들어간 파일**을 읽는다 — 실제로
+ * 실리는 것이 검사 대상이어야 하고, 넣은 뒤에 손으로 바뀐 것도 여기서 걸린다.
+ *
+ * vitest가 아니라 명령인 것은 `.meta`가 PR 승인 전까지 추적되지 않아서다. vitest에 넣으면 Cocos를 안 연 장비에서
+ * 전체 스위트의 GREEN 게이트가 깨진다. 판정 함수(`checkSourceSizes` · `checkFrameCounts`)는 vitest가 단언한다.
+ */
+function commandCheckAtlas(): void {
+  const record = readCameraRecord();
+  const gameDir = path.join(ROOT, GAME_ATLAS_DIR);
+  if (!fs.existsSync(gameDir)) {
+    throw new Error(
+      `게임 폴더에 아틀라스가 없다: ${GAME_ATLAS_DIR} — \`bake.ts atlas --install\`로 넣는다`,
+    );
+  }
+  const plists = fs.readdirSync(gameDir).filter((file) => file.endsWith('.plist'));
+  const problems: string[] = [];
+  const entries: IAtlasEntry[] = [];
+  for (const file of plists) {
+    const parsed = parsePlist(fs.readFileSync(path.join(gameDir, file), 'utf-8'));
+    entries.push(...parsed.entries);
+    // plist가 가리키는 PNG가 옆에 있고 크기가 적힌 대로인가. 한쪽만 다시 넣으면 프레임 상자가 다른 그림을 가리킨다
+    const texture = path.join(gameDir, parsed.metadata.textureFileName);
+    if (!fs.existsSync(texture)) {
+      problems.push(`${file}이 가리키는 ${parsed.metadata.textureFileName}이 없다`);
+      continue;
+    }
+    const image = decodePng(fs.readFileSync(texture));
+    const { width, height } = parsed.metadata.textureSize;
+    if (image.width !== width || image.height !== height) {
+      problems.push(
+        `${parsed.metadata.textureFileName}이 ${image.width}×${image.height}인데 ${file}은 ${width}×${height}로 적었다`,
+      );
+    }
+  }
+
+  const declared = Object.fromEntries(
+    BAKE_LAYERS.map((layer) => [layer, layerCanvas(layer, record.bodyCanvas)]),
+  );
+  problems.push(...checkSourceSizes(entries, PLAYER_FRAME_SPEC, declared));
+  problems.push(...checkFrameCounts(entries.map((entry) => entry.name)));
+  // 굽는 프레임이 전부 실렸는가. 묶음 하나를 통째로 빠뜨리면 위 두 검사는 남은 것끼리만 견줘 통과한다
+  const shipped = new Set(entries.map((entry) => entry.name));
+  for (const group of atlasGroups()) {
+    const missing = group.frames.filter((frame) => !shipped.has(frame.name));
+    if (missing.length > 0) {
+      problems.push(`${group.id}의 프레임 ${missing.length}장이 게임 폴더에 없다`);
+    }
+  }
+
+  console.log(`plist ${plists.length}개 · 프레임 ${entries.length}장 (${GAME_ATLAS_DIR})`);
+  if (problems.length > 0) {
+    for (const problem of problems) console.error(`✗ ${problem}`);
+    throw new Error(`게임 폴더의 아틀라스 검사 ${problems.length}건이 떨어졌다`);
+  }
+  console.log('✓ 원본 크기 · 층별 프레임 수 · 빠진 프레임 · PNG 크기 검사를 통과했다');
 }
 
 /**
@@ -1068,8 +1192,9 @@ async function main(): Promise<void> {
   if (command === 'reference') return commandReference();
   if (command === 'compare') return commandCompare();
   if (command === 'atlas') return commandAtlas();
+  if (command === 'check-atlas') return commandCheckAtlas();
   throw new Error(
-    `명령을 모른다: ${command ?? '(없음)'} — camera · layers · preview · overlap · reference · compare · atlas 중 하나를 준다`,
+    `명령을 모른다: ${command ?? '(없음)'} — camera · layers · preview · overlap · reference · compare · atlas · check-atlas 중 하나를 준다`,
   );
 }
 
