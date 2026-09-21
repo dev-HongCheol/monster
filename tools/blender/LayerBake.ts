@@ -570,6 +570,60 @@ export function stackVerdict(
   return { holes, misdrawn, unmatched, fringe };
 }
 
+/** `bakeMotionArgs`에 넣는 굽기 한 번. 경로는 전부 절대 경로다. */
+export interface IBakeMotionCall {
+  /** `--vrm`으로 들여올 판 */
+  vrm: string;
+  /** 키프레임 정의 JSON */
+  frames: string;
+  /** 그림을 쓸 폴더 */
+  outDir: string;
+  yaw: number;
+  /** 기록된 카메라(굽는 쪽이 읽는 모양) */
+  camera: string;
+  toon: string;
+  /** 이 굽기의 캔버스 */
+  canvas: ICanvas;
+  /** 층마다 다른 인자 — `--layer`, 상의 판, 무기 · 장비 사양, 남기거나 지울 머티리얼 */
+  extra: readonly string[];
+}
+
+/**
+ * `bake_motion.py`에 넘기는 인자를 짠다. 생산 굽기(`bake.ts`)와 슬롯 범위 탐침(`slots.ts`)이 나눠 쓴다.
+ *
+ * 규격값(캔버스 · 머리 · 발 행)을 여기서 `PLAYER_FRAME_SPEC`으로 채운다. 굽는 쪽에는 기본값이 없어서 빠지면
+ * `spec-args`로 실패하는데, 실행기마다 따로 채우면 한쪽만 고쳤을 때 두 실행기가 다른 규격으로 굽는다.
+ */
+export function bakeMotionArgs(call: IBakeMotionCall): string[] {
+  return [
+    ...call.extra,
+    '--vrm',
+    call.vrm,
+    '--frames',
+    call.frames,
+    '--out-dir',
+    call.outDir,
+    '--yaw',
+    String(call.yaw),
+    '--camera',
+    call.camera,
+    '--toon',
+    call.toon,
+    '--width',
+    String(PLAYER_FRAME_SPEC.width),
+    '--height',
+    String(PLAYER_FRAME_SPEC.height),
+    '--foot-row',
+    String(PLAYER_FRAME_SPEC.footLineY),
+    '--head-row',
+    String(PLAYER_FRAME_SPEC.headLineY),
+    '--layer-width',
+    String(call.canvas.width),
+    '--layer-height',
+    String(call.canvas.height),
+  ];
+}
+
 /** 굽는 쪽이 프레임마다 돌려주는 장비의 자리 — 모델 좌표(m). */
 export interface IGearFrame {
   gear: Record<

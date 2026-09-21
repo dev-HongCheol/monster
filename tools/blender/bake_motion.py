@@ -39,8 +39,10 @@ G3 — 키프레임 정의가 준 자세를 프레임마다 입혀 한 프로세
 두고 장비만 굽고, `whole`은 받은 장비를 함께 굽는다. G4 §12의 슬롯 범위 탐침이 쓴다.
 
 **`top` 층이 남기는 머티리얼은 `--keep-material`로 바꾼다(기본 `Tops`).** 하의 · 신발도 상의처럼 `Body` 메시
-안에 머티리얼로만 갈려 있어서, 옷을 전부 끈 판을 몸으로 두고 맨살 판에서 `Bottoms`나 `Shoes`의 면만 가져오면
-그 층이 된다.
+안에 머티리얼로만 갈려 있어서, `Bottoms`나 `Shoes`의 면만 남기면 그 층이 된다. 그 층들의 몸은
+`--drop-materials Bottoms,Shoes`로 세운다 — `--vrm`으로 받은 판의 몸 메시에서 그 머티리얼의 면을 지워 맨몸을
+남긴다(`drop_materials`의 주석이 옷을 전부 끈 판을 따로 안 쓰는 이유를 든다). 몸 층으로 구우면 맨몸 층이 되고,
+다른 층에서는 그 맨몸이 가림 전용 몸이 된다.
 
 돌리는 법과 실패 코드 표는 `tools/blender/README.md`에 있다.
 """
@@ -160,6 +162,46 @@ def foot_vertex_indices(body):
                 indices.append(vertex.index)
         found[side] = indices
     return found
+
+
+def drop_materials(obj, needles):
+    """
+    메시에서 이름에 `needles` 가운데 하나라도 든 머티리얼의 면을 지운다. `probe_layers.keep_only_materials`의 반대다.
+
+    하의 · 신발을 층으로 뗄 때 몸 층과 가림 전용 몸을 이것으로 세운다. 옷을 전부 끈 판을 따로 내보내 쓰지 않는
+    이유는 그 판이 신발 밑창만큼 통째로 내려가 있고 발 모양도 달라서다(2026-09-21 실측 16.23mm — G4 §12).
+    맨살 판은 바지와 신발 아래에 살을 그대로 갖고 있어서, 옷의 면만 지우면 다른 층과 좌표가 같은 맨몸이 남는다.
+
+    말에 맞는 머티리얼이 하나도 없으면 실패한다 — 이름이 바뀌어 아무것도 못 지웠는데 굽기가 그대로 돌면, 옷을
+    입은 몸이 맨몸 층으로 실린다.
+
+    @returns 지운 면 수
+    """
+    import bmesh
+
+    doomed_slots = set()
+    for needle in needles:
+        hits = {
+            index
+            for index, slot in enumerate(obj.material_slots)
+            if slot.material is not None and needle in slot.material.name
+        }
+        if not hits:
+            names = [s.material.name if s.material else '(없음)' for s in obj.material_slots]
+            raise common.GateError(
+                'weapon-spec',
+                '{0}에 "{1}"가 든 머티리얼이 없다 (있는 것: {2})'.format(obj.name, needle, names),
+            )
+        doomed_slots |= hits
+
+    mesh = bmesh.new()
+    mesh.from_mesh(obj.data)
+    doomed = [f for f in mesh.faces if f.material_index in doomed_slots]
+    bmesh.ops.delete(mesh, geom=doomed, context='FACES')
+    mesh.to_mesh(obj.data)
+    mesh.free()
+    obj.data.update()
+    return len(doomed)
 
 
 def gear_pieces(spec):
@@ -295,9 +337,14 @@ def main():
     body = next((o for o in body_objects if o.name.startswith('Body')), None)
     if body is None:
         raise common.GateError('vrm-path', '`Body` 메시가 없다 — 발바닥을 잴 수 없다')
+    detail = {}
+    # 옷을 지우는 것은 발의 정점을 고르기 **전에** 한다. 면을 지우면 정점 번호가 밀려서, 먼저 골라 둔 번호는 다른
+    # 정점을 가리킨다
+    dropped = [n for n in (common.parse_arg(args, 'drop-materials') or '').split(',') if n]
+    if dropped:
+        detail['dropped_faces'] = drop_materials(body, dropped)
     feet = foot_vertex_indices(body)
 
-    detail = {}
     armatures = [armature]
     # 상의 층은 상의 판을 하나 더 들여와 `Tops` 머티리얼의 면만 남긴다(`probe_layers.keep_only_materials`의
     # 주석이 이유를 든다). 얼굴 · 머리카락은 맨살 판 것이 이미 있으므로 지운다 — 두 벌을 겹치면 같은 자리에

@@ -59,6 +59,7 @@ import {
   BAKE_FACINGS,
   BAKE_LAYERS,
   bakeDefinition,
+  bakeMotionArgs,
   bakeStamp,
   bakeToon,
   bodyCanvasWidth,
@@ -2483,5 +2484,44 @@ describe('gearFollow — 장비가 붙은 본을 회전까지 따라갔는가', 
 
   it('그 이름의 장비가 없는 프레임이 있으면 던진다', () => {
     expect(() => gearFollow([shinFrame(0, true), { gear: {} }], 'boot')).toThrow(/boot/);
+  });
+});
+
+describe('bakeMotionArgs — 굽는 쪽에 넘기는 인자', () => {
+  const call = {
+    vrm: 'base.vrm',
+    frames: 'frames.json',
+    outDir: 'out',
+    yaw: 75,
+    camera: 'camera.json',
+    toon: 'toon.json',
+    canvas: { width: 600, height: 701 },
+    extra: ['--layer', 'staff', '--staff-spec', 'staff.json'],
+  };
+  /** `--name` 뒤의 값 */
+  const argAfter = (args: string[], name: string) => args[args.indexOf(name) + 1];
+
+  it('규격값은 PLAYER_FRAME_SPEC에서 넘긴다 — 굽는 쪽에는 기본값이 없다', () => {
+    const args = bakeMotionArgs(call);
+
+    expect(argAfter(args, '--width')).toBe(String(PLAYER_FRAME_SPEC.width));
+    expect(argAfter(args, '--height')).toBe(String(PLAYER_FRAME_SPEC.height));
+    expect(argAfter(args, '--foot-row')).toBe(String(PLAYER_FRAME_SPEC.footLineY));
+    expect(argAfter(args, '--head-row')).toBe(String(PLAYER_FRAME_SPEC.headLineY));
+  });
+
+  it('층 캔버스와 방향 · 카메라 · 툰 사양 · 층마다 다른 인자를 그대로 싣는다', () => {
+    const args = bakeMotionArgs(call);
+
+    expect(argAfter(args, '--layer-width')).toBe('600');
+    expect(argAfter(args, '--layer-height')).toBe('701');
+    expect(argAfter(args, '--yaw')).toBe('75');
+    expect(argAfter(args, '--camera')).toBe('camera.json');
+    expect(argAfter(args, '--toon')).toBe('toon.json');
+    expect(argAfter(args, '--vrm')).toBe('base.vrm');
+    expect(argAfter(args, '--frames')).toBe('frames.json');
+    expect(argAfter(args, '--out-dir')).toBe('out');
+    expect(argAfter(args, '--layer')).toBe('staff');
+    expect(argAfter(args, '--staff-spec')).toBe('staff.json');
   });
 });
