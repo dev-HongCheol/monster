@@ -40,6 +40,7 @@ import {
   CHOSEN_PITCH,
   CHOSEN_WEAPONS,
   OUTLINE_WIDTH_M,
+  SHIELD_ROUND,
   STAFF_ORB,
   WEAPON_TOON,
 } from '../../tools/blender/BakeSpec';
@@ -55,6 +56,7 @@ import {
 import {
   actionFrames,
   alphaOverlap,
+  alphaSpill,
   atlasGroups,
   BAKE_FACINGS,
   BAKE_LAYERS,
@@ -100,6 +102,19 @@ import {
   standFrame,
   stepLength,
 } from '../../tools/blender/MotionSpec';
+import {
+  BARE_SHIN_RADIUS_M,
+  BASE_POSE_HEAD,
+  BULKY_PANTS,
+  BULKY_PANTS_CUT,
+  type ISlotGear,
+  type ITubePart,
+  LONG_BOOTS,
+  mergeGear,
+  SHIELD_HORNED,
+  SHIELD_TALL,
+  tube,
+} from '../../tools/blender/SlotSpec';
 import {
   frameSetCheck,
   frameSetIntegrity,
@@ -2523,5 +2538,119 @@ describe('bakeMotionArgs — 굽는 쪽에 넘기는 인자', () => {
     expect(argAfter(args, '--out-dir')).toBe('out');
     expect(argAfter(args, '--layer')).toBe('staff');
     expect(argAfter(args, '--staff-spec')).toBe('staff.json');
+  });
+});
+
+describe('alphaSpill — 기준 컷이 빈 자리에 층이 그린 픽셀 수', () => {
+  it('어느 층이든 내용이 있는데 기준 컷이 비었으면 센다', () => {
+    const pants = frame(3, 1, (x) => (x <= 1 ? 255 : 0));
+    const reference = frame(3, 1, (x) => (x === 0 ? 255 : 0));
+
+    expect(alphaSpill([pants], reference)).toBe(1);
+  });
+
+  it('여러 층이 같은 자리에 삐져나와도 한 번만 센다 — 세는 것은 화면의 픽셀이다', () => {
+    const pants = frame(2, 1, () => 255);
+    const boots = frame(2, 1, () => 255);
+    const reference = frame(2, 1, () => 0);
+
+    expect(alphaSpill([pants, boots], reference)).toBe(2);
+  });
+
+  it('옅은 술(알파 16 이하)은 어느 쪽에서도 내용으로 안 센다 — 층 판정과 같은 잣대다', () => {
+    const layer = frame(3, 1, (x) => [16, 17, 255][x]);
+    const reference = frame(3, 1, (x) => [0, 16, 17][x]);
+
+    expect(alphaSpill([layer], reference)).toBe(1);
+  });
+
+  it('캔버스가 다르면 두 크기를 말하며 던진다', () => {
+    expect(() =>
+      alphaSpill(
+        [frame(2, 1, () => 255)],
+        frame(1, 1, () => 255),
+      ),
+    ).toThrow(/2×1.*1×1/);
+  });
+});
+
+describe('SlotSpec — 슬롯 범위 탐침이 세우는 시험 장비', () => {
+  /** 부품의 X · Y 회전(도)이 +Z 축을 보내는 방향. `weapons.py`가 오일러 XYZ로 돌린다 */
+  function axisOf(rotation: readonly number[]): number[] {
+    const [rx, ry] = rotation.map((deg) => (deg * Math.PI) / 180);
+    return [Math.cos(rx) * Math.sin(ry), -Math.sin(rx), Math.cos(rx) * Math.cos(ry)];
+  }
+  /** 조각에서 그 본에 붙은 관들 */
+  function tubesOn(gear: ISlotGear, bone: string): ITubePart[] {
+    return gear.pieces
+      .filter((piece) => piece.bone === bone)
+      .flatMap((piece) => piece.parts.filter((part): part is ITubePart => part.type === 'horn'));
+  }
+
+  it('관은 시작점에서 끝점을 향해 서고 길이가 두 점의 거리다', () => {
+    const from = [-0.13, 0.01, 0.62] as const;
+    const to = [-0.18, -0.07, 0.64] as const;
+
+    const part = tube('J_Bip_R_LowerArm', from, to, [0.04, 0.11], [1, 2, 3]);
+
+    const length = Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]);
+    expect(part.length).toBeCloseTo(length, 9);
+    const axis = axisOf(part.rotation);
+    for (let i = 0; i < 3; i++) expect(axis[i]).toBeCloseTo((to[i] - from[i]) / length, 9);
+    expect([part.radius, part.tip]).toEqual([0.04, 0.11]);
+  });
+
+  it('곧게 내려가는 관도 선다 — 다리의 관은 위에서 아래로 그린다', () => {
+    const part = tube('J_Bip_L_LowerLeg', [0.06, 0, 0.28], [0.06, 0, 0.1], [0.08, 0.08], [1, 2, 3]);
+
+    const axis = axisOf(part.rotation);
+    expect(axis[0]).toBeCloseTo(0, 9);
+    expect(axis[1]).toBeCloseTo(0, 9);
+    expect(axis[2]).toBeCloseTo(-1, 9);
+  });
+
+  it('부품의 자리는 붙는 본의 머리에서 잰 값이다 — 굽는 쪽이 조각의 원점을 본의 머리에 놓는다', () => {
+    const head = BASE_POSE_HEAD.J_Bip_R_LowerArm;
+
+    const part = tube('J_Bip_R_LowerArm', head, [-0.18, -0.07, 0.64], [0.04, 0.11], [1, 2, 3]);
+
+    for (const value of part.location) expect(value).toBeCloseTo(0, 9);
+  });
+
+  it('부츠 통은 맨 정강이보다 굵고, 부피 있는 하의의 정강이는 부츠 통보다 굵다', () => {
+    // 그래야 「바지를 부츠 안에 넣으면 굵은 바지가 부츠 통 밖으로 삐져나온다」를 잰다. 바지가 더 가늘면 부츠가
+    // 다 덮어서 이 탐침은 아무것도 못 가른다
+    for (const side of ['L', 'R']) {
+      const shaft = tubesOn(LONG_BOOTS, `J_Bip_${side}_LowerLeg`)[0];
+      const shin = tubesOn(BULKY_PANTS, `J_Bip_${side}_LowerLeg`)[0];
+
+      expect(Math.min(shaft.radius, shaft.tip)).toBeGreaterThan(BARE_SHIN_RADIUS_M);
+      expect(Math.min(shin.radius, shin.tip)).toBeGreaterThan(Math.max(shaft.radius, shaft.tip));
+    }
+  });
+
+  it('자른 하의는 정강이 조각만 짧다 — 나머지 조각은 온전한 하의와 같다', () => {
+    const shins = ['J_Bip_L_LowerLeg', 'J_Bip_R_LowerLeg'];
+    const rest = (gear: ISlotGear) => gear.pieces.filter((piece) => !shins.includes(piece.bone));
+
+    expect(rest(BULKY_PANTS_CUT)).toEqual(rest(BULKY_PANTS));
+    for (const bone of shins) {
+      expect(tubesOn(BULKY_PANTS_CUT, bone)[0].length).toBeLessThan(
+        tubesOn(BULKY_PANTS, bone)[0].length / 2,
+      );
+    }
+  });
+
+  it('장비를 합치면 조각이 전부 들어간다 — 기준 컷은 짝을 한 사양으로 받는다', () => {
+    const both = mergeGear('pantsBoots', BULKY_PANTS, LONG_BOOTS);
+
+    expect(both.id).toBe('pantsBoots');
+    expect(both.pieces).toEqual([...BULKY_PANTS.pieces, ...LONG_BOOTS.pieces]);
+  });
+
+  it('시험 방패 둘은 채택한 방패보다 손에서 더 앞에 든다 — 부피 있는 하의와 맞닿지 않게', () => {
+    for (const shield of [SHIELD_TALL, SHIELD_HORNED]) {
+      expect(shield.grip?.[1]).toBeGreaterThan(SHIELD_ROUND.grip?.[1] ?? 0);
+    }
   });
 });

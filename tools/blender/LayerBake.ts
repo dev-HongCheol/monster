@@ -429,6 +429,30 @@ export function alphaOverlap(a: IRgbaImage, b: IRgbaImage): number {
   return both;
 }
 
+/**
+ * 기준 컷이 빈 자리에 층이 그린 픽셀 수 — 층이 기준 컷의 윤곽 밖으로 삐져나온 넓이다.
+ *
+ * 위층은 아래층을 덮을 뿐 지우지 못한다. 그래서 부츠 안에 넣어 신은 굵은 바지는 부츠를 위에 그려도 부츠 통의
+ * 바깥으로 남는데, 그 자리는 기준 컷에서 빈 배경이라 `stackVerdict`가 구멍으로도 앞뒤의 오류로도 세지 않고
+ * 「걷어내도 안 맞음」에 윤곽의 섞임과 함께 묻는다(걷어낸 자리에 아무것도 없으면 맞는 것으로 치지 않으므로).
+ * 층과 기준 컷은 같은 기하를 같은 카메라로 구운 것이라 바깥 윤곽이 같고, 앞뒤가 맞는 조합에서 이 값은 0에
+ * 가깝다 — 그래서 따로 세면 삐져나온 것만 드러난다.
+ *
+ * 여러 층이 같은 자리에 삐져나와도 한 번만 센다. 세는 것은 화면에 잘못 나온 픽셀이지 층이 아니다.
+ *
+ * @param layers 겹칠 층들. 순서는 결과를 안 바꾼다
+ * @throws 층의 캔버스가 기준 컷과 다르면. 먼저 `centerOnCanvas`로 같은 캔버스에 옮긴다
+ */
+export function alphaSpill(layers: readonly IRgbaImage[], reference: IRgbaImage): number {
+  for (const layer of layers) assertSameSize(layer, reference, 'alphaSpill');
+  let spilled = 0;
+  for (let i = 3; i < reference.data.length; i += 4) {
+    if (reference.data[i] >= CONTENT_ALPHA) continue;
+    if (layers.some((layer) => layer.data[i] >= CONTENT_ALPHA)) spilled++;
+  }
+  return spilled;
+}
+
 /** 겹치는 순서 안의 자리. 상의 자리에는 입은 상의 층(`topA` · `topB`)이 온다. */
 export type StackSlot = 'body' | 'top' | 'staff' | 'shield';
 
