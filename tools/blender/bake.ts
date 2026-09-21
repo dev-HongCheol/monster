@@ -14,7 +14,13 @@
  *   layers            다섯 층을 네 방향으로 굽고 G4 §4의 판정을 건다. 카메라 기록의 입력 지문이 지금 입력과
  *                     다르면 굽지 않는다. `--only body,staff`로 층을 골라 구울 수 있다
  *   preview           구운 층을 게임의 형제 순서로 겹쳐 재생하는 화면(`docs/temp/3d-gate/g4/preview.html`)을
- *                     쓴다. 굽지 않는다
+ *                     쓴다. 굽지 않는다. 기준 컷이 구워져 있으면 화면에서 층 합성과 기준 컷을 번갈아 볼 수 있다
+ *   overlap           구운 층끼리 내용이 겹치는 픽셀 수를 방향 · 조합마다 잰다(G4 §5). 굽지 않는다
+ *   reference         상의 A · B를 입은 판에 지팡이와 방패를 들려, 가림 없이 한 장으로 구운 기준 컷을 네 방향으로
+ *                     굽는다. 자세와 카메라는 층과 같다
+ *   compare           층을 게임의 순서(방향마다 다르다 — `LayerBake.ts`의 `STACK_ORDER`)로 겹친 그림을 기준 컷과
+ *                     견줘 구멍과 앞에 잘못 보인 픽셀을 센다. 굽지 않는다. 층이나 기준 컷이 지금 입력으로 구운
+ *                     것이 아니면 재지 않는다. `--same-order`를 주면 모든 방향을 정면의 순서로 겹쳐 잰다
  *
  *   --model-dir <폴더>  생산 `.vrm` 셋(`player_base` · `player_top_a` · `player_top_b`)이 있는 폴더.
  *                     커밋하지 않는 파일이라 장비마다 자리가 다를 수 있다
@@ -34,17 +40,22 @@ import {
 } from '../../tests/helpers/FrameSet.ts';
 import { type IRgbaImage, visibleBox } from '../../tests/helpers/SpriteMetrics.ts';
 import { decodePng } from '../art/PngCodec.ts';
-import { parseFrameName } from './Atlas.ts';
-import { MODEL_HEIGHT_M, writeChosenSpecs } from './BakeSpec.ts';
+import { frameName, parseFrameName } from './Atlas.ts';
+import { CHOSEN_WEAPONS, MODEL_HEIGHT_M, writeChosenSpecs } from './BakeSpec.ts';
 import { runBlender, runPool, writeJson } from './BlenderRun.ts';
 import {
+  alphaOverlap,
   BAKE_ACTIONS,
   BAKE_FACINGS,
   BAKE_LAYERS,
+  type BakeFacing,
+  type BakeLayer,
   bakeDefinition,
+  bakeStamp,
   bakeToon,
   bodyCanvasWidth,
   CONTENT_ALPHA,
+  centerOnCanvas,
   definitionHash,
   fitCamera,
   type IBakeInputs,
@@ -52,11 +63,20 @@ import {
   type ICameraRecord,
   type ICanvas,
   type ILayerBakeJob,
+  type INamedFrame,
+  type IReferenceBakeJob,
+  type IStackVerdict,
   layerBakeJobs,
   layerCanvas,
   layerSetCheck,
   layerSource,
   projectRow,
+  REFERENCE_LAYER,
+  REFERENCE_TOPS,
+  referenceBakeJobs,
+  STACK_ORDER,
+  stackOrder,
+  stackVerdict,
   staleReasons,
 } from './LayerBake.ts';
 import { CHOSEN_MOTION, IDLE_PLAYBACK } from './MotionSpec.ts';
@@ -152,43 +172,54 @@ interface IBakeShared {
   /** 무기 사양 JSON의 경로. 무기 층을 안 구우면 없어도 된다 */
   weapons?: Record<'staff' | 'shield', string>;
   canvas: ICanvas;
+  /** 구운 폴더에 찍을 도장(`bakeStamp`). 카메라를 잡는 굽기는 견줄 상대가 없어 안 찍는다 */
+  stamp?: string;
 }
 
+/** 굽는 쪽을 한 번 부르는 데 드는 것 — 어느 판을 어느 층으로 어느 폴더에 굽는가. */
+interface IBakeCall {
+  /** 정의 파일 이름과 오류 메시지에 쓰는 이름. `/`로 가른 두 마디다 */
+  label: string;
+  /** 그림을 쓸 폴더 */
+  dir: string;
+  /** `--vrm`으로 들여올 판 */
+  vrm: string;
+  /** `bake_motion.py`의 `--layer` 값 */
+  pythonLayer: string;
+  /** 층마다 다른 인자 — 상의 판, 무기 사양 */
+  extra: string[];
+  yaw: number;
+  frames: INamedFrame[];
+}
+
+/** 구운 폴더의 도장 파일. */
+const STAMP_FILE = 'stamp.json';
+
 /**
- * 굽기 일감 하나를 돌린다. 그림은 `<outDir>/<층>/<방향>/`에 쓴다. 앞 실행의 그림이 남아 있으면 굽는 쪽이
- * 덮어쓰기를 거부하므로 폴더를 먼저 비운다.
+ * 굽는 쪽을 한 번 부른다. 앞 실행의 그림이 남아 있으면 굽는 쪽이 덮어쓰기를 거부하므로 폴더를 먼저 비운다.
+ * 도장은 굽기가 성공한 뒤에 찍는다 — 굽다 죽은 폴더가 도장을 달고 남으면 견줄 때 온전한 굽기로 읽힌다.
  */
-function bake(job: ILayerBakeJob, shared: IBakeShared): Promise<Record<string, unknown>> {
-  const dir = frameDir(shared.outDir, job);
-  fs.rmSync(dir, { recursive: true, force: true });
-  const definition = writeJson(
-    path.join(shared.outDir, 'defs', `${job.layer}_${job.facing}.json`),
-    {
-      id: `${job.layer}_${job.facing}`,
-      frames: job.frames,
-    },
-  );
-  const source = layerSource(job.layer);
-  const extra: string[] = [];
-  if (source.topModel) extra.push('--top-vrm', shared.models[source.topModel]);
-  if (source.weapon) {
-    if (!shared.weapons) throw new Error(`${job.layer} 층을 굽는데 무기 사양을 안 받았다`);
-    extra.push(`--${source.weapon}-spec`, shared.weapons[source.weapon]);
-  }
-  return runBlender(
+async function runBake(call: IBakeCall, shared: IBakeShared): Promise<Record<string, unknown>> {
+  fs.rmSync(call.dir, { recursive: true, force: true });
+  const id = call.label.replace('/', '_');
+  const definition = writeJson(path.join(shared.outDir, 'defs', `${id}.json`), {
+    id,
+    frames: call.frames,
+  });
+  const payload = await runBlender(
     path.join(ROOT, 'tools/blender/bake_motion.py'),
     [
       '--layer',
-      source.pythonLayer,
-      ...extra,
+      call.pythonLayer,
+      ...call.extra,
       '--vrm',
-      shared.models.base,
+      call.vrm,
       '--frames',
       definition,
       '--out-dir',
-      dir,
+      call.dir,
       '--yaw',
-      String(job.yaw),
+      String(call.yaw),
       '--camera',
       shared.camera,
       '--toon',
@@ -206,7 +237,57 @@ function bake(job: ILayerBakeJob, shared: IBakeShared): Promise<Record<string, u
       '--layer-height',
       String(shared.canvas.height),
     ],
-    `${job.layer}/${job.facing}`,
+    call.label,
+  );
+  if (shared.stamp) writeJson(path.join(call.dir, STAMP_FILE), { stamp: shared.stamp });
+  return payload;
+}
+
+/** 층 굽기 일감 하나를 돌린다. 그림은 `<outDir>/<층>/<방향>/`에 쓴다. */
+function bake(job: ILayerBakeJob, shared: IBakeShared): Promise<Record<string, unknown>> {
+  const source = layerSource(job.layer);
+  const extra: string[] = [];
+  if (source.topModel) extra.push('--top-vrm', shared.models[source.topModel]);
+  if (source.weapon) {
+    if (!shared.weapons) throw new Error(`${job.layer} 층을 굽는데 무기 사양을 안 받았다`);
+    extra.push(`--${source.weapon}-spec`, shared.weapons[source.weapon]);
+  }
+  return runBake(
+    {
+      label: `${job.layer}/${job.facing}`,
+      dir: frameDir(shared.outDir, job),
+      vrm: shared.models.base,
+      pythonLayer: source.pythonLayer,
+      extra,
+      yaw: job.yaw,
+      frames: job.frames,
+    },
+    shared,
+  );
+}
+
+/**
+ * 기준 컷 일감 하나를 돌린다. 그림은 `<outDir>/<상의 판>/<방향>/`에 쓴다.
+ *
+ * 맨살 판에 상의를 얹지 않고 **상의를 입은 판을 통째로** 굽는다. 기준 컷은 층으로 가르지 않았을 때의 정답이어야
+ * 하는데, 맨살 판에 상의 면을 얹어 구우면 층 굽기와 같은 조립을 거쳐 같은 오류를 함께 갖는다.
+ */
+function bakeReference(
+  job: IReferenceBakeJob,
+  shared: IBakeShared,
+): Promise<Record<string, unknown>> {
+  if (!shared.weapons) throw new Error('기준 컷을 굽는데 무기 사양을 안 받았다');
+  return runBake(
+    {
+      label: `${job.top}/${job.facing}`,
+      dir: path.join(shared.outDir, job.top, job.facing),
+      vrm: shared.models[job.top],
+      pythonLayer: REFERENCE_LAYER,
+      extra: ['--staff-spec', shared.weapons.staff, '--shield-spec', shared.weapons.shield],
+      yaw: job.yaw,
+      frames: job.frames,
+    },
+    shared,
   );
 }
 
@@ -436,6 +517,70 @@ function readCameraRecord(): ICameraRecord {
 }
 
 /**
+ * 기록된 카메라로 굽는 명령(`layers` · `reference`)의 준비. 카메라를 잡은 뒤에 입력이 바뀌었으면 굽지 않고
+ * 던지고(`staleReasons`), 굽는 쪽이 읽을 사양 파일 — 툰 · 무기 둘 · 카메라 — 을 `<outDir>/specs/`에 쓴다.
+ *
+ * 두 명령이 이 준비를 나눠 쓰는 것은 층과 기준 컷이 같은 사양으로 구워져야 견줄 수 있어서다. 도구 판은 Blender를
+ * 돌려 봐야 알므로 여기서는 기록된 값을 그대로 넘기고, 굽는 쪽이 자기 판과 견줘 `camera-stale`로 거부한다.
+ */
+function prepareRecordedBake(outDir: string): {
+  record: ICameraRecord;
+  shared: Omit<IBakeShared, 'canvas'>;
+} {
+  const models = modelPaths();
+  const record = readCameraRecord();
+  const tools = { blender: record.inputs.blender, vrmAddon: record.inputs.vrmAddon };
+  const stale = staleReasons(record.inputs, currentInputs(models, tools));
+  if (stale.length > 0) {
+    for (const reason of stale) console.error(`✗ ${reason}`);
+    throw new Error(
+      '카메라를 잡은 뒤에 입력이 바뀌었다 — `bake.ts camera`로 다시 잡고 모든 층을 굽는다',
+    );
+  }
+
+  fs.mkdirSync(outDir, { recursive: true });
+  const specs = path.join(outDir, 'specs');
+  const toon = writeJson(path.join(specs, 'toon.json'), bakeToon());
+  const [staff, shield] = writeChosenSpecs(specs);
+  const camera = writePythonCamera(path.join(specs, 'camera.json'), record.camera, tools);
+  return {
+    record,
+    shared: {
+      outDir,
+      models,
+      camera,
+      toon,
+      weapons: { staff, shield },
+      stamp: bakeStamp(record.inputs, CHOSEN_WEAPONS),
+    },
+  };
+}
+
+/**
+ * 구운 폴더의 도장이 지금 입력의 것인지 본다. 아니면 다시 돌릴 명령을 말하며 던진다.
+ *
+ * 층과 기준 컷을 견주는 명령들이 읽기 전에 부른다. 한쪽만 옛 입력으로 구운 채 견주면 입력의 차이가 가림의
+ * 차이로 세어지고, 그 수치로 가림 판을 고르게 된다.
+ *
+ * @param dir 구운 그림의 폴더
+ * @param stamp 지금 입력의 도장
+ * @param rebake 이 폴더를 다시 굽는 명령 — 오류 메시지에 넣는다
+ */
+function assertStamp(dir: string, stamp: string, rebake: string): void {
+  const file = path.join(dir, STAMP_FILE);
+  const found = fs.existsSync(file)
+    ? (JSON.parse(fs.readFileSync(file, 'utf-8')) as { stamp?: string }).stamp
+    : undefined;
+  if (found === stamp) return;
+  const where = path.relative(ROOT, dir).split(path.sep).join('/');
+  throw new Error(
+    found === undefined
+      ? `${where}에 도장이 없다 — 굽다가 죽었거나 도장을 찍기 전의 도구로 구웠다. \`${rebake}\`로 다시 굽는다`
+      : `${where}은 지금과 다른 입력(동작 · 모델 · 도구 판 · 무기 사양)으로 구운 것이다 — \`${rebake}\`로 다시 굽는다`,
+  );
+}
+
+/**
  * 걷기 한 장의 발 밑선이 발 행에서 위로 벗어나도 되는 줄 수. 고도가 있으면 뒤로 뻗은 발과 든 발이 화면에서
  * 위로 올라가므로 고도 0 때보다 넉넉해야 한다 — 실측은 가장 높이 뜬 장이 466행(발 행에서 23줄)이었다
  * (2026-09-21). 세트가 통째로 허용 폭 밖에 선 굽기를 잡는 것이 목적이라, 실측에 몇 줄의 여유만 둔다.
@@ -449,43 +594,16 @@ const FOOT_LINE_TOLERANCE = 26;
  * 굽는 쪽이 기록과 견줘 `camera-stale`로 거부한다.
  */
 async function commandLayers(): Promise<void> {
-  const models = modelPaths();
-  const record = readCameraRecord();
-  const stale = staleReasons(
-    record.inputs,
-    currentInputs(models, { blender: record.inputs.blender, vrmAddon: record.inputs.vrmAddon }),
-  );
-  if (stale.length > 0) {
-    for (const reason of stale) console.error(`✗ ${reason}`);
-    throw new Error(
-      '카메라를 잡은 뒤에 입력이 바뀌었다 — `bake.ts camera`로 다시 잡고 모든 층을 굽는다',
-    );
-  }
-
   const only = option('only')?.split(',');
   const jobs = layerBakeJobs().filter((job) => !only || only.includes(job.layer));
   const outDir = path.join(ROOT, SCRATCH, 'layers');
-  fs.mkdirSync(outDir, { recursive: true });
-  const toon = writeJson(path.join(outDir, 'specs', 'toon.json'), bakeToon());
-  const [staff, shield] = writeChosenSpecs(path.join(outDir, 'specs'));
-  const camera = writePythonCamera(path.join(outDir, 'specs', 'camera.json'), record.camera, {
-    blender: record.inputs.blender,
-    vrmAddon: record.inputs.vrmAddon,
-  });
+  const { record, shared } = prepareRecordedBake(outDir);
 
   console.log(`굽기 ${jobs.length}건 (층 × 방향, 한 건에 ${jobs[0]?.frames.length ?? 0}장)`);
   const started = Date.now();
   const payloads = await runPool(
     jobs.map(
-      (job) => () =>
-        bake(job, {
-          outDir,
-          models,
-          camera,
-          toon,
-          weapons: { staff, shield },
-          canvas: layerCanvas(job.layer, record.bodyCanvas),
-        }),
+      (job) => () => bake(job, { ...shared, canvas: layerCanvas(job.layer, record.bodyCanvas) }),
     ),
   );
   const bakeSeconds = Math.round((Date.now() - started) / 1000);
@@ -496,16 +614,8 @@ async function commandLayers(): Promise<void> {
     const canvas = layerCanvas(job.layer, record.bodyCanvas);
     const label = `${job.layer}/${job.facing}`;
 
-    // 모든 층 — 기록된 카메라로 구워졌는가. 발밑 점은 캔버스 중심에서 같은 거리만큼 떨어져 있어야 한다
-    const expectedGround =
-      projectRow(record.camera, PLAYER_FRAME_SPEC.height, [0, 0, 0]) +
-      (canvas.height - PLAYER_FRAME_SPEC.height) / 2;
-    const [groundX, groundY] = payloads[i].ground_px as [number, number];
-    if (Math.abs(groundY - expectedGround) > 0.05 || Math.abs(groundX - canvas.width / 2) > 0.05) {
-      problems.push(
-        `${label}: 발밑 점이 (${groundX}, ${groundY})인데 (${canvas.width / 2}, ${expectedGround.toFixed(2)})이어야 한다 — 기록된 카메라로 구워지지 않았다`,
-      );
-    }
+    // 모든 층 — 기록된 카메라로 구워졌는가
+    problems.push(...groundProblems(record, canvas, payloads[i], label));
 
     for (const action of BAKE_ACTIONS) {
       const named = job.frames.filter((frame) => parseFrameName(frame.name)?.action === action);
@@ -559,6 +669,237 @@ async function commandLayers(): Promise<void> {
 }
 
 /**
+ * 굽기가 기록된 카메라로 됐는지를 발밑 점으로 본다. 발밑 점(세계 원점)은 어느 캔버스에서든 캔버스 중심에서 같은
+ * 거리만큼 떨어져 있어야 한다 — 캔버스를 키우면 주변이 더 보일 뿐이기 때문이다(ADR 009).
+ *
+ * @param canvas 그 굽기의 캔버스
+ * @param payload 굽는 쪽이 돌려준 값. `ground_px`가 발밑 점의 픽셀 좌표다
+ */
+function groundProblems(
+  record: ICameraRecord,
+  canvas: ICanvas,
+  payload: Record<string, unknown>,
+  label: string,
+): string[] {
+  const expectedGround =
+    projectRow(record.camera, PLAYER_FRAME_SPEC.height, [0, 0, 0]) +
+    (canvas.height - PLAYER_FRAME_SPEC.height) / 2;
+  const [groundX, groundY] = payload.ground_px as [number, number];
+  if (Math.abs(groundY - expectedGround) <= 0.05 && Math.abs(groundX - canvas.width / 2) <= 0.05) {
+    return [];
+  }
+  return [
+    `${label}: 발밑 점이 (${groundX}, ${groundY})인데 (${canvas.width / 2}, ${expectedGround.toFixed(2)})이어야 한다 — 기록된 카메라로 구워지지 않았다`,
+  ];
+}
+
+/**
+ * 층을 겹쳐 재는 캔버스 — 모든 층을 담는 가장 큰 캔버스다. 층 캔버스끼리 홀짝이 같으므로(`layerCanvas`) 어느
+ * 층을 옮겨도 중심이 어긋나지 않는다. 합성 화면과 기준 컷도 이 캔버스를 쓴다.
+ */
+function stageCanvas(bodyCanvas: ICanvas): ICanvas {
+  const sizes = BAKE_LAYERS.map((layer) => layerCanvas(layer, bodyCanvas));
+  return {
+    width: Math.max(...sizes.map((size) => size.width)),
+    height: Math.max(...sizes.map((size) => size.height)),
+  };
+}
+
+/**
+ * 구운 프레임을 겹쳐 재는 캔버스에 옮겨 읽는 함수를 낸다. 몸과 무기의 같은 장을 상의마다 다시 풀지 않게
+ * 기억해 둔다 — PNG 풀기가 재는 시간의 대부분이다.
+ */
+function stagedReader(stage: ICanvas): (dir: string, name: string) => IRgbaImage {
+  const seen = new Map<string, IRgbaImage>();
+  return (dir, name) => {
+    const key = path.join(dir, name);
+    let img = seen.get(key);
+    if (!img) {
+      img = centerOnCanvas(readFrame(dir, name), stage);
+      seen.set(key, img);
+    }
+    return img;
+  };
+}
+
+/** 한 방향에서 굽는 프레임의 (동작, 번호) — 층과 기준 컷이 같은 차례로 굽는다. */
+function facingFrames(facing: BakeFacing): { action: string; index: number }[] {
+  const job = bodyJobs().find((each) => each.facing === facing);
+  if (!job) throw new Error(`굽는 방향에 ${facing}이 없다`);
+  return job.frames.map((frame) => {
+    const parts = parseFrameName(frame.name);
+    if (!parts) throw new Error(`프레임 이름이 규칙에 안 맞는다: ${frame.name}`);
+    return { action: parts.action, index: parts.index };
+  });
+}
+
+/**
+ * 내용이 겹치는지 재는 층의 짝(G4 §5). 몸은 넣지 않는다 — 다른 층이 전부 맨살 몸을 가림 전용으로 두고 구워져
+ * 몸과의 앞뒤는 굽기가 이미 풀었다. 상의 A와 B는 게임에서 함께 보이지 않으므로 짝이 아니다.
+ */
+const OVERLAP_PAIRS: readonly (readonly [BakeLayer, BakeLayer])[] = [
+  ['staff', 'shield'],
+  ['topA', 'staff'],
+  ['topA', 'shield'],
+  ['topB', 'staff'],
+  ['topB', 'shield'],
+];
+
+/**
+ * 구운 층끼리 내용이 겹치는 픽셀 수를 방향 · 짝마다 잰다. 굽지 않는다.
+ *
+ * 겹침이 0인 짝은 그 방향에서 만나지 않으므로 앞뒤가 틀릴 자리도 없다. 겹치는 짝이 있는 조합만 기준 컷과 견줘
+ * 가림 판을 고른다(`compare`).
+ */
+function commandOverlap(): void {
+  const record = readCameraRecord();
+  const stamp = bakeStamp(record.inputs, CHOSEN_WEAPONS);
+  const read = stagedReader(stageCanvas(record.bodyCanvas));
+  const layersDir = path.join(ROOT, SCRATCH, 'layers');
+
+  const rows: Record<string, unknown>[] = [];
+  for (const facing of BAKE_FACINGS) {
+    const frames = facingFrames(facing.id);
+    for (const [a, b] of OVERLAP_PAIRS) {
+      const dirs = [a, b].map((layer) => path.join(layersDir, layer, facing.id));
+      for (const dir of dirs) assertStamp(dir, stamp, 'bake.ts layers');
+      let hit = 0;
+      let most = 0;
+      let mostAt = '';
+      for (const { action, index } of frames) {
+        const count = alphaOverlap(
+          read(dirs[0], frameName(a, action, facing.id, index)),
+          read(dirs[1], frameName(b, action, facing.id, index)),
+        );
+        if (count > 0) hit++;
+        if (count > most) {
+          most = count;
+          mostAt = `${action} ${index}`;
+        }
+      }
+      rows.push({ facing: facing.id, pair: `${a}∩${b}`, framesHit: hit, most, mostAt });
+      console.log(
+        `  ${facing.id.padEnd(5)} ${`${a}∩${b}`.padEnd(13)} 겹치는 장 ${String(hit).padStart(2)}/${frames.length} · 가장 많이 ${String(most).padStart(5)}px${most > 0 ? ` (${mostAt})` : ''}`,
+      );
+    }
+  }
+  writeJson(path.join(ROOT, SCRATCH, 'overlap.json'), rows);
+  console.log(`✓ ${SCRATCH}/overlap.json`);
+}
+
+/**
+ * 기준 컷을 굽는다 — 상의 A · B를 입은 판에 지팡이와 방패를 들려 가림 없이 한 장으로, 네 방향을 층과 같은 자세
+ * 와 카메라로. 그림은 `docs/temp/3d-gate/g4/reference/<상의 판>/<방향>/`에 쓴다.
+ *
+ * 캔버스는 겹쳐 재는 캔버스(무기 층의 것)다. 몸 층 캔버스에 구우면 머리 위로 올라간 지팡이가 잘려, 층 합성에는
+ * 있는 픽셀이 기준 컷에 없는 것으로 세어진다.
+ */
+async function commandReference(): Promise<void> {
+  const outDir = path.join(ROOT, SCRATCH, 'reference');
+  const { record, shared } = prepareRecordedBake(outDir);
+  const canvas = stageCanvas(record.bodyCanvas);
+  const jobs = referenceBakeJobs();
+
+  console.log(
+    `기준 컷 굽기 ${jobs.length}건 (상의 판 × 방향, 한 건에 ${jobs[0]?.frames.length ?? 0}장)`,
+  );
+  const started = Date.now();
+  const payloads = await runPool(
+    jobs.map((job) => () => bakeReference(job, { ...shared, canvas })),
+  );
+
+  const problems: string[] = [];
+  for (const [i, job] of jobs.entries()) {
+    const label = `${job.top}/${job.facing}`;
+    problems.push(...groundProblems(record, canvas, payloads[i], label));
+    const dir = path.join(outDir, job.top, job.facing);
+    const frames = job.frames.map((frame) => readFrame(dir, frame.name));
+    problems.push(
+      ...layerSetCheck(frames, { count: job.frames.length, canvas }).map((p) => `${label}: ${p}`),
+    );
+  }
+  console.log(`굽기 ${Math.round((Date.now() - started) / 1000)}초`);
+  if (problems.length > 0) {
+    for (const problem of problems) console.error(`✗ ${problem}`);
+    throw new Error(`기준 컷 판정 ${problems.length}건이 떨어졌다`);
+  }
+  console.log(`✓ ${SCRATCH}/reference`);
+}
+
+/**
+ * 채널 차가 이 값을 넘어야 다른 픽셀로 센다. EEVEE의 샘플 잡음이 같은 장면을 두 번 구워도 한두 단계씩 흔드는
+ * 것을 빼려는 값이고, G2의 층 합성 수치(`layers.ts`의 `DIFF_THRESHOLD`)와 같아야 그 수치와 견줄 수 있다.
+ */
+const DIFF_THRESHOLD = 12;
+
+/**
+ * 층을 게임의 형제 순서(`STACK_ORDER` — 방향마다 다르다)로 겹친 그림을 기준 컷과 견줘, 구멍과 앞에 잘못 보인
+ * 픽셀을 상의 판 · 방향마다 센다(G4 §5). 굽지 않는다 — `layers`와 `reference`가 구운 그림을 읽는다.
+ *
+ * 수치로 가림 판을 고르므로, 두 쪽이 지금 입력으로 구워진 것이 아니면 재지 않는다(`assertStamp`).
+ */
+function commandCompare(): void {
+  const record = readCameraRecord();
+  const stamp = bakeStamp(record.inputs, CHOSEN_WEAPONS);
+  const read = stagedReader(stageCanvas(record.bodyCanvas));
+  const layersDir = path.join(ROOT, SCRATCH, 'layers');
+  const referenceDir = path.join(ROOT, SCRATCH, 'reference');
+
+  // `--same-order`는 모든 방향을 정면의 순서로 겹쳐 잰다. 방향별 순서가 아직 필요한지를 되짚을 때 쓴다 —
+  // 옷이나 무기를 바꾼 뒤 두 결과가 같아졌으면 방향별 표를 접을 수 있다
+  const sameOrder = process.argv.includes('--same-order');
+  const report: Record<string, unknown>[] = [];
+  for (const top of REFERENCE_TOPS) {
+    for (const facing of BAKE_FACINGS) {
+      const order = stackOrder(sameOrder ? 'front' : facing.id, top);
+      const dirs = order.map((layer) => path.join(layersDir, layer, facing.id));
+      for (const dir of dirs) assertStamp(dir, stamp, 'bake.ts layers');
+      const cutDir = path.join(referenceDir, top, facing.id);
+      assertStamp(cutDir, stamp, 'bake.ts reference');
+
+      const zeros = () => Object.fromEntries(order.map((layer) => [layer, 0]));
+      const total: IStackVerdict = { holes: 0, misdrawn: zeros(), unmatched: zeros(), fringe: 0 };
+      // 앞에 잘못 보인 픽셀이 가장 많은 장 — 사람이 합성 화면에서 먼저 볼 자리다
+      let worst = { frame: '', misdrawn: 0 };
+      const frames: Record<string, unknown>[] = [];
+      for (const { action, index } of facingFrames(facing.id)) {
+        const verdict = stackVerdict(
+          order.map((layer, at) => ({
+            name: layer,
+            image: read(dirs[at], frameName(layer, action, facing.id, index)),
+          })),
+          read(cutDir, frameName(REFERENCE_LAYER, action, facing.id, index)),
+          DIFF_THRESHOLD,
+        );
+        total.holes += verdict.holes;
+        total.fringe += verdict.fringe;
+        let misdrawnHere = 0;
+        for (const layer of order) {
+          total.misdrawn[layer] += verdict.misdrawn[layer];
+          total.unmatched[layer] += verdict.unmatched[layer];
+          misdrawnHere += verdict.misdrawn[layer];
+        }
+        if (misdrawnHere > worst.misdrawn) {
+          worst = { frame: `${action} ${index}`, misdrawn: misdrawnHere };
+        }
+        frames.push({ frame: `${action} ${index}`, ...verdict });
+      }
+      report.push({ top, facing: facing.id, total, worst, frames });
+      const perLayer = (counts: Record<string, number>): string =>
+        order.map((layer) => `${layer} ${String(counts[layer]).padStart(4)}`).join(' · ');
+      console.log(
+        `  ${top} ${facing.id.padEnd(5)} 구멍 ${String(total.holes).padStart(3)} · 앞에 잘못 보임 ${perLayer(total.misdrawn)} (가장 많은 장 ${worst.frame} ${worst.misdrawn}px)`,
+      );
+      console.log(
+        `  ${' '.repeat(top.length + 6)} 걷어내도 안 맞음 ${perLayer(total.unmatched)} · 술 ${total.fringe}`,
+      );
+    }
+  }
+  writeJson(path.join(ROOT, SCRATCH, 'compare.json'), report);
+  console.log(`✓ ${SCRATCH}/compare.json (한 줄은 그 방향 11장의 합계, 장별 값은 파일에)`);
+}
+
+/**
  * 구운 층을 게임의 형제 순서로 겹쳐 재생하는 화면을 쓴다. 굽지 않는다 — `layers`가 구운 그림을 읽는다.
  *
  * 돌아서는 모습과 층끼리의 가림은 그림 한 장으로 판정할 수 없어서, 사람이 브라우저에서 방향 · 상의 · 무기를
@@ -573,14 +914,17 @@ function commandPreview(): void {
   const layers = Object.fromEntries(
     BAKE_LAYERS.map((layer) => [layer, layerCanvas(layer, record.bodyCanvas)]),
   );
-  const sizes = Object.values(layers);
+  const stage = stageCanvas(record.bodyCanvas);
+  // 기준 컷은 구워져 있을 때만 넘긴다. 없으면 화면이 「기준 컷」 보기를 잠근다
+  const reference = fs.existsSync(path.join(ROOT, SCRATCH, 'reference'))
+    ? { root: 'reference', layer: REFERENCE_LAYER, tops: REFERENCE_TOPS, canvas: stage }
+    : null;
   const data = {
     root: 'layers',
-    stage: {
-      width: Math.max(...sizes.map((size) => size.width)),
-      height: Math.max(...sizes.map((size) => size.height)),
-    },
+    stage,
     layers,
+    order: STACK_ORDER,
+    reference,
     facings: BAKE_FACINGS.map((f) => ({ id: f.id, label: `${FACING_LABEL[f.id]} (${f.yaw}°)` })),
     frames: { walk: CHOSEN_MOTION.walkFrames, idle: IDLE_PLAYBACK.phases.length },
     idleOrder: IDLE_PLAYBACK.order,
@@ -606,8 +950,11 @@ async function main(): Promise<void> {
   if (command === 'camera') return commandCamera();
   if (command === 'layers') return commandLayers();
   if (command === 'preview') return commandPreview();
+  if (command === 'overlap') return commandOverlap();
+  if (command === 'reference') return commandReference();
+  if (command === 'compare') return commandCompare();
   throw new Error(
-    `명령을 모른다: ${command ?? '(없음)'} — camera · layers · preview 중 하나를 준다`,
+    `명령을 모른다: ${command ?? '(없음)'} — camera · layers · preview · overlap · reference · compare 중 하나를 준다`,
   );
 }
 

@@ -112,7 +112,7 @@ export function compositeOver(img: IRgbaImage, background: Rgb): IRgbaImage {
 }
 
 /** 두 그림의 크기가 같지 않으면 두 크기를 말하며 던진다. */
-function assertSameSize(a: IRgbaImage, b: IRgbaImage, what: string): void {
+export function assertSameSize(a: IRgbaImage, b: IRgbaImage, what: string): void {
   if (a.width === b.width && a.height === b.height) return;
   throw new Error(`${what}: 크기가 다르다 ${a.width}×${a.height} · ${b.width}×${b.height}`);
 }

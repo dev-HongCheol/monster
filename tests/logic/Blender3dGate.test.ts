@@ -38,6 +38,7 @@ import {
 } from '../../tools/blender/Atlas';
 import {
   CHOSEN_PITCH,
+  CHOSEN_WEAPONS,
   OUTLINE_WIDTH_M,
   STAFF_ORB,
   WEAPON_TOON,
@@ -53,11 +54,14 @@ import {
 } from '../../tools/blender/ComparisonSheet';
 import {
   actionFrames,
+  alphaOverlap,
   BAKE_FACINGS,
   BAKE_LAYERS,
   bakeDefinition,
+  bakeStamp,
   bakeToon,
   bodyCanvasWidth,
+  centerOnCanvas,
   definitionHash,
   fitCamera,
   type IBakeInputs,
@@ -67,6 +71,10 @@ import {
   layerSetCheck,
   layerSource,
   projectRow,
+  referenceBakeJobs,
+  STACK_ORDER,
+  stackOrder,
+  stackVerdict,
   staleReasons,
 } from '../../tools/blender/LayerBake';
 import {
@@ -1910,5 +1918,333 @@ describe('staleReasons — 카메라를 잡은 뒤에 입력이 바뀌었는가'
     const addon = staleReasons(recorded, { ...recorded, vrmAddon: '4.8.0' });
     expect(addon[0]).toContain('4.7.1');
     expect(addon[0]).toContain('4.8.0');
+  });
+});
+
+describe('bakeStamp — 구운 그림이 어느 입력으로 구워졌는가', () => {
+  const inputs: IBakeInputs = {
+    definition: 'aaa',
+    models: { base: 'm0', topA: 'm1', topB: 'm2' },
+    blender: '5.2.1',
+    vrmAddon: '4.7.1',
+  };
+
+  it('입력과 무기 사양이 같으면 도장이 같다', () => {
+    expect(bakeStamp(inputs, CHOSEN_WEAPONS)).toBe(
+      bakeStamp(structuredClone(inputs), structuredClone(CHOSEN_WEAPONS)),
+    );
+  });
+
+  it('무기의 그립만 바뀌어도 도장이 바뀐다', () => {
+    // 굽기 정의의 지문은 무기를 안 든다(카메라를 몸만으로 잡는다). 그래서 그립을 고친 뒤 무기 층만 다시 굽고
+    // 기준 컷을 안 구우면, 옮겨 간 지팡이가 「앞에 잘못 보인 픽셀」로 세어지는데 지문으로는 안 걸린다
+    const moved = CHOSEN_WEAPONS.map((weapon) => {
+      if (weapon.id !== STAFF_ORB.id || !weapon.grip) return weapon;
+      const [x, y, z] = weapon.grip;
+      return { ...weapon, grip: [x + 0.01, y, z] as const };
+    });
+
+    expect(bakeStamp(inputs, moved)).not.toBe(bakeStamp(inputs, CHOSEN_WEAPONS));
+  });
+
+  it('카메라 기록의 입력이 바뀌면 도장이 바뀐다', () => {
+    expect(bakeStamp({ ...inputs, definition: 'bbb' }, CHOSEN_WEAPONS)).not.toBe(
+      bakeStamp(inputs, CHOSEN_WEAPONS),
+    );
+  });
+});
+
+describe('centerOnCanvas — 층을 더 큰 캔버스의 중심에 옮긴다', () => {
+  it('캔버스 중심을 맞춰 옮기고 둘레는 투명으로 남긴다', () => {
+    // 모든 층이 같은 카메라로 구워져 캔버스 중심이 같은 월드 점이다. 그래서 중심만 맞추면 겹친다
+    const small = image(2, 1, (x) => [x === 0 ? 200 : 100, 0, 0, 255]);
+
+    const moved = centerOnCanvas(small, { width: 4, height: 3 });
+
+    expect(moved.width).toBe(4);
+    expect(moved.height).toBe(3);
+    expect(pixel(moved, 1, 1)).toEqual([200, 0, 0, 255]);
+    expect(pixel(moved, 2, 1)).toEqual([100, 0, 0, 255]);
+    expect(pixel(moved, 0, 1)).toEqual([0, 0, 0, 0]);
+    expect(pixel(moved, 1, 0)).toEqual([0, 0, 0, 0]);
+  });
+
+  it('같은 크기면 그림이 그대로다', () => {
+    const img = image(2, 2, (x, y) => [x * 9, y * 9, 1, 255]);
+
+    expect(Array.from(centerOnCanvas(img, { width: 2, height: 2 }).data)).toEqual(
+      Array.from(img.data),
+    );
+  });
+
+  it('홀짝이 다른 캔버스로는 옮기지 않는다 — 중심이 반 픽셀에 걸려 층이 0.5px 어긋난다', () => {
+    const img = image(3, 1, () => [0, 0, 0, 255]);
+
+    expect(() => centerOnCanvas(img, { width: 4, height: 1 })).toThrow(/홀짝/);
+  });
+
+  it('그림보다 작은 캔버스로는 옮기지 않고 두 크기를 말한다', () => {
+    const img = image(4, 2, () => [0, 0, 0, 255]);
+
+    expect(() => centerOnCanvas(img, { width: 2, height: 2 })).toThrow(/4×2.*2×2/);
+  });
+});
+
+describe('alphaOverlap — 두 층의 내용이 함께 있는 픽셀 수', () => {
+  it('둘 다 내용이 있는 픽셀만 센다', () => {
+    const a = frame(3, 1, (x) => (x <= 1 ? 255 : 0));
+    const b = frame(3, 1, (x) => (x >= 1 ? 255 : 0));
+
+    expect(alphaOverlap(a, b)).toBe(1);
+  });
+
+  it('옅은 술(알파 16 이하)은 내용으로 안 센다 — 층 판정과 같은 잣대다', () => {
+    const solid = frame(2, 1, () => 255);
+    const faint = frame(2, 1, (x) => (x === 0 ? 16 : 17));
+
+    expect(alphaOverlap(solid, faint)).toBe(1);
+  });
+
+  it('캔버스가 다르면 두 크기를 말하며 던진다 — 먼저 같은 캔버스로 옮겨야 한다', () => {
+    expect(() =>
+      alphaOverlap(
+        frame(2, 1, () => 255),
+        frame(1, 1, () => 255),
+      ),
+    ).toThrow(/2×1.*1×1/);
+  });
+});
+
+describe('stackVerdict — 층을 겹친 그림이 한 번에 구운 기준 컷과 어디서 다른가', () => {
+  const SKIN = [200, 150, 120, 255] as const;
+  const CLOTH = [240, 240, 240, 255] as const;
+  const WOOD = [90, 60, 30, 255] as const;
+  const STEEL = [120, 130, 140, 255] as const;
+  const CLEAR = [0, 0, 0, 0] as const;
+
+  it('겹친 그림이 기준 컷과 같으면 아무것도 세지 않는다', () => {
+    const body = image(2, 1, () => SKIN);
+    const staff = image(2, 1, (x) => (x === 1 ? WOOD : CLEAR));
+    const reference = image(2, 1, (x) => (x === 1 ? WOOD : SKIN));
+
+    expect(
+      stackVerdict(
+        [
+          { name: 'body', image: body },
+          { name: 'staff', image: staff },
+        ],
+        reference,
+        12,
+      ),
+    ).toEqual({
+      holes: 0,
+      misdrawn: { body: 0, staff: 0 },
+      unmatched: { body: 0, staff: 0 },
+      fringe: 0,
+    });
+  });
+
+  it('기준 컷에는 있는데 어느 층에도 없는 픽셀은 구멍이다', () => {
+    const body = image(2, 1, (x) => (x === 0 ? SKIN : CLEAR));
+    const reference = image(2, 1, () => SKIN);
+
+    const verdict = stackVerdict([{ name: 'body', image: body }], reference, 12);
+
+    expect(verdict.holes).toBe(1);
+    // 구멍은 구멍으로만 센다. 같은 픽셀을 두 실패에 겹쳐 세면 어느 쪽을 고쳐야 하는지가 흐려진다
+    expect(verdict.misdrawn).toEqual({ body: 0 });
+    expect(verdict.unmatched).toEqual({ body: 0 });
+  });
+
+  it('맨 위 층을 걷어내면 기준 컷과 맞는 자리는 그 층이 앞에 잘못 보인 것이다', () => {
+    // 소매 뒤이면서 맨살 몸의 실루엣 밖을 지나는 지팡이는 맨살 몸만 가림으로 둔 굽기에서 안 지워진다.
+    // 지팡이 노드가 상의 노드 위라 그 픽셀이 소매 앞에 그려지는데, 빈 자리가 아니라서 구멍으로는 안 잡힌다
+    const body = image(3, 1, () => CLEAR);
+    const top = image(3, 1, (x) => (x <= 1 ? CLOTH : CLEAR));
+    const staff = image(3, 1, (x) => (x >= 1 ? WOOD : CLEAR));
+    const reference = image(3, 1, (x) => (x <= 1 ? CLOTH : WOOD));
+
+    const verdict = stackVerdict(
+      [
+        { name: 'body', image: body },
+        { name: 'topA', image: top },
+        { name: 'staff', image: staff },
+      ],
+      reference,
+      12,
+    );
+
+    expect(verdict.misdrawn).toEqual({ body: 0, topA: 0, staff: 1 });
+    expect(verdict.unmatched).toEqual({ body: 0, topA: 0, staff: 0 });
+  });
+
+  it('두 무기가 겹친 자리는 맨 위에 그려진 쪽에 센다', () => {
+    // 화면에 실제로 잘못 나온 것은 맨 위 층의 픽셀이다. 아래 층에 세면 고칠 층을 잘못 짚는다
+    const staff = image(1, 1, () => WOOD);
+    const shield = image(1, 1, () => STEEL);
+    const reference = image(1, 1, () => WOOD);
+
+    const verdict = stackVerdict(
+      [
+        { name: 'staff', image: staff },
+        { name: 'shield', image: shield },
+      ],
+      reference,
+      12,
+    );
+
+    expect(verdict.misdrawn).toEqual({ staff: 0, shield: 1 });
+  });
+
+  it('두 층을 걷어내야 맞는 자리도 맨 위 층에 센다', () => {
+    // 방패와 지팡이가 둘 다 소매 뒤에 있어야 하는 자리다. 한 층만 걷어내 보고 그만두면 이 픽셀이 가림
+    // 오류가 아닌 쪽으로 빠진다
+    const top = image(1, 1, () => CLOTH);
+    const staff = image(1, 1, () => WOOD);
+    const shield = image(1, 1, () => STEEL);
+    const reference = image(1, 1, () => CLOTH);
+
+    const verdict = stackVerdict(
+      [
+        { name: 'topA', image: top },
+        { name: 'staff', image: staff },
+        { name: 'shield', image: shield },
+      ],
+      reference,
+      12,
+    );
+
+    expect(verdict.misdrawn).toEqual({ topA: 0, staff: 0, shield: 1 });
+  });
+
+  it('걷어내도 기준 컷과 안 맞는 차이는 가림 오류로 세지 않는다', () => {
+    // 층의 윤곽이 아래 층과 섞이는 방식이나 음영이 기준 컷과 다른 자리다. 앞뒤를 바꿔도 안 없어지므로
+    // 가림 판을 고르는 수치에 섞이면 안 되고, 크기는 맨 아래 층(무엇의 앞에도 잘못 설 수 없다)의 값이 가늠해 준다
+    const body = image(2, 1, () => SKIN);
+    const staff = image(2, 1, (x) => (x === 1 ? WOOD : CLEAR));
+    const reference = image(2, 1, (x) => (x === 1 ? [120, 60, 30, 255] : [170, 150, 120, 255]));
+
+    const verdict = stackVerdict(
+      [
+        { name: 'body', image: body },
+        { name: 'staff', image: staff },
+      ],
+      reference,
+      12,
+    );
+
+    expect(verdict.misdrawn).toEqual({ body: 0, staff: 0 });
+    expect(verdict.unmatched).toEqual({ body: 1, staff: 1 });
+  });
+
+  it('걷어낸 자리에 아무 내용도 없으면 가림 오류가 아니다 — 가릴 것이 없다', () => {
+    // 무기의 윤곽이 기준 컷보다 한 픽셀 넓게 구워진 자리다. 걷어낸 자리와 기준 컷이 둘 다 비어서 「맞는다」고
+    // 읽으면, 윤곽의 술이 통째로 가림 오류로 세어진다
+    const body = image(1, 1, () => CLEAR);
+    const staff = image(1, 1, () => [90, 60, 30, 40]);
+    const reference = image(1, 1, () => CLEAR);
+
+    const verdict = stackVerdict(
+      [
+        { name: 'body', image: body },
+        { name: 'staff', image: staff },
+      ],
+      reference,
+      12,
+    );
+
+    expect(verdict.misdrawn.staff).toBe(0);
+    expect(verdict.unmatched.staff).toBe(1);
+  });
+
+  it('문턱 이하의 색 차이는 세지 않는다 — 굽기마다 흔들리는 렌더 잡음이다', () => {
+    const body = image(1, 1, () => [100, 100, 100, 255]);
+    const near = image(1, 1, () => [112, 100, 100, 255]);
+    const far = image(1, 1, () => [113, 100, 100, 255]);
+
+    expect(stackVerdict([{ name: 'body', image: body }], near, 12).unmatched.body).toBe(0);
+    expect(stackVerdict([{ name: 'body', image: body }], far, 12).unmatched.body).toBe(1);
+  });
+
+  it('어느 층의 내용도 없는 자리의 차이는 술로 따로 센다', () => {
+    // 윤곽의 안티앨리어싱이 남긴 옅은 알파끼리의 차이다. 층의 실패로 세면 윤곽 길이만큼 수가 부푼다
+    const body = image(1, 1, () => [200, 150, 120, 10]);
+    const reference = image(1, 1, () => CLEAR);
+
+    expect(stackVerdict([{ name: 'body', image: body }], reference, 8)).toEqual({
+      holes: 0,
+      misdrawn: { body: 0 },
+      unmatched: { body: 0 },
+      fringe: 1,
+    });
+  });
+
+  it('층이 없거나 캔버스가 기준 컷과 다르면 던진다', () => {
+    const reference = image(2, 1, () => SKIN);
+
+    expect(() => stackVerdict([], reference, 12)).toThrow(/층/);
+    expect(() =>
+      stackVerdict([{ name: 'body', image: image(1, 1, () => SKIN) }], reference, 12),
+    ).toThrow(/1×1.*2×1/);
+  });
+});
+
+describe('stackOrder — 방향마다 층을 겹치는 순서', () => {
+  it('정면 · 오른쪽 · 왼쪽은 몸 → 상의 → 지팡이 → 방패다', () => {
+    for (const facing of ['front', 'right', 'left'] as const) {
+      expect(stackOrder(facing, 'topA')).toEqual(['body', 'topA', 'staff', 'shield']);
+    }
+  });
+
+  it('뒷모습은 무기가 상의 아래로 간다', () => {
+    // 뒤에서 보면 두 손이 몸통보다 카메라에서 멀다. 무기 층은 맨살 몸으로만 가려 구워서, 옷이 맨살보다 나온
+    // 만큼의 무기 픽셀이 남는데 그 픽셀을 상의가 덮어야 한다. 방패를 상의 위에 두면 그 픽셀이 상의 앞에
+    // 그려진다(2026-09-21 실측 — 상의 A에서 11장에 1,843px, 아래로 내리면 111px)
+    expect(stackOrder('back', 'topA')).toEqual(['body', 'staff', 'shield', 'topA']);
+  });
+
+  it('입은 상의가 상의 자리에 온다', () => {
+    expect(stackOrder('back', 'topB')).toEqual(['body', 'staff', 'shield', 'topB']);
+    expect(stackOrder('front', 'topB')).toEqual(['body', 'topB', 'staff', 'shield']);
+  });
+
+  it('어느 방향이든 몸이 맨 아래이고 네 자리가 한 번씩 나온다', () => {
+    // 다른 층이 전부 맨살 몸을 가림 전용으로 두고 구워져 몸 뒤의 픽셀이 없다. 몸이 맨 아래가 아니면 몸이 그 층을 덮는다
+    for (const facing of BAKE_FACINGS) {
+      const order = STACK_ORDER[facing.id];
+      expect(order[0]).toBe('body');
+      expect([...order].sort()).toEqual(['body', 'shield', 'staff', 'top']);
+    }
+  });
+});
+
+describe('referenceBakeJobs — 기준 컷은 층과 같은 자세를 한 장으로 굽는다', () => {
+  it('게임에 있는 조합이 상의 둘이라 상의 둘 × 방향 넷, 여덟 건이다', () => {
+    const jobs = referenceBakeJobs();
+
+    expect(jobs).toHaveLength(2 * BAKE_FACINGS.length);
+    expect(new Set(jobs.map((job) => job.top))).toEqual(new Set(['topA', 'topB']));
+  });
+
+  it('같은 방향의 층 일감과 각도 · 자세가 같다', () => {
+    // 자세가 한 장이라도 다르면 자세의 차이가 가림의 차이로 세어지고, 수치만 봐서는 구별되지 않는다
+    const layerJobs = layerBakeJobs().filter((job) => job.layer === 'body');
+    for (const job of referenceBakeJobs()) {
+      const like = layerJobs.find((each) => each.facing === job.facing);
+      expect(like?.yaw).toBe(job.yaw);
+      expect(job.frames.map(({ name: _name, ...pose }) => pose)).toEqual(
+        like?.frames.map(({ name: _name, ...pose }) => pose),
+      );
+    }
+  });
+
+  it('프레임 이름은 층 자리만 whole이고 동작 · 방향 · 번호는 층과 같다', () => {
+    const layerJobs = layerBakeJobs().filter((job) => job.layer === 'body');
+    for (const job of referenceBakeJobs()) {
+      const like = layerJobs.find((each) => each.facing === job.facing);
+      expect(job.frames.map((f) => f.name)).toEqual(
+        like?.frames.map((f) => f.name.replace(/^body_/, 'whole_')),
+      );
+    }
   });
 });
