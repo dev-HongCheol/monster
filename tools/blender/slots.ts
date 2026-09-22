@@ -959,10 +959,15 @@ function commandPage(): void {
       }),
     ]),
   );
-  const data = { cases, frames, canvas, window: PAGE_WINDOW, gameScale: GAME_SCALE };
-  const file = path.join(ROOT, SCRATCH, 'index.html');
-  fs.writeFileSync(file, PAGE_TEMPLATE.replace('__DATA__', JSON.stringify(data)), 'utf-8');
-  console.log(`✓ ${SCRATCH}/index.html`);
+  // 경우마다 한 장씩 따로 쓴다 — 한 장에 다 넣으면 칸이 200개를 넘어 사람이 한 번에 못 본다. `index.html`은 전부다
+  const write = (name: string, chosen: typeof cases) => {
+    const data = { cases: chosen, frames, canvas, window: PAGE_WINDOW, gameScale: GAME_SCALE };
+    const file = path.join(ROOT, SCRATCH, `${name}.html`);
+    fs.writeFileSync(file, PAGE_TEMPLATE.replace('__DATA__', JSON.stringify(data)), 'utf-8');
+    console.log(`✓ ${SCRATCH}/${name}.html`);
+  };
+  for (const item of cases) write(item.id, [item]);
+  write('index', cases);
 }
 
 async function main(): Promise<void> {
