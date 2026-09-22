@@ -103,7 +103,19 @@ interface ISlotCase {
    */
   references: Record<string, ISlotReference>;
   /** 잴 것 — 어느 기준 컷에 어떤 겹치는 순서(아래부터)들을 견주나 */
-  judgments: { reference: string; orders: string[][] }[];
+  judgments: ISlotJudgment[];
+}
+
+/** 기준 컷 하나에 견줄 겹치는 순서들. */
+interface ISlotJudgment {
+  reference: string;
+  /** 잴 겹치는 순서(아래부터). 후보와 대조군이 함께 든다 — 재는 식은 같고 화면의 표시만 다르다 */
+  orders: string[][];
+  /**
+   * 대조군 — 일부러 틀리게 둔 순서와 그것이 무엇을 보여 주는지. 후보가 아니라는 것을 화면에 적어야 사람이 그 칸을
+   * 고를 후보로 읽지 않는다(2026-09-21 — 가르지 않은 머리카락을 상의 아래에 둔 칸을 보고 「머리카락이 사라졌다」).
+   */
+  controls?: { order: string[]; shows: string }[];
 }
 
 /** 몸 메시에서 지워 맨몸을 남길 옷의 머티리얼. 하의 · 신발을 층으로 떼는 경우들이 나눠 쓴다. */
@@ -178,12 +190,29 @@ const CASES: ISlotCase[] = [
           ['bodyNoHair', 'top', 'hairWhole'],
           ['bodyNoHair', 'hairWhole', 'top'],
         ],
+        controls: [
+          {
+            order: ['bodyNoHair', 'top', 'hairWhole'],
+            shows: '가르지 않고 상의 위에 두면 몸 뒤로 늘어진 머리카락이 어깨 · 소매 앞에 그려진다',
+          },
+          {
+            order: ['bodyNoHair', 'hairWhole', 'top'],
+            shows: '가르지 않고 상의 아래에 두면 가슴 앞 · 등의 머리카락이 상의에 덮여 사라진다',
+          },
+        ],
       },
       {
         reference: 'wholeNoHair',
         orders: [
           ['bodyNoHair', 'top'],
           ['bodyNoHair', 'topHeld'],
+        ],
+        controls: [
+          {
+            order: ['bodyNoHair', 'topHeld'],
+            shows:
+              '지금 생산 방식(머리카락이 든 몸으로 가려 구운 상의)은 머리카락을 끄면 그 자리가 구멍이다',
+          },
         ],
       },
     ],
@@ -649,6 +678,9 @@ const PAGE_TEMPLATE = `<!doctype html>
   .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
   .cell { background: #3a4a3a; padding: 6px; border-radius: 4px; }
   .cell.reference { background: #4a3f5a; }
+  .cell.control { background: #4a3a3a; }
+  .tag { display: inline-block; padding: 0 6px; border-radius: 3px; font-size: 11px; }
+  .tag.control { background: #8a3a3a; color: #fff; } .tag.best { background: #2f6b3f; color: #fff; }
   .view { display: block; }
   .cap { max-width: 400px; margin-top: 4px; font-size: 12px; color: #cfd6df; }
   .cap b { color: #fff; } .num { color: #ffd479; }
@@ -751,16 +783,28 @@ function build() {
         head.textContent = '기준 컷 ' + judgment.reference + ' · ' + FACING_LABEL[facing];
         const row = root.appendChild(document.createElement('div'));
         row.className = 'row';
-        for (const order of judgment.orders) {
+        // 잰 값이 가장 적은 후보 칸 — 수치가 고른 순서다. 대조군은 후보에 안 든다
+        const judgedHere = judgment.orders.map((order) => ({
+          order,
+          control: (judgment.controls || []).find((c) => c.order.join() === order.join()),
+          judged: item.report.find((r) => r.reference === judgment.reference
+            && r.facing === facing && r.order.join() === order.join()),
+        }));
+        const score = (j) => j.holes + Object.values(j.misdrawn).reduce((a, b) => a + b, 0);
+        const candidates = judgedHere.filter((each) => !each.control && each.judged);
+        const best = candidates.length > 1
+          ? Math.min(...candidates.map((each) => score(each.judged))) : null;
+        for (const { order, control, judged } of judgedHere) {
           const cell = row.appendChild(document.createElement('div'));
-          cell.className = 'cell';
+          cell.className = 'cell' + (control ? ' control' : '');
           addView(cell, item.id, order, facing);
           const cap = cell.appendChild(document.createElement('div'));
           cap.className = 'cap';
-          const judged = item.report.find((r) => r.reference === judgment.reference
-            && r.facing === facing && r.order.join() === order.join());
           const wrong = judged ? Object.values(judged.misdrawn).reduce((a, b) => a + b, 0) : null;
-          cap.innerHTML = '<b>' + order.join(' → ') + '</b>' + (judged
+          const tag = control
+            ? '<span class="tag control">대조 — 일부러 틀린 순서</span><br>' + control.shows + '<br>'
+            : (judged && best !== null && score(judged) === best ? '<span class="tag best">수치가 고른 순서</span><br>' : '');
+          cap.innerHTML = tag + '<b>' + order.join(' → ') + '</b>' + (judged
             ? '<br>구멍 <span class="num">' + judged.holes + '</span> · 앞에 잘못 보임 <span class="num">'
               + wrong + '</span> · 삐져나옴 <span class="num">' + judged.spill
               + '</span><br>가장 나쁜 장 ' + judged.worst.frame + ' (' + judged.worst.pixels + 'px)'
