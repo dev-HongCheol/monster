@@ -630,9 +630,14 @@ const GAME_SCALE = 77 / PLAYER_FRAME_SPEC.height;
 /**
  * `page`가 쓰는 화면. `__DATA__` 자리에 경우 · 프레임 · 잰 값이 JSON으로 들어간다.
  *
- * 한 칸은 층 그림을 순서대로 같은 자리에 포갠 것이고, 뒤에 오는 그림이 위에 그려지므로 그것이 곧 게임의 형제
+ * 한 칸은 층 그림을 순서대로 같은 캔버스에 포갠 것이고, 뒤에 그리는 그림이 위에 오므로 그것이 곧 게임의 형제
  * 순서다. 게임 크기 보기는 브라우저가 줄인 그림이라 엔진의 축소와 픽셀까지 같지는 않다 — 눈에 띄는 크기인지를
  * 보는 데 쓴다.
+ *
+ * **한 장의 층은 전부 읽힌 뒤에 한 번에 그린다.** 처음에는 층마다 `<img>`를 두고 틱마다 `src`를 바꿨는데, 바지
+ * 그림이 아직 안 읽힌 틱에 몸 그림만 먼저 바뀌면 그 틱에 맨다리가 보였다(2026-09-21 사용자 관찰 — 구운 데이터는
+ * 장마다 하의 층이 고르게 차 있어 데이터의 문제가 아니었다). 그래서 그림을 미리 읽어 들고, 그 장의 층 가운데 하나라도
+ * 안 읽혔으면 그 틱은 그리지 않고 앞 틱의 그림을 둔다. 화면에 보이는 칸만 그린다 — 칸이 200개를 넘는다.
  */
 const PAGE_TEMPLATE = `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><title>슬롯 범위 탐침 — 순서 후보와 기준 컷</title>
@@ -644,8 +649,7 @@ const PAGE_TEMPLATE = `<!doctype html>
   .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
   .cell { background: #3a4a3a; padding: 6px; border-radius: 4px; }
   .cell.reference { background: #4a3f5a; }
-  .view { position: relative; overflow: hidden; }
-  .view img { position: absolute; image-rendering: auto; }
+  .view { display: block; }
   .cap { max-width: 400px; margin-top: 4px; font-size: 12px; color: #cfd6df; }
   .cap b { color: #fff; } .num { color: #ffd479; }
 </style></head><body>
@@ -675,29 +679,63 @@ function src(caseId, layer, facing, frame) {
   const name = layer + '_' + frame.action + '_' + facing + '_' + String(frame.index).padStart(2, '0');
   return caseId + '/' + layer + '/' + facing + '/' + name + '.png';
 }
+// 경로 → Image. 같은 그림을 여러 칸이 쓰므로 한 번만 읽는다
+const images = new Map();
+function imageAt(path) {
+  let img = images.get(path);
+  if (!img) { img = new Image(); img.src = path; images.set(path, img); }
+  return img;
+}
+function loaded(img) { return img.complete && img.naturalWidth > 0; }
+const watcher = new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    const view = views.find((each) => each.canvas === entry.target);
+    if (!view) continue;
+    view.visible = entry.isIntersecting;
+    if (view.visible) drawView(view);
+  }
+}, { rootMargin: '300px' });
 function addView(parent, caseId, layers, facing) {
-  const view = document.createElement('div');
-  view.className = 'view';
-  const images = layers.map(() => view.appendChild(document.createElement('img')));
-  parent.appendChild(view);
-  views.push({ view, images, caseId, layers, facing });
+  const canvas = document.createElement('canvas');
+  canvas.className = 'view';
+  parent.appendChild(canvas);
+  const view = { canvas, ctx: canvas.getContext('2d'), caseId, layers, facing, visible: false, drawn: '' };
+  views.push(view);
+  sizeCanvas(view);
+  watcher.observe(canvas);
+  // 이 칸이 쓸 그림을 전부 미리 읽어 둔다 — 걷기 · 대기 모두
+  for (const frame of DATA.frames[facing]) for (const layer of layers) imageAt(src(caseId, layer, facing, frame));
+}
+function sizeCanvas(view) {
+  const scale = scaleValue();
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.round(DATA.window.width * scale);
+  const height = Math.round(DATA.window.height * scale);
+  view.canvas.style.width = width + 'px';
+  view.canvas.style.height = height + 'px';
+  view.canvas.width = Math.round(width * dpr);
+  view.canvas.height = Math.round(height * dpr);
+}
+function drawView(view) {
+  const frames = framesOf(view.facing);
+  const frame = frames[state.tick % frames.length];
+  const key = state.action + ':' + frame.index + ':' + state.scale;
+  if (view.drawn === key) return;
+  const layers = view.layers.map((layer) => imageAt(src(view.caseId, layer, view.facing, frame)));
+  // 한 장이라도 아직 안 읽혔으면 이번 틱은 건너뛴다 — 층 하나가 빠진 그림을 한 틱이라도 보이지 않는다
+  if (!layers.every(loaded)) return;
+  if (view.drawn.split(':')[2] !== state.scale) sizeCanvas(view);
+  const { canvas, ctx } = view;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const sx = (DATA.canvas.width - DATA.window.width) / 2;
+  const sy = (DATA.canvas.height - DATA.window.height) / 2;
+  for (const img of layers) {
+    ctx.drawImage(img, sx, sy, DATA.window.width, DATA.window.height, 0, 0, canvas.width, canvas.height);
+  }
+  view.drawn = key;
 }
 function draw() {
-  const scale = scaleValue();
-  const left = -((DATA.canvas.width - DATA.window.width) / 2) * scale;
-  const top = -((DATA.canvas.height - DATA.window.height) / 2) * scale;
-  for (const each of views) {
-    const frames = framesOf(each.facing);
-    const frame = frames[state.tick % frames.length];
-    each.view.style.width = DATA.window.width * scale + 'px';
-    each.view.style.height = DATA.window.height * scale + 'px';
-    each.images.forEach((img, i) => {
-      img.src = src(each.caseId, each.layers[i], each.facing, frame);
-      img.style.width = DATA.canvas.width * scale + 'px';
-      img.style.left = left + 'px';
-      img.style.top = top + 'px';
-    });
-  }
+  for (const view of views) if (view.visible) drawView(view);
   const sample = framesOf('front');
   document.getElementById('frameLabel').textContent =
     state.action + ' ' + sample[state.tick % sample.length].index;
@@ -740,7 +778,13 @@ function build() {
 }
 for (const name of ['action', 'scale']) {
   for (const input of document.querySelectorAll('input[name=' + name + ']')) {
-    input.addEventListener('change', () => { state[name] = input.value; state.tick = 0; draw(); });
+    input.addEventListener('change', () => {
+      state[name] = input.value;
+      state.tick = 0;
+      // 크기가 바뀌면 안 보이는 칸까지 먼저 새 크기로 비워 둔다 — 스크롤해 들어올 때 옛 크기의 그림이 잠깐 남지 않게
+      if (name === 'scale') for (const view of views) { sizeCanvas(view); view.drawn = ''; }
+      draw();
+    });
   }
 }
 document.getElementById('paused').addEventListener('change', (e) => { state.paused = e.target.checked; });
