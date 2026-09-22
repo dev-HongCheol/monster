@@ -119,7 +119,7 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `ComparisonSheet.ts` | 비교 시트의 순수 로직 — 엔진식 축소 · 알파 합성 · 얼굴 가림 · 칸 배치, 그리고 층 겹치기 · 가림 부분집합 · 픽셀 차이. 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `Atlas.ts` | 층별 프레임을 트림해 한 장에 담는 순수 로직 — 이름 규칙과 되가르기 · 선반 패킹 · plist 직렬화와 파싱 · 왕복 복원 · 들어간 plist 검사 둘(원본 크기 · 층별 프레임 수). 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `weapons.py` | 지팡이 · 방패 · 장비 부품을 프리미티브로 세운다. 모양의 정의는 받는 JSON에 있고(채택한 무기는 `BakeSpec.ts`) 이 파일은 세우기만 한다. 몸 표면 투영(`Surface`)도 여기 있어 끈 · 판 · 뿔을 몸 메시에 붙인다 | 있음 |
-| `probe_layers.py` | G2 층 탐침. 층 하나(몸 · 상의 · 무기 · 장비)를 가림 전용 몸과 함께 굽거나, 가림 없이 한 번에 구운 기준 컷(`whole`)을 굽는다. `--toon`으로 툰 사양을 입히고, `--pitch`로 카메라 고도를 준다. `--lineart` · `--passes`는 탈락한 외곽선 후보(Line Art · 후처리용 패스)용이라 G4에서 지운다. TS에서 이 스크립트를 부르는 길은 아직 `retired/gear.ts`의 `bake`뿐이고 G4가 생산 도구로 가져간다 | 있음 |
+| `probe_layers.py` | G2 층 탐침. 층 하나(몸 · 상의 · 무기 · 장비)를 가림 전용 몸과 함께 굽거나, 가림 없이 한 번에 구운 기준 컷(`whole`)을 굽는다. `--toon`으로 툰 사양을 입히고, `--pitch`로 카메라 고도를 준다(몸 중심을 겨냥한 채 내려다보고 직교 배율은 그대로 — 발 · 머리 행은 0°에서만 정확하다). `--yaw`로 모델을 돌리고(몸 상자는 돌리기 전에 잰다), `--top-vrm`이 상의 층에 필요하고, `--gear-spec` · `--staff-spec` · `--shield-spec`이 장비 · 무기를 든다. `--no-holdout 1`은 가림을 끈다 — 층이 비어 나올 때 가려져서인지 애초에 없어서인지를 가르는 유일한 수단이다. `--lineart` · `--passes`는 탈락한 외곽선 후보(Line Art · 후처리용 패스)용이라 G4에서 지운다. TS에서 이 스크립트를 부르는 길은 아직 `retired/gear.ts`의 `bake`뿐이고 G4가 생산 도구로 가져간다 | 있음 |
 | `toon.py` | 툰 사양 JSON을 MToon 머티리얼에 입힌다. 무기 · 장비 부품은 사양이 그 분류를 적었을 때만 MToon으로 바꾼다 | 있음 |
 | `inspect_mtoon.py` | `.vrm`의 MToon 값을 덤프하고, 애드온 셰이더가 명세 식과 옛 식 중 어느 쪽을 음영 혼합에 물렸는지 보고한다. 애드온 · Blender 판을 바꾼 뒤 먼저 돌린다 | 있음 |
 | `layers.ts` | 층 PNG 실행기 — 가림 부분집합 판정(`subset`), 층 겹치기와 720p 축소(`stack`), 기준 컷과의 차이(`diff`). 규칙은 `ComparisonSheet.ts`가 든다 | 있음 |

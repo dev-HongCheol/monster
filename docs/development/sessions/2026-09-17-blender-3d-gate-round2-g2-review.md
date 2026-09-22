@@ -3,7 +3,7 @@
 - **작성일:** 2026-09-17
 - **브랜치:** `feat/blender-3d-gate`
 - **정본:** [`art-direction.md`](../../design/spec/art-direction.md) §3.1 · [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §3 · §4 · [`ops-blender-toon.md`](../spec/ops-blender-toon.md) — 여기 적힌 결정이 G6에서 이 세 정본으로 들어간다. 아직은 이 문서와 G2 문서에만 있다
-- **원본 기록:** [G2 문서](2026-09-15-blender-3d-gate-round2-g2-toon.md) §8(수치 · 판마다의 지적과 수정), [인계 문서](2026-09-16-blender-3d-gate-round2-handoff.md), [계획 개요](2026-09-11-blender-3d-gate-plan.md)
+- **원본 기록:** [G2 문서](2026-09-15-blender-3d-gate-round2-g2-toon.md) §8(수치 · 판마다의 지적과 수정), [계획 개요](2026-09-11-blender-3d-gate-plan.md)
 - **검토 결과:** 사용자가 2026-09-20에 검토를 마쳤다. 되돌릴 것은 없고, 시작 복장은 상의 A로 정했다(§0 · §10)
 - **그림:** `cloud-storage/art/evidence/player/2026-09-17-3d-gate-round2-g2/` — 이 문서가 인용하는 시트와 흉내가 전부 거기 있고 폴더의 README가 파일마다 무엇인지 적는다. **git이 추적하지 않는 폴더라** 그림을 문서에 삽입하지 못하고 경로만 적는다(2026-09-19 — 시험 자료는 레포가 아니라 드라이브에 둔다). 폴더를 옆에 열어 두고 읽는다
 
