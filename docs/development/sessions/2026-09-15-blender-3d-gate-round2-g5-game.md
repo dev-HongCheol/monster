@@ -160,8 +160,8 @@ Player
 | 출하 2D `player_4dir_*.png` · `player_staff.png` · `player_mage_bridge.png` | 지운다(사용자 확인). 뒤의 둘은 F101 대상이다 |
 | `game/assets/test-3d-gate/`와 그 `.meta` | 2026-09-19에 게임 폴더에서 뺐다(사용자 확인). `cloud-storage/art/evidence/`에 보관 |
 | `art-source/player/2026-09-11-3d-gate/`(1라운드 `character.vrm` · 비교 시트 · 모션) | 2026-09-19에 뺐다. `cloud-storage/art/evidence/player/2026-09-11-3d-gate/`에 보관 |
-| `tools/blender/gate.ts`의 1라운드 입력 경로 · 게이트 0b · 0c · 2 | 2026-09-19에 `tools/blender/retired/gate-round1.ts`로 갈랐다(`gate.ts`는 표를 밖에서 받고 0a만 든다). G4 뒤에 그 폴더와 함께 지운다 |
-| `tools/blender/import_vrm.py` · `sheet.ts` · `ComparisonSheet.ts` | `ComparisonSheet.ts`는 2라운드 도구(`layers.ts`)가 써서 남긴다. 나머지 둘은 2026-09-19에 `tools/blender/retired/`로 물렸고 G4 뒤에 그 폴더와 함께 지운다 |
+| `tools/blender/gate.ts`의 1라운드 입력 경로 · 게이트 0b · 0c · 2 | 2026-09-19에 `tools/blender/retired/gate-round1.ts`로 갈랐다(`gate.ts`는 표를 밖에서 받고 0a만 든다). G4를 닫으며 그 폴더와 함께 지웠다(2026-09-23) |
+| `tools/blender/import_vrm.py` · `sheet.ts` · `ComparisonSheet.ts` | `ComparisonSheet.ts`는 2라운드 도구(`layers.ts`)가 써서 남긴다. 나머지 둘은 2026-09-19에 `tools/blender/retired/`로 물렸고 G4를 닫으며 그 폴더와 함께 지웠다(2026-09-23) |
 | `retarget_render.py`의 `import_motion` · `BONE_MAP` · `SWING_SCALE` | 키프레임 굽기로 대체되면 뺀다 |
 | `tests/logic/Blender3dGate.test.ts`의 1라운드 단언 | 남는 도구에 해당하는 것만 둔다 |
 | `.gitattributes`의 `*.vrm` · `*.glb` | 남긴다. 바이너리 선언이라 대상 파일이 없어도 해가 없다 |

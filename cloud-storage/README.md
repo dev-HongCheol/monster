@@ -74,7 +74,7 @@ cloud-storage/
 | `player/2026-09-20-3d-gate-round2-g3/` | 걷기 · 뛰기 후보 넷과 대기를 다섯 방향(정면 · 오른쪽 90° · 75° · 60° · 뒤)으로 구운 프레임, 나란히 재생하는 `preview.html`, 실측 JSON. 파일마다 무엇인지는 그 폴더의 README가 적는다 | 2라운드 G3 — 걷기 A · 8장 · 10fps, 좌우 75°, 대기는 프레임(2026-09-20) |
 | `enemies/2026-09-17-ghost-samples/` | 사용자가 GPT 웹으로 만든 달걀귀신 · 처녀귀신 · 도깨비 · 두억시니. **게임에 실릴 적 아트가 아니라 화풍 비교용이다** | G2 외곽선 굵기 목표(긴 변의 0.55~0.57%) · 고도 · 크기 · 화풍 게이트 |
 
-이 자료를 읽는 도구는 모두 `tools/blender/retired/`로 물러난 것들이다(`elevation.ts` · `mock.ts` · `sheet.ts` · `gate-round1.ts`). G3 폴더는 도구가 읽는 입력이 아니라 `retired/motion.ts`의 산출물을 복사해 둔 것이다. 어느 도구가 어느 파일을 읽는지는 [`tools/blender/retired/README.md`](../tools/blender/retired/README.md)가 든다. 그 도구들이 G4 뒤에 지워지면 이 자료는 입력 노릇이 끝나고 기록으로만 남는다.
+이 자료를 읽던 도구(`elevation.ts` · `mock.ts` · `sheet.ts` · `gate-round1.ts`)는 `tools/blender/retired/`로 물러났다가 G4를 닫으며 지워졌다(2026-09-23 — 어느 도구가 어느 파일을 읽었는지는 그 폴더의 README와 함께 git 이력에 있다). G3 폴더는 도구가 읽는 입력이 아니라 지운 `retired/motion.ts`의 산출물을 복사해 둔 것이다. 도구가 지워졌으므로 이 자료는 입력 노릇이 끝났고 기록으로만 남는다.
 
 ## 문서에서 이 폴더를 가리킬 때
 

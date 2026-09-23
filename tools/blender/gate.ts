@@ -15,7 +15,8 @@
  * Blender 실행 파일은 환경 변수 `BLENDER`로 준다. 자세한 것은 `README.md`에 있다.
  *
  * **게이트 표는 밖에서 받는다.** 이 파일의 표에는 환경 스모크(0a)만 있다. 1라운드 입력(시험용 `.vrm` · 모션 팩)에
- * 묶인 게이트 0b · 0c · 2는 `retired/gate-round1.ts`가 자기 표를 들고 이 파일의 `main`을 부른다(2026-09-19).
+ * 묶인 게이트 0b · 0c · 2는 `retired/gate-round1.ts`가 자기 표를 들고 이 파일의 `main`을 불렀다(2026-09-19 ~ 09-23,
+ * G4를 닫으며 지웠다).
  * 실행기를 두 벌로 복사하지 않으려는 것이다 — 복사하면 판정 줄 읽기와 시간 상한 처리를 한쪽만 고치게 된다.
  */
 
@@ -98,7 +99,7 @@ export const FRAME_ARGS = [
  */
 const BLENDER_TIMEOUT_MS = 20 * 60 * 1000;
 
-/** 이 파일의 게이트 표 — 환경 스모크 하나다. 1라운드 게이트는 `retired/gate-round1.ts`가 든다. */
+/** 이 파일의 게이트 표 — 환경 스모크 하나다. 1라운드 게이트 표(`retired/gate-round1.ts`)는 G4를 닫으며 지웠다. */
 const GATES: Record<string, IGateSpec> = {
   '0a': {
     script: 'tools/blender/smoke.py',
@@ -356,7 +357,8 @@ function runGate(gates: Record<string, IGateSpec>, name: string): number {
 /**
  * Blender를 부르지 않고 게이트 표의 출력 자리에 이미 있는 산출물만 다시 잰다.
  *
- * 게임 폴더의 프레임을 다시 구울 때 쓰는 경로다(`retired/README.md` 「1라운드 프레임 다시 굽기」). 렌더 스크립트는
+ * 게임 폴더의 프레임을 다시 구울 때 쓰는 경로다(절차는 지운 `retired/README.md`의 「1라운드 프레임 다시 굽기」에
+ * 있었다 — git 이력). 렌더 스크립트는
  * 이미 있는 파일을 덮지 않으므로, 게이트 0c로 스크래치에 구워 판정한 뒤 그 PNG를 게임 폴더에
  * 덮어 넣는다. 그렇게 넣은 파일에는 판정 줄이 없어서, 이 모드가 없으면 게임에 실린 세트를 다시
  * 재는 도구 경로가 없다.
@@ -406,7 +408,7 @@ function assertNodeVersion(): void {
 /**
  * 명령줄을 읽어 `gates` 표의 게이트 하나를 돌린다. 종료 코드를 직접 정한다.
  *
- * @param gates 이름 → 게이트. 이 파일은 자기 표를, `retired/gate-round1.ts`는 1라운드 표를 넘긴다
+ * @param gates 이름 → 게이트. 이 파일은 자기 표를 넘긴다(1라운드 표를 넘기던 `retired/gate-round1.ts`는 G4를 닫으며 지웠다)
  */
 export function main(gates: Record<string, IGateSpec>): void {
   try {

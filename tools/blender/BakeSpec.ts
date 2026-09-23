@@ -3,7 +3,7 @@
  *
  * 값은 전부 사람 판정으로 정해졌다(2026-09-16 ~ 09-17). 후보를 굽고 시트를 만든 실행기들은 판정이 끝나
  * `retired/`로 물러났는데, 확정값이 그 실행기들 안에 묻혀 있어서 이 파일로 옮겼다. 물러난 실행기도 이 파일의
- * 값을 읽는다. 같은 값을 두 곳에 두면 한쪽만 고쳤을 때 후보 시트와 생산 굽기가 다른 그림을 굽는데, 그 차이는
+ * 값을 읽었고, G4를 닫으며 지웠다(2026-09-23). 같은 값을 두 곳에 두면 한쪽만 고쳤을 때 후보 시트와 생산 굽기가 다른 그림을 굽는데, 그 차이는
  * 타입체크에도 테스트에도 걸리지 않는다.
  *
  * **여기 없는 것.** 크기(플레이어 80% · 몬스터는 `collisionRadius`의 직선)는 굽기 값이 아니라 게임 데이터라
@@ -74,7 +74,7 @@ export const PLATE: readonly [number, number, number] = [140, 120, 95];
 export const BOSS: readonly [number, number, number] = [200, 180, 120];
 
 /**
- * 채택한 지팡이 — 사용자가 후보 셋 중에서 골랐다(2026-09-16). 떨어진 둘은 `retired/weapons.ts`의 후보 표에 있다.
+ * 채택한 지팡이 — 사용자가 후보 셋 중에서 골랐다(2026-09-16). 떨어진 둘의 사양은 `retired/weapons.ts`의 후보 표에 있었다(G4를 닫으며 지웠다 — git 이력).
  *
  * 좌표는 미터이고 원점이 바닥이라, 손잡이 길이를 바꾸면 `location`의 z도 절반만큼 함께 옮긴다.
  */
@@ -125,7 +125,7 @@ export const STAFF_ORB: IWeaponSpec = {
   ],
 };
 
-/** 채택한 방패 — 사용자가 후보 셋 중에서 골랐다(2026-09-16). 떨어진 둘은 `retired/weapons.ts`의 후보 표에 있다. */
+/** 채택한 방패 — 사용자가 후보 셋 중에서 골랐다(2026-09-16). 떨어진 둘의 사양은 `retired/weapons.ts`의 후보 표에 있었다(G4를 닫으며 지웠다 — git 이력). */
 export const SHIELD_ROUND: IWeaponSpec = {
   id: 'shield_round',
   label: '방패 A — 원형',
@@ -213,8 +213,8 @@ export interface IHull {
 /**
  * 채택한 외곽선 — 헐 1. 머리카락까지 전부 같은 굵기로 두르고 눈 · 얼굴 그림 재질만 뺀다(2026-09-17 사용자 판정).
  *
- * 머리카락을 빼거나(헐 2) 절반 굵기로 한(헐 3) 판, Line Art, 후처리는 탈락했다. 그 판들은 `retired/outline.ts`의
- * 후보 표에 남아 있다.
+ * 머리카락을 빼거나(헐 2) 절반 굵기로 한(헐 3) 판, Line Art, 후처리는 탈락했다. 그 판들의 사양은
+ * `retired/outline.ts`의 후보 표에 있었다(G4를 닫으며 지웠다 — git 이력).
  */
 export const CHOSEN_HULL: IHull = {
   widths: { '*': OUTLINE_WIDTH_M, EYE: null, FACE: null },
