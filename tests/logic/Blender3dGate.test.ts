@@ -2210,10 +2210,18 @@ describe('stackVerdict — 층을 겹친 그림이 한 번에 구운 기준 컷�
 });
 
 describe('stackOrder — 방향마다 층을 겹치는 순서', () => {
-  it('정면 · 오른쪽 · 왼쪽은 몸 → 상의 → 지팡이 → 방패다', () => {
-    for (const facing of ['front', 'right', 'left'] as const) {
+  it('정면 · 오른쪽은 몸 → 상의 → 지팡이 → 방패다', () => {
+    for (const facing of ['front', 'right'] as const) {
       expect(stackOrder(facing, 'topA')).toEqual(['body', 'topA', 'staff', 'shield']);
     }
+  });
+
+  it('왼쪽은 지팡이가 상의 아래로 간다', () => {
+    // 왼쪽에서 보면 지팡이는 먼 쪽(오른손)에 있고 카메라 쪽 팔의 소매가 그 앞을 지난다. 지팡이 층은 맨살 몸으로만
+    // 가려 구워서 소매에 가려야 할 지팡이 픽셀이 남는데, 지팡이를 상의 위에 두면 그 픽셀이 소매 앞에 그려진다.
+    // 몸에 붙는 v1 상의 둘은 그 자리에 소매가 없어 두 순서의 그림이 같고, 넓은 소매 탐침에서 갈렸다
+    // (2026-09-21 실측 — 11장에 2,370px, 아래로 내리면 440px. 표를 지금 바꾼 것은 사용자 결정 2026-09-23)
+    expect(stackOrder('left', 'topA')).toEqual(['body', 'staff', 'topA', 'shield']);
   });
 
   it('뒷모습은 무기가 상의 아래로 간다', () => {
