@@ -313,6 +313,7 @@ AI가 구현·검증 단계에서 돌린다. 여기 적는 것은 무엇이 기�
 - [x] `bake.ts compare` — 층을 방향별 순서로 겹친 그림을 기준 컷과 견줘, 상의 둘 × 네 방향에서 구멍 0 ~ 1px · 앞에 잘못 보임 111 ~ 858px(11장 합계)이 나왔다(2026-09-21, G4 §5.1). 왼쪽 순서를 바꾼 뒤 다시 돌려 여덟 조합의 값이 그대로였다(2026-09-23)
 - [x] `bake.ts check-atlas` — 게임 폴더의 plist 10개 · 프레임 220장이 원본 크기 · 층별 프레임 수 · 빠진 프레임 · PNG 크기 검사를 통과했다(2026-09-21에 넣은 직후, 2026-09-23에 다시 돌려도 같다)
 - [x] `slots.ts bake` · `judge` — 슬롯 범위 탐침 여섯 경우 188건을 굽고 잰 결과가 나왔다(2026-09-21, G4 §12.1 — 넷은 되고 부피 있는 하의 × 긴 부츠는 서로 가림 판에서만 된다). 판정 증거인 탐침 화면은 추적하지 않는다
+- [x] G5 RED 확인(2026-09-27, `ready-impl` 전) — `Blender3dGate.test.ts`에 G5 게임 로직 블록 12건을 더해 돌리니 그 12건만 「모듈이 없다」로 실패하고 나머지 238건은 통과했다. 없는 모듈을 동적 `import()`로 불러 이 블록만 실패하게 했다(G5 §1)
 
 **파이썬은 어느 그물에도 안 걸린다.** `tools/**/*.ts`는 타입체크·lint·vitest 셋을 다 지나가지만 `.py`는 셋 중 아무것도 보지 않는다. 그래서 Blender 쪽은 굽기만 하고 판정을 전부 TS에 뒀고, 이 슬라이스는 그 트레이드오프를 받아들인다.
 
@@ -518,3 +519,118 @@ AI가 구현·검증 단계에서 돌린다. 여기 적는 것은 무엇이 기�
 | G3 동작 | **통과**(2026-09-20) | 통과 조건 셋 — ① 정면에서 발바닥이 카메라로 향하는 각(모델 기준) 5° 이하: 4.0°(1라운드 H 16°) ② 발목 좌우 이동이 1440p 게임 크기에서 2px 이하: 0.00cm · 0.00px(1라운드 H 3.2cm · 5.0px — 당시 표시 높이 96 기준) ③ 사용자가 걷기 · 대기를 골랐다. 고른 것: 걷기 후보 A 「차분한 걷기」 · 8장 · 10fps, 좌우 75°(3/4 각도 45~60°는 옆으로 걸을 때 게걸음으로 보여 떨어졌다), 대기는 프레임(세 장을 0 → 1 → 2 → 1로 재생 — 무릎 굽힘은 고를 때 30°였고 G4의 층 합성 화면을 보고 2026-09-21에 10°로 줄였다). 함께 잰 값(표시 높이 77 기준) — 가장 낮은 발바닥 0 ~ 0.19cm, 머리 오르내림 1.1px(720p) · 2.3px(1440p), 머리 좌우 0.18px(1440p), 한 걸음 21.3단위, 미끄러짐 배수 5.6(8장 · 10fps — 사용자가 바닥을 게임 속도로 흘린 화면에서 보고 골랐다). 판정에 쓴 재생 화면은 추적하지 않는 `cloud-storage/art/evidence/player/2026-09-20-3d-gate-round2-g3/preview.html`. [G3 문서](../development/sessions/2026-09-15-blender-3d-gate-round2-g3-motion.md) §3 · §5 |
 | G4 굽기 | **통과**(2026-09-23) | 통과 조건 일곱(G4 §10) — ① 모든 굽기가 같은 카메라 기록값이고 입력 해시가 일치한다(`tools/blender/camera.json` — 다르면 굽기를 거부한다) ② 맨살 몸 층이 §4 판정을 통과(220장, 2026-09-21) ③ 상의 · 무기 층이 층 전용 판정을 통과 ④ 겹침 측정과 가림 판을 기록(맨살 몸만 가림 + 방향별 겹치는 순서 — 왼쪽은 넓은 소매 탐침으로 2026-09-23에 지팡이를 상의 아래로 내렸다) ⑤ 아틀라스가 Cocos에 들어가고(사용자 임포트 확인 2026-09-21) `check-atlas` 통과 ⑥ 비용 · 용량 기록(4.99MB — 트리거에 걸려 사용자가 그대로 싣기로 했다) ⑦ 슬롯 범위 탐침 결과 기록(§12.1 — 넷은 되고 부피 있는 하의 × 긴 부츠는 서로 가림 판에서만 된다). 사용자가 탐침 화면을 검토했다(2026-09-22 ~ 23 — 머리카락 분할 · 넓은 소매 모두 정답과 같아 보였고, 흰 다리 깜빡임은 화면 버그로 고쳤다). 남은 결정 둘은 왼쪽 순서 지금 바꿈 · 하의 × 부츠는 v2(F112). [G4 문서](../development/sessions/2026-09-15-blender-3d-gate-round2-g4-bake.md) §5.1 · §9 · §12.1 |
 | G5 본편 · G6 정본 | 미착수 | |
+
+---
+
+## 13. 2라운드 Impact Map — G5 본편 (2026-09-23 ~ 27)
+
+G4까지는 게임 코드를 건드리지 않았다. G5가 처음으로 본편을 바꾸므로 회귀 기준을 여기서 다시 세운다. 무엇을 왜 바꾸는지는 [G5 문서](../development/sessions/2026-09-15-blender-3d-gate-round2-g5-game.md) §2 ~ §2.7이 들고, 이 표는 어느 파일을 어디까지 확인해야 하는지만 든다.
+
+| 변경 파일 | 무엇을 바꾸나 | 확인 범위(회귀 기준) |
+|---|---|---|
+| `game/assets/scripts/logic/PlayerLayerLogic.ts` (신규) | 동기화 컴포넌트가 쓰는 순수 함수 — 시계와 프레임 번호(`advanceAnim`), 프레임 이름(`frameName`), 층별 프레임 수 검사(`validateLayers`), 빠진 프레임 처리(`resolveLayerFrame`), 방향별 겹치는 순서(`stackOrder`) | `Blender3dGate.test.ts`의 G5 블록 12건(§8) — 굽기 도구의 확정값(`CHOSEN_MOTION` · `IDLE_PLAYBACK` · `STACK_ORDER` · 아틀라스 이름 규칙)과 같은 값인지를 단언한다 |
+| `game/assets/scripts/components/PlayerLayerSync.ts` (신규, 가칭) | `lateUpdate`에서 `PlayerController`의 getter 셋을 읽어 시계를 돌리고, 자식 Sprite 넷에 (층, 동작, 방향, 번호)의 SpriteFrame을 붙이며, 방향이 바뀐 프레임에 형제 순서를 다시 매긴다. 층별 프레임 수가 다르면 오류를 남기고 꺼지고, 아틀라스 속성이 비면 그 층 노드만 끈다 | 컴포넌트라 vitest 밖이다. §16 인게임 항목 |
+| `game/assets/scripts/components/PlayerController.ts` | 방향 슬롯 넷(`frameFront` ~ `frameRight`)과 `_applyFacingFrame` · `_frameFor`를 지우고, 읽기 전용 getter 셋(`facing` · `isMoving` · `isTicking`)을 낸다. `_halfHeight`는 그대로 Player 자기 노드의 `UITransform`에서 읽는다 | 이동 · 바라보는 방향 · 발치 · 포커스 유실 처리가 교체 전과 같다(§16). `MoveInputLogic` · `FootprintLogic` · `FacingLogic` 테스트는 그대로 통과한다 |
+| `game/assets/scenes/main.scene` | Player의 Sprite 컴포넌트를 떼고 `UITransform`을 38.42×77로, 자식 넷(Body · Top · Staff · Shield)을 달고 동기화 컴포넌트를 연결한다(§14 · §15). 사용자가 에디터에서 한다 | G5 §4의 검사 명령(출하 PNG UUID 0건 · Player 크기 · 자식 원점 · Trim) |
+| `game/assets/resources/data/player.json` | `hurtboxHalfWidth` 18 → 14 · `hurtboxHalfHeight` 44 → 35 · `collisionRadius` 25 → 20(G5 §2.6) | 피격 사각형 · 이동 원이 새 몸(38×77)에 맞는다(§16). 궤도 여유가 5px 가까워지는 것은 버그가 아니다 |
+| `game/assets/resources/data/enemies.json` | `threatScale`을 G5 §2.6의 직선(크기 = 50 + (r − 18) × 25 / 22)으로 다시 쓴다 | 720p에서 달걀귀신 50 · 두억시니 75 안팎(§16) |
+| 출하 2D `player_4dir_*.png` · `player_staff.png` · `player_mage_bridge.png` | 지운다(사용자 확인 뒤, G5 §3의 정리 순서 4번) | G5 §4의 UUID 0건 검사. `AiMatting.test.ts`가 출하 PNG를 표본으로 쓰므로 먼저 픽스처로 옮긴다 |
+| `tools/blender/` 1라운드 도구 · `tests/logic/Blender3dGate.test.ts`의 1라운드 단언 | 남는 도구에 해당하는 것만 둔다(G5 §3 표) | 전체 스위트가 지운 만큼만 줄고 나머지는 그대로다 |
+
+## 14. 2라운드 씬 변경 — Player 계층 (잠정 — 구현 뒤 확정)
+
+**언제 하나.** G5 §3의 씬 창이다. 순서가 정해져 있다 — ① AI가 `PlayerLayerLogic`과 동기화 컴포넌트를 구현한다 → ② 사용자가 이 절대로 씬을 고친다 → ③ AI가 `PlayerController`의 슬롯 속성을 지운다. ③을 ②보다 먼저 하면 인스펙터에서 슬롯이 사라져 사용자가 비울 수 없고, 몸 Sprite가 출하 PNG를 여전히 참조하는 줄 모른 채 PNG를 지우게 된다(G5 §3 3번).
+
+### 14.1 지금 상태 — `main.scene`을 읽어 확정했다(2026-09-23)
+
+- `Player`는 `Canvas`의 넷째 자식이다(`Camera` · `RegionOverlay` · `Obstacles` 다음). 형제 순서는 이번에 안 바꾼다.
+- 레이어는 `DEFAULT`(1073741824)다. **게임 카메라의 `Visibility`가 `DEFAULT` 하나**라, 새로 다는 자식도 `DEFAULT`여야 보인다. 노드의 `Layer`와 카메라의 `Visibility`를 비트로 견줘 겹칠 때만 그리는 것이 엔진 규칙이다(Cocos 3.8 매뉴얼 「Layer」).
+- 자식이 없고 컴포넌트는 넷이다 — `UITransform`(48×96, 앵커 0.5 · 0.5), `Sprite`(출하 정면 그림 `player_4dir_front`, Size Mode `CUSTOM`, Trim 끔), `PlayerController`(방향 슬롯 넷에 출하 PNG 넷), `SpellCaster`.
+
+### 14.2 목표 계층 트리
+
+> 캔버스는 기존 씬 그대로 1280 × 720이고, 자식의 Position은 Player 원점 기준이다. 크기의 근거는 G5 §2.5 — 공통 배율 `K` = 77 ÷ 493 = 0.15619 하나로 모든 층의 캔버스를 곱한다.
+
+| 노드 | 타입 | 부모 | Position | Content Size | Anchor | Layer | 컴포넌트 |
+|---|---|---|---|---|---|---|---|
+| `Player` | 기존 노드 | `Canvas` | 그대로 (0, 0, 0) | **38.42 × 77** (246 × `K`, 493 × `K` — 기준 몸 규격) | 0.5, 0.5 | `DEFAULT` | `UITransform` · `PlayerController` · `SpellCaster` · **`PlayerLayerSync`(가칭, 새로 붙인다)**. **`Sprite`는 뗀다** |
+| `Body` | Sprite | `Player` | (0, 0, 0) | **41.23 × 77** (264 × `K`, 493 × `K`) | 0.5, 0.5 | `DEFAULT` | `UITransform` · `Sprite`(Size Mode `CUSTOM` · Trim **끔** · Sprite Frame 비움) |
+| `Top` | Sprite | `Player` | (0, 0, 0) | **41.23 × 77** | 0.5, 0.5 | `DEFAULT` | 위와 같다 |
+| `Staff` | Sprite | `Player` | (0, 0, 0) | **93.71 × 109.49** (600 × `K`, 701 × `K`) | 0.5, 0.5 | `DEFAULT` | 위와 같다 |
+| `Shield` | Sprite | `Player` | (0, 0, 0) | **93.71 × 109.49** | 0.5, 0.5 | `DEFAULT` | 위와 같다 |
+
+- **Player 자신에는 Sprite가 없다.** 자식은 언제나 부모를 덮으므로, 몸 Sprite가 Player에 붙어 있으면 어떤 층도 몸 뒤에 못 간다(G5 §2.5). Player의 크기는 발치 오프셋 · 피격 박스 · 이동 원이 읽는 값이고 자식이 바꾸지 않는다.
+- **몸 자식이 Player보다 가로로 2.8 넓은 것이 맞다.** 몸 · 상의 층의 캔버스는 옆걸음 보폭 때문에 264로 넓혔고(G4 §3.1), 캔버스를 넓혀도 캐릭터는 안 커진다.
+- **자식의 형제 순서는 만들 때 `Body` → `Top` → `Staff` → `Shield`다.** 정면 · 오른쪽의 겹치는 순서이고, 나머지 방향의 순서는 동기화 컴포넌트가 방향이 바뀔 때 다시 매긴다(왼쪽은 몸 → 지팡이 → 상의 → 방패, 뒷모습은 몸 → 지팡이 → 방패 → 상의 — G4 §5.1 · §12.1).
+- **발밑 마법진(G5 §2.7)은 이 창에서 만들지 않는다.** 텍스처 · 회전 속도 · 켜고 끄는 조건을 아직 정하지 않았다.
+
+### 14.3 만드는 순서
+
+1. Cocos Creator로 `main.scene`을 연다. `hierarchy` 패널에서 `Canvas` → `Player`를 고른다.
+2. 인스펙터의 `PlayerController`에서 `Frame Front` · `Frame Back` · `Frame Left` · `Frame Right` 넷을 **비운다**(슬롯 오른쪽의 지우기 버튼). 비운 채로도 게임은 돌아간다 — 슬롯이 `null`이면 컴포넌트가 아무것도 하지 않는다(`PlayerController.ts`의 `_applyFacingFrame`).
+3. 같은 인스펙터에서 `cc.Sprite` 컴포넌트를 **뗀다**(컴포넌트 머리의 톱니 메뉴 → `Remove Component`). 이 컴포넌트가 출하 정면 그림을 붙들고 있어서, 안 떼면 새 층 아래에 2D 그림이 깔린다.
+4. `UITransform`의 `Content Size`를 48 × 96에서 **38.42 × 77**로 바꾼다. `Anchor`는 0.5 · 0.5 그대로다.
+5. `hierarchy`에서 `Player`를 우클릭해 `Create → 2D Object → Sprite`를 **네 번** 만들고 이름을 위에서부터 `Body` · `Top` · `Staff` · `Shield`로 바꾼다. **이 순서가 정면의 겹치는 순서다** — 순서가 다르면 정면에서 상의가 몸 뒤로 들어간다.
+6. 자식 넷마다 인스펙터에서 다음을 맞춘다.
+   - `Position` (0, 0, 0). 같은 카메라로 구웠으므로 오프셋이 없다.
+   - `Layer`가 `DEFAULT`인지 본다. `UI_2D`로 생겼으면 `DEFAULT`로 바꾼다 — 카메라가 `DEFAULT`만 보므로 안 바꾸면 그 층이 안 보인다.
+   - `Sprite`의 `Size Mode`를 `CUSTOM`으로, `Trim`을 **해제**, `Sprite Frame`은 비워 둔다(동기화 컴포넌트가 채운다).
+   - `UITransform`의 `Content Size`를 §14.2 표대로 — `Body` · `Top`은 41.23 × 77, `Staff` · `Shield`는 93.71 × 109.49.
+7. `Player`를 고르고 `Add Component`로 **`PlayerLayerSync`(가칭)** 를 붙인 뒤 §15대로 연결한다.
+8. 씬을 저장한다(`Ctrl + S`).
+
+### 14.4 Trim — 1라운드 §5.4와 같은 함정이다
+
+아틀라스의 프레임은 Cocos가 plist를 읽으며 트림 상자와 원본 캔버스(264 × 493 · 600 × 701)를 함께 갖는다(`.plist.meta`의 `rawWidth` · `rawHeight` · `offsetX` · `offsetY`). `Sprite`의 Trim을 끄고 `Size Mode`를 `CUSTOM`으로 두어야 프레임이 원본 캔버스 안의 제자리에 그려진다 — 켜 두면 프레임마다 트림 상자가 달라 캐릭터가 제자리에서 떨린다. 계약을 둘로 나눠 적은 이유는 G5 §2.5에 있다: Trim 끔은 **캔버스 안의 위치**를, 공통 배율 `K`는 **캔버스가 다른 층 사이의 크기**를 보존한다.
+
+## 15. 2라운드 에디터 연결 체크리스트 (잠정 — 구현 뒤 확정)
+
+동기화 컴포넌트 `PlayerLayerSync`(가칭)의 `@property`와 연결할 것이다. 프로퍼티 이름은 구현이 정하고, 확정하면서 이 표를 실제 이름으로 고친다.
+
+| 프로퍼티(가칭) | 타입 | 연결할 것 | 상태 |
+|---|---|---|---|
+| `bodyNode` · `topNode` · `staffNode` · `shieldNode` | `Node` | `Player`의 자식 `Body` · `Top` · `Staff` · `Shield` | ⬜ |
+| `bodyWalk` · `bodyIdle` | `SpriteAtlas` | `assets/art/player/layers/body_walk.plist` · `body_idle.plist` — **`.plist`를 끌어다 놓는다.** PNG가 아니다. plist가 `SpriteAtlas`로 임포트돼 있고 프레임은 이름(`body_walk_front_00` 꼴)으로 꺼낸다 | ⬜ |
+| `topAWalk` · `topAIdle` · `topBWalk` · `topBIdle` | `SpriteAtlas` | `topA_walk.plist` · `topA_idle.plist` · `topB_walk.plist` · `topB_idle.plist` | ⬜ |
+| `staffWalk` · `staffIdle` · `shieldWalk` · `shieldIdle` | `SpriteAtlas` | `staff_walk.plist` · `staff_idle.plist` · `shield_walk.plist` · `shield_idle.plist` | ⬜ |
+| `walkFps` · `idleFps` | 숫자 | 기본값 10 · 3 그대로 둔다(`CHOSEN_MOTION`과 같은 값을 테스트가 단언한다). 인게임에서 속도를 다시 맞추면 여기서 바꾼다 | ⬜ |
+
+- ⬜ `PlayerController`의 방향 슬롯 넷을 비웠다(§14.3 2번).
+- ⬜ `Player`의 `Sprite` 컴포넌트를 뗐다(§14.3 3번).
+- ⬜ 개발용 옷 전환 입력의 형태(디버그 키 또는 인스펙터 값)는 구현에서 정한다(잠정). 정하면 여기에 무엇을 누르는지를 적는다.
+
+## 16. 2라운드 수동 테스트 체크리스트 (G5 — user-verification)
+
+사용자가 에디터 프리뷰와 웹 빌드에서 한다. G5 문서 §6 · §6.1을 그대로 옮겼다. **§16.2의 열두 항목이 다 통과해야 §14의 계층을 확정한 것으로 본다** — 하나라도 떨어지면 G5 §2.5의 계층이나 `K` 정의를 고치고 다시 본다.
+
+### 16.1 본편 동작
+
+- [ ] 네 방향으로 걷고 멈추며, 지팡이 · 방패 · 상의가 같은 프레임으로 따라온다.
+- [ ] 방향 전환 순간 2D 그림이 비치지 않는다.
+- [ ] 일시정지 · 레벨업 중 프레임이 멈추고, 재개하면 튀지 않는다.
+- [ ] 개발용 입력으로 상의를 바꿔도 방향 · 동작 · 프레임이 유지된다(에디터 프리뷰).
+- [ ] 발치(발바닥 기준)가 교체 전 캡처와 같고, 피격 박스 · 이동 원은 G5 §2.6의 새 값(14 · 35 · 20)으로 몸에 맞는다 — 교체 전과 같지 않은 것이 맞다.
+- [ ] 720p에서 플레이어 그린 높이가 77 안팎이고 달걀귀신 50 · 두억시니 75 안팎이다(G5 §2.6).
+- [ ] 걷는 중 반짝임이 눈에 띄지 않는다. 눈에 띄면 아틀라스 텍스처의 밉맵을 에디터에서 켜 보고 견준다 — 켜기로 하면 `bake.ts atlas --install --padding 8`로 여백을 늘려 다시 넣는다(G4 §6).
+- [ ] 방패가 막기 기능이 있는 것으로 오해되지 않는다.
+- [ ] 대각선 이동에서 걷기 애니메이션이 가로로 접힌 방향(`facingFromMoveDir`)을 자연스럽게 따른다.
+- [ ] 디버그 웹 빌드에서 `cc/env`의 `DEV` 값이 무엇인지 확인해 여기에 적는다(개발용 옷 전환이 그 조건 안에 있다).
+- [ ] 웹 빌드 파일 수 · 용량을 [`ops-build.md`](../development/spec/ops-build.md) §6.2 실측값과 견줘 기록한다.
+- [ ] 상의 B 한 벌을 VRoid 착수부터 인게임 확인까지 만드는 데 걸린 대략의 사람 시간을 여기에 메모한다.
+
+### 16.2 시각 경계 분리 — 몸을 크게 벗어나는 시험 층으로 본다
+
+[ADR 009](../decisions/009-visual-bounds-exceed-body.md)의 계약이 런타임에서도 성립하는지를 본다. 기준 캔버스를 명백히 벗어나는 시험 층 하나(예: 600 × 701에 대각선으로 몸 밖까지 뻗은 무기)를 넣고 확인한다. 굽기 쪽은 G4 §3.1이 이미 닫았고 여기서 보는 것은 게임 쪽이다.
+
+- [ ] `Body`의 화면 크기가 41.23 × 77이고 `Player`의 크기가 38.42 × 77이다(교체 전 48 × 96과 다른 것이 맞다).
+- [ ] 시험 층의 3D 상대 크기가 유지된다 — 몸과 같은 물리적 크기로 보인다.
+- [ ] 손 위치가 정확히 맞는다.
+- [ ] 캔버스 크기가 달라도 원점이 일치한다.
+- [ ] 방향 프레임을 전환해도 층이 흔들리지 않는다.
+- [ ] 시험 층을 켜고 꺼도 `Player` 위치가 안 바뀐다.
+- [ ] 시험 층을 켜고 꺼도 피격 박스가 안 바뀐다.
+- [ ] 시험 층을 켜고 꺼도 이동 충돌이 안 바뀐다.
+- [ ] 시험 층을 켜고 꺼도 발치 오프셋이 안 바뀐다.
+- [ ] 몸 밖으로 나간 부분이 렌더에서 잘리지 않는다.
+- [ ] 뒤 층이 실제로 `Body` 뒤에 그려진다.
+- [ ] 앞 층이 실제로 `Body` 앞에 그려진다.

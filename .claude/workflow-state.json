@@ -1,6 +1,6 @@
 {
   "feature": "blender-3d-gate",
-  "phase": "qa-setup",
+  "phase": "implementation",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": null,
@@ -17,6 +17,6 @@
     "code_review_clean": false
   },
   "docs_delivered": [
-    "qa-setup"
+    "implementation"
   ]
 }

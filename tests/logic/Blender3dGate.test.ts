@@ -58,6 +58,7 @@ import {
   alphaOverlap,
   alphaSpill,
   atlasGroups,
+  BAKE_ACTIONS,
   BAKE_FACINGS,
   BAKE_LAYERS,
   bakeDefinition,
@@ -2660,5 +2661,226 @@ describe('SlotSpec — 슬롯 범위 탐침이 세우는 시험 장비', () => {
     for (const shield of [SHIELD_TALL, SHIELD_HORNED]) {
       expect(shield.grip?.[1]).toBeGreaterThan(SHIELD_ROUND.grip?.[1] ?? 0);
     }
+  });
+});
+
+describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰는 순수 함수)', () => {
+  // 없는 모듈을 정적으로 import하면 파일 전체가 수집되지 않아 1라운드 · G4 도구의 단언까지 함께
+  // 가려진다. 그래서 여기서만 동적으로 불러 이 블록만 실패하게 한다(G5 §1). 경로를 변수로 두는
+  // 것은 tsc가 없는 모듈을 TS2307로 막지 않게 하려는 것이다 — 구현이 생기면 정적 import로 바꾼다.
+  const modulePath = '../../game/assets/scripts/logic/PlayerLayerLogic';
+
+  interface IAnimState {
+    action: 'walk' | 'idle';
+    facing: string;
+    elapsed: number;
+    index: number;
+  }
+  interface IAnimInput {
+    facing: string;
+    moving: boolean;
+    ticking: boolean;
+    dt: number;
+  }
+  interface IAnimConfig {
+    fps: { walk: number; idle: number };
+    counts: { walk: number; idle: number };
+  }
+  interface ILayerMismatch {
+    facing: string;
+    action: string;
+    counts: Record<string, number>;
+  }
+  interface IPlayerLayerModule {
+    DEFAULT_ANIM_FPS: { walk: number; idle: number };
+    IDLE_ORDER: readonly number[];
+    createAnimState(): IAnimState;
+    advanceAnim(state: IAnimState, input: IAnimInput, config: IAnimConfig): IAnimState;
+    frameName(layer: string, action: string, facing: string, index: number): string;
+    validateLayers(namesByLayer: Record<string, readonly string[]>): ILayerMismatch[];
+    resolveLayerFrame<T>(
+      found: T | null,
+      prev: T | null,
+      name: string,
+      reported: Set<string>,
+    ): { frame: T | null; report: boolean };
+    stackOrder(facing: string): readonly string[];
+  }
+  const load = (): Promise<IPlayerLayerModule> => import(modulePath);
+
+  // 굽기 도구의 확정값을 그대로 쓴다 — 걷기 8장 · 10fps, 대기는 구운 3장 · 3fps
+  const config: IAnimConfig = {
+    fps: { walk: CHOSEN_MOTION.walkFps, idle: CHOSEN_MOTION.idleFps },
+    counts: { walk: CHOSEN_MOTION.walkFrames, idle: IDLE_PLAYBACK.phases.length },
+  };
+  const tick = (moving: boolean, facing = 'front', dt = 0.15, ticking = true): IAnimInput => ({
+    facing,
+    moving,
+    ticking,
+    dt,
+  });
+  const names = (layer: string, action: string, facing: string, count: number): string[] =>
+    Array.from({ length: count }, (_, i) => frameName(layer, action, facing, i));
+
+  it('기본 재생 속도와 대기 재생 순서가 굽기 도구의 확정값과 같다', async () => {
+    // 재생 속도는 굽기에 박히지 않아 컴포넌트가 속성으로 받는데, 그 기본값이 후보 화면에서 사용자가
+    // 본 값과 다르면 인게임이 처음부터 다른 속도로 돈다. 대기 순서표도 굽기 쪽과 한 값이어야
+    // 세 장으로 네 박자를 흉내 내는 약속이 지켜진다
+    const m = await load();
+    expect(m.DEFAULT_ANIM_FPS).toEqual({ walk: 10, idle: 3 });
+    expect(m.DEFAULT_ANIM_FPS).toEqual({
+      walk: CHOSEN_MOTION.walkFps,
+      idle: CHOSEN_MOTION.idleFps,
+    });
+    expect([...m.IDLE_ORDER]).toEqual([...IDLE_PLAYBACK.order]);
+  });
+
+  it('처음은 정면 대기 0번이고, 동작이 바뀌면 시계와 번호가 0으로 돌아간다', async () => {
+    const m = await load();
+    expect(m.createAnimState()).toEqual({ action: 'idle', facing: 'front', elapsed: 0, index: 0 });
+    let s = m.createAnimState();
+    for (let i = 0; i < 3; i++) s = m.advanceAnim(s, tick(false, 'front', 0.2), config);
+    expect(s.elapsed).toBeGreaterThan(0);
+    const walking = m.advanceAnim(s, tick(true), config);
+    expect(walking).toMatchObject({ action: 'walk', elapsed: 0, index: 0 });
+    const stopped = m.advanceAnim({ ...walking, elapsed: 0.45, index: 4 }, tick(false), config);
+    expect(stopped).toMatchObject({ action: 'idle', elapsed: 0, index: 0 });
+  });
+
+  it('걷기 번호는 floor(elapsed × fps) % 장 수이고 큰 dt는 여러 장을 건너뛴다', async () => {
+    const m = await load();
+    let s = m.advanceAnim(m.createAnimState(), tick(true), config);
+    s = m.advanceAnim(s, tick(true, 'front', 0.15), config);
+    expect(s.index).toBe(1);
+    s = m.advanceAnim(s, tick(true, 'front', 0.3), config);
+    expect(s.index).toBe(4);
+  });
+
+  it('시계는 한 주기의 나머지라 주기를 넘으면 처음으로 감긴다', async () => {
+    const m = await load();
+    const period = config.counts.walk / config.fps.walk;
+    let s = m.advanceAnim(m.createAnimState(), tick(true), config);
+    s = m.advanceAnim(s, tick(true, 'front', period + 0.05), config);
+    expect(s.elapsed).toBeCloseTo(0.05, 6);
+    expect(s.index).toBe(0);
+  });
+
+  it('걷는 중 방향이 바뀌어도 번호와 시계는 이어진다', async () => {
+    // 방향 전환마다 0번으로 돌아가면 좌우를 번갈아 누를 때 같은 장만 반복돼 걷지 않는 것처럼 보인다
+    const m = await load();
+    let s = m.advanceAnim(m.createAnimState(), tick(true), config);
+    s = m.advanceAnim(s, tick(true, 'front', 0.35), config);
+    const turned = m.advanceAnim(s, tick(true, 'left', 0), config);
+    expect(turned.facing).toBe('left');
+    expect(turned.index).toBe(s.index);
+    expect(turned.elapsed).toBeCloseTo(s.elapsed, 9);
+  });
+
+  it('ticking이 거짓이면 시계가 멈추고 상태가 그대로다', async () => {
+    // 일시정지 · 레벨업 중에도 컴포넌트가 스스로 멈춤을 판정하지 않고 이 입력만 본다(G5 §2)
+    const m = await load();
+    let s = m.advanceAnim(m.createAnimState(), tick(true), config);
+    s = m.advanceAnim(s, tick(true, 'front', 0.25), config);
+    expect(m.advanceAnim(s, tick(true, 'front', 0.5, false), config)).toEqual(s);
+  });
+
+  it('대기는 구운 세 장을 0 → 1 → 2 → 1 순서표로 돈다', async () => {
+    // 번호를 그대로 쓰면 세 장이 0 → 1 → 2 → 0으로 돌아 숨을 내쉬는 절반이 빠진다
+    const m = await load();
+    const idle = (dt: number): number =>
+      m.advanceAnim(
+        { action: 'idle', facing: 'front', elapsed: 0, index: 0 },
+        tick(false, 'front', dt),
+        config,
+      ).index;
+    expect(idle(0)).toBe(0);
+    expect(idle(0.34)).toBe(1);
+    expect(idle(0.67)).toBe(2);
+    expect(idle(1.0)).toBe(1);
+    expect(idle(1.34)).toBe(0);
+  });
+
+  it('프레임 이름이 모든 조합에서 아틀라스 작성기와 같다', async () => {
+    // 이름 규칙이 작성기와 게임 두 곳에 산다 — Cocos 스크립트는 `game/assets` 밖을 import할 수 없다
+    const m = await load();
+    for (const layer of BAKE_LAYERS) {
+      for (const action of BAKE_ACTIONS) {
+        for (const facing of BAKE_FACINGS) {
+          for (let i = 0; i < 12; i++) {
+            expect(m.frameName(layer, action, facing.id, i)).toBe(
+              frameName(layer, action, facing.id, i),
+            );
+          }
+        }
+      }
+    }
+  });
+
+  it('옷을 바꿔도 재생 위치가 유지된다 — 같은 상태에서 상의 A · B가 같은 번호를 가리킨다', async () => {
+    const m = await load();
+    let s = m.advanceAnim(m.createAnimState(), tick(true, 'right'), config);
+    s = m.advanceAnim(s, tick(true, 'right', 0.55), config);
+    const a = m.frameName('topA', s.action, s.facing, s.index);
+    const b = m.frameName('topB', s.action, s.facing, s.index);
+    expect(a).toBe('topA_walk_right_05');
+    expect(a.replace(/^topA/, '')).toBe(b.replace(/^topB/, ''));
+  });
+
+  it('층별 프레임 수가 다른 (방향, 동작)을 목록으로 낸다', async () => {
+    // 한 층만 한 장이 빠지면 그 (방향, 동작)에서 층끼리 다른 장이 겹친다. 어느 조합이 몇 장인지가
+    // 오류 메시지에 들어가야 아틀라스 열 개 중 무엇을 다시 넣을지 알 수 있다
+    const m = await load();
+    const body = [
+      ...names('body', 'walk', 'front', 8),
+      ...names('body', 'walk', 'left', 8),
+      ...names('body', 'idle', 'front', 3),
+    ];
+    const topAShort = [
+      ...names('topA', 'walk', 'front', 8),
+      ...names('topA', 'walk', 'left', 7),
+      ...names('topA', 'idle', 'front', 3),
+    ];
+    const topAFull = [
+      ...names('topA', 'walk', 'front', 8),
+      ...names('topA', 'walk', 'left', 8),
+      ...names('topA', 'idle', 'front', 3),
+    ];
+    expect(m.validateLayers({ body, topA: topAShort })).toEqual([
+      { facing: 'left', action: 'walk', counts: { body: 8, topA: 7 } },
+    ]);
+    expect(m.validateLayers({ body, topA: topAFull })).toEqual([]);
+  });
+
+  it('빠진 프레임은 직전 프레임을 유지하고 이름마다 한 번만 알린다', async () => {
+    // null을 그대로 넣으면 그 장에서 층이 사라져 캐릭터가 깜빡이고, 매 프레임 로그를 남기면
+    // 초당 수십 줄이 쌓여 정작 어느 이름이 빠졌는지 못 읽는다
+    const m = await load();
+    const reported = new Set<string>();
+    const prev = { id: 'prev' };
+    const found = { id: 'found' };
+    expect(m.resolveLayerFrame(null, prev, 'topA_walk_left_07', reported)).toEqual({
+      frame: prev,
+      report: true,
+    });
+    expect(m.resolveLayerFrame(null, prev, 'topA_walk_left_07', reported)).toEqual({
+      frame: prev,
+      report: false,
+    });
+    expect(m.resolveLayerFrame(found, prev, 'topA_walk_left_07', reported)).toEqual({
+      frame: found,
+      report: false,
+    });
+    expect(reported.has('topA_walk_left_07')).toBe(true);
+  });
+
+  it('겹치는 순서가 네 방향 전부에서 굽기 도구의 표와 같다', async () => {
+    // 두 표가 갈리면 G4가 잰 순서와 다른 순서로 그려지는데 그림만 봐서는 드러나지 않는다(G5 §1)
+    const m = await load();
+    for (const facing of BAKE_FACINGS) {
+      expect([...m.stackOrder(facing.id)]).toEqual([...STACK_ORDER[facing.id]]);
+      expect(m.stackOrder(facing.id)[0]).toBe('body');
+    }
+    expect([...m.stackOrder('left')]).toEqual(['body', 'staff', 'top', 'shield']);
+    expect([...m.stackOrder('back')]).toEqual(['body', 'staff', 'shield', 'top']);
   });
 });
