@@ -25,6 +25,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import * as PlayerLayerLogic from '../../game/assets/scripts/logic/PlayerLayerLogic';
 import {
   buildAtlas,
   checkFrameCounts,
@@ -2665,10 +2666,8 @@ describe('SlotSpec — 슬롯 범위 탐침이 세우는 시험 장비', () => {
 });
 
 describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰는 순수 함수)', () => {
-  // 없는 모듈을 정적으로 import하면 파일 전체가 수집되지 않아 1라운드 · G4 도구의 단언까지 함께
-  // 가려진다. 그래서 여기서만 동적으로 불러 이 블록만 실패하게 한다(G5 §1). 경로를 변수로 두는
-  // 것은 tsc가 없는 모듈을 TS2307로 막지 않게 하려는 것이다 — 구현이 생기면 정적 import로 바꾼다.
-  const modulePath = '../../game/assets/scripts/logic/PlayerLayerLogic';
+  // RED 단계에서는 없는 모듈을 동적 import로 불러 이 블록만 실패하게 했다(G5 §1). 구현이 생긴 뒤
+  // 정적 import로 바꿨고, `load`는 그 단언들의 모양을 그대로 두려고 남겨 둔 껍데기다.
 
   interface IAnimState {
     action: 'walk' | 'idle';
@@ -2706,7 +2705,7 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
     ): { frame: T | null; report: boolean };
     stackOrder(facing: string): readonly string[];
   }
-  const load = (): Promise<IPlayerLayerModule> => import(modulePath);
+  const load = async (): Promise<IPlayerLayerModule> => PlayerLayerLogic;
 
   // 굽기 도구의 확정값을 그대로 쓴다 — 걷기 8장 · 10fps, 대기는 구운 3장 · 3fps
   const config: IAnimConfig = {

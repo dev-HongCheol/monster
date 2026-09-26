@@ -130,6 +130,25 @@ export class PlayerController extends Component {
     this._move(dt);
   }
 
+  /** 바라보는 방향. 층 동기화 컴포넌트(`PlayerLayerSync`)가 `lateUpdate`에서 읽는다. */
+  get facing(): Facing {
+    return this._facing;
+  }
+
+  /**
+   * 이동 입력이 있는가. 실제 변위가 아니라 입력 의도다 — `FacingLogic`이 방향을 입력 의도로 정한 것과 같은 기준이라,
+   * 벽을 밀면 제자리에서 걷는다.
+   */
+  get isMoving(): boolean {
+    return this._moveDir.x !== 0 || this._moveDir.y !== 0;
+  }
+
+  /** 재생 시계를 돌려도 되는가 — `update`가 도는 조건(데이터 준비 + Playing)과 같다. */
+  get isTicking(): boolean {
+    const gm = GameManager.instance;
+    return this._dataReady && gm !== null && gm.state === GameState.Playing;
+  }
+
   /** 키 입력으로 이동 방향 플래그를 활성화한다. */
   private _onKeyDown(e: EventKeyboard): void {
     const key = PlayerController._moveKeyOf(e.keyCode);

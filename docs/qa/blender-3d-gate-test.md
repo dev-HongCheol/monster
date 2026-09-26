@@ -529,7 +529,7 @@ G4까지는 게임 코드를 건드리지 않았다. G5가 처음으로 본편�
 | 변경 파일 | 무엇을 바꾸나 | 확인 범위(회귀 기준) |
 |---|---|---|
 | `game/assets/scripts/logic/PlayerLayerLogic.ts` (신규) | 동기화 컴포넌트가 쓰는 순수 함수 — 시계와 프레임 번호(`advanceAnim`), 프레임 이름(`frameName`), 층별 프레임 수 검사(`validateLayers`), 빠진 프레임 처리(`resolveLayerFrame`), 방향별 겹치는 순서(`stackOrder`) | `Blender3dGate.test.ts`의 G5 블록 12건(§8) — 굽기 도구의 확정값(`CHOSEN_MOTION` · `IDLE_PLAYBACK` · `STACK_ORDER` · 아틀라스 이름 규칙)과 같은 값인지를 단언한다 |
-| `game/assets/scripts/components/PlayerLayerSync.ts` (신규, 가칭) | `lateUpdate`에서 `PlayerController`의 getter 셋을 읽어 시계를 돌리고, 자식 Sprite 넷에 (층, 동작, 방향, 번호)의 SpriteFrame을 붙이며, 방향이 바뀐 프레임에 형제 순서를 다시 매긴다. 층별 프레임 수가 다르면 오류를 남기고 꺼지고, 아틀라스 속성이 비면 그 층 노드만 끈다 | 컴포넌트라 vitest 밖이다. §16 인게임 항목 |
+| `game/assets/scripts/components/PlayerLayerSync.ts` (신규) | `lateUpdate`에서 `PlayerController`의 getter 셋을 읽어 시계를 돌리고, 자식 Sprite 넷에 (층, 동작, 방향, 번호)의 SpriteFrame을 붙이며, 방향이 바뀐 프레임에 형제 순서를 다시 매긴다. 층별 프레임 수가 다르면 오류를 남기고 꺼지고, 아틀라스 속성이 비면 그 층 노드만 끈다 | 컴포넌트라 vitest 밖이다. §16 인게임 항목 |
 | `game/assets/scripts/components/PlayerController.ts` | 방향 슬롯 넷(`frameFront` ~ `frameRight`)과 `_applyFacingFrame` · `_frameFor`를 지우고, 읽기 전용 getter 셋(`facing` · `isMoving` · `isTicking`)을 낸다. `_halfHeight`는 그대로 Player 자기 노드의 `UITransform`에서 읽는다 | 이동 · 바라보는 방향 · 발치 · 포커스 유실 처리가 교체 전과 같다(§16). `MoveInputLogic` · `FootprintLogic` · `FacingLogic` 테스트는 그대로 통과한다 |
 | `game/assets/scenes/main.scene` | Player의 Sprite 컴포넌트를 떼고 `UITransform`을 38.42×77로, 자식 넷(Body · Top · Staff · Shield)을 달고 동기화 컴포넌트를 연결한다(§14 · §15). 사용자가 에디터에서 한다 | G5 §4의 검사 명령(출하 PNG UUID 0건 · Player 크기 · 자식 원점 · Trim) |
 | `game/assets/resources/data/player.json` | `hurtboxHalfWidth` 18 → 14 · `hurtboxHalfHeight` 44 → 35 · `collisionRadius` 25 → 20(G5 §2.6) | 피격 사각형 · 이동 원이 새 몸(38×77)에 맞는다(§16). 궤도 여유가 5px 가까워지는 것은 버그가 아니다 |
@@ -537,7 +537,7 @@ G4까지는 게임 코드를 건드리지 않았다. G5가 처음으로 본편�
 | 출하 2D `player_4dir_*.png` · `player_staff.png` · `player_mage_bridge.png` | 지운다(사용자 확인 뒤, G5 §3의 정리 순서 4번) | G5 §4의 UUID 0건 검사. `AiMatting.test.ts`가 출하 PNG를 표본으로 쓰므로 먼저 픽스처로 옮긴다 |
 | `tools/blender/` 1라운드 도구 · `tests/logic/Blender3dGate.test.ts`의 1라운드 단언 | 남는 도구에 해당하는 것만 둔다(G5 §3 표) | 전체 스위트가 지운 만큼만 줄고 나머지는 그대로다 |
 
-## 14. 2라운드 씬 변경 — Player 계층 (잠정 — 구현 뒤 확정)
+## 14. 2라운드 씬 변경 — Player 계층 (확정 2026-09-27 — 컴포넌트 · 프로퍼티 이름은 구현 그대로)
 
 **언제 하나.** G5 §3의 씬 창이다. 순서가 정해져 있다 — ① AI가 `PlayerLayerLogic`과 동기화 컴포넌트를 구현한다 → ② 사용자가 이 절대로 씬을 고친다 → ③ AI가 `PlayerController`의 슬롯 속성을 지운다. ③을 ②보다 먼저 하면 인스펙터에서 슬롯이 사라져 사용자가 비울 수 없고, 몸 Sprite가 출하 PNG를 여전히 참조하는 줄 모른 채 PNG를 지우게 된다(G5 §3 3번).
 
@@ -553,7 +553,7 @@ G4까지는 게임 코드를 건드리지 않았다. G5가 처음으로 본편�
 
 | 노드 | 타입 | 부모 | Position | Content Size | Anchor | Layer | 컴포넌트 |
 |---|---|---|---|---|---|---|---|
-| `Player` | 기존 노드 | `Canvas` | 그대로 (0, 0, 0) | **38.42 × 77** (246 × `K`, 493 × `K` — 기준 몸 규격) | 0.5, 0.5 | `DEFAULT` | `UITransform` · `PlayerController` · `SpellCaster` · **`PlayerLayerSync`(가칭, 새로 붙인다)**. **`Sprite`는 뗀다** |
+| `Player` | 기존 노드 | `Canvas` | 그대로 (0, 0, 0) | **38.42 × 77** (246 × `K`, 493 × `K` — 기준 몸 규격) | 0.5, 0.5 | `DEFAULT` | `UITransform` · `PlayerController` · `SpellCaster` · **`PlayerLayerSync`(새로 붙인다)**. **`Sprite`는 뗀다** |
 | `Body` | Sprite | `Player` | (0, 0, 0) | **41.23 × 77** (264 × `K`, 493 × `K`) | 0.5, 0.5 | `DEFAULT` | `UITransform` · `Sprite`(Size Mode `CUSTOM` · Trim **끔** · Sprite Frame 비움) |
 | `Top` | Sprite | `Player` | (0, 0, 0) | **41.23 × 77** | 0.5, 0.5 | `DEFAULT` | 위와 같다 |
 | `Staff` | Sprite | `Player` | (0, 0, 0) | **93.71 × 109.49** (600 × `K`, 701 × `K`) | 0.5, 0.5 | `DEFAULT` | 위와 같다 |
@@ -576,18 +576,18 @@ G4까지는 게임 코드를 건드리지 않았다. G5가 처음으로 본편�
    - `Layer`가 `DEFAULT`인지 본다. `UI_2D`로 생겼으면 `DEFAULT`로 바꾼다 — 카메라가 `DEFAULT`만 보므로 안 바꾸면 그 층이 안 보인다.
    - `Sprite`의 `Size Mode`를 `CUSTOM`으로, `Trim`을 **해제**, `Sprite Frame`은 비워 둔다(동기화 컴포넌트가 채운다).
    - `UITransform`의 `Content Size`를 §14.2 표대로 — `Body` · `Top`은 41.23 × 77, `Staff` · `Shield`는 93.71 × 109.49.
-7. `Player`를 고르고 `Add Component`로 **`PlayerLayerSync`(가칭)** 를 붙인 뒤 §15대로 연결한다.
+7. `Player`를 고르고 `Add Component`로 **`PlayerLayerSync`** 를 붙인 뒤 §15대로 연결한다.
 8. 씬을 저장한다(`Ctrl + S`).
 
 ### 14.4 Trim — 1라운드 §5.4와 같은 함정이다
 
 아틀라스의 프레임은 Cocos가 plist를 읽으며 트림 상자와 원본 캔버스(264 × 493 · 600 × 701)를 함께 갖는다(`.plist.meta`의 `rawWidth` · `rawHeight` · `offsetX` · `offsetY`). `Sprite`의 Trim을 끄고 `Size Mode`를 `CUSTOM`으로 두어야 프레임이 원본 캔버스 안의 제자리에 그려진다 — 켜 두면 프레임마다 트림 상자가 달라 캐릭터가 제자리에서 떨린다. 계약을 둘로 나눠 적은 이유는 G5 §2.5에 있다: Trim 끔은 **캔버스 안의 위치**를, 공통 배율 `K`는 **캔버스가 다른 층 사이의 크기**를 보존한다.
 
-## 15. 2라운드 에디터 연결 체크리스트 (잠정 — 구현 뒤 확정)
+## 15. 2라운드 에디터 연결 체크리스트 (확정 2026-09-27)
 
-동기화 컴포넌트 `PlayerLayerSync`(가칭)의 `@property`와 연결할 것이다. 프로퍼티 이름은 구현이 정하고, 확정하면서 이 표를 실제 이름으로 고친다.
+동기화 컴포넌트 `PlayerLayerSync`의 `@property`와 연결할 것이다. 이름은 `PlayerLayerSync.ts`의 선언 그대로다(2026-09-27 구현).
 
-| 프로퍼티(가칭) | 타입 | 연결할 것 | 상태 |
+| 프로퍼티 | 타입 | 연결할 것 | 상태 |
 |---|---|---|---|
 | `bodyNode` · `topNode` · `staffNode` · `shieldNode` | `Node` | `Player`의 자식 `Body` · `Top` · `Staff` · `Shield` | ⬜ |
 | `bodyWalk` · `bodyIdle` | `SpriteAtlas` | `assets/art/player/layers/body_walk.plist` · `body_idle.plist` — **`.plist`를 끌어다 놓는다.** PNG가 아니다. plist가 `SpriteAtlas`로 임포트돼 있고 프레임은 이름(`body_walk_front_00` 꼴)으로 꺼낸다 | ⬜ |
@@ -597,7 +597,7 @@ G4까지는 게임 코드를 건드리지 않았다. G5가 처음으로 본편�
 
 - ⬜ `PlayerController`의 방향 슬롯 넷을 비웠다(§14.3 2번).
 - ⬜ `Player`의 `Sprite` 컴포넌트를 뗐다(§14.3 3번).
-- ⬜ 개발용 옷 전환 입력의 형태(디버그 키 또는 인스펙터 값)는 구현에서 정한다(잠정). 정하면 여기에 무엇을 누르는지를 적는다.
+- ⬜ 개발용 옷 전환은 **`T` 키**다(2026-09-27 구현 — `PlayerLayerSync`가 `cc/env`의 `DEV`일 때만 키를 듣는다. 이동키 WASD · 화살표와 일시정지 ESC를 피했다). 누를 때마다 상의 A ↔ B가 바뀌고 재생 위치는 그대로다. 연결할 것은 없다.
 
 ## 16. 2라운드 수동 테스트 체크리스트 (G5 — user-verification)
 
