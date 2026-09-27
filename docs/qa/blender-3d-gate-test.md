@@ -314,6 +314,8 @@ AI가 구현·검증 단계에서 돌린다. 여기 적는 것은 무엇이 기�
 - [x] `bake.ts check-atlas` — 게임 폴더의 plist 10개 · 프레임 220장이 원본 크기 · 층별 프레임 수 · 빠진 프레임 · PNG 크기 검사를 통과했다(2026-09-21에 넣은 직후, 2026-09-23에 다시 돌려도 같다)
 - [x] `slots.ts bake` · `judge` — 슬롯 범위 탐침 여섯 경우 188건을 굽고 잰 결과가 나왔다(2026-09-21, G4 §12.1 — 넷은 되고 부피 있는 하의 × 긴 부츠는 서로 가림 판에서만 된다). 판정 증거인 탐침 화면은 추적하지 않는다
 - [x] G5 RED 확인(2026-09-27, `ready-impl` 전) — `Blender3dGate.test.ts`에 G5 게임 로직 블록 12건을 더해 돌리니 그 12건만 「모듈이 없다」로 실패하고 나머지 238건은 통과했다. 없는 모듈을 동적 `import()`로 불러 이 블록만 실패하게 했다(G5 §1)
+- [x] G5 §4 씬 검사(2026-09-27, 사용자가 §14대로 씬을 저장한 뒤 `main.scene`을 읽어 확인) — Player의 `_contentSize` 38.42×77 · 앵커 0.5 · 0.5, Player에 `cc.Sprite` 없음, `PlayerController`의 방향 슬롯 넷 null, 자식 `Body` · `Top` · `Staff` · `Shield`가 그 순서로 있고 전부 원점 (0, 0, 0) · Layer `DEFAULT` · Size Mode `CUSTOM` · Trim 끔 · Sprite Frame 비움 · 크기 41.23×77 · 41.23×77 · 93.71×109.49 · 93.71×109.49, `PlayerLayerSync`의 노드 넷과 아틀라스 열 개가 이름대로 연결됐고 walkFps 10 · idleFps 3
+- [x] G5 §4 출하 PNG 참조 검사(2026-09-27) — 출하 2D 여섯 장(`player_4dir_*` 넷 · `player_staff` · `player_mage_bridge`)의 UUID가 모든 `*.scene` · `*.prefab` · `resources/*.json` · `scripts/**/*.ts`에서 0건이다. 스크립트에 경로 문자열로 읽는 곳도 없다
 
 **파이썬은 어느 그물에도 안 걸린다.** `tools/**/*.ts`는 타입체크·lint·vitest 셋을 다 지나가지만 `.py`는 셋 중 아무것도 보지 않는다. 그래서 Blender 쪽은 굽기만 하고 판정을 전부 TS에 뒀고, 이 슬라이스는 그 트레이드오프를 받아들인다.
 
@@ -589,15 +591,15 @@ G4까지는 게임 코드를 건드리지 않았다. G5가 처음으로 본편�
 
 | 프로퍼티 | 타입 | 연결할 것 | 상태 |
 |---|---|---|---|
-| `bodyNode` · `topNode` · `staffNode` · `shieldNode` | `Node` | `Player`의 자식 `Body` · `Top` · `Staff` · `Shield` | ⬜ |
-| `bodyWalk` · `bodyIdle` | `SpriteAtlas` | `assets/art/player/layers/body_walk.plist` · `body_idle.plist` — **`.plist`를 끌어다 놓는다.** PNG가 아니다. plist가 `SpriteAtlas`로 임포트돼 있고 프레임은 이름(`body_walk_front_00` 꼴)으로 꺼낸다 | ⬜ |
-| `topAWalk` · `topAIdle` · `topBWalk` · `topBIdle` | `SpriteAtlas` | `topA_walk.plist` · `topA_idle.plist` · `topB_walk.plist` · `topB_idle.plist` | ⬜ |
-| `staffWalk` · `staffIdle` · `shieldWalk` · `shieldIdle` | `SpriteAtlas` | `staff_walk.plist` · `staff_idle.plist` · `shield_walk.plist` · `shield_idle.plist` | ⬜ |
-| `walkFps` · `idleFps` | 숫자 | 기본값 10 · 3 그대로 둔다(`CHOSEN_MOTION`과 같은 값을 테스트가 단언한다). 인게임에서 속도를 다시 맞추면 여기서 바꾼다 | ⬜ |
+| `bodyNode` · `topNode` · `staffNode` · `shieldNode` | `Node` | `Player`의 자식 `Body` · `Top` · `Staff` · `Shield` | ✅ (2026-09-27, `main.scene`을 읽어 확인) |
+| `bodyWalk` · `bodyIdle` | `SpriteAtlas` | `assets/art/player/layers/body_walk.plist` · `body_idle.plist` — **`.plist`를 끌어다 놓는다.** PNG가 아니다. plist가 `SpriteAtlas`로 임포트돼 있고 프레임은 이름(`body_walk_front_00` 꼴)으로 꺼낸다 | ✅ (2026-09-27, `main.scene`을 읽어 확인) |
+| `topAWalk` · `topAIdle` · `topBWalk` · `topBIdle` | `SpriteAtlas` | `topA_walk.plist` · `topA_idle.plist` · `topB_walk.plist` · `topB_idle.plist` | ✅ (2026-09-27, `main.scene`을 읽어 확인) |
+| `staffWalk` · `staffIdle` · `shieldWalk` · `shieldIdle` | `SpriteAtlas` | `staff_walk.plist` · `staff_idle.plist` · `shield_walk.plist` · `shield_idle.plist` | ✅ (2026-09-27, `main.scene`을 읽어 확인) |
+| `walkFps` · `idleFps` | 숫자 | 기본값 10 · 3 그대로 둔다(`CHOSEN_MOTION`과 같은 값을 테스트가 단언한다). 인게임에서 속도를 다시 맞추면 여기서 바꾼다 | ✅ (2026-09-27, `main.scene`을 읽어 확인) |
 
-- ⬜ `PlayerController`의 방향 슬롯 넷을 비웠다(§14.3 2번).
-- ⬜ `Player`의 `Sprite` 컴포넌트를 뗐다(§14.3 3번).
-- ⬜ 개발용 옷 전환은 **`T` 키**다(2026-09-27 구현 — `PlayerLayerSync`가 `cc/env`의 `DEV`일 때만 키를 듣는다. 이동키 WASD · 화살표와 일시정지 ESC를 피했다). 누를 때마다 상의 A ↔ B가 바뀌고 재생 위치는 그대로다. 연결할 것은 없다.
+- ✅ `PlayerController`의 방향 슬롯 넷을 비웠다(§14.3 2번). (2026-09-27 확인 — 넷 다 null)
+- ✅ `Player`의 `Sprite` 컴포넌트를 뗐다(§14.3 3번). (2026-09-27 확인 — Player의 컴포넌트는 UITransform · PlayerController · SpellCaster · PlayerLayerSync 넷)
+- ✅ 개발용 옷 전환은 **`T` 키**다(2026-09-27 구현 — `PlayerLayerSync`가 `cc/env`의 `DEV`일 때만 키를 듣는다. 이동키 WASD · 화살표와 일시정지 ESC를 피했다). 누를 때마다 상의 A ↔ B가 바뀌고 재생 위치는 그대로다. 연결할 것은 없다.
 
 ## 16. 2라운드 수동 테스트 체크리스트 (G5 — user-verification)
 

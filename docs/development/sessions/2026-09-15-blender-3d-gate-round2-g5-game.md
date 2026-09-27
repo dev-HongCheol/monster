@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-09-15
 - **브랜치:** `feat/blender-3d-gate`
-- **상태:** 진행 중 — implementation. RED 테스트와 QA 2라운드 절(2026-09-23 ~ 27, QA §13 ~ §16) 뒤 `ready-impl`을 통과했고, §1의 순수 함수(`PlayerLayerLogic.ts`, 12건 GREEN) · 동기화 컴포넌트(`PlayerLayerSync.ts`) · `PlayerController`의 getter 셋 · §2.6의 판정값과 적 크기를 구현했다(2026-09-27). 다음은 §3의 씬 창 — 사용자가 QA §14 · §15대로 Player 계층을 다시 짠 뒤 AI가 방향 슬롯을 지운다
+- **상태:** 진행 중 — implementation. RED 테스트와 QA 2라운드 절(2026-09-23 ~ 27, QA §13 ~ §16) 뒤 `ready-impl`을 통과했고, §1의 순수 함수(`PlayerLayerLogic.ts`, 12건 GREEN) · 동기화 컴포넌트(`PlayerLayerSync.ts`) · `PlayerController`의 getter 셋 · §2.6의 판정값과 적 크기를 구현했다(2026-09-27). 같은 날 사용자가 QA §14 · §15대로 Player 계층을 다시 짰고(§4의 씬 검사 통과 — QA §8), AI가 `PlayerController`의 방향 슬롯 · `_applyFacingFrame`을 지우고 `AiMatting.test.ts`의 표본을 `tests/fixtures/`로 옮겼다. 남은 것은 출하 2D 여섯 장의 삭제(사용자 확인) → `start-verification`
 - **정본:** [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §3.5 · [`art-direction.md`](../../design/spec/art-direction.md) §3.1 — 출하 2D 방향 슬롯을 층별 아틀라스로 교체한다
 - **개요:** [계획 개요](2026-09-11-blender-3d-gate-plan.md)
 

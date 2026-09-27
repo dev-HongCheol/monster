@@ -37,14 +37,15 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 /**
- * 헤더 읽기를 실제 PNG로 확인할 표본 한 장.
+ * 헤더 읽기를 실제 PNG로 확인할 표본 한 장 — 출하됐던 2D 정면 그림(246×493)의 사본이다. 3D 층별
+ * 아틀라스로 바꾸면서 게임 폴더의 원본을 지우게 되어 테스트 픽스처로 옮겼다(2026-09-27, G5 §3).
  *
  * **산출물 13장을 파일로 검사하는 절은 여기 없다.** 이 슬라이스는 파이프라인과 판정만
  * 세우고 에셋을 갈아 끼우지 않기로 했기 때문이다(2026-08-22 사용자 결정) — 원본 시트에
  * 지팡이가 그려져 있어, 지금 뽑으면 지팡이가 구워진 몸이 나온다. 지팡이 없는 시트를
  * 뽑는 슬라이스가 그 검사까지 함께 들고 간다.
  */
-const SAMPLE_PNG = 'game/assets/art/player/player_4dir_front.png';
+const SAMPLE_PNG = 'tests/fixtures/player_4dir_front.png';
 
 /**
  * 픽셀 목록으로 작은 RGBA 이미지를 만든다.
