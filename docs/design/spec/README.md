@@ -23,7 +23,6 @@
 |---|---|
 | [`art-asset-spec.md`](art-asset-spec.md) | 몇 px·어떤 피벗·어떤 파일명으로 만드나 |
 | [`art-direction.md`](art-direction.md) | 무엇을 왜 그렇게 그리나 |
-| [`art-generation-playbook.md`](art-generation-playbook.md) | 어떤 프롬프트·설정으로 뽑아 무엇으로 합격시키나 |
 
 ## 확정 목업
 

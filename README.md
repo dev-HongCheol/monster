@@ -46,7 +46,7 @@
 | **Testing** | Vitest `^3.2.3` | 순수 로직 단위 테스트 프레임워크 (790+ 테스트) |
 | **Linter / Formatter** | Biome `^2.4.15` | 고속 코드 린팅 및 포맷팅 |
 | **Package Manager** | pnpm `10.15.1` | 효율적인 의존성 관리 |
-| **Art Pipeline** | GPT-Image-2 (fal.ai) / Spine | 애니 셀 화풍 2D 캐릭터/몬스터 및 스켈레탈 애니메이션 |
+| **Art Pipeline** | VRoid Studio + Blender / ChatGPT 웹 | 플레이어는 3D 마스터에서 층별 프레임으로 굽고, 잡몹·이펙트·맵은 2D 생성 스프라이트 |
 
 ---
 
@@ -154,8 +154,8 @@
   - 사용자가 Cocos 에디터에서 인게임 테스트를 수행할 때 엔진이 생성한 정품 `.meta`를 8단계(`PR 승인`) 시점에 일괄 커밋합니다.
 
 ### 🎨 3) AI 그래픽 파이프라인 (AI Art Pipeline)
-- **일관된 애니 셀 화풍 생성:** 유료 이미지 생성 서비스(fal.ai Sandbox / GPT-Image-2)를 활용하여 한국 귀신 및 캐릭터의 4방향 시점과 화풍 일관성을 유지하며 에셋을 제작합니다.
-- **Spine 2D 스켈레탈 리깅:** 생성된 2D 일러스트레이션 파츠를 Spine으로 리깅하여 유기적인 전투 및 이동 애니메이션을 구현합니다.
+- **플레이어는 3D 마스터에서 층별로 굽습니다:** VRoid Studio로 만든 `.vrm`을 Blender에서 몸·상의·지팡이·방패 층으로 네 방향 × 걷기·대기 프레임을 구워 층 × 동작 아틀라스로 재생합니다. 옷 한 벌이 층 하나라 스킨의 한계비용이 낮습니다.
+- **잡몹·이펙트·맵은 2D 생성 스프라이트:** 애니 셀 화풍으로 뽑아 후처리(배경 제거·정렬·규격 판정)를 거쳐 프레임 애니메이션으로 씁니다.
 
 ### 📚 4) 단일 진실 공급원(SSOT)과 정본(Canon) 시스템
 - **코드가 이긴다 (Code as Ultimate Truth):** 문서와 구현이 어긋날 경우 실제 동작하는 코드와 JSDoc이 최상위 기준이 됩니다.
@@ -172,12 +172,12 @@ monster/
 ├── docs/                      # 프로젝트 문서 체계
 │   ├── assets/                # README 및 문서용 이미지 에셋
 │   ├── planning/              # 기획 (게임 디자인, 마법/적 시스템, 로드맵)
-│   ├── design/                # 디자인 (아트 디렉션, 에셋 스펙, 프롬프트 플레이북)
+│   ├── design/                # 디자인 (아트 디렉션, 에셋 스펙)
 │   ├── development/           # 개발 정본 (코드 컨벤션, 전투 판정 규칙, 환경 가이드)
-│   └── decisions/             # Architecture Decision Records (ADR 001~008)
+│   └── decisions/             # Architecture Decision Records (ADR 001~007 — 정본으로 접는 중)
 ├── game/                      # Cocos Creator 프로젝트 루트
 │   └── assets/
-│       ├── art/               # 스프라이트, 텍스처, Spine 애니메이션 에셋
+│       ├── art/               # 플레이어 층 아틀라스, 스프라이트, 텍스처
 │       ├── prefabs/           # 플레이어, 적, 투사체, UI 프리팹
 │       ├── resources/data/    # 마법, 적, 플레이어, i18n JSON 데이터
 │       ├── scenes/            # 메인 게임 씬 및 메뉴 씬
@@ -243,7 +243,6 @@ pnpm install
 - **디자인 & 아트 파이프라인:**
   - 🎨 [아트 디렉션 (Art Direction)](docs/design/spec/art-direction.md)
   - 📐 [아트 에셋 규격 (Asset Spec)](docs/design/spec/art-asset-spec.md)
-  - 🖌 [AI 이미지 생성 플레이북](docs/design/spec/art-generation-playbook.md)
 - **개발 정본 & 규약:**
   - 💻 [코드 컨벤션 (Code Conventions)](docs/development/spec/code-conventions.md)
   - 🎯 [판정 및 전투 규칙 (Game Combat Rules)](docs/development/spec/game-combat.md)
@@ -257,5 +256,4 @@ pnpm install
   - [ADR 005: 자체 경량 i18n 방식](docs/decisions/005-i18n-approach.md)
   - [ADR 006: 충돌 히트박스 (플레이어 사각형 / 적 원)](docs/decisions/006-collision-hitbox.md)
   - [ADR 007: 스킨과 판정 독립성](docs/decisions/007-skin-hitbox-independence.md)
-  - [ADR 008: AI 이미지 생성 서비스 결정](docs/decisions/008-paid-art-generation.md)
 - **프로젝트 룰 & 전체 가이드:** [`CLAUDE.md`](CLAUDE.md)

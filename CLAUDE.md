@@ -66,10 +66,10 @@ ADR 목록과 새 ADR을 더하는 규칙은 [`docs/decisions/README.md`](docs/d
 | 코드를 어떻게 쓰나 | `docs/development/spec/code-conventions.md` — **코드 작성 전 항상 읽는다** |
 | 문서를 어떻게 쓰나 | `docs/development/spec/docs-writing-style.md` — **문서 작성 전 항상 읽는다** |
 | 문서끼리 어떻게 참조하나 | `docs/development/spec/docs-references.md` — 층·링크 방향·순환 참조·절 번호·과거 기록 불수정·이력. **문서 작성 전 항상 읽는다** |
-| 그 밖의 개발 정본 — 용어·판정·빌드·환경·검색 | `docs/development/spec/README.md`가 목록. 안 옮긴 것은 로컬 환경 복구 매뉴얼 둘 |
+| 그 밖의 개발 정본 — 용어·판정·빌드·환경·검색 | `docs/development/spec/README.md`가 목록 |
 | 지금 단계에서 뭘 하나 | `docs/development/workflow/<phase>.md` — **절차의 정본.** `pnpm wf` 전이가 배달하고 `pnpm wf steps`로 다시 본다 |
 | 게임을 어떻게 만드나 | `docs/planning/` — 게임 디자인·컨셉·로드맵 |
-| 무엇을 왜 그리나, 몇 px로 뽑나, 어떤 프롬프트로 만드나 | `docs/design/spec/README.md`가 목록 — 아트 정본 셋이 각각 방향·규격·생성 실행을 든다 |
+| 무엇을 왜 그리나, 몇 px로 뽑나 | `docs/design/spec/README.md`가 목록 — 아트 정본 둘이 방향·규격을 든다 |
 | 다음에 뭘 하나 | `docs/development/backlog.md`(게임) + `backlog-implement.md`(코드) + `backlog-docs.md`(문서) |
 | 그 결정이 어느 슬라이스에서 났나 | `backlog-archive.md`·`backlog-implement-archive.md` — 세션 문서로 가는 실질 인덱스 |
 | 이 에러를 어떻게 고치나 | `docs/development/troubleshooting/` |

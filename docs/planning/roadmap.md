@@ -61,7 +61,7 @@
 
 **장르 클러스터:** Vampire Survivors / Brotato / Hell Maiden / Magic Survival
 **시점:** 탑다운 2D
-**그래픽:** 고해상도 스타일라이즈드 2D — 애니 셀 화풍으로, 적 · 이펙트 · 맵은 **유료 생성 서비스**로 뽑고, 플레이어와 해금 캐릭터는 **3D 마스터(VRoid)를 Blender에서 층별 프레임으로 구워** 움직인다(2026-09-27 — Spine 스켈레탈 리깅에서 바꿨다). 로컬 생성(ComfyUI + SDXL 1.0 base + 자체 스타일 LoRA)은 한 번 세웠다가 **2026-08-06에 폐기**했다 — 4방향을 뽑으려면 시점과 인물 동일성이 서로를 잡아먹어 뒷모습이 아예 나오지 않았고, 유료 쪽이 그 둘을 한 번에 통과했다. 화풍·해상도·파이프라인의 정본은 [`docs/design/spec/art-direction.md`](../design/spec/art-direction.md), 제작 규격은 [`docs/design/spec/art-asset-spec.md`](../design/spec/art-asset-spec.md), 생성 실행 절차는 [`docs/design/spec/art-generation-playbook.md`](../design/spec/art-generation-playbook.md)다.
+**그래픽:** 고해상도 스타일라이즈드 2D — 애니 셀 화풍으로, 적 · 이펙트 · 맵은 **유료 생성 서비스**로 뽑고, 플레이어와 해금 캐릭터는 **3D 마스터(VRoid)를 Blender에서 층별 프레임으로 구워** 움직인다(2026-09-27 — Spine 스켈레탈 리깅에서 바꿨다). 기각: 로컬 생성 스택(2026-08-06). 화풍·해상도·파이프라인의 정본은 [`docs/design/spec/art-direction.md`](../design/spec/art-direction.md), 제작 규격은 [`docs/design/spec/art-asset-spec.md`](../design/spec/art-asset-spec.md)이다. 2D 생성 실행 절차의 정본은 적 로스터 · 이펙트 · 맵 슬라이스가 각각 세운다(2D 플레이어 플레이북은 2026-09-28에 지웠다).
 **플랫폼:** v1 = itch.io 웹, v2 = Steam PC. 모바일 비목표.
 
 ---
@@ -352,7 +352,6 @@ itch.io 출시 후 4주 데이터 수집:
 - `docs/development/backlog.md` · `backlog-implement.md` · `backlog-docs.md` — 슬라이스를 가로지르는 TODO의 정본. §13이 큰 걸음만 적는 대신 실제 목록은 여기 있다
 - `docs/design/spec/art-direction.md` — 아트 방향(무엇을 왜 그렇게 그리는가)의 정본
 - `docs/design/spec/art-asset-spec.md` — 제작 규격(몇 px·어떤 피벗·어떤 파일명)
-- `docs/design/spec/art-generation-playbook.md` — 생성 실행(어떤 설정으로 뽑아 무엇으로 합격시키는가)
 - `docs/development/spec/ops-build.md` — 빌드 산출물과 itch.io 배포 경로의 정본. §7 「출시 준비」의 실행판
 - `docs/decisions/006-collision-hitbox.md` · `007-skin-hitbox-independence.md` — 판정 형태와 스킨 독립성
 
