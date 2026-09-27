@@ -5,9 +5,9 @@
   "test_skip_reason": null,
   "ts_check_scope": "full",
   "canon_updated": [
+    "docs/design/spec/README.md",
     "docs/design/spec/art-asset-spec.md",
     "docs/design/spec/art-direction.md",
-    "docs/design/spec/art-generation-playbook.md",
     "docs/development/spec/README.md",
     "docs/development/spec/docs-glossary.md",
     "docs/development/spec/game-combat.md",
@@ -17,7 +17,7 @@
     "docs/planning/roadmap.md"
   ],
   "canon_skip_reason": null,
-  "qa_doc_fingerprint": "cfc21fd92beded95",
+  "qa_doc_fingerprint": "03fe0a75802ac323",
   "verification": {
     "cso_done": true,
     "ts_check_clean": true,
