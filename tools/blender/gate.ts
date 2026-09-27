@@ -248,7 +248,7 @@ function judgeExisting(gates: Record<string, IGateSpec>, name: string): number {
  *
  * `--experimental-strip-types`로 `.ts`를 그대로 돌리는데 그 플래그가 22.6에 들어왔다. 이
  * 프로젝트는 장비 둘을 오가므로, 낮은 Node가 깔린 쪽에서는 스트립이 문법 오류로 죽고 그
- * 메시지에 원인이 Node 버전이라는 것이 안 드러난다. `tools/art/judge.ts`와 같은 기준이다.
+ * 메시지에 원인이 Node 버전이라는 것이 안 드러난다. 지운 `tools/art/judge.ts`(2026-09-28)가 세운 기준을 이어받았다.
  */
 const MIN_NODE_MAJOR = 22;
 const MIN_NODE_MINOR = 6;

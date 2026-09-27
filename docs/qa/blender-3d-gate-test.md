@@ -334,6 +334,15 @@ AI가 구현·검증 단계에서 돌린다. 여기 적는 것은 무엇이 기�
 
 ---
 
+**리워크 통과 근거 (2026-09-28, verification — 2D 생성 경로의 이력을 걷어 낸 뒤):**
+
+- [x] `pnpm vitest run` — 48파일 1,114/1,115 통과(스킵 1건은 같은 `wf check-qa` 전용 검사). `AiMatting.test.ts`를 `SpriteMetrics.test.ts`로 개명했고 단언 수는 그대로다 — 표본만 지운 2D 픽스처 대신 목업 렌더(1277×717)를 읽는다. `Blender3dGate.test.ts`의 단언 수도 그대로다(`layers.ts`를 지웠지만 그 규칙은 `ComparisonSheet.ts`에 있어 명세가 남는다)
+- [x] `pnpm typecheck` — 범위 `full`(두 프로젝트 모두 통과)
+- [x] `pnpm check` — biome 오류 0건(참고 29건, 2라운드와 같다)
+- [x] `pnpm wf check-links` · `check-docs` — 통과. 지운 문서 24개를 가리키던 링크 27곳은 평문으로 바꿨다
+- [x] 보안 검사(`/cso --diff --base 0d75582 --code`) — 변경분에 찾은 문제 없음. 지운 것이 fal.ai 호출기라 코드가 부르는 외부 서비스가 0개가 됐다
+- [x] 코드 리뷰(리워크 재리뷰, 커밋 9bcbb49) — Critical 0 · Important 6 · Minor 10. Important 여섯과 Minor 아홉을 고쳤고, 건드리지 않은 코드의 옛 예시 주석 넷은 기록만 했다(`blender-3d-gate-review-issues.md` 「리워크 재리뷰」)
+
 ## 9. 수동 테스트 체크리스트
 
 사용자가 에디터를 열고 하는 일이다. 게이트 순서대로 적었고, **앞이 떨어지면 뒤는 의미가 없다.**
