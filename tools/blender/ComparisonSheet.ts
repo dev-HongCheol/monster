@@ -155,8 +155,8 @@ export function occlusionDelta(
 
 /**
  * 채널 차가 이 값을 넘어야 다른 픽셀로 센다. EEVEE의 샘플 잡음이 같은 장면을 두 번 구워도 한두 단계씩 흔드는
- * 것을 빼려는 값이다. G2 층 합성 수치(`layers.ts`)와 G4 가림 비교(`bake.ts compare`)가 같은 값을 써야 두 수치를
- * 견줄 수 있어서 여기 하나만 둔다.
+ * 것을 빼려는 값이다. 가림 비교(`bake.ts compare`)가 이 값을 쓰고, 슬롯 탐침(`slots.ts`)은 같은 값을 자기 사본으로 든다(F114).
+ * 두 수치를 견주려면 값이 하나여야 해서 여기 둔다.
  */
 export const DIFF_THRESHOLD = 12;
 
