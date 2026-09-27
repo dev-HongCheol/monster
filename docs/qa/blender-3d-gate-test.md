@@ -341,7 +341,7 @@ AI가 구현·검증 단계에서 돌린다. 여기 적는 것은 무엇이 기�
 - [x] `pnpm check` — biome 오류 0건(참고 29건, 2라운드와 같다)
 - [x] `pnpm wf check-links` · `check-docs` — 통과. 지운 문서 24개를 가리키던 링크 27곳은 평문으로 바꿨다
 - [x] 보안 검사(`/cso --diff --base 0d75582 --code`) — 변경분에 찾은 문제 없음. 지운 것이 fal.ai 호출기라 코드가 부르는 외부 서비스가 0개가 됐다
-- [x] 코드 리뷰(리워크 재리뷰, 커밋 9bcbb49) — Critical 0 · Important 6 · Minor 10. Important 여섯과 Minor 아홉을 고쳤고, 건드리지 않은 코드의 옛 예시 주석 넷은 기록만 했다(`blender-3d-gate-review-issues.md` 「리워크 재리뷰」)
+- [x] 코드 리뷰(리워크 재리뷰, 커밋 9bcbb49) — Critical 0 · Important 6 · Minor 10. Important 여섯과 Minor 아홉을 고쳤고, 건드리지 않은 코드의 옛 예시 주석 넷은 기록만 했다(`blender-3d-gate-review-issues.md` 「리워크 재리뷰」). 수정분(e7bb97c)을 리뷰어가 다시 확인해 남은 지적 하나(반전 규칙 문장이 정본 → 세션 링크를 시키던 것)를 같은 회차에 닫았다
 
 ## 9. 수동 테스트 체크리스트
 
