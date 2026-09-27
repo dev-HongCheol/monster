@@ -19,7 +19,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { decodePng, encodePng } from '../art/PngCodec.ts';
-import { layerOver, occlusionDelta, pixelDiff, sampleLikeEngine } from './ComparisonSheet.ts';
+import {
+  DIFF_THRESHOLD,
+  layerOver,
+  occlusionDelta,
+  pixelDiff,
+  sampleLikeEngine,
+} from './ComparisonSheet.ts';
 
 /**
  * 이 알파를 넘어야 보이는 픽셀로 친다. 윤곽의 안티에일리어싱 술을 가림 판정에서 뺀다.
@@ -27,15 +33,13 @@ import { layerOver, occlusionDelta, pixelDiff, sampleLikeEngine } from './Compar
  */
 const ALPHA_ON = 8;
 
-/** 채널 차가 이 값을 넘어야 바뀐 픽셀로 센다. EEVEE 샘플 잡음이 한두 단계 흔드는 것을 뺀다. */
-const DIFF_THRESHOLD = 12;
-
 /**
  * 기준 몸 캔버스 가로(px)와 720p에서 그 캔버스가 차지하는 가로(월드 단위).
  *
  * 층 캔버스가 기준보다 넓어도 배율은 같으므로(ADR 009), 게임 크기는 `층 가로 × 48 / 246`로
  * 구한다. 세로 493 → 96도 같은 배율이다. 두 값의 주인은 `tests/helpers/FrameSet.ts`의
- * `PLAYER_FRAME_SPEC`과 `sheet.ts`의 `ROWS`다.
+ * `PLAYER_FRAME_SPEC`과 1라운드 게임 표시 크기 48 × 96이다(비교 시트 실행기 `sheet.ts`의 `ROWS`에 있다가 그
+ * 실행기와 함께 지웠다 — git 이력).
  */
 const BASE_WIDTH = 246;
 const GAME_WIDTH_720P = 48;

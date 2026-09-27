@@ -204,7 +204,8 @@ export function matchModels(
     const a = findMesh(less, name);
     const b = findMesh(more, name);
     if (!a || !b) {
-      problems.push(`${name} 메시가 ${a ? '더' : '덜'} 입은 판에 없다`);
+      const where = !a && !b ? '두 판 모두' : a ? '더 입은 판' : '덜 입은 판';
+      problems.push(`${name} 메시가 ${where}에 없다`);
       continue;
     }
     const lessPoints = pointsOf(a);
@@ -231,19 +232,21 @@ export function matchModels(
   if (lessSkin.length === 0 || moreSkin.length === 0) {
     // 빈 집합은 무엇의 부분집합이기도 하다. 못 고른 것을 「같은 몸」으로 읽으면 이 검사가 아무것도 안 보면서 통과한다
     problems.push(
-      `${lessSkin.length === 0 ? '덜' : '더'} 입은 판의 몸 메시에서 맨살 머티리얼(이름에 ${SKIN_MATERIAL})을 못 찾았다 — 머티리얼 이름이 바뀌었는지 덤프를 본다`,
+      `${lessSkin.length === 0 && moreSkin.length === 0 ? '두 판 모두' : lessSkin.length === 0 ? '덜 입은 판' : '더 입은 판'}의 몸 메시에서 맨살 머티리얼(이름에 ${SKIN_MATERIAL})을 못 찾았다 — 머티리얼 이름이 바뀌었는지 덤프를 본다`,
     );
   } else {
     const inLess = pointLookup(lessSkin);
     const heights: number[] = [];
-    let matched = 0;
     for (const point of moreSkin) {
-      if (inLess(toLess(point))) matched++;
-      else if (options.ignoreBelowZ !== undefined && point[2] < options.ignoreBelowZ) skinIgnored++;
+      if (inLess(toLess(point))) continue;
+      if (options.ignoreBelowZ !== undefined && point[2] < options.ignoreBelowZ) skinIgnored++;
       else heights.push(point[2]);
     }
     skinOutside = heights.length;
-    skinRemoved = lessSkin.length - matched;
+    // 덜 입은 판의 점 가운데 더 입은 판에 짝이 없는 것을 센다. 더 입은 판 쪽에서 맞은 수를 빼면, 같은 좌표에 점이
+    // 겹친 머티리얼 경계에서 한 점이 여러 번 맞아 음수나 과소가 나온다
+    const inMore = pointLookup(moreSkin.map(toLess));
+    skinRemoved = lessSkin.filter((point) => !inMore(point)).length;
     if (skinOutside > 0) {
       problems.push(
         `더 입은 판의 맨살 점 ${skinOutside}개가 덜 입은 판에 없다(높이 ${Math.min(...heights).toFixed(3)} ~ ${Math.max(...heights).toFixed(3)}m) — 덜 입은 판을 가림 전용 몸으로 쓰면 그 자리의 가림이 어긋난다`,

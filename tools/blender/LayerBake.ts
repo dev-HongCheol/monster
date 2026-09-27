@@ -12,7 +12,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { PLAYER_FRAME_SPEC } from '../../tests/helpers/FrameSet.ts';
+import { FAINT_UP_TO, PLAYER_FRAME_SPEC } from '../../tests/helpers/FrameSet.ts';
 import { type IRgbaImage, visibleBox } from '../../tests/helpers/SpriteMetrics.ts';
 import { frameName } from './Atlas.ts';
 import {
@@ -326,10 +326,10 @@ export function layerSource(layer: BakeLayer): ILayerSource {
 }
 
 /**
- * 이 알파부터 내용으로 센다. `FrameSet.ts`의 `faintUpTo`(16 이하는 내용이 아니다)와 같은 잣대여야 한다 —
- * 카메라를 맞출 때와 판정할 때의 잣대가 다르면, 맞춘 행과 판정이 읽는 행이 안티앨리어싱 술만큼 어긋난다.
+ * 이 알파부터 내용으로 센다 — `FrameSet.ts`의 `FAINT_UP_TO`(그 이하는 내용이 아니다) 바로 위다. 카메라를 맞출 때와
+ * 판정할 때의 잣대가 다르면, 맞춘 행과 판정이 읽는 행이 안티앨리어싱 술만큼 어긋난다.
  */
-export const CONTENT_ALPHA = 17;
+export const CONTENT_ALPHA = FAINT_UP_TO + 1;
 
 /**
  * 상의 · 무기 층의 (방향, 동작) 세트 하나에 거는 검사. 위반을 문장으로 돌려주고 비어 있으면 통과다.
@@ -802,15 +802,27 @@ export function definitionHash(value: unknown): string {
  * 구운 그림의 폴더마다 찍어 두는 도장 — 그 그림이 어느 입력으로 구워졌는지의 지문이다. 층과 기준 컷을 견주기
  * 전에 실행기가 두 쪽의 도장이 지금 입력과 같은지 본다.
  *
- * **카메라 기록의 입력 지문만으로는 모자라다.** 그 지문은 무기 사양을 안 든다 — 카메라를 맨살 몸만으로 잡으므로
- * 무기를 고쳐도 카메라를 다시 잡을 일이 없기 때문이다. 그래서 무기의 그립을 고친 뒤 무기 층만 다시 굽고 기준
- * 컷을 안 구우면, 옮겨 간 무기가 통째로 「앞에 잘못 보인 픽셀」로 세어지는데 `staleReasons`로는 안 걸린다.
+ * **카메라 기록의 입력 지문만으로는 모자라다.** 두 가지가 빠진다.
  *
- * @param inputs 카메라 기록의 입력 지문
+ * - **무기 사양.** 카메라를 맨살 몸만으로 잡으므로 무기를 고쳐도 카메라를 다시 잡을 일이 없다. 그래서 무기의
+ *   그립을 고친 뒤 무기 층만 다시 굽고 기준 컷을 안 구우면, 옮겨 간 무기가 통째로 「앞에 잘못 보인 픽셀」로
+ *   세어지는데 `staleReasons`로는 안 걸린다.
+ * - **카메라 자세와 몸 층 캔버스.** 입력이 같아도 카메라를 잡는 식(여백 · 탐침 배율)을 고치고 `camera`를 다시
+ *   돌리면 겨냥 높이 · 픽셀 크기가 바뀐다. 그 뒤 일부 층만 다시 구우면 옛 카메라의 층과 크기 · 위치가 섞이는데
+ *   입력 지문은 그대로다.
+ *
+ * **파이썬 코드는 도장에 없다.** 기준 자세 · 무기를 붙이는 식 · 툰 적용 · 조명은 `tools/blender/*.py`에 있고 여기
+ * 들어가지 않는다. 파이썬을 고치면 `camera`부터 모든 층을 다시 굽는다(`README.md` 「파이썬을 고치면」).
+ *
+ * @param record 카메라 기록 — 입력 지문 · 카메라 자세 · 몸 층 캔버스를 쓴다
  * @param weapons 들려 굽는 무기의 사양 전부
  */
-export function bakeStamp(inputs: IBakeInputs, weapons: readonly IWeaponSpec[]): string {
-  return definitionHash({ inputs, weapons });
+export function bakeStamp(
+  record: Pick<ICameraRecord, 'inputs' | 'camera' | 'bodyCanvas'>,
+  weapons: readonly IWeaponSpec[],
+): string {
+  const { inputs, camera, bodyCanvas } = record;
+  return definitionHash({ inputs, camera, bodyCanvas, weapons });
 }
 
 /**

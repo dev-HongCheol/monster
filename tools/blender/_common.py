@@ -96,7 +96,7 @@ def parse_int_arg(args, name):
     raw = parse_arg(args, name)
     if raw is None:
         raise GateError(
-            'spec-args', '`-- --{0} <정수>`를 받지 못했다 — gate.ts를 거쳐 부른다'.format(name)
+            'spec-args', '`-- --{0} <정수>`를 받지 못했다 — 실행기(bake.ts · slots.ts)를 거쳐 부른다'.format(name)
         )
     try:
         return int(raw)
@@ -306,7 +306,8 @@ def apply_world_delta_pose(armature, angles_by_bone, order):
     **로컬 회전으로 넣으면 안 된다.** `pose_bone.rotation_quaternion`에 그대로 넣으면 Blender가
     그것을 부모 기준 로컬 회전으로 해석하는데, `BASE_ARM_POSE`의 값은 그 기준계로 잰 것이
     아니다. 2026-09-16에 실제로 그렇게 넣었다가 두 팔이 머리 위로 올라가 손이 서로 가까워진
-    자세가 나왔다. `retarget_render.retarget_bake`가 쓰는 식과 같은 식을 여기 둔다.
+    자세가 나왔다. 1라운드 리타게팅 굽기(`retarget_render.py`에 있다가 G5에서 지웠다 — git 이력)가 쓰던 식과
+    같은 식이다.
 
         wanted = (delta × rest_회전)을 행렬로, 위치는 본의 현재 위치를 그대로
         pose_bone.matrix = 아마추어_월드⁻¹ × wanted
@@ -344,8 +345,8 @@ def apply_local_pose(armature, angles_by_bone, order):
     """
     각도를 **부모 기준 로컬 회전**으로 보고 입힌다. 손가락 그립이 이 방식이다.
 
-    팔과 방식이 다른 것은 의도한 것이다. `retarget_render`가 팔은 월드 델타로, 손가락은 로컬
-    회전으로 넣고 오일러 순서도 각각 `YXZ`와 `XYZ`로 다르다. 한쪽 방식으로 통일하면 그 값들이
+    팔과 방식이 다른 것은 의도한 것이다. `retarget_render`의 값은 팔을 월드 델타로, 손가락을 로컬
+    회전으로 잰 것이고 오일러 순서도 각각 `YXZ`와 `XYZ`로 다르다. 한쪽 방식으로 통일하면 그 값들이
     잰 기준계가 바뀌어 손이 엉뚱하게 꺾인다.
 
     **없는 본은 건너뛴다.** 손가락 본은 모델에 따라 빠질 수 있고, 그때 멈추면 손가락이 없는

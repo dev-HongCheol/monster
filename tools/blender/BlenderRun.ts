@@ -92,8 +92,9 @@ export function runBlender(
 }
 
 /**
- * 일 목록을 `concurrency`개씩 동시에 돌린다. 하나가 실패해도 나머지를 끝까지 돌린 뒤 첫 실패를 던진다 —
- * 중간에 끊으면 어느 것까지 구워졌는지 알 수 없다.
+ * 일 목록을 `concurrency`개씩 동시에 돌린다. 하나가 실패해도 나머지를 끝까지 돌린 뒤 실패를 전부 모아 던진다 —
+ * 중간에 끊으면 어느 것까지 구워졌는지 알 수 없고, 하나만 던지면 나머지 실패가 출력 없이 버려진다. 실패가
+ * 하나면 그 오류를 그대로 던진다.
  */
 export async function runPool<T>(
   jobs: readonly (() => Promise<T>)[],
@@ -113,7 +114,11 @@ export async function runPool<T>(
     }
   };
   await Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, worker));
-  if (failures.length > 0) throw failures[0];
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1) {
+    const lines = failures.map((err, i) => `  ${i + 1}. ${err.message}`).join('\n');
+    throw new Error(`굽기 ${failures.length}건이 실패했다:\n${lines}`);
+  }
   return results;
 }
 

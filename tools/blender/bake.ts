@@ -39,6 +39,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  FAINT_UP_TO,
   frameSetCheck,
   type IFrameMeasurement,
   PLAYER_FRAME_SPEC,
@@ -60,6 +61,7 @@ import {
 } from './Atlas.ts';
 import { CHOSEN_WEAPONS, MODEL_HEIGHT_M, writeChosenSpecs } from './BakeSpec.ts';
 import { runBlender, runPool, writeJson } from './BlenderRun.ts';
+import { DIFF_THRESHOLD } from './ComparisonSheet.ts';
 import {
   alphaOverlap,
   atlasGroups,
@@ -404,6 +406,13 @@ async function commandCamera(): Promise<void> {
     );
   }
   const bodyCanvas = { width: bodyCanvasWidth(widest, spec.width), height: spec.height };
+  // 판을 못 읽은 채 기록하면 `"null"`이 적히고, 그 뒤 굽는 쪽이 지금 판(None)과 견줄 때마다 `camera-stale`로
+  // 거부한다. 원인은 판을 못 읽은 것인데 메시지는 판이 바뀌었다고 말하므로 여기서 멈춘다
+  if (probePayloads[0].blender == null || probePayloads[0].vrm_addon == null) {
+    throw new Error(
+      'Blender나 VRM 애드온의 판을 읽지 못했다 — 애드온이 켜져 있는지, `_common.vrm_addon_version()`이 매니페스트를 찾는지 본다',
+    );
+  }
   const tools = {
     blender: String(probePayloads[0].blender),
     vrmAddon: String(probePayloads[0].vrm_addon),
@@ -551,7 +560,7 @@ function prepareRecordedBake(outDir: string): {
       camera,
       toon,
       weapons: { staff, shield },
-      stamp: bakeStamp(record.inputs, CHOSEN_WEAPONS),
+      stamp: bakeStamp(record, CHOSEN_WEAPONS),
     },
   };
 }
@@ -595,6 +604,14 @@ const FOOT_LINE_TOLERANCE = 26;
  */
 async function commandLayers(): Promise<void> {
   const only = option('only')?.split(',');
+  // 오타가 난 층 이름을 그냥 걸러 내면 일감 0건으로 「통과」를 찍는다
+  const unknown =
+    only?.filter((layer) => !(BAKE_LAYERS as readonly string[]).includes(layer)) ?? [];
+  if (unknown.length > 0) {
+    throw new Error(
+      `--only에 모르는 층이 있다: ${unknown.join(', ')} (가능: ${BAKE_LAYERS.join(', ')})`,
+    );
+  }
   const jobs = layerBakeJobs().filter((job) => !only || only.includes(job.layer));
   const outDir = path.join(ROOT, SCRATCH, 'layers');
   const { record, shared } = prepareRecordedBake(outDir);
@@ -753,7 +770,7 @@ const OVERLAP_PAIRS: readonly (readonly [BakeLayer, BakeLayer])[] = [
  */
 function commandOverlap(): void {
   const record = readCameraRecord();
-  const stamp = bakeStamp(record.inputs, CHOSEN_WEAPONS);
+  const stamp = bakeStamp(record, CHOSEN_WEAPONS);
   const read = stagedReader(stageCanvas(record.bodyCanvas));
   const layersDir = path.join(ROOT, SCRATCH, 'layers');
 
@@ -827,12 +844,6 @@ async function commandReference(): Promise<void> {
 }
 
 /**
- * 채널 차가 이 값을 넘어야 다른 픽셀로 센다. EEVEE의 샘플 잡음이 같은 장면을 두 번 구워도 한두 단계씩 흔드는
- * 것을 빼려는 값이고, G2의 층 합성 수치(`layers.ts`의 `DIFF_THRESHOLD`)와 같아야 그 수치와 견줄 수 있다.
- */
-const DIFF_THRESHOLD = 12;
-
-/**
  * 층을 게임의 형제 순서(`STACK_ORDER` — 방향마다 다르다)로 겹친 그림을 기준 컷과 견줘, 구멍과 앞에 잘못 보인
  * 픽셀을 상의 판 · 방향마다 센다(G4 §5). 굽지 않는다 — `layers`와 `reference`가 구운 그림을 읽는다.
  *
@@ -840,7 +851,7 @@ const DIFF_THRESHOLD = 12;
  */
 function commandCompare(): void {
   const record = readCameraRecord();
-  const stamp = bakeStamp(record.inputs, CHOSEN_WEAPONS);
+  const stamp = bakeStamp(record, CHOSEN_WEAPONS);
   const read = stagedReader(stageCanvas(record.bodyCanvas));
   const layersDir = path.join(ROOT, SCRATCH, 'layers');
   const referenceDir = path.join(ROOT, SCRATCH, 'reference');
@@ -921,7 +932,7 @@ const GAME_ATLAS_DIR = 'game/assets/art/player/layers';
  */
 function commandAtlas(): void {
   const record = readCameraRecord();
-  const stamp = bakeStamp(record.inputs, CHOSEN_WEAPONS);
+  const stamp = bakeStamp(record, CHOSEN_WEAPONS);
   const layersDir = path.join(ROOT, SCRATCH, 'layers');
   const outDir = path.join(ROOT, SCRATCH, 'atlas');
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -947,7 +958,7 @@ function commandAtlas(): void {
     const atlas = buildAtlas(inputs, pack);
     for (const [i, entry] of atlas.entries.entries()) {
       // 작성기가 트림 전에 옅은 알파를 누르므로 담기 전 그림도 같은 잣대로 눌러 견준다
-      const before = normalizeAlpha(inputs[i].image, { faintUpTo: CONTENT_ALPHA - 1 });
+      const before = normalizeAlpha(inputs[i].image, { faintUpTo: FAINT_UP_TO });
       const after = restoreFrame(atlas.image, entry);
       if (Buffer.compare(Buffer.from(before.data), Buffer.from(after.data)) !== 0) {
         problems.push(`${entry.name}: plist 값으로 되돌린 프레임이 담기 전과 다르다`);

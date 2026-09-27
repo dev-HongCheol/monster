@@ -47,10 +47,18 @@ blender --background --python-exit-code 1 --python tools/blender/smoke.py -- --o
 
 **규격 캔버스에 굽는 스크립트는 규격 값을 인자로 받는다.** 1라운드 게이트 0b·0c·2가 그랬고(실행기 `retired/gate-round1.ts`는 G4를 닫으며 지웠다), 2라운드의 생산 굽기(`bake.ts` → `bake_motion.py`)도 캔버스와 발·머리 행을 같은 식으로 받는다. 값의 주인은 `tests/helpers/FrameSet.ts`의 `PLAYER_FRAME_SPEC`이고, 실행기가 거기서 넘긴다. 스크립트에는 기본값이 없어서 빠지면 `spec-args`로 실패한다. 값을 스크립트에도 적어 두면 한쪽만 고쳤을 때 게이트가 크기·위치 결함으로 떨어져, 원인이 두 벌의 불일치라는 것이 드러나지 않기 때문이다.
 
-**굽지 않고 이미 있는 산출물만 다시 잴 수 있다.** `gate.ts`에 `--judge-only`를 붙이면 Blender를 부르지 않고 게이트 표의 출력 자리에 있는 파일을 판정한다. 1라운드에서는 프레임을 게임 폴더에 덮어 넣은 뒤 그 세트를 다시 재는 데 썼고, 2라운드에서는 `bake.ts`의 굽지 않는 명령(`compare` · `check-atlas` 등)이 같은 자리를 맡는다.
+**굽지 않고 이미 있는 산출물만 다시 잴 수 있다.** `gate.ts`에 `--judge-only`를 붙이면 Blender를 부르지 않고 스크래치에 남은 스모크 PNG를 판정한다. 생산 굽기 쪽은 `bake.ts`의 굽지 않는 명령(`compare` · `check-atlas` 등)이 같은 자리를 맡는다.
 
 ```bash
-node --experimental-strip-types tools/blender/gate.ts <게이트> --judge-only
+node --experimental-strip-types tools/blender/gate.ts 0a --judge-only
+```
+
+**파이썬을 고치면 `camera`부터 모든 층을 다시 굽는다.** 굽기가 섞이지 않게 막는 장치는 둘이다 — 카메라 기록의 입력 지문(`staleReasons`)과 구운 폴더마다 찍는 도장(`bakeStamp`). 둘 다 TS 쪽 값(동작 · 고도 · 툰 · 무기 사양 · 모델 파일 · 도구 판 · 카메라 자세 · 몸 층 캔버스)만 담고 **`tools/blender/*.py`는 안 담는다.** 기준 자세(`retarget_render.py`) · 무기를 붙이는 식(`probe_layers.py` · `weapons.py`) · 툰 적용(`toon.py`) · 조명과 렌더 설정(`bake_motion.py` · `_common.py`)을 고친 뒤 일부 층만 다시 구우면, 자세나 음영이 다른 층이 섞여도 도구가 모른다. 파이썬 파일의 해시를 지문에 넣으면 기계가 막지만, 주석 한 줄만 고쳐도 모든 층을 다시 굽게 되어 사람이 지키는 규칙으로 두었다(2026-09-27 사용자 결정).
+
+```bash
+node --experimental-strip-types tools/blender/bake.ts camera
+node --experimental-strip-types tools/blender/bake.ts layers
+node --experimental-strip-types tools/blender/bake.ts reference
 ```
 
 ## 종료 코드를 믿지 않는다
@@ -87,9 +95,9 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `unexpected` | 위 어디에도 안 들어가는 파이썬 예외 | 메시지에 예외 타입과 원문이 담긴다. 같은 명령을 `--background` 없이 손으로 돌려 본다 | `smoke.py` · `_common.py` |
 | `no-gate-line` | stdout에 판정 줄이 하나도 없다 | 실행기가 stderr 꼬리를 함께 찍는다. GPU·드라이버 쪽을 먼저 본다 | `gate.ts` |
 | `bad-gate-payload` | `GATE_OK`의 JSON을 읽을 수 없거나 `GATE_FAIL`에 실패 코드가 없다 | 굽기는 끝났는데 보고가 깨진 것이다. 파이썬 쪽 `gate_ok`·`gate_fail` 호출을 본다 | `gate.ts` |
-| `spec-args` | 규격 인자(`--width`·`--height`·`--foot-row`·`--head-row`)가 빠졌거나 정수가 아니다 | 실행기(`gate.ts`)를 거쳐 부른다. 손으로 부를 때는 `PLAYER_FRAME_SPEC`의 값을 그대로 준다 | `_common.py` |
+| `spec-args` | 규격 인자(`--width`·`--height`·`--foot-row`·`--head-row`)가 빠졌거나 정수가 아니다 | 실행기(`bake.ts` · `slots.ts` — 인자는 `LayerBake.bakeMotionArgs`가 짠다)를 거쳐 부른다. 손으로 부를 때는 `PLAYER_FRAME_SPEC`의 값을 그대로 준다 | `_common.py` |
 | `vrm-addon-missing` | VRM 임포터 확장이 켜져 있지 않거나 `poll()`이 거부한다 | 확장을 켜고 다시 돌린다. `read_factory_settings`가 사용자 설치 확장을 떨어뜨리므로 스크립트가 초기화 뒤 다시 켠다 | `_common.py` |
-| `vrm-path` | `.vrm` 경로가 없거나(`--vrm`이 빠진 경우 포함), 임포트가 실패했거나, 골격·메시가 없다 | `--vrm`이 빠졌으면 실행기(`gate.ts`)를 거쳐 부른다. 파일이 있는데 임포트가 실패하거나 골격·메시가 없으면 VRoid에서 **VRM 1.0**으로 감축 없이 다시 내보낸다 | `_common.py` · `bake_motion.py` |
+| `vrm-path` | `.vrm` 경로가 없거나(`--vrm`이 빠진 경우 포함), 임포트가 실패했거나, 골격·메시가 없다 | `--vrm`이 빠졌으면 실행기(`bake.ts` · `slots.ts`)를 거쳐 부른다. 파일이 있는데 임포트가 실패하거나 골격·메시가 없으면 VRoid에서 **VRM 1.0**으로 감축 없이 다시 내보낸다 | `_common.py` · `bake_motion.py` |
 | `camera-framing` | 인물 높이가 0이거나, 발·머리 행을 하나만 줬거나, 두 행 사이로 키를 맞춘 배율에서 인물 폭이 여백 안에 안 들어온다 | 높이가 0이면 임포트가 메시를 실제로 들여왔는지 본다. 폭이 넘치면 메시지의 픽셀 폭을 보고 팔 자세(`BASE_ARM_POSE`)나 의상 폭을 줄인다 — 배율을 줄여 맞추면 인물이 출하 아트보다 작아진다. 층 캔버스의 홀짝이 기준과 다른 경우도 여기로 온다 | `_common.py` · `probe_layers.py` · `bake_motion.py` |
 | `camera-record` | `--camera`가 가리키는 기록이 없거나, 고도 · 겨냥 높이 · 픽셀 크기 가운데 빠진 값이 있다 | 기록은 손으로 쓰지 않는다. `bake.ts camera`로 `camera.json`을 다시 만들고 실행기를 거쳐 부른다 | `_common.py` · `bake_motion.py` |
 | `camera-stale` | 카메라를 잡을 때의 Blender나 VRM 애드온 판이 지금 도는 판과 다르다 | 도구를 올린 것이 의도라면 `bake.ts camera`로 카메라를 다시 잡고 **모든 층을 다시 굽는다** — 일부 층만 다시 구우면 새 층이 옛 층과 임포트 결과나 음영이 달라도 드러나지 않는다. 의도가 아니면 QA 문서 §3의 판으로 되돌린다 | `_common.py` |
@@ -111,18 +119,17 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | 파일 | 무엇 | 상태 |
 |---|---|---|
 | `smoke.py` | 게이트 0a. **독립이다** — VRM 애드온도 모델도 사용자의 시작 파일도 쓰지 않는다 | 있음 |
-| `gate.ts` | 실행기. Blender를 부르고 판정 줄을 뽑고 구워진 PNG를 재서 한 줄로 찍는다. `--judge-only`면 굽지 않고 이미 있는 산출물만 잰다. 게이트 표를 밖에서 받으므로(`main`) 이 파일의 표에는 0a만 있다. 1라운드 게이트 표(`retired/gate-round1.ts`)는 G4를 닫으며 지웠다(2026-09-23) | 있음 |
+| `gate.ts` | 환경 스모크(0a) 실행기. Blender를 부르고 판정 줄을 뽑고 구워진 PNG를 재서 한 줄로 찍는다. `--judge-only`면 굽지 않고 이미 있는 PNG만 잰다. 1라운드 게이트의 프레임 판정 경로는 지웠다(2026-09-27 — git 이력) | 있음 |
 | `BakeSpec.ts` | **G2가 확정한 굽기 값** — 채택한 지팡이 · 방패의 모양과 그립(`writeChosenSpecs`가 JSON으로 쓴다), 외곽선 헐 1(`CHOSEN_HULL` · `hullMaterials`), 무기 · 장비 · 천 · 금속의 툰 값과 금속 matcap, 카메라 고도 15°와 마법진 지름. 물러난 실행기도 여기서 읽어 값의 주인이 하나다 | 있음 |
 | `_common.py` | VRM 임포트 · 카메라 프레이밍 · 렌더 설정. **plumbing이 `smoke.py`와 두 벌인 것은 의도한 것이고** 이유는 그 파일 첫머리에 있다 | 있음 |
-| `retarget_render.py` | **기준 자세의 주인** — 팔 회전(`BASE_ARM_POSE` · `BASE_POSE_ORDER`)과 손가락 그립(`BASE_FINGER_POSE`). `bake_motion.py` · `bake_layer.py` · `probe_layers.py` · `measure_weapon_room.py`가 import한다. 이름은 1라운드 리타게팅 · 굽기 스크립트에서 왔고, 그 코드(본 대응표 · 흔들림 비율 · 모션 임포트 · 프레임 굽기)는 키프레임 굽기가 대신하게 되어 G5에서 지웠다(2026-09-27) | 있음 |
-| `ComparisonSheet.ts` | 비교 시트의 순수 로직 — 엔진식 축소 · 알파 합성 · 얼굴 가림 · 칸 배치, 그리고 층 겹치기 · 가림 부분집합 · 픽셀 차이. 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
+| `retarget_render.py` | **기준 자세의 주인** — 팔 회전(`BASE_ARM_POSE` · `BASE_POSE_ORDER`)과 손가락 그립(`BASE_FINGER_POSE`). `bake_motion.py` · `measure_weapon_room.py`가 import한다. 이름은 1라운드 리타게팅 · 굽기 스크립트에서 왔고, 그 코드(본 대응표 · 흔들림 비율 · 모션 임포트 · 프레임 굽기)는 키프레임 굽기가 대신하게 되어 G5에서 지웠다(2026-09-27) | 있음 |
+| `ComparisonSheet.ts` | 게임 화면이 그리는 방식을 흉내 내는 순수 로직 — 엔진식 축소, 층 겹치기 · 가림 부분집합 · 픽셀 차이와 그 문턱(`DIFF_THRESHOLD`). 이름은 1라운드 비교 시트에서 왔고, 시트를 붙이던 함수는 지웠다(2026-09-27). 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `Atlas.ts` | 층별 프레임을 트림해 한 장에 담는 순수 로직 — 이름 규칙과 되가르기 · 선반 패킹 · plist 직렬화와 파싱 · 왕복 복원 · 들어간 plist 검사 둘(원본 크기 · 층별 프레임 수). 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
-| `weapons.py` | 지팡이 · 방패 · 장비 부품을 프리미티브로 세운다. 모양의 정의는 받는 JSON에 있고(채택한 무기는 `BakeSpec.ts`) 이 파일은 세우기만 한다. 몸 표면 투영(`Surface`)도 여기 있어 끈 · 판 · 뿔을 몸 메시에 붙인다 | 있음 |
-| `probe_layers.py` | G2 층 탐침. 층 하나(몸 · 상의 · 무기 · 장비)를 가림 전용 몸과 함께 굽거나, 가림 없이 한 번에 구운 기준 컷(`whole`)을 굽는다. `--toon`으로 툰 사양을 입히고, `--pitch`로 카메라 고도를 준다(몸 중심을 겨냥한 채 내려다보고 직교 배율은 그대로 — 발 · 머리 행은 0°에서만 정확하다). `--yaw`로 모델을 돌리고(몸 상자는 돌리기 전에 잰다), `--top-vrm`이 상의 층에 필요하고, `--gear-spec` · `--staff-spec` · `--shield-spec`이 장비 · 무기를 든다. `--no-holdout 1`은 가림을 끈다 — 층이 비어 나올 때 가려져서인지 애초에 없어서인지를 가르는 유일한 수단이다. 탈락한 외곽선 후보용 인자 `--lineart` · `--passes`는 G4를 닫으며 `outline.py`와 함께 지웠다(2026-09-23). 이 스크립트를 부르던 TS 길(`retired/gear.ts`)도 그때 지워서 지금은 부르는 곳이 없다 — 생산 굽기는 `bake_motion.py`가 한다 | 있음 |
+| `weapons.py` | 지팡이 · 방패 · 장비 부품을 프리미티브로 세운다. 모양의 정의는 받는 JSON에 있고(채택한 무기는 `BakeSpec.ts`) 이 파일은 세우기만 한다. 몸 표면 투영(`Surface`)도 여기 있어 끈 · 판 · 뿔을 몸 메시에 붙인다. 무기 후보 여럿을 같은 배율로 나란히 굽는 후보 시트(`main`)도 들었는데, **디자인 도구라 남겼고 지금 부르는 실행기는 없다** | 있음 |
+| `probe_layers.py` | 층 굽기의 공용 부품 — 무기 · 장비를 손 본에 붙이기(`attach_weapon`), 가림 전용 몸(`move_to_holdout`), 머티리얼 골라 남기기(`keep_only_materials`), 색 관리(`set_standard_view_transform`). `bake_motion.py`가 import하고 전역 `bpy`를 넣어 준다. 이름은 G2 층 탐침에서 왔고, 그 실행 부분은 부르는 곳이 없어 지웠다(2026-09-27 — git 이력) | 있음 |
 | `toon.py` | 툰 사양 JSON을 MToon 머티리얼에 입힌다. 무기 · 장비 부품은 사양이 그 분류를 적었을 때만 MToon으로 바꾼다 | 있음 |
 | `inspect_mtoon.py` | `.vrm`의 MToon 값을 덤프하고, 애드온 셰이더가 명세 식과 옛 식 중 어느 쪽을 음영 혼합에 물렸는지 보고한다. 애드온 · Blender 판을 바꾼 뒤 먼저 돌린다 | 있음 |
 | `layers.ts` | 층 PNG 실행기 — 가림 부분집합 판정(`subset`), 층 겹치기와 720p 축소(`stack`), 기준 컷과의 차이(`diff`). 규칙은 `ComparisonSheet.ts`가 든다 | 있음 |
-| `bake_layer.py` | G4 층 굽기. 층 캔버스(`--layer-width` · `--layer-height`)를 기준 몸 규격과 달리 주더라도 카메라는 기준 규격으로만 계산해 캐릭터 크기를 같게 둔다 — 캔버스를 키우면 캐릭터가 커지는 것이 아니라 주변이 더 보일 뿐이고, 모든 층의 캔버스 중심이 같은 월드 점에 놓인다. ADR 009의 실증에 썼다 | 있음 |
 | `inspect_meshes.py` | G1 메시 · 머티리얼 · 정점 지문 덤프. 판끼리 몸이 같은지 보려고 메시마다 정점 수와 좌표 지문(소수점 다섯 자리로 반올림한 뒤 sha256), 머티리얼별 정점 좌표를 적어 낸다. 판정은 하지 않는다 — 덤프를 견주는 것은 `match.ts`다 | 있음 |
 | `ModelMatch.ts` | **두 판이 같은 몸인지 가르는 순수 로직.** 코어 본(`J_Bip_`)이 같은가, 얼굴 · 머리카락의 모양이 같은가, 옷을 더 입은 판의 맨살 좌표가 덜 입은 판의 부분집합인가를 본다. 정점 수는 견주지 않는다 — VRoid가 옷 아래의 살을 지운 채 내보내 판마다 다른 것이 정상이다. 모델이 통째로 옮겨져 있으면(신발을 벗긴 판은 밑창만큼 내려간다) 얼굴의 무게중심 차이로 그 이동을 재서 빼고 견주고, 잰 이동을 돌려준다. 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `match.ts` | 판 일치 비교 실행기. `--less <덜 입은 판>` · `--more <더 입은 판>` 두 `.vrm`을 `inspect_meshes.py`로 덤프하고 `ModelMatch.ts`로 판정한다. 같은 몸이 아니면 종료 코드 1이다. `--ignore-below <m>`은 그 높이 아래의 맨살을 부분집합 검사에서 뺀다 — 신발을 벗긴 판은 발 모양이 달라 발목 높이(0.1)를 준다. 옷 판을 더하거나 옷을 전부 끈 판을 들여올 때 굽기 전에 돌린다 | 있음 |
@@ -135,7 +142,7 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `SlotSpec.ts` | **슬롯 범위 탐침이 세우는 시험 장비 — 출하하지 않는다.** 긴 부츠 · 부피 있는 하의(온전한 것과 긴 신발용으로 자른 것) · 넓은 소매 · 망토 · 방패 둘(세로로 긴 · 뿔이 난). 슬롯의 기본 아이템이 아니라 그 슬롯에 올 수 있는 가장 나쁜 아이템을 기본 도형으로 세운 것이다. 장비는 본 하나에 강체로 붙는 조각들이고, 좌표는 기준 자세에서 잰 본의 머리(`BASE_POSE_HEAD`)에서 잰 값으로 옮겨진다(`tube` — 두 점을 잇는 속 빈 관). 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `layers_preview.html` | 층 합성 화면의 템플릿. 다섯 층을 게임의 형제 순서(방향별 — 실행기가 `STACK_ORDER`를 넣는다. 「방향별 순서」를 끄면 모든 방향이 정면의 순서)로 캔버스 중심을 맞춰 겹치고, 네 방향을 나란히 재생한다. 상의 A · B와 무기를 켜고 끌 수 있고, 720p · 1440p 게임 크기로 볼 수 있고, 발밑 점을 표시하며, 맨 끝 칸이 제자리에서 돌아선다. 기준 컷이 구워져 있으면 층 합성 대신 기준 컷을 같은 자리에 그려(R 키) 두 그림을 번갈아 볼 수 있다. 규격값은 템플릿에 없고 `bake.ts preview`가 카메라 기록에서 박아 넣는다 | 있음 |
 | `camera.json` | **기록된 카메라** — 고도 · 겨냥 높이 · 픽셀 크기, 몸 층 캔버스, 발밑 점의 행, 그리고 카메라를 잡을 때의 입력 지문(굽기 정의 · 모델 판 셋 · Blender와 VRM 애드온의 판). 손으로 고치지 않고 `bake.ts camera`로 다시 쓴다. 모든 층이 이 카메라 하나로 구워졌다는 근거라 커밋한다 | 있음 |
-| `measure_weapon_room.py` | G1 무기 자리 측정. 기준 자세(`retarget_render.BASE_ARM_POSE`)를 입힌 몸의 세계 좌표 상자와 두 손의 세계 좌표를 덤프한다. A 포즈로 재면 손이 게임에 안 나오는 자리에 있으므로 굽기와 같은 자세로 잰다. 남는 자리를 픽셀로 환산하는 것은 실행기 몫이다 | 있음 |
+| `measure_weapon_room.py` | G1 무기 자리 측정. 기준 자세(`retarget_render.BASE_ARM_POSE`)를 입힌 몸의 세계 좌표 상자와 두 손의 세계 좌표를 덤프한다. A 포즈로 재면 손이 게임에 안 나오는 자리에 있으므로 굽기와 같은 자세로 잰다. 남는 자리를 픽셀로 환산하는 것은 실행기 몫이다 **디자인 도구라 남겼고 지금 부르는 실행기는 없다** — 새 무기의 크기 상한을 잡을 때 쓴다 | 있음 |
 
 **`smoke.py`가 독립인 것이 설계다.** 공용 모듈을 거치면 애드온이나 모델 때문에 난 실패가 환경
 실패로 보고되고, 그러면 「여기서 막히면 VRoid를 설치하지 않는다」는 규칙이 조용히 깨진다. 되돌릴

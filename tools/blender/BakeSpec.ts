@@ -246,8 +246,9 @@ export const CLOTH_TOON = { shade_threshold: 0.8 };
 
 /**
  * 금속 장비가 `GEAR_TOON` 위에 덮는 값 — 어두운 음영색(기본색의 35%) · 넓은 그늘 · 반사점 matcap. 화려한 장비
- * 다섯 번째 판이 이 값으로 통과했다(2026-09-17). matcap 그림은 `metalMatcap`이 만들고, 굽는 쪽이 그 파일의
- * 절대 경로를 `matcap_image`로 함께 넘긴다.
+ * 다섯 번째 판이 이 값으로 통과했다(2026-09-17). matcap 그림은 `metalMatcap`이 만들고, 굽는 쪽에 그 파일의
+ * 절대 경로를 `matcap_image`로 함께 넘긴다. **지금 넘기는 실행기는 없다** — v1 장비에 금속이 없어 생산 굽기가 이
+ * 값을 안 쓰고, G2에서 넘기던 판정 실행기는 G4를 닫으며 지웠다(git 이력). 금속 장비를 디자인할 때 다시 쓴다.
  */
 export const METAL_TOON = { shade_ratio: 0.35, shade_threshold: 0.5, matcap: [1, 1, 1] };
 

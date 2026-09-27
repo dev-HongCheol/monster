@@ -1,5 +1,6 @@
 /**
- * Blender 게이트를 돌리고 산출물을 숫자로 재는 실행기.
+ * 환경 스모크(게이트 0a)를 돌리고 산출물을 숫자로 재는 실행기 — 새 장비에서 헤드리스 Blender · 파이썬 · 투명
+ * EEVEE가 도는지를 VRoid를 깔기 전에 확인한다.
  *
  * **판정 로직을 여기 베끼지 않는다.** 알파와 상자를 재는 것은 `SpriteMetrics.ts`가, 판정 줄을
  * 고르는 것은 `GateLine.ts`가 이미 한다. 이 파일이 하는 일은 Blender를 부르고, 그 출력에서
@@ -14,17 +15,14 @@
  * 굽지 않고 이미 있는 산출물만 다시 재려면 `--judge-only`를 붙인다.
  * Blender 실행 파일은 환경 변수 `BLENDER`로 준다. 자세한 것은 `README.md`에 있다.
  *
- * **게이트 표는 밖에서 받는다.** 이 파일의 표에는 환경 스모크(0a)만 있다. 1라운드 입력(시험용 `.vrm` · 모션 팩)에
- * 묶인 게이트 0b · 0c · 2는 `retired/gate-round1.ts`가 자기 표를 들고 이 파일의 `main`을 불렀다(2026-09-19 ~ 09-23,
- * G4를 닫으며 지웠다).
- * 실행기를 두 벌로 복사하지 않으려는 것이다 — 복사하면 판정 줄 읽기와 시간 상한 처리를 한쪽만 고치게 된다.
+ * 1라운드 게이트 0b · 0c · 2의 프레임 판정 경로는 지웠다(2026-09-27 — git 이력). 생산 굽기와 그 판정은
+ * `bake.ts`가 한다.
  */
 
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { frameSetIntegrity, PLAYER_FRAME_SPEC } from '../../tests/helpers/FrameSet.ts';
 import { type GateLine, parseGateLine } from '../../tests/helpers/GateLine.ts';
 import { alphaHistogram, footLineY, trimBox } from '../../tests/helpers/SpriteMetrics.ts';
 import { decodePng } from '../art/PngCodec.ts';
@@ -45,50 +43,7 @@ export interface IGateSpec {
    * `repoPath`는 repo 상대 경로라 절대 경로로 바꿔 넘기고, `value`는 그대로 넘긴다.
    */
   extraArgs?: { flag: string; repoPath?: string; value?: string }[];
-  /** `still`이면 `output`이 PNG 한 장, `frames`면 프레임을 모을 디렉터리다. 기본 `still` */
-  kind?: 'still' | 'frames';
-  /** `frames`일 때 기대하는 프레임 수 */
-  expectFrames?: number;
 }
-
-/**
- * 발 밑선이 기준에서 위로 벗어나도 되는 픽셀 수.
- *
- * 걷기에서 디딘 발이 프레임마다 몇 px 오르내리는 것은 정상이므로 0으로 잡을 수 없다. 12로 확정한
- * 근거는 `docs/qa/blender-3d-gate-test.md` §4.2에 있다. 머리 행까지 고정해 인물이 1.067배 커진
- * 판(2026-09-14)은 발이 가장 높이 뜬 장이 479행이라 하한 477까지 여유가 2px뿐이어서, 걷기를
- * 바꾸면 이 폭에 먼저 걸릴 수 있다.
- */
-const FOOT_LINE_TOLERANCE = 12;
-
-/**
- * 굽는 프레임 파일 이름의 접두어.
- *
- * 렌더 스크립트에 `--prefix`로 넘기고, `--judge-only`가 같은 이름으로 파일 목록을 만든다. 두 곳에
- * 따로 적으면 한쪽만 바뀌었을 때 판정 모드가 없는 파일을 찾아 「파일이 없다」로 떨어진다.
- */
-const FRAME_PREFIX = 'walk';
-
-/**
- * 규격 캔버스에 굽는 게이트가 파이썬에 넘기는 인자.
- *
- * 값의 주인은 `PLAYER_FRAME_SPEC`이다. 파이썬이 TS를 import할 수 없다고 스크립트에 값을 복사해
- * 두면, 한쪽만 고쳤을 때 굽기는 옛 값을, 판정은 새 값을 써서 게이트가 떨어진다. 그런데 실패
- * 메시지는 크기·위치 결함을 가리키므로 원인이 두 벌의 불일치라는 것이 드러나지 않는다. 그래서
- * 스크립트는 기본값 없이 이 인자를 받고, 못 받으면 `spec-args`로 실패한다.
- */
-export const CANVAS_ARGS = [
-  { flag: '--width', value: String(PLAYER_FRAME_SPEC.width) },
-  { flag: '--height', value: String(PLAYER_FRAME_SPEC.height) },
-];
-
-/** 프레임을 굽는 게이트가 캔버스에 더해 넘기는 인자 — 발·머리 행과 파일 이름 접두어. */
-export const FRAME_ARGS = [
-  ...CANVAS_ARGS,
-  { flag: '--foot-row', value: String(PLAYER_FRAME_SPEC.footLineY) },
-  { flag: '--head-row', value: String(PLAYER_FRAME_SPEC.headLineY) },
-  { flag: '--prefix', value: FRAME_PREFIX },
-];
 
 /**
  * Blender 한 번을 기다리는 상한(밀리초).
@@ -99,7 +54,7 @@ export const FRAME_ARGS = [
  */
 const BLENDER_TIMEOUT_MS = 20 * 60 * 1000;
 
-/** 이 파일의 게이트 표 — 환경 스모크 하나다. 1라운드 게이트 표(`retired/gate-round1.ts`)는 G4를 닫으며 지웠다. */
+/** 게이트 표 — 환경 스모크 하나다. */
 const GATES: Record<string, IGateSpec> = {
   '0a': {
     script: 'tools/blender/smoke.py',
@@ -164,78 +119,6 @@ function judgeRender(outPath: string): { problems: string[]; summary: string } {
   return { problems, summary };
 }
 
-/**
- * 구운 프레임 세트를 `frameSetIntegrity`로 판정한다.
- *
- * 파일 목록을 디렉터리를 훑어 얻지 않고 **판정 줄이 말한 것을 쓴다.** 디렉터리를 훑으면 지난
- * 실행이 남긴 프레임이 섞여 들어와, 이번에 아무것도 안 구웠는데 통과하는 경우가 생긴다.
- *
- * 부르는 쪽은 둘이다. `runGate`는 판정 줄의 payload를 넘기고, `judgeExisting`은 이름 규칙으로
- * 만든 목록을 같은 모양(`{ written }`)으로 넘긴다. 어느 쪽이든 목록이 게이트의 출력 폴더 밖 파일을
- * 가리키면 재지 않고 떨어뜨린다.
- */
-function judgeFrames(payload: unknown, spec: IGateSpec): { problems: string[]; summary: string } {
-  // `GATE_OK null`처럼 객체가 아닌 값이 오면 아래 속성 접근이 TypeError로 새어, 맨 바깥 catch에
-  // 무엇이 틀렸는지 없는 한 줄만 남는다. 받은 값을 말하며 여기서 떨어뜨린다.
-  if (typeof payload !== 'object' || payload === null) {
-    return {
-      problems: [`판정 줄의 payload가 객체가 아니다: ${JSON.stringify(payload)}`],
-      summary: '',
-    };
-  }
-  const written = (payload as { written?: unknown }).written;
-  if (!Array.isArray(written) || written.some((p) => typeof p !== 'string')) {
-    return {
-      problems: ['판정 줄에 written 목록이 없다 — 무엇을 구웠는지 알 수 없다'],
-      summary: '',
-    };
-  }
-
-  const paths = written as string[];
-  // 이 게이트의 출력 폴더 밖을 가리키는 파일은 재지 않는다. 판정 줄이 엉뚱한 폴더의 PNG를 말하면
-  // 그 파일로 통과해서, 정작 게이트가 책임지는 폴더의 프레임은 아무도 재지 않는다.
-  const outputDir = path.join(ROOT, spec.output);
-  const outside = paths.filter((p) => {
-    const rel = path.relative(outputDir, path.resolve(p));
-    return rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel);
-  });
-  if (outside.length > 0) {
-    return {
-      problems: [`판정할 파일이 출력 폴더(${spec.output}) 밖이다: ${outside.join(', ')}`],
-      summary: '',
-    };
-  }
-  const missing = paths.filter((p) => !fs.existsSync(p));
-  if (missing.length > 0) {
-    return { problems: [`판정할 파일이 없다: ${missing.join(', ')}`], summary: '' };
-  }
-
-  const images = paths.map((p) => decodePng(fs.readFileSync(p)));
-  // 알파 대역을 함께 찍는다. 빈 프레임 임계값을 16으로 둔 근거가 「희미한 알파가 실제로 얼마나
-  // 있는가」인데, 불투명 픽셀 수만 보고는 그 값을 확인할 수 없다.
-  const bands = images.map(alphaHistogram);
-
-  const integrity = frameSetIntegrity(images, {
-    count: spec.expectFrames ?? paths.length,
-    width: PLAYER_FRAME_SPEC.width,
-    height: PLAYER_FRAME_SPEC.height,
-    footLineY: PLAYER_FRAME_SPEC.footLineY,
-    footLineTolerance: FOOT_LINE_TOLERANCE,
-    headLineY: PLAYER_FRAME_SPEC.headLineY,
-  });
-
-  const summary = integrity.frames
-    .map((f) => {
-      const b = bands[f.index];
-      return (
-        `#${f.index} 불투명 ${f.opaquePixels} 머리 ${f.topLineY ?? -1} 발밑 ${f.footLineY ?? -1} ` +
-        `희미 ${b.faint} 경계 ${b.semi} 거의불투명 ${b.nearOpaque}`
-      );
-    })
-    .join('\n  ');
-  return { problems: integrity.problems, summary };
-}
-
 /** 판정 줄을 사람이 읽는 한 줄로 만든다. */
 function describe(line: GateLine): string {
   return line.ok
@@ -286,16 +169,6 @@ function runGate(gates: Record<string, IGateSpec>, name: string): number {
     args.push(extra.flag, extra.repoPath ? path.join(ROOT, extra.repoPath) : (extra.value ?? ''));
   }
 
-  // 렌더 스크립트는 이미 있는 파일을 덮지 않는다. 출하 아트를 지키는 규칙이지만 스크래치
-  // 재실행까지 막으므로, `docs/temp/` 아래 자기 산출물만 먼저 치운다. 그 폴더는 「스크립트로
-  // 다시 만들 수 있는 것만 둔다」가 `.gitignore`에 적힌 자리다.
-  if (spec.kind === 'frames' && spec.output.startsWith('docs/temp/') && fs.existsSync(output)) {
-    for (const name of fs.readdirSync(output)) {
-      if (name.endsWith('.png')) fs.rmSync(path.join(output, name));
-    }
-    console.log(`  (스크래치 정리: ${spec.output})`);
-  }
-
   console.log(`\n■ ${spec.label}`);
   console.log(`  ${blender} ${args.join(' ')}`);
 
@@ -344,41 +217,25 @@ function runGate(gates: Record<string, IGateSpec>, name: string): number {
     return 1;
   }
 
-  if (spec.kind !== 'frames' && !fs.existsSync(output)) {
+  if (!fs.existsSync(output)) {
     console.error(`  ✗ 판정 줄은 성공인데 산출물이 없다: ${spec.output}`);
     return 1;
   }
 
-  const { problems, summary } =
-    spec.kind === 'frames' ? judgeFrames(line.payload, spec) : judgeRender(output);
+  const { problems, summary } = judgeRender(output);
   return report(spec, problems, summary);
 }
 
 /**
  * Blender를 부르지 않고 게이트 표의 출력 자리에 이미 있는 산출물만 다시 잰다.
  *
- * 게임 폴더의 프레임을 다시 구울 때 쓰는 경로다(절차는 지운 `retired/README.md`의 「1라운드 프레임 다시 굽기」에
- * 있었다 — git 이력). 렌더 스크립트는
- * 이미 있는 파일을 덮지 않으므로, 게이트 0c로 스크래치에 구워 판정한 뒤 그 PNG를 게임 폴더에
- * 덮어 넣는다. 그렇게 넣은 파일에는 판정 줄이 없어서, 이 모드가 없으면 게임에 실린 세트를 다시
- * 재는 도구 경로가 없다.
- *
- * 파일 목록은 폴더를 훑지 않고 이름 규칙으로 만든다 — 접두어에 `0001`부터 기대 장수까지 붙인
- * 것이다. 폴더를 훑으면 지난 실행이 남긴 여분이 섞이고, 규칙으로 만들면 빠진 장이 「파일이
- * 없다」로 드러난다.
+ * 굽기는 됐는데 판정만 다시 보고 싶을 때 쓴다 — 스모크 PNG가 스크래치에 남아 있으면 Blender를 다시 띄울
+ * 필요가 없다.
  */
 function judgeExisting(gates: Record<string, IGateSpec>, name: string): number {
   const spec = specOf(gates, name);
   const output = path.join(ROOT, spec.output);
   console.log(`\n■ ${spec.label} — 판정만 (Blender를 부르지 않는다)`);
-
-  if (spec.kind === 'frames') {
-    const written = Array.from({ length: spec.expectFrames ?? 0 }, (_, i) =>
-      path.join(output, `${FRAME_PREFIX}_${String(i + 1).padStart(4, '0')}.png`),
-    );
-    const { problems, summary } = judgeFrames({ written }, spec);
-    return report(spec, problems, summary);
-  }
   if (!fs.existsSync(output)) {
     return report(spec, [`판정할 산출물이 없다: ${spec.output}`], '');
   }
@@ -408,9 +265,9 @@ function assertNodeVersion(): void {
 /**
  * 명령줄을 읽어 `gates` 표의 게이트 하나를 돌린다. 종료 코드를 직접 정한다.
  *
- * @param gates 이름 → 게이트. 이 파일은 자기 표를 넘긴다(1라운드 표를 넘기던 `retired/gate-round1.ts`는 G4를 닫으며 지웠다)
+ * @param gates 이름 → 게이트
  */
-export function main(gates: Record<string, IGateSpec>): void {
+function main(gates: Record<string, IGateSpec>): void {
   try {
     assertNodeVersion();
     const name = process.argv[2];
@@ -427,9 +284,4 @@ export function main(gates: Record<string, IGateSpec>): void {
   }
 }
 
-// 다른 표를 든 실행기가 `main`을 가져다 쓰므로, import만으로 게이트가 돌지 않게 진입점일 때만 부른다.
-const isMain =
-  process.argv[1] !== undefined &&
-  path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
-
-if (isMain) main(GATES);
+main(GATES);

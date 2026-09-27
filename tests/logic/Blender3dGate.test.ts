@@ -25,6 +25,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import type { Facing } from '../../game/assets/scripts/logic/FacingLogic';
 import * as PlayerLayerLogic from '../../game/assets/scripts/logic/PlayerLayerLogic';
 import {
   buildAtlas,
@@ -46,10 +47,7 @@ import {
   WEAPON_TOON,
 } from '../../tools/blender/BakeSpec';
 import {
-  composeGrid,
-  compositeOver,
   layerOver,
-  maskRect,
   occlusionDelta,
   pixelDiff,
   sampleLikeEngine,
@@ -1111,105 +1109,6 @@ describe('sampleLikeEngine — 게임이 텍스처를 줄이는 방식을 그대
   });
 });
 
-describe('compositeOver — 엔진의 알파 블렌딩으로 배경 위에 얹는다', () => {
-  it('불투명 픽셀은 그대로, 투명 픽셀은 배경색이 되고 결과는 전부 불투명이다', () => {
-    const src = image(2, 1, (x) => (x === 0 ? [10, 20, 30, 255] : [99, 99, 99, 0]));
-
-    const out = compositeOver(src, [200, 150, 100]);
-
-    expect(pixel(out, 0, 0)).toEqual([10, 20, 30, 255]);
-    expect(pixel(out, 1, 0)).toEqual([200, 150, 100, 255]);
-  });
-
-  it('반투명 픽셀은 알파 비율로 배경과 섞는다', () => {
-    // 위 보간 테스트의 결과(색 128 · 알파 128)를 흰 배경에 얹은 값이다. 흰 윤곽이 흰 배경
-    // 위에서 191로 어두워지므로, 보간에서 생긴 어두운 테두리가 합성을 지나도 시트에 남는다.
-    const src = image(1, 1, () => [128, 128, 128, 128]);
-
-    expect(pixel(compositeOver(src, [255, 255, 255]), 0, 0)).toEqual([191, 191, 191, 255]);
-  });
-});
-
-describe('maskRect — 판정에서 뺄 자리를 불투명 색으로 덮는다', () => {
-  it('사각형 안만 덮고 원본은 건드리지 않는다', () => {
-    const src = image(3, 3, () => [1, 2, 3, 0]);
-
-    const out = maskRect(src, { x: 1, y: 1, width: 2, height: 1 }, [50, 60, 70]);
-
-    expect(pixel(out, 1, 1)).toEqual([50, 60, 70, 255]);
-    expect(pixel(out, 2, 1)).toEqual([50, 60, 70, 255]);
-    expect(pixel(out, 0, 1)).toEqual([1, 2, 3, 0]);
-    expect(pixel(out, 1, 0)).toEqual([1, 2, 3, 0]);
-    expect(pixel(src, 1, 1)).toEqual([1, 2, 3, 0]);
-  });
-
-  it('사각형이 캔버스를 벗어나면 캔버스 크기를 말하며 던진다', () => {
-    // 얼굴 자리는 원본 PNG마다 손으로 잰 상수다. 원본을 다시 구워 캔버스가 달라졌는데 상수를
-    // 안 고치면, 잘라서 덮는 쪽은 얼굴 일부가 드러난 시트를 조용히 내놓는다. 멈춰야 그 시트로
-    // 판정하는 일이 없다.
-    const src = image(3, 3, () => [0, 0, 0, 0]);
-
-    expect(() => maskRect(src, { x: 2, y: 0, width: 2, height: 1 }, [0, 0, 0])).toThrow(/3×3/);
-  });
-
-  it('크기가 0인 사각형도 던진다', () => {
-    // 크기 0은 캔버스 안에 있어도 아무것도 안 덮는다. 상수를 잘못 옮겨 적은 것인데 조용히
-    // 통과하면 얼굴이 드러난 시트가 나온다.
-    const src = image(3, 3, () => [0, 0, 0, 0]);
-
-    expect(() => maskRect(src, { x: 1, y: 1, width: 0, height: 1 }, [0, 0, 0])).toThrow();
-  });
-});
-
-describe('composeGrid — 칸을 표로 붙여 시트 한 장을 만든다', () => {
-  const A = image(2, 3, () => [10, 0, 0, 255]);
-  const B = image(1, 1, () => [20, 0, 0, 255]);
-  const C = image(1, 2, () => [30, 0, 0, 255]);
-  const D = image(3, 1, () => [40, 0, 0, 255]);
-  const opts = { gap: 1, background: [0, 0, 0] as const };
-
-  it('열 너비와 행 높이는 그 줄에서 가장 큰 칸이 정하고, 칸 사이와 바깥에 간격을 둔다', () => {
-    const out = composeGrid(
-      [
-        [A, B],
-        [C, D],
-      ],
-      opts,
-    );
-
-    // 열 너비 2·3과 행 높이 3·2에 간격이 가로세로 셋씩 붙는다.
-    expect([out.width, out.height]).toEqual([8, 8]);
-  });
-
-  it('칸을 열 가운데에 두고 행 바닥에 붙인다', () => {
-    // 바닥에 붙이는 이유는 같은 행의 칸 크기가 다를 때 두 캐릭터의 발을 같은 줄에 세우기
-    // 위해서다. 위아래 가운데로 두면 발이 서로 다른 높이에 서서, 크기와 무게감을 나란히
-    // 견주기 어려워진다.
-    const out = composeGrid(
-      [
-        [A, B],
-        [C, D],
-      ],
-      opts,
-    );
-
-    // B는 둘째 열(x 4~6)의 가운데 x=5, 첫 행(y 1~3)의 바닥 y=3에 선다.
-    expect(pixel(out, 5, 3)).toEqual([20, 0, 0, 255]);
-    expect(pixel(out, 5, 2)).toEqual([0, 0, 0, 255]);
-    expect(pixel(out, 4, 3)).toEqual([0, 0, 0, 255]);
-  });
-
-  it('행마다 칸 수가 달라도 열 너비는 칸이 있는 행이 정하고 빈 칸은 배경으로 남긴다', () => {
-    const out = composeGrid([[A, B], [C]], opts);
-
-    // 열 너비 2·1과 행 높이 3·2에 간격이 가로세로 셋씩 붙는다.
-    expect([out.width, out.height]).toEqual([6, 8]);
-    // 둘째 행(y 5~6)의 둘째 열(x 4)에는 칸이 없다.
-    expect(pixel(out, 4, 6)).toEqual([0, 0, 0, 255]);
-    expect(pixel(out, 4, 3)).toEqual([20, 0, 0, 255]);
-  });
-});
-
 describe('layerOver — 층을 다른 층 위에 엔진의 알파 블렌딩으로 얹는다', () => {
   it('위 층이 불투명하면 위 층의 색이 그대로 남는다', () => {
     const below = image(1, 1, () => [200, 0, 0, 255]);
@@ -1232,7 +1131,12 @@ describe('layerOver — 층을 다른 층 위에 엔진의 알파 블렌딩으�
     const below = image(1, 1, () => [200, 0, 0, 128]);
     const above = image(1, 1, () => [0, 0, 200, 128]);
 
-    const merged = pixel(compositeOver(layerOver(below, above), [0, 0, 0]), 0, 0);
+    // 불투명 배경 위에 엔진의 알파 블렌딩으로 얹는다 — 게임이 층을 화면에 그리는 식이다
+    const onBlack = (img: ReturnType<typeof layerOver>): number[] => {
+      const alpha = img.data[3] / 255;
+      return [0, 1, 2].map((c) => Math.round(img.data[c] * alpha));
+    };
+    const merged = onBlack(layerOver(below, above));
 
     // 차례로 얹으면 빨강 200 → 100 → 50, 파랑 0 → 0 → 100이다.
     expect(Math.abs(merged[0] - 50)).toBeLessThanOrEqual(1);
@@ -1944,16 +1848,20 @@ describe('staleReasons — 카메라를 잡은 뒤에 입력이 바뀌었는가'
 });
 
 describe('bakeStamp — 구운 그림이 어느 입력으로 구워졌는가', () => {
-  const inputs: IBakeInputs = {
-    definition: 'aaa',
-    models: { base: 'm0', topA: 'm1', topB: 'm2' },
-    blender: '5.2.1',
-    vrmAddon: '4.7.1',
+  const record = {
+    inputs: {
+      definition: 'aaa',
+      models: { base: 'm0', topA: 'm1', topB: 'm2' },
+      blender: '5.2.1',
+      vrmAddon: '4.7.1',
+    } satisfies IBakeInputs,
+    camera: { pitchDeg: 15, aimZ: 0.62, perPixelM: 0.0023558 },
+    bodyCanvas: { width: 264, height: 493 },
   };
 
   it('입력과 무기 사양이 같으면 도장이 같다', () => {
-    expect(bakeStamp(inputs, CHOSEN_WEAPONS)).toBe(
-      bakeStamp(structuredClone(inputs), structuredClone(CHOSEN_WEAPONS)),
+    expect(bakeStamp(record, CHOSEN_WEAPONS)).toBe(
+      bakeStamp(structuredClone(record), structuredClone(CHOSEN_WEAPONS)),
     );
   });
 
@@ -1966,13 +1874,24 @@ describe('bakeStamp — 구운 그림이 어느 입력으로 구워졌는가', (
       return { ...weapon, grip: [x + 0.01, y, z] as const };
     });
 
-    expect(bakeStamp(inputs, moved)).not.toBe(bakeStamp(inputs, CHOSEN_WEAPONS));
+    expect(bakeStamp(record, moved)).not.toBe(bakeStamp(record, CHOSEN_WEAPONS));
   });
 
   it('카메라 기록의 입력이 바뀌면 도장이 바뀐다', () => {
-    expect(bakeStamp({ ...inputs, definition: 'bbb' }, CHOSEN_WEAPONS)).not.toBe(
-      bakeStamp(inputs, CHOSEN_WEAPONS),
-    );
+    const changed = { ...record, inputs: { ...record.inputs, definition: 'bbb' } };
+    expect(bakeStamp(changed, CHOSEN_WEAPONS)).not.toBe(bakeStamp(record, CHOSEN_WEAPONS));
+  });
+
+  it('입력이 같아도 카메라 자세나 몸 층 캔버스가 바뀌면 도장이 바뀐다', () => {
+    // 카메라를 잡는 식을 고치고 camera를 다시 돌리면 입력 지문은 그대로인데 겨냥 높이 · 픽셀 크기가 바뀐다.
+    // 그 뒤 일부 층만 다시 구우면 옛 카메라로 구운 층과 크기 · 위치가 섞인다
+    const base = bakeStamp(record, CHOSEN_WEAPONS);
+    const aimed = { ...record, camera: { ...record.camera, aimZ: 0.63 } };
+    const zoomed = { ...record, camera: { ...record.camera, perPixelM: 0.0024 } };
+    const wider = { ...record, bodyCanvas: { width: 266, height: 493 } };
+    for (const each of [aimed, zoomed, wider]) {
+      expect(bakeStamp(each, CHOSEN_WEAPONS)).not.toBe(base);
+    }
   });
 });
 
@@ -2666,53 +2585,21 @@ describe('SlotSpec — 슬롯 범위 탐침이 세우는 시험 장비', () => {
 });
 
 describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰는 순수 함수)', () => {
-  // RED 단계에서는 없는 모듈을 동적 import로 불러 이 블록만 실패하게 했다(G5 §1). 구현이 생긴 뒤
-  // 정적 import로 바꿨고, `load`는 그 단언들의 모양을 그대로 두려고 남겨 둔 껍데기다.
-
-  interface IAnimState {
-    action: 'walk' | 'idle';
-    facing: string;
-    elapsed: number;
-    index: number;
-  }
-  interface IAnimInput {
-    facing: string;
-    moving: boolean;
-    ticking: boolean;
-    dt: number;
-  }
-  interface IAnimConfig {
-    fps: { walk: number; idle: number };
-    counts: { walk: number; idle: number };
-  }
-  interface ILayerMismatch {
-    facing: string;
-    action: string;
-    counts: Record<string, number>;
-  }
-  interface IPlayerLayerModule {
-    DEFAULT_ANIM_FPS: { walk: number; idle: number };
-    IDLE_ORDER: readonly number[];
-    createAnimState(): IAnimState;
-    advanceAnim(state: IAnimState, input: IAnimInput, config: IAnimConfig): IAnimState;
-    frameName(layer: string, action: string, facing: string, index: number): string;
-    validateLayers(namesByLayer: Record<string, readonly string[]>): ILayerMismatch[];
-    resolveLayerFrame<T>(
-      found: T | null,
-      prev: T | null,
-      name: string,
-      reported: Set<string>,
-    ): { frame: T | null; report: boolean };
-    stackOrder(facing: string): readonly string[];
-  }
-  const load = async (): Promise<IPlayerLayerModule> => PlayerLayerLogic;
+  // 실제 모듈을 그대로 부른다 — 로컬 인터페이스를 두면 메서드 이변성 때문에 실제 시그니처가 바뀌어도
+  // 테스트 쪽 타입체크가 잡지 못한다
+  const m = PlayerLayerLogic;
 
   // 굽기 도구의 확정값을 그대로 쓴다 — 걷기 8장 · 10fps, 대기는 구운 3장 · 3fps
-  const config: IAnimConfig = {
+  const config: PlayerLayerLogic.IAnimConfig = {
     fps: { walk: CHOSEN_MOTION.walkFps, idle: CHOSEN_MOTION.idleFps },
     counts: { walk: CHOSEN_MOTION.walkFrames, idle: IDLE_PLAYBACK.phases.length },
   };
-  const tick = (moving: boolean, facing = 'front', dt = 0.15, ticking = true): IAnimInput => ({
+  const tick = (
+    moving: boolean,
+    facing: Facing = 'front',
+    dt = 0.15,
+    ticking = true,
+  ): PlayerLayerLogic.IAnimInput => ({
     facing,
     moving,
     ticking,
@@ -2721,11 +2608,10 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
   const names = (layer: string, action: string, facing: string, count: number): string[] =>
     Array.from({ length: count }, (_, i) => frameName(layer, action, facing, i));
 
-  it('기본 재생 속도와 대기 재생 순서가 굽기 도구의 확정값과 같다', async () => {
+  it('기본 재생 속도와 대기 재생 순서가 굽기 도구의 확정값과 같다', () => {
     // 재생 속도는 굽기에 박히지 않아 컴포넌트가 속성으로 받는데, 그 기본값이 후보 화면에서 사용자가
     // 본 값과 다르면 인게임이 처음부터 다른 속도로 돈다. 대기 순서표도 굽기 쪽과 한 값이어야
     // 세 장으로 네 박자를 흉내 내는 약속이 지켜진다
-    const m = await load();
     expect(m.DEFAULT_ANIM_FPS).toEqual({ walk: 10, idle: 3 });
     expect(m.DEFAULT_ANIM_FPS).toEqual({
       walk: CHOSEN_MOTION.walkFps,
@@ -2734,8 +2620,7 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
     expect([...m.IDLE_ORDER]).toEqual([...IDLE_PLAYBACK.order]);
   });
 
-  it('처음은 정면 대기 0번이고, 동작이 바뀌면 시계와 번호가 0으로 돌아간다', async () => {
-    const m = await load();
+  it('처음은 정면 대기 0번이고, 동작이 바뀌면 시계와 번호가 0으로 돌아간다', () => {
     expect(m.createAnimState()).toEqual({ action: 'idle', facing: 'front', elapsed: 0, index: 0 });
     let s = m.createAnimState();
     for (let i = 0; i < 3; i++) s = m.advanceAnim(s, tick(false, 'front', 0.2), config);
@@ -2746,8 +2631,7 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
     expect(stopped).toMatchObject({ action: 'idle', elapsed: 0, index: 0 });
   });
 
-  it('걷기 번호는 floor(elapsed × fps) % 장 수이고 큰 dt는 여러 장을 건너뛴다', async () => {
-    const m = await load();
+  it('걷기 번호는 floor(elapsed × fps) % 장 수이고 큰 dt는 여러 장을 건너뛴다', () => {
     let s = m.advanceAnim(m.createAnimState(), tick(true), config);
     s = m.advanceAnim(s, tick(true, 'front', 0.15), config);
     expect(s.index).toBe(1);
@@ -2755,8 +2639,7 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
     expect(s.index).toBe(4);
   });
 
-  it('시계는 한 주기의 나머지라 주기를 넘으면 처음으로 감긴다', async () => {
-    const m = await load();
+  it('시계는 한 주기의 나머지라 주기를 넘으면 처음으로 감긴다', () => {
     const period = config.counts.walk / config.fps.walk;
     let s = m.advanceAnim(m.createAnimState(), tick(true), config);
     s = m.advanceAnim(s, tick(true, 'front', period + 0.05), config);
@@ -2764,9 +2647,8 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
     expect(s.index).toBe(0);
   });
 
-  it('걷는 중 방향이 바뀌어도 번호와 시계는 이어진다', async () => {
+  it('걷는 중 방향이 바뀌어도 번호와 시계는 이어진다', () => {
     // 방향 전환마다 0번으로 돌아가면 좌우를 번갈아 누를 때 같은 장만 반복돼 걷지 않는 것처럼 보인다
-    const m = await load();
     let s = m.advanceAnim(m.createAnimState(), tick(true), config);
     s = m.advanceAnim(s, tick(true, 'front', 0.35), config);
     const turned = m.advanceAnim(s, tick(true, 'left', 0), config);
@@ -2775,17 +2657,15 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
     expect(turned.elapsed).toBeCloseTo(s.elapsed, 9);
   });
 
-  it('ticking이 거짓이면 시계가 멈추고 상태가 그대로다', async () => {
+  it('ticking이 거짓이면 시계가 멈추고 상태가 그대로다', () => {
     // 일시정지 · 레벨업 중에도 컴포넌트가 스스로 멈춤을 판정하지 않고 이 입력만 본다(G5 §2)
-    const m = await load();
     let s = m.advanceAnim(m.createAnimState(), tick(true), config);
     s = m.advanceAnim(s, tick(true, 'front', 0.25), config);
     expect(m.advanceAnim(s, tick(true, 'front', 0.5, false), config)).toEqual(s);
   });
 
-  it('대기는 구운 세 장을 0 → 1 → 2 → 1 순서표로 돈다', async () => {
+  it('대기는 구운 세 장을 0 → 1 → 2 → 1 순서표로 돈다', () => {
     // 번호를 그대로 쓰면 세 장이 0 → 1 → 2 → 0으로 돌아 숨을 내쉬는 절반이 빠진다
-    const m = await load();
     const idle = (dt: number): number =>
       m.advanceAnim(
         { action: 'idle', facing: 'front', elapsed: 0, index: 0 },
@@ -2799,9 +2679,26 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
     expect(idle(1.34)).toBe(0);
   });
 
-  it('프레임 이름이 모든 조합에서 아틀라스 작성기와 같다', async () => {
+  it('대기 장이 순서표보다 모자라면 마지막 장에 머물고, 속도나 장 수가 0이면 0번에 머문다', () => {
+    // 순서표가 없는 번호(2)를 가리키면 빈 칸을 그리게 된다. 속도 0은 인스펙터에서 잘못 넣을 수 있는 값이다
+    const idleAt = (cfg: PlayerLayerLogic.IAnimConfig, dt: number): number =>
+      m.advanceAnim(
+        { action: 'idle', facing: 'front', elapsed: 0, index: 0 },
+        tick(false, 'front', dt),
+        cfg,
+      ).index;
+    const twoIdle = { ...config, counts: { ...config.counts, idle: 2 } };
+    expect(idleAt(twoIdle, 0.67)).toBe(1);
+    const noFps = { ...config, fps: { ...config.fps, idle: 0 } };
+    expect(idleAt(noFps, 0.67)).toBe(0);
+    const noFrames = { ...config, counts: { ...config.counts, walk: 0 } };
+    let s = m.advanceAnim(m.createAnimState(), tick(true), noFrames);
+    s = m.advanceAnim(s, tick(true, 'front', 0.35), noFrames);
+    expect(s.index).toBe(0);
+  });
+
+  it('프레임 이름이 모든 조합에서 아틀라스 작성기와 같다', () => {
     // 이름 규칙이 작성기와 게임 두 곳에 산다 — Cocos 스크립트는 `game/assets` 밖을 import할 수 없다
-    const m = await load();
     for (const layer of BAKE_LAYERS) {
       for (const action of BAKE_ACTIONS) {
         for (const facing of BAKE_FACINGS) {
@@ -2815,8 +2712,7 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
     }
   });
 
-  it('옷을 바꿔도 재생 위치가 유지된다 — 같은 상태에서 상의 A · B가 같은 번호를 가리킨다', async () => {
-    const m = await load();
+  it('옷을 바꿔도 재생 위치가 유지된다 — 같은 상태에서 상의 A · B가 같은 번호를 가리킨다', () => {
     let s = m.advanceAnim(m.createAnimState(), tick(true, 'right'), config);
     s = m.advanceAnim(s, tick(true, 'right', 0.55), config);
     const a = m.frameName('topA', s.action, s.facing, s.index);
@@ -2825,10 +2721,9 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
     expect(a.replace(/^topA/, '')).toBe(b.replace(/^topB/, ''));
   });
 
-  it('층별 프레임 수가 다른 (방향, 동작)을 목록으로 낸다', async () => {
+  it('층별 프레임 수가 다른 (방향, 동작)을 목록으로 낸다', () => {
     // 한 층만 한 장이 빠지면 그 (방향, 동작)에서 층끼리 다른 장이 겹친다. 어느 조합이 몇 장인지가
     // 오류 메시지에 들어가야 아틀라스 열 개 중 무엇을 다시 넣을지 알 수 있다
-    const m = await load();
     const body = [
       ...names('body', 'walk', 'front', 8),
       ...names('body', 'walk', 'left', 8),
@@ -2845,15 +2740,37 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
       ...names('topA', 'idle', 'front', 3),
     ];
     expect(m.validateLayers({ body, topA: topAShort })).toEqual([
-      { facing: 'left', action: 'walk', counts: { body: 8, topA: 7 } },
+      { facing: 'left', action: 'walk', counts: { body: 8, topA: 7 }, reason: 'layers' },
     ]);
     expect(m.validateLayers({ body, topA: topAFull })).toEqual([]);
   });
 
-  it('빠진 프레임은 직전 프레임을 유지하고 이름마다 한 번만 알린다', async () => {
+  it('층끼리는 같아도 한 방향만 장 수가 다르면 그 방향을 낸다', () => {
+    // 재생 시계는 동작마다 장 수 하나(정면 기준)로 네 방향을 돈다. 한 방향만 모자라면 그 방향의
+    // 모자란 번호에서 프레임을 못 찾는데, 층끼리 비교만으로는 드러나지 않는다
+    const short = (layer: string): string[] => [
+      ...names(layer, 'walk', 'front', 8),
+      ...names(layer, 'walk', 'back', 7),
+      ...names(layer, 'idle', 'front', 3),
+      ...names(layer, 'idle', 'back', 3),
+    ];
+    expect(m.validateLayers({ body: short('body'), topA: short('topA') })).toEqual([
+      { facing: 'back', action: 'walk', counts: { body: 7, topA: 7 }, reason: 'facings' },
+    ]);
+  });
+
+  it('다른 층의 프레임이 담긴 아틀라스는 그 층의 장 수가 0이 되어 드러난다', () => {
+    // 상의 B 자리에 상의 A 아틀라스를 끼우면 장 수는 같아 보여도 실행 중에 이름으로 못 찾는다
+    const body = names('body', 'idle', 'front', 3);
+    const wrong = names('topA', 'idle', 'front', 3);
+    expect(m.validateLayers({ body, topB: wrong })).toEqual([
+      { facing: 'front', action: 'idle', counts: { body: 3, topB: 0 }, reason: 'layers' },
+    ]);
+  });
+
+  it('빠진 프레임은 직전 프레임을 유지하고 이름마다 한 번만 알린다', () => {
     // null을 그대로 넣으면 그 장에서 층이 사라져 캐릭터가 깜빡이고, 매 프레임 로그를 남기면
     // 초당 수십 줄이 쌓여 정작 어느 이름이 빠졌는지 못 읽는다
-    const m = await load();
     const reported = new Set<string>();
     const prev = { id: 'prev' };
     const found = { id: 'found' };
@@ -2872,9 +2789,8 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
     expect(reported.has('topA_walk_left_07')).toBe(true);
   });
 
-  it('겹치는 순서가 네 방향 전부에서 굽기 도구의 표와 같다', async () => {
+  it('겹치는 순서가 네 방향 전부에서 굽기 도구의 표와 같다', () => {
     // 두 표가 갈리면 G4가 잰 순서와 다른 순서로 그려지는데 그림만 봐서는 드러나지 않는다(G5 §1)
-    const m = await load();
     for (const facing of BAKE_FACINGS) {
       expect([...m.stackOrder(facing.id)]).toEqual([...STACK_ORDER[facing.id]]);
       expect(m.stackOrder(facing.id)[0]).toBe('body');

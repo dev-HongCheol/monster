@@ -54,12 +54,17 @@ export interface IAnimConfig {
   counts: IAnimCounts;
 }
 
-/** (방향, 동작)에서 층끼리 장 수가 다른 조합 하나 */
+/** 장 수가 어긋난 (방향, 동작) 하나 */
 export interface ILayerMismatch {
   facing: string;
   action: string;
   /** 층 이름 → 그 조합의 장 수. 그 조합이 없는 층은 0이다 */
   counts: Record<string, number>;
+  /**
+   * 무엇과 어긋났나. `layers`는 이 조합 안에서 층끼리 다른 경우, `facings`는 층끼리는 같지만 같은 동작의 정면(없으면
+   * 처음 나온 방향)과 장 수가 다른 경우다
+   */
+  reason: 'layers' | 'facings';
 }
 
 /**
@@ -150,13 +155,18 @@ export function frameName(layer: string, action: string, facing: string, index: 
 }
 
 /**
- * 층별 프레임 이름 목록에서 (방향, 동작)마다 장 수가 다른 조합을 찾는다.
+ * 층별 프레임 이름 목록에서 장 수가 어긋난 (방향, 동작)을 찾는다. 두 가지를 본다.
  *
- * 한 층만 한 장이 빠지면 그 조합에서 층끼리 다른 장이 겹쳐 보인다. 어느 조합이 몇 장인지가 오류 메시지에 들어가야
- * 아틀라스 열 개 중 무엇을 다시 넣을지 알 수 있다.
+ * - **층끼리.** 한 층만 한 장이 빠지면 그 조합에서 층끼리 다른 장이 겹쳐 보인다.
+ * - **방향끼리.** 재생 시계는 동작마다 장 수 하나로 네 방향을 돈다. 한 방향만 장이 모자라면 그 방향의 모자란
+ *   번호에서 프레임을 못 찾는다.
  *
- * @param namesByLayer 층 이름 → 그 층의 아틀라스에 든 프레임 이름들. 이름 규칙에 안 맞는 항목은 세지 않는다
- * @returns 장 수가 층마다 같지 않은 (방향, 동작) 목록. 전부 같으면 빈 배열
+ * 어느 조합이 몇 장인지가 오류 메시지에 들어가야 아틀라스 열 개 중 무엇을 다시 넣을지 알 수 있다.
+ *
+ * @param namesByLayer 층 이름 → 그 층의 아틀라스에 든 프레임 이름들. 이름 규칙에 안 맞는 항목과 **이름의 층 부분이
+ *   그 층이 아닌 항목**(상의 B 아틀라스에 든 `topA_*` 등)은 세지 않는다 — 그래서 다른 층의 아틀라스를 잘못 끼우면
+ *   그 층의 장 수가 0이 되어 층끼리 불일치로 드러난다
+ * @returns 어긋난 (방향, 동작) 목록. 층끼리 어긋난 조합은 방향끼리 비교에서 뺀다. 전부 맞으면 빈 배열
  */
 export function validateLayers(namesByLayer: Record<string, readonly string[]>): ILayerMismatch[] {
   const layers = Object.keys(namesByLayer);
@@ -164,7 +174,7 @@ export function validateLayers(namesByLayer: Record<string, readonly string[]>):
   for (const layer of layers) {
     for (const name of namesByLayer[layer]) {
       const match = FRAME_NAME_PATTERN.exec(name);
-      if (match === null) continue;
+      if (match === null || match[1] !== layer) continue;
       const key = `${match[3]}|${match[2]}`;
       let row = counts.get(key);
       if (!row) {
@@ -176,11 +186,28 @@ export function validateLayers(namesByLayer: Record<string, readonly string[]>):
     }
   }
   const mismatches: ILayerMismatch[] = [];
+  // 층끼리 맞은 조합의 장 수 — 동작별로 모아 방향끼리 견준다
+  const uniform = new Map<
+    string,
+    { facing: string; count: number; row: Record<string, number> }[]
+  >();
   for (const [key, row] of counts) {
     const values = layers.map((layer) => row[layer]);
-    if (values.every((value) => value === values[0])) continue;
     const [facing, action] = key.split('|');
-    mismatches.push({ facing, action, counts: row });
+    if (!values.every((value) => value === values[0])) {
+      mismatches.push({ facing, action, counts: row, reason: 'layers' });
+      continue;
+    }
+    const list = uniform.get(action) ?? [];
+    list.push({ facing, count: values[0], row });
+    uniform.set(action, list);
+  }
+  for (const [action, list] of uniform) {
+    const reference = list.find((each) => each.facing === 'front') ?? list[0];
+    for (const each of list) {
+      if (each.count === reference.count) continue;
+      mismatches.push({ facing: each.facing, action, counts: each.row, reason: 'facings' });
+    }
   }
   return mismatches;
 }

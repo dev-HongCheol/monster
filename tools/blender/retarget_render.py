@@ -1,13 +1,13 @@
 """
 기준 자세의 값 — 팔 회전(`BASE_ARM_POSE` · `BASE_POSE_ORDER`)과 손가락 그립(`BASE_FINGER_POSE`).
 
-굽기 스크립트 넷(`bake_motion.py` · `bake_layer.py` · `probe_layers.py` · `measure_weapon_room.py`)이
+굽기 스크립트(`bake_motion.py`)와 무기 자리 측정 도구(`measure_weapon_room.py`)가
 `import retarget_render as retarget`로 읽는다. 값의 주인은 이 파일 하나이고 옷 · 동작과 무관하다 — 근거는
 아래 주석에 있다.
 
 파일 이름은 1라운드(2026-09-11 ~ 14)의 리타게팅 · 굽기 스크립트에서 왔다. 그때의 본 대응표 · 흔들림 비율 ·
 모션 임포트 · 프레임 굽기는 2라운드가 스크립트 키프레임 굽기(`bake_motion.py`)로 바꿔 G5에서 지웠다
-(2026-09-27, G5 §3). 부르는 넷이 모듈 이름으로 import해서 이름은 남겼다.
+(2026-09-27, G5 §3). 부르는 쪽이 모듈 이름으로 import해서 이름은 남겼다.
 """
 
 # 기준 자세 — 팔은 모션을 따르지 않고 이 값으로 고정한다.

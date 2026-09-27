@@ -31,7 +31,7 @@ import { footLineY, type IRgbaImage, trimBox } from './SpriteMetrics.ts';
  * 넣으므로 캔버스를 덜 채운 쪽이 화면에서 작게 보인다. 발 밑선만 맞춰 구운 판은 머리 꼭대기가
  * 33~40행이라 키가 2D의 92%였고, 사용자가 Cocos 테스트 씬에서 눈으로 작다고 봤다.
  *
- * **Blender 스크립트는 이 값을 복사해 두지 않는다.** `tools/blender/gate.ts`가 인자로 넘기고
+ * **Blender 스크립트는 이 값을 복사해 두지 않는다.** 실행기가 `LayerBake.bakeMotionArgs`로 인자를 넘기고
  * 스크립트는 못 받으면 실패한다. 파이썬이 TS를 import할 수 없다고 값을 스크립트에도 적어 두면,
  * 한쪽만 고쳤을 때 굽기는 옛 값을, 판정은 새 값을 써서 게이트가 떨어진다. 그런데 실패 메시지는
  * 크기·위치 결함을 가리키므로 원인이 두 벌의 불일치라는 것이 드러나지 않는다.
@@ -53,12 +53,20 @@ export const PLAYER_FRAME_SPEC = {
 const SET_EDGE_TOLERANCE = 1;
 
 /**
+ * 이 값 이하의 알파는 내용으로 안 센다 — `normalizeAlpha`가 0으로 누르는 기준이다. **알파 잣대의 주인이 이
+ * 상수다.** 아틀라스 작성기(`Atlas.ts`)와 층 판정(`LayerBake.ts`의 `CONTENT_ALPHA`)이 이 값을 import한다 — 잣대가
+ * 갈리면 판정이 「빈 프레임」이라 한 장을 작성기가 내용이 있다고 담거나, 카메라를 맞춘 행과 판정이 읽는 행이
+ * 안티앨리어싱 술만큼 어긋난다.
+ */
+export const FAINT_UP_TO = 16;
+
+/**
  * 이웃 프레임을 「같은 그림」으로 볼 채널당 최대 차이.
  *
  * `normalizeAlpha`가 0으로 누르는 기준과 같은 값을 쓴다. 판정 둘이 다른 잣대를 쓰면, 알파를
  * 눌러 없앤 잡음이 이웃 비교에서는 「움직였다」로 살아나 프레임 번호를 안 올린 굽기가 통과한다.
  */
-const NEIGHBOR_DIFF_UP_TO = 16;
+const NEIGHBOR_DIFF_UP_TO = FAINT_UP_TO;
 
 /** `frameSetCheck`가 세트 하나에 요구하는 것. */
 export interface ISetCheckExpectation {
@@ -186,7 +194,7 @@ export function frameSetCheck(
   frames: readonly IRgbaImage[],
   expected: ISetCheckExpectation,
 ): IFrameSetReport {
-  const faintUpTo = expected.faintUpTo ?? 16;
+  const faintUpTo = expected.faintUpTo ?? FAINT_UP_TO;
   const neighborDiffUpTo = expected.neighborDiffUpTo ?? NEIGHBOR_DIFF_UP_TO;
   const problems: string[] = [];
 

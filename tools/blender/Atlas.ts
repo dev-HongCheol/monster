@@ -16,17 +16,10 @@
  * `docs/development/sessions/2026-09-15-blender-3d-gate-round2-g4-bake.md` §6이 든다.
  */
 
+import { FAINT_UP_TO } from '../../tests/helpers/FrameSet.ts';
 import { type IRgbaImage, trimBox } from '../../tests/helpers/SpriteMetrics.ts';
 import { normalizeAlpha } from '../art/Postprocess.ts';
 import type { IRect } from './ComparisonSheet.ts';
-
-/**
- * 트림할 때 내용으로 안 세는 알파의 상한.
- *
- * 프레임 판정(`tests/helpers/FrameSet.ts`)이 쓰는 값과 같다. 두 잣대가 갈리면 판정은 「빈
- * 프레임」이라 한 장을 작성기는 내용이 있다고 담아, 아틀라스에 투명 여백이 그대로 실린다.
- */
-const FAINT_UP_TO = 16;
 
 /** 가로세로 크기. */
 export interface ISize {

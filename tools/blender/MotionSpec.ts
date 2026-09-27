@@ -403,6 +403,9 @@ export function samplePhases(count: number): number[] {
  * 여러 프레임 수를 한 번에 굽기 위한 위상 목록과, 프레임 수마다 그 목록의 몇 번째를 쓰는지.
  *
  * 8장 판과 6장 판을 따로 구우면 위상 0과 0.5를 두 번 굽는다. 합쳐서 한 번만 굽고 재생할 때 골라 쓴다.
+ *
+ * **디자인할 때 쓰는 도구다.** G3에서 프레임 수 후보를 나란히 견줄 때 썼고, 생산 굽기는 채택한 한 가지 수만
+ * 굽으므로 지금 부르는 곳은 테스트뿐이다. 새 동작의 프레임 수를 고를 때 다시 쓴다.
  */
 export function mergedPhases(counts: readonly number[]): {
   phases: number[];
@@ -432,6 +435,9 @@ export function stepLength(spec: IGaitSpec, rig: ILegRig): number {
  *
  * 뛰기는 두 발이 다 뜬 동안에도 몸이 나아가므로 1보다 큰 것이 정상이다. 걷기가 3을 넘으면 발을 디딘 채
  * 몸만 밀려 가는 것처럼 보이기 쉽다.
+ *
+ * **디자인할 때 쓰는 도구다.** G3에서 걷기 · 뛰기 후보의 미끄러짐을 어림할 때 썼고(채택한 걷기는 5.6배 —
+ * `CHOSEN_GAIT` 주석) 지금 부르는 곳은 없다. 새 걸음을 디자인하거나 이동 속도를 바꿀 때 다시 쓴다.
  *
  * @param speed 게임의 이동 속도(월드 단위/초, `player.json`의 `speed`)
  * @param cycleSeconds 한 주기(두 걸음)의 길이 — 프레임 수 ÷ 재생 속도

@@ -45,8 +45,8 @@ function frameKey(layer: AtlasLayer, action: LayerAction, facing: Facing): strin
 }
 
 /**
- * 층별 아틀라스에서 프레임을 꺼내 Player의 자식 Sprite 넷(몸 · 상의 · 지팡이 · 방패)에 매 프레임 붙이고, 방향이
- * 바뀌면 자식의 형제 순서를 방향별 겹치는 순서로 다시 매기는 컴포넌트. 규칙은 전부 `PlayerLayerLogic`에 있고 여기는
+ * 층별 아틀라스에서 프레임을 꺼내 Player의 자식 Sprite 넷(몸 · 상의 · 지팡이 · 방패)에 재생 상태가 바뀐 프레임마다
+ * 붙이고, 방향이 바뀌면 자식의 형제 순서를 방향별 겹치는 순서로 다시 매기는 컴포넌트. 규칙은 전부 `PlayerLayerLogic`에 있고 여기는
  * 연결만 한다.
  *
  * `lateUpdate`에서 도는 것은 같은 노드의 `PlayerController.update`가 방향을 갱신한 뒤에 읽어야 한 프레임 늦지 않기
@@ -60,8 +60,8 @@ export class PlayerLayerSync extends Component {
   @property(Node) staffNode: Node | null = null;
   @property(Node) shieldNode: Node | null = null;
 
-  // 아틀라스는 층 × 동작마다 하나다(`bake.ts atlas`가 그렇게 담는다). 배열로 받지 않고 이름별로 두는 이유는
-  // PlayerController의 방향 슬롯과 같다 — 배열이면 순서를 잘못 끼워도 에러 없이 통과해 걷기에 대기 그림이 뜬다.
+  // 아틀라스는 층 × 동작마다 하나다(`bake.ts atlas`가 그렇게 담는다). 배열로 받지 않고 이름별로 둔다 — 배열이면
+  // 순서를 잘못 끼워도 에러 없이 통과해 걷기에 대기 그림이 뜨지만, 이름 슬롯은 인스펙터에서 어긋남이 보인다.
   @property(SpriteAtlas) bodyWalk: SpriteAtlas | null = null;
   @property(SpriteAtlas) bodyIdle: SpriteAtlas | null = null;
   @property(SpriteAtlas) topAWalk: SpriteAtlas | null = null;
@@ -83,7 +83,7 @@ export class PlayerLayerSync extends Component {
   private _sprites = new Map<StackSlot, Sprite>();
   /** (층, 동작, 방향) → 번호순 프레임. 못 찾은 이름은 null로 남겨 실행 중에 직전 프레임을 유지한다 */
   private _frames = new Map<string, (SpriteFrame | null)[]>();
-  /** 아틀라스에서 읽은 동작별 장 수(몸 층의 정면 기준) */
+  /** 아틀라스에서 읽은 동작별 장 수(몸 층의 정면 기준 — 방향끼리 같은지는 onLoad의 `validateLayers`가 본다) */
   private _counts = { walk: 0, idle: 0 };
   private _state: IAnimState = createAnimState();
   /** 자리마다 마지막으로 붙인 프레임 — 같은 프레임을 매 프레임 다시 대입하지 않으려는 것 */
@@ -112,18 +112,19 @@ export class PlayerLayerSync extends Component {
       this.enabled = false;
       return;
     }
-    // 층별 장 수가 다르면 그 조합에서 층끼리 다른 장이 겹친다. 어느 아틀라스를 다시 넣을지 알 수 있게 조합과 수를
-    // 그대로 찍는다
+    // 장 수가 층끼리 다르면 그 조합에서 층끼리 다른 장이 겹치고, 방향끼리 다르면 시계가 모자란 방향의 빈 번호를
+    // 가리킨다. 어느 아틀라스를 다시 넣을지 알 수 있게 조합과 수를 그대로 찍는다
     const mismatches = validateLayers(names);
     if (mismatches.length > 0) {
-      const lines = mismatches.map(
-        (m) =>
-          `${m.facing} ${m.action}: ${Object.entries(m.counts)
-            .map(([layer, count]) => `${layer} ${count}`)
-            .join(' · ')}`,
-      );
+      const lines = mismatches.map((m) => {
+        const counts = Object.entries(m.counts)
+          .map(([layer, count]) => `${layer} ${count}`)
+          .join(' · ');
+        const why = m.reason === 'facings' ? ' (정면과 장 수가 다르다)' : '';
+        return `${m.facing} ${m.action}${why}: ${counts}`;
+      });
       console.error(
-        `[PlayerLayerSync] 층별 프레임 수가 다르다 — 비활성화합니다.\n  ${lines.join('\n  ')}`,
+        `[PlayerLayerSync] 프레임 수가 맞지 않는다 — 비활성화합니다.\n  ${lines.join('\n  ')}`,
       );
       this.enabled = false;
       return;
@@ -198,6 +199,8 @@ export class PlayerLayerSync extends Component {
 
   /**
    * 아틀라스마다 (동작, 방향)별 프레임 배열을 만들고, 층별 프레임 이름 목록을 돌려준다(장 수 검사의 입력).
+   * 번호 중간이 비어 못 찾은 이름은 여기서 바로 한 번 알린다 — 재생 중에만 알리면 한 번도 재생되지 않은 조합의
+   * 빈 칸은 드러나지 않는다. 알린 이름은 `_reported`에 넣어 재생 중에 다시 알리지 않는다.
    * 아틀라스가 빈 층은 오류를 한 번 남기고 그 층의 노드를 끈다 — 속성 하나를 빠뜨린 실수 때문에 캐릭터 전체가
    * 멈추지 않게 한다. 상의 B는 노드를 끄지 않고 옷 전환만 막는다.
    */
@@ -227,9 +230,17 @@ export class PlayerLayerSync extends Component {
         for (const facing of FACINGS) {
           const prefix = `${layer}_${action}_${facing}_`;
           const count = inAtlas.filter((name) => name.startsWith(prefix)).length;
-          const frames = Array.from({ length: count }, (_, i) =>
-            atlas.getSpriteFrame(frameName(layer, action, facing, i)),
-          );
+          const frames = Array.from({ length: count }, (_, i) => {
+            const name = frameName(layer, action, facing, i);
+            const frame = atlas.getSpriteFrame(name);
+            if (!frame && !this._reported.has(name)) {
+              this._reported.add(name);
+              console.error(
+                `[PlayerLayerSync] 아틀라스에 프레임이 없다: ${name} — 그 장에서는 직전 프레임을 유지합니다.`,
+              );
+            }
+            return frame;
+          });
           this._frames.set(frameKey(layer, action, facing), frames);
         }
       }
@@ -270,8 +281,9 @@ export class PlayerLayerSync extends Component {
   }
 
   /**
-   * 자식의 형제 순서를 그 방향의 겹치는 순서로 다시 매긴다. 자리 넷이 차지한 구간의 첫 번호부터 순서대로 놓으므로,
-   * 다른 자식(뒤에 얹을 마법진 등)이 앞뒤에 있어도 그 자리는 안 밀린다.
+   * 자식의 형제 순서를 그 방향의 겹치는 순서로 다시 매긴다. 자리 넷이 차지한 구간의 첫 번호부터 순서대로 놓는다.
+   * **자리 넷이 연속한 형제라고 가정한다** — 다른 자식이 넷의 앞이나 뒤에만 있으면 그 자리는 안 밀리지만, 넷 사이에
+   * 끼어 있으면(몸과 상의 사이의 망토 등) 뒤로 밀린다. 그런 층이 생기면 겹치는 순서표에 그 자리를 더한다.
    */
   private _applyStackOrder(facing: Facing): void {
     const nodes: Node[] = [];
