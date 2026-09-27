@@ -327,6 +327,7 @@ AI가 구현·검증 단계에서 돌린다. 여기 적는 것은 무엇이 기�
 - [x] `pnpm wf check-meta` — 빨강(정상). 아틀라스의 `.meta` 스물한 개에 새 스크립트 둘(`PlayerLayerSync.ts` · `PlayerLayerLogic.ts`)의 `.meta`가 더해져 스물세 개가 추적되지 않는다. `PR 승인` 때 일괄 커밋한다
 - [x] `bake.ts check-atlas` — 알파 문턱을 한 곳으로 모은 뒤 다시 돌려도 게임 폴더의 plist 10개 · 프레임 220장이 통과한다(2026-09-27)
 - [x] 웹 빌드 — 릴리스 빌드 92개 · 9.0MB, 디버그 빌드에서도 `DEV`는 거짓(§16.1, `ops-build.md` §6.4)
+- [x] G6 뒤 재검증(2026-09-28) — 정본 · ADR만 바뀌어 `start-verification`의 전체 스위트(48파일 1,115/1,115)가 다시 통과했고, 문서 관련 검사(`check-links` · `check-docs` · 의무 독서 예산 · 링크 회귀망)가 초록이다. ADR 목록을 `CLAUDE.md`에서 `docs/decisions/README.md`로 옮겨 의무 독서 예산 초과를 풀었다
 
 **파이썬은 어느 그물에도 안 걸린다.** `tools/**/*.ts`는 타입체크·lint·vitest 셋을 다 지나가지만 `.py`는 셋 중 아무것도 보지 않는다. 그래서 Blender 쪽은 굽기만 하고 판정을 전부 TS에 뒀고, 이 슬라이스는 그 트레이드오프를 받아들인다.
 
