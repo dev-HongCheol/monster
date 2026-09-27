@@ -2790,6 +2790,25 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
     ]);
   });
 
+  it('모든 층에서 정면이 통째로 빠지면 멀쩡한 방향이 아니라 정면을 낸다', () => {
+    // 0장으로 채운 정면을 기준으로 삼으면 나머지 셋이 전부 어긋났다고 찍히고 정작 빠진 정면은 안 나온다
+    const noFront = (layer: string): string[] => [
+      ...names(layer, 'idle', 'back', 3),
+      ...names(layer, 'idle', 'left', 3),
+      ...names(layer, 'idle', 'right', 3),
+    ];
+    expect(
+      m.validateLayers({ body: noFront('body'), topA: noFront('topA') }, [
+        'front',
+        'back',
+        'left',
+        'right',
+      ]),
+    ).toEqual([
+      { facing: 'front', action: 'idle', counts: { body: 0, topA: 0 }, reason: 'facings' },
+    ]);
+  });
+
   it('다른 층의 프레임이 담긴 아틀라스는 그 층의 장 수가 0이 되어 드러난다', () => {
     // 상의 B 자리에 상의 A 아틀라스를 끼우면 장 수는 같아 보여도 실행 중에 이름으로 못 찾는다
     const body = names('body', 'idle', 'front', 3);

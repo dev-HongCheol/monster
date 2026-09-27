@@ -61,8 +61,8 @@ export interface ILayerMismatch {
   /** 층 이름 → 그 조합의 장 수. 그 조합이 없는 층은 0이다 */
   counts: Record<string, number>;
   /**
-   * 무엇과 어긋났나. `layers`는 이 조합 안에서 층끼리 다른 경우, `facings`는 층끼리는 같지만 같은 동작의 정면(없으면
-   * 처음 나온 방향)과 장 수가 다른 경우다
+   * 무엇과 어긋났나. `layers`는 이 조합 안에서 층끼리 다른 경우, `facings`는 층끼리는 같지만 같은 동작의 기준 방향(장이
+   * 있는 정면, 정면이 비었으면 장이 있는 첫 방향)과 장 수가 다른 경우다
    */
   reason: 'layers' | 'facings';
 }
@@ -167,7 +167,8 @@ export function frameName(layer: string, action: string, facing: string, index: 
  *   그 층이 아닌 항목**(상의 B 아틀라스에 든 `topA_*` 등)은 세지 않는다 — 그래서 다른 층의 아틀라스를 잘못 끼우면
  *   그 층의 장 수가 0이 되어 층끼리 불일치로 드러난다
  * @param facings 있어야 할 방향들. 주면 나온 동작마다 이 방향이 모두 있는지도 본다 — 모든 층에서 한 방향이
- *   통째로 빠지면 이름이 하나도 없어 그 조합을 셀 자리가 안 생기므로, 없는 방향을 0장으로 채워 정면과 견준다
+ *   통째로 빠지면 이름이 하나도 없어 그 조합을 셀 자리가 안 생기므로, 없는 방향을 0장으로 채워 기준과 견준다
+ *   (기준은 장이 있는 정면, 정면이 비었으면 장이 있는 첫 방향)
  * @returns 어긋난 (방향, 동작) 목록. 층끼리 어긋난 조합은 방향끼리 비교에서 뺀다. 전부 맞으면 빈 배열
  */
 export function validateLayers(
@@ -218,7 +219,10 @@ export function validateLayers(
     uniform.set(action, list);
   }
   for (const [action, list] of uniform) {
-    const reference = list.find((each) => each.facing === 'front') ?? list[0];
+    // 기준은 장이 있는 줄에서 고른다 — 정면이 통째로 빠져 0장으로 채운 줄이 기준이 되면 멀쩡한 방향이 전부
+    // 어긋났다고 찍히고 정작 빠진 정면은 목록에 안 나온다
+    const present = list.filter((each) => each.count > 0);
+    const reference = present.find((each) => each.facing === 'front') ?? present[0] ?? list[0];
     for (const each of list) {
       if (each.count === reference.count) continue;
       mismatches.push({ facing: each.facing, action, counts: each.row, reason: 'facings' });

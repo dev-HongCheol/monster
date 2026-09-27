@@ -120,7 +120,7 @@ export class PlayerLayerSync extends Component {
         const counts = Object.entries(m.counts)
           .map(([layer, count]) => `${layer} ${count}`)
           .join(' · ');
-        const why = m.reason === 'facings' ? ' (정면과 장 수가 다르다)' : '';
+        const why = m.reason === 'facings' ? ' (다른 방향과 장 수가 다르다)' : '';
         return `${m.facing} ${m.action}${why}: ${counts}`;
       });
       console.error(
