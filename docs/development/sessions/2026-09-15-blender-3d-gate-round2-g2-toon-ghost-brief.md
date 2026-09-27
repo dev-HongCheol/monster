@@ -3,7 +3,7 @@
 - **작성일:** 2026-09-16
 - **브랜치:** `feat/blender-3d-gate`
 - **상태:** 작성 완료 — 사용자가 GPT에 넣어 표본 두 장을 만들면 G2 §4 비교 시트에 들어간다
-- **정본:** 없음 — 이 문서는 정본을 바꾸지 않고 [`art-direction.md`](../../design/spec/art-direction.md) §2 · §4 · §5와 [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §4의 조건을 GPT가 읽을 형태로 옮겨 적은 것이다. 적 생성 절차의 정본 자리는 [`art-generation-playbook.md`](../../design/spec/art-generation-playbook.md)이고, 그 문서가 fal.ai · 플레이어 2D 기준이라 지금은 받을 수 없다. 승격은 백로그 `F108`이 든다
+- **정본:** 없음 — 이 문서는 정본을 바꾸지 않고 [`art-direction.md`](../../design/spec/art-direction.md) §2 · §4 · §5와 [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §4의 조건을 GPT가 읽을 형태로 옮겨 적은 것이다. 적 생성 절차의 정본은 아직 없다 — 받을 자리였던 2D 생성 플레이북은 2026-09-28에 지웠다. 승격은 백로그 `F108`이 든다
 - **개요:** [계획 개요](2026-09-11-blender-3d-gate-plan.md) · [G2 문서](2026-09-15-blender-3d-gate-round2-g2-toon.md)
 
 ---
@@ -108,6 +108,6 @@
 
 ## 5. 이 문서가 갈 곳
 
-적 생성 절차의 정본은 [`art-generation-playbook.md`](../../design/spec/art-generation-playbook.md)다. 지금 그 문서는 fal.ai Sandbox 화면과 플레이어 2D 생성을 전제로 쓰여 있어(`fal` 참조 29곳) GPT 웹 경로를 받을 수 없고, 전면 개정은 이번 라운드 밖이다(계획 개요 §4).
+적 생성 절차의 정본은 아직 없다. 2D 생성 플레이북은 fal.ai Sandbox 화면과 플레이어 2D 생성을 전제로 쓰여 GPT 웹 경로를 받지 못했고, 2026-09-28에 2D 생성 경로의 이력을 걷어 내며 지웠다. 적 로스터 생성 슬라이스가 계획을 쓸 때 이 문서 §5와 `docs/etc/2026-09-28-2d-generation-reference.md`를 입력으로 새 정본을 세운다(백로그 F108).
 
 그래서 이 문서는 **세션 기록으로 두되 승격 대상**이다. 백로그 `F108`이 그 승격을 든다 — 적 로스터 12종을 생성할 때 이 조건을 다시 쓰게 되므로, 세션 문서에 남겨 두면 다음 사람이 시점 기록을 명세로 읽는다.
