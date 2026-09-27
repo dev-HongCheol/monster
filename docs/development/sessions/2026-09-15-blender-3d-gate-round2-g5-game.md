@@ -165,8 +165,8 @@ Player
 | `art-source/player/2026-09-11-3d-gate/`(1라운드 `character.vrm` · 비교 시트 · 모션) | 2026-09-19에 뺐다. `cloud-storage/art/evidence/player/2026-09-11-3d-gate/`에 보관 |
 | `tools/blender/gate.ts`의 1라운드 입력 경로 · 게이트 0b · 0c · 2 | 2026-09-19에 `tools/blender/retired/gate-round1.ts`로 갈랐다(`gate.ts`는 표를 밖에서 받고 0a만 든다). G4를 닫으며 그 폴더와 함께 지웠다(2026-09-23) |
 | `tools/blender/import_vrm.py` · `sheet.ts` · `ComparisonSheet.ts` | `ComparisonSheet.ts`는 2라운드 도구(`layers.ts`)가 써서 남긴다. 나머지 둘은 2026-09-19에 `tools/blender/retired/`로 물렸고 G4를 닫으며 그 폴더와 함께 지웠다(2026-09-23) |
-| `retarget_render.py`의 `import_motion` · `BONE_MAP` · `SWING_SCALE` | 키프레임 굽기로 대체되면 뺀다 |
-| `tests/logic/Blender3dGate.test.ts`의 1라운드 단언 | 남는 도구에 해당하는 것만 둔다 |
+| `retarget_render.py`의 `import_motion` · `BONE_MAP` · `SWING_SCALE` | 키프레임 굽기로 대체되면 뺀다 — 뺐다(2026-09-27). 파일에는 기준 자세 값(`BASE_ARM_POSE` · `BASE_POSE_ORDER` · `BASE_FINGER_POSE`)만 남고, 굽기 스크립트 넷이 그 값을 import하므로 이름은 그대로다. Blender 안에서 넷을 다시 import해 깨지지 않음을 확인했다 |
+| `tests/logic/Blender3dGate.test.ts`의 1라운드 단언 | 남는 도구에 해당하는 것만 둔다 — 전부 남는 도구(`tests/helpers/FrameSet.ts` · `gate.ts` · `ComparisonSheet.ts` · `Atlas.ts`)의 명세라 그대로 둔다(2026-09-27). `FrameSet.ts`는 2라운드의 `bake.ts` · `LayerBake.ts` · `slots.ts`도 쓴다 |
 | `.gitattributes`의 `*.vrm` · `*.glb` | 남긴다. 바이너리 선언이라 대상 파일이 없어도 해가 없다 |
 | 판정에 쓴 비교 시트 · 흉내, 귀신 표본 원본 | 레포에 두지 않는다. 추적하지 않는 `cloud-storage/art/evidence/`에 모아 드라이브에 올린다(2026-09-19 사용자 결정 — 개요 §3, 한 일은 G2 §8.7). 후보 HTML · 탐침 · 중간 산출물도 커밋하지 않는다 |
 

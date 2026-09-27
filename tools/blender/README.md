@@ -45,12 +45,12 @@ blender --background --python-exit-code 1 --python tools/blender/smoke.py -- --o
 **`--python-exit-code`가 `--python`보다 앞에 온다.** Blender는 인자를 적힌 순서대로 처리하므로
 뒤에 두면 스크립트가 이미 실행된 뒤에 설정돼 예외가 종료 코드에 실리지 않는다.
 
-**규격 캔버스에 굽는 게이트는 규격 값을 인자로 받는다.** 지금은 1라운드 게이트 0b·0c·2(`retired/gate-round1.ts`)가 그렇다. 0b는 캔버스(`--width`·`--height`)를, 0c·2는 캔버스와 발·머리 행(`--foot-row`·`--head-row`)을 받는다. 값의 주인은 `tests/helpers/FrameSet.ts`의 `PLAYER_FRAME_SPEC`이고, 실행기가 거기서 넘긴다. 스크립트에는 기본값이 없어서 빠지면 `spec-args`로 실패한다. 값을 스크립트에도 적어 두면 한쪽만 고쳤을 때 게이트가 크기·위치 결함으로 떨어져, 원인이 두 벌의 불일치라는 것이 드러나지 않기 때문이다.
+**규격 캔버스에 굽는 스크립트는 규격 값을 인자로 받는다.** 1라운드 게이트 0b·0c·2가 그랬고(실행기 `retired/gate-round1.ts`는 G4를 닫으며 지웠다), 2라운드의 생산 굽기(`bake.ts` → `bake_motion.py`)도 캔버스와 발·머리 행을 같은 식으로 받는다. 값의 주인은 `tests/helpers/FrameSet.ts`의 `PLAYER_FRAME_SPEC`이고, 실행기가 거기서 넘긴다. 스크립트에는 기본값이 없어서 빠지면 `spec-args`로 실패한다. 값을 스크립트에도 적어 두면 한쪽만 고쳤을 때 게이트가 크기·위치 결함으로 떨어져, 원인이 두 벌의 불일치라는 것이 드러나지 않기 때문이다.
 
-**굽지 않고 이미 있는 산출물만 다시 잴 수 있다.** `--judge-only`를 붙이면 Blender를 부르지 않고 게이트 표의 출력 자리에 있는 파일을 판정한다. 프레임을 대상 폴더에 덮어 넣은 뒤 그 세트를 다시 재는 데 쓴다(`retired/README.md` 「1라운드 프레임 다시 굽기」).
+**굽지 않고 이미 있는 산출물만 다시 잴 수 있다.** `gate.ts`에 `--judge-only`를 붙이면 Blender를 부르지 않고 게이트 표의 출력 자리에 있는 파일을 판정한다. 1라운드에서는 프레임을 게임 폴더에 덮어 넣은 뒤 그 세트를 다시 재는 데 썼고, 2라운드에서는 `bake.ts`의 굽지 않는 명령(`compare` · `check-atlas` 등)이 같은 자리를 맡는다.
 
 ```bash
-node --experimental-strip-types tools/blender/retired/gate-round1.ts 2 --judge-only
+node --experimental-strip-types tools/blender/gate.ts <게이트> --judge-only
 ```
 
 ## 종료 코드를 믿지 않는다
@@ -83,20 +83,20 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 |---|---|---|---|
 | `blender-version` | Blender 버전이 허용 범위 밖이다 | 메시지가 기대 범위와 실측 버전을 둘 다 담는다. 4.2~5.2 안의 판을 깐다 | `smoke.py` · `_common.py` |
 | `eevee-missing` | 엔진 목록에 EEVEE 식별자가 없다 | 메시지의 실제 목록을 본다. 그 목록에 있는 이름을 `EEVEE_CANDIDATES`에 더한다 | `smoke.py` · `_common.py` |
-| `output-path` | 출력 경로에 쓸 수 없다. 디렉터리를 못 만들거나, 출하 아트 아래거나, `--out`이 빠졌거나, 렌더 뒤 파일이 없거나, **이미 있는 프레임 파일을 덮으려 했다** | `--out`이 빠졌으면 실행기(`gate.ts`)를 거쳐 부른다. 그 밖에는 메시지의 절대 경로를 본다. 출하 아트 아래로는 어떤 경우에도 쓰지 않는다. 프레임을 다시 굽는 중이면 `retired/README.md` 「1라운드 프레임 다시 굽기」를 따른다 | `smoke.py` · `_common.py` · `retired/import_vrm.py` · `retarget_render.py` |
+| `output-path` | 출력 경로에 쓸 수 없다. 디렉터리를 못 만들거나, 출하 아트 아래거나, `--out`이 빠졌거나, 렌더 뒤 파일이 없거나, **이미 있는 프레임 파일을 덮으려 했다** | `--out`이 빠졌으면 실행기(`gate.ts`)를 거쳐 부른다. 그 밖에는 메시지의 절대 경로를 본다. 출하 아트 아래로는 어떤 경우에도 쓰지 않는다. 생산 굽기는 스크래치(`docs/temp/3d-gate/g4/`)에 굽고 검사를 통과한 아틀라스만 `bake.ts atlas --install`로 게임 폴더에 넣는다 | `smoke.py` · `_common.py` |
 | `unexpected` | 위 어디에도 안 들어가는 파이썬 예외 | 메시지에 예외 타입과 원문이 담긴다. 같은 명령을 `--background` 없이 손으로 돌려 본다 | `smoke.py` · `_common.py` |
 | `no-gate-line` | stdout에 판정 줄이 하나도 없다 | 실행기가 stderr 꼬리를 함께 찍는다. GPU·드라이버 쪽을 먼저 본다 | `gate.ts` |
 | `bad-gate-payload` | `GATE_OK`의 JSON을 읽을 수 없거나 `GATE_FAIL`에 실패 코드가 없다 | 굽기는 끝났는데 보고가 깨진 것이다. 파이썬 쪽 `gate_ok`·`gate_fail` 호출을 본다 | `gate.ts` |
 | `spec-args` | 규격 인자(`--width`·`--height`·`--foot-row`·`--head-row`)가 빠졌거나 정수가 아니다 | 실행기(`gate.ts`)를 거쳐 부른다. 손으로 부를 때는 `PLAYER_FRAME_SPEC`의 값을 그대로 준다 | `_common.py` |
 | `vrm-addon-missing` | VRM 임포터 확장이 켜져 있지 않거나 `poll()`이 거부한다 | 확장을 켜고 다시 돌린다. `read_factory_settings`가 사용자 설치 확장을 떨어뜨리므로 스크립트가 초기화 뒤 다시 켠다 | `_common.py` |
-| `vrm-path` | `.vrm` 경로가 없거나(`--vrm`이 빠진 경우 포함), 임포트가 실패했거나, 골격·메시가 없다 | `--vrm`이 빠졌으면 실행기(`gate.ts`)를 거쳐 부른다. 파일이 있는데 임포트가 실패하거나 골격·메시가 없으면 VRoid에서 **VRM 1.0**으로 감축 없이 다시 내보낸다 | `_common.py` · `retired/import_vrm.py` · `retarget_render.py` · `bake_motion.py` |
+| `vrm-path` | `.vrm` 경로가 없거나(`--vrm`이 빠진 경우 포함), 임포트가 실패했거나, 골격·메시가 없다 | `--vrm`이 빠졌으면 실행기(`gate.ts`)를 거쳐 부른다. 파일이 있는데 임포트가 실패하거나 골격·메시가 없으면 VRoid에서 **VRM 1.0**으로 감축 없이 다시 내보낸다 | `_common.py` · `bake_motion.py` |
 | `camera-framing` | 인물 높이가 0이거나, 발·머리 행을 하나만 줬거나, 두 행 사이로 키를 맞춘 배율에서 인물 폭이 여백 안에 안 들어온다 | 높이가 0이면 임포트가 메시를 실제로 들여왔는지 본다. 폭이 넘치면 메시지의 픽셀 폭을 보고 팔 자세(`BASE_ARM_POSE`)나 의상 폭을 줄인다 — 배율을 줄여 맞추면 인물이 출하 아트보다 작아진다. 층 캔버스의 홀짝이 기준과 다른 경우도 여기로 온다 | `_common.py` · `probe_layers.py` · `bake_motion.py` |
 | `camera-record` | `--camera`가 가리키는 기록이 없거나, 고도 · 겨냥 높이 · 픽셀 크기 가운데 빠진 값이 있다 | 기록은 손으로 쓰지 않는다. `bake.ts camera`로 `camera.json`을 다시 만들고 실행기를 거쳐 부른다 | `_common.py` · `bake_motion.py` |
 | `camera-stale` | 카메라를 잡을 때의 Blender나 VRM 애드온 판이 지금 도는 판과 다르다 | 도구를 올린 것이 의도라면 `bake.ts camera`로 카메라를 다시 잡고 **모든 층을 다시 굽는다** — 일부 층만 다시 구우면 새 층이 옛 층과 임포트 결과나 음영이 달라도 드러나지 않는다. 의도가 아니면 QA 문서 §3의 판으로 되돌린다 | `_common.py` |
-| `motion-path` | 모션 파일이 없거나(`--motion`이 빠진 경우 포함), 형식을 모르거나, 아마추어가 없다. 동작 굽기에서는 키프레임 정의 JSON(`--frames`)이 없는 경우다 | glb·gltf·fbx만 받는다. 경로를 확인한다. 키프레임 정의는 손으로 쓰지 않고 `MotionSpec.ts`의 값을 JSON으로 써서 넘긴다(`retired/motion.ts`의 `bake`가 그 길이다) | `retarget_render.py` · `bake_motion.py` |
-| `motion-action` | 그 이름의 액션이 없거나, 길이가 0이거나, `--frames`가 1 이상의 정수가 아니다 | 액션이 없으면 메시지가 걷기로 보이는 액션 이름을 함께 주니 `--action`에 그것을 넘긴다. `--frames` 오류면 1 이상의 정수를 준다. 동작 굽기에서는 키프레임 정의에 프레임이 하나도 없는 경우다 | `retarget_render.py` · `bake_motion.py` |
-| `retarget-bone` | 대응표의 본을 한쪽 골격에서 못 찾았거나, `SWING_CHAIN`이 적은 부모가 모션 골격의 실제 부모와 다르다 | 못 찾았으면 메시지가 그쪽을 `모션:`·`대상:` 접두어로 말하니 `BONE_MAP`을 그 이름에 맞춘다. 부모가 다르면 메시지가 실제 부모 이름을 말하니 `SWING_CHAIN`을 그 이름에 맞춘다. 동작 굽기에서는 키프레임 정의가 쓰는 본(`J_Bip_*`)이 이 골격에 없는 경우다 | `retarget_render.py` · `bake_motion.py` |
-| `weapon-spec` | 무기 후보 표가 없거나, 후보가 0개거나, 부품이 없거나, 모르는 부품 종류·시점·재질 묶음이다. 층 탐침에서는 layer 값이 틀렸거나, `gear` 층에 `--gear-spec`이 없거나, 장비 사양에 `bone`이 없는 경우도 여기로 온다 | 채택한 무기 사양은 `BakeSpec.ts`의 `writeChosenSpecs`가, 후보 표와 장비 사양은 `retired/weapons.ts`·`retired/gear.ts`가 만드므로 그쪽을 거쳐 부른다. 부품 종류를 늘리려면 `weapons.py`의 `build_part`에 분기를 더한다. 동작 굽기에서는 `gear` 층에 `--gear-spec`이 없거나 그 파일이 없거나 장비 조각에 `bone`이 없는 경우다. 머리카락을 떼는 인자도 여기로 온다 — `--drop-objects`의 말로 시작하는 메시가 없거나, `hair` 층인데 머리카락 메시가 없거나, `--split-keep`이 `hair` 층의 `near` · `far`가 아니거나, `--occluder-gear-spec`을 가림 전용 몸이 없는 층(몸 · 기준 컷)에 준 경우다(메시지가 있는 메시 이름을 함께 준다) | `weapons.py` · `probe_layers.py` · `bake_motion.py` |
+| `motion-path` | 키프레임 정의 JSON(`--frames`)이 없다 | 키프레임 정의는 손으로 쓰지 않고 `MotionSpec.ts`의 값을 JSON으로 써서 넘긴다(`bake.ts`가 그 길이다) | `bake_motion.py` |
+| `motion-action` | 키프레임 정의에 프레임이 하나도 없다 | `MotionSpec.ts`가 만든 정의인지 확인한다 — 걷기 8장 · 대기 3장이 들어 있어야 한다 | `bake_motion.py` |
+| `retarget-bone` | 키프레임 정의나 기준 자세가 쓰는 본(`J_Bip_*`)이 이 골격에 없다 — 허리 본이 없거나 머리카락을 가르는 평면이 지날 본이 없는 경우도 여기다 | 메시지가 못 찾은 본 이름을 말한다. VRoid 휴머노이드로 내보낸 `.vrm`인지 확인한다 | `bake_motion.py` · `_common.py` |
+| `weapon-spec` | 무기 후보 표가 없거나, 후보가 0개거나, 부품이 없거나, 모르는 부품 종류·시점·재질 묶음이다. 층 탐침에서는 layer 값이 틀렸거나, `gear` 층에 `--gear-spec`이 없거나, 장비 사양에 `bone`이 없는 경우도 여기로 온다 | 채택한 무기 사양은 `BakeSpec.ts`의 `writeChosenSpecs`가, 탐침의 시험 장비 사양은 `SlotSpec.ts`가 만드므로 그쪽을 거쳐 부른다(후보 표를 만들던 `retired/weapons.ts` · `retired/gear.ts`는 G4를 닫으며 지웠다). 부품 종류를 늘리려면 `weapons.py`의 `build_part`에 분기를 더한다. 동작 굽기에서는 `gear` 층에 `--gear-spec`이 없거나 그 파일이 없거나 장비 조각에 `bone`이 없는 경우다. 머리카락을 떼는 인자도 여기로 온다 — `--drop-objects`의 말로 시작하는 메시가 없거나, `hair` 층인데 머리카락 메시가 없거나, `--split-keep`이 `hair` 층의 `near` · `far`가 아니거나, `--occluder-gear-spec`을 가림 전용 몸이 없는 층(몸 · 기준 컷)에 준 경우다(메시지가 있는 메시 이름을 함께 준다) | `weapons.py` · `probe_layers.py` · `bake_motion.py` |
 | `toon-spec` | 툰 사양에 모르는 키가 있거나, `shade_threshold`가 0~1 밖이거나, `like`가 지목한 VRoid 부위가 장면에 없다 | 메시지가 아는 키·있는 부위를 함께 준다. 값이 그림에서 무엇을 하는지는 `docs/development/spec/ops-blender-toon.md`에 있다 — 명세 이름(`shading_shift`)을 받지 않는 이유도 거기 있다 | `toon.py` |
 | `mtoon-inspect` | `.vrm`에 MToon 노드 그룹이 없다 | MToon 머티리얼로 내보낸 판인지 확인한다 | `inspect_mtoon.py` |
 
@@ -114,7 +114,7 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `gate.ts` | 실행기. Blender를 부르고 판정 줄을 뽑고 구워진 PNG를 재서 한 줄로 찍는다. `--judge-only`면 굽지 않고 이미 있는 산출물만 잰다. 게이트 표를 밖에서 받으므로(`main`) 이 파일의 표에는 0a만 있다. 1라운드 게이트 표(`retired/gate-round1.ts`)는 G4를 닫으며 지웠다(2026-09-23) | 있음 |
 | `BakeSpec.ts` | **G2가 확정한 굽기 값** — 채택한 지팡이 · 방패의 모양과 그립(`writeChosenSpecs`가 JSON으로 쓴다), 외곽선 헐 1(`CHOSEN_HULL` · `hullMaterials`), 무기 · 장비 · 천 · 금속의 툰 값과 금속 matcap, 카메라 고도 15°와 마법진 지름. 물러난 실행기도 여기서 읽어 값의 주인이 하나다 | 있음 |
 | `_common.py` | VRM 임포트 · 카메라 프레이밍 · 렌더 설정. **plumbing이 `smoke.py`와 두 벌인 것은 의도한 것이고** 이유는 그 파일 첫머리에 있다 | 있음 |
-| `retarget_render.py` | 1라운드 게이트 0c와 2의 굽기 스크립트였다(실행기 `retired/gate-round1.ts`는 G4를 닫으며 지웠다). 모션을 입히고 프레임을 굽는다. 본 대응표와 관절별 흔들림 비율(`SWING_SCALE`)을 든다. **기준 자세(`BASE_ARM_POSE`)의 주인이라** 층 탐침과 무기 자리 측정이 import한다 — 모션 리타게팅은 2라운드가 스크립트 키프레임으로 바꾸지만(G3) 이 값 때문에 물러나지 않았다 | 있음 |
+| `retarget_render.py` | **기준 자세의 주인** — 팔 회전(`BASE_ARM_POSE` · `BASE_POSE_ORDER`)과 손가락 그립(`BASE_FINGER_POSE`). `bake_motion.py` · `bake_layer.py` · `probe_layers.py` · `measure_weapon_room.py`가 import한다. 이름은 1라운드 리타게팅 · 굽기 스크립트에서 왔고, 그 코드(본 대응표 · 흔들림 비율 · 모션 임포트 · 프레임 굽기)는 키프레임 굽기가 대신하게 되어 G5에서 지웠다(2026-09-27) | 있음 |
 | `ComparisonSheet.ts` | 비교 시트의 순수 로직 — 엔진식 축소 · 알파 합성 · 얼굴 가림 · 칸 배치, 그리고 층 겹치기 · 가림 부분집합 · 픽셀 차이. 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `Atlas.ts` | 층별 프레임을 트림해 한 장에 담는 순수 로직 — 이름 규칙과 되가르기 · 선반 패킹 · plist 직렬화와 파싱 · 왕복 복원 · 들어간 plist 검사 둘(원본 크기 · 층별 프레임 수). 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `weapons.py` | 지팡이 · 방패 · 장비 부품을 프리미티브로 세운다. 모양의 정의는 받는 JSON에 있고(채택한 무기는 `BakeSpec.ts`) 이 파일은 세우기만 한다. 몸 표면 투영(`Surface`)도 여기 있어 끈 · 판 · 뿔을 몸 메시에 붙인다 | 있음 |
