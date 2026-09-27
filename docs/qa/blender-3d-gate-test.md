@@ -317,6 +317,17 @@ AI가 구현·검증 단계에서 돌린다. 여기 적는 것은 무엇이 기�
 - [x] G5 §4 씬 검사(2026-09-27, 사용자가 §14대로 씬을 저장한 뒤 `main.scene`을 읽어 확인) — Player의 `_contentSize` 38.42×77 · 앵커 0.5 · 0.5, Player에 `cc.Sprite` 없음, `PlayerController`의 방향 슬롯 넷 null, 자식 `Body` · `Top` · `Staff` · `Shield`가 그 순서로 있고 전부 원점 (0, 0, 0) · Layer `DEFAULT` · Size Mode `CUSTOM` · Trim 끔 · Sprite Frame 비움 · 크기 41.23×77 · 41.23×77 · 93.71×109.49 · 93.71×109.49, `PlayerLayerSync`의 노드 넷과 아틀라스 열 개가 이름대로 연결됐고 walkFps 10 · idleFps 3
 - [x] G5 §4 출하 PNG 참조 검사(2026-09-27) — 출하 2D 여섯 장(`player_4dir_*` 넷 · `player_staff` · `player_mage_bridge`)의 UUID가 모든 `*.scene` · `*.prefab` · `resources/*.json` · `scripts/**/*.ts`에서 0건이다. 스크립트에 경로 문자열로 읽는 곳도 없다
 
+
+**2라운드 G5 통과 근거 (2026-09-27, verification — 코드 리뷰를 반영한 뒤):**
+
+- [x] `pnpm vitest run` — 48파일 1,115/1,115 통과(스킵 1건은 위와 같은 `wf check-qa` 전용 검사다). `Blender3dGate.test.ts`는 250건이고 그 가운데 G5 게임 로직 블록이 17건이다 — RED 때의 12건에 리뷰가 짚은 경우(방향끼리 장 수 · 다른 층의 프레임 · 한 방향이 통째로 빠짐 · 정면이 통째로 빠짐 · 대기 장이 모자람과 속도 0)를 더했다. 1라운드 비교 시트 함수를 지우며 그 테스트도 빠졌다
+- [x] `pnpm typecheck` — 범위 `full`(두 프로젝트 모두 통과)
+- [x] `pnpm check` — biome 오류 0건(참고 29건)
+- [x] `pnpm wf check-links` · `check-docs` · `check-qa` — 셋 다 통과
+- [x] `pnpm wf check-meta` — 빨강(정상). 아틀라스의 `.meta` 스물한 개에 새 스크립트 둘(`PlayerLayerSync.ts` · `PlayerLayerLogic.ts`)의 `.meta`가 더해져 스물세 개가 추적되지 않는다. `PR 승인` 때 일괄 커밋한다
+- [x] `bake.ts check-atlas` — 알파 문턱을 한 곳으로 모은 뒤 다시 돌려도 게임 폴더의 plist 10개 · 프레임 220장이 통과한다(2026-09-27)
+- [x] 웹 빌드 — 릴리스 빌드 92개 · 9.0MB, 디버그 빌드에서도 `DEV`는 거짓(§16.1, `ops-build.md` §6.4)
+
 **파이썬은 어느 그물에도 안 걸린다.** `tools/**/*.ts`는 타입체크·lint·vitest 셋을 다 지나가지만 `.py`는 셋 중 아무것도 보지 않는다. 그래서 Blender 쪽은 굽기만 하고 판정을 전부 TS에 뒀고, 이 슬라이스는 그 트레이드오프를 받아들인다.
 
 ---
