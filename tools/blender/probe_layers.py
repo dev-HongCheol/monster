@@ -28,7 +28,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import _common as common  # noqa: E402 - 위 경로 주입 뒤에 와야 한다
-import toon  # noqa: E402 - 툰 사양 입히기의 주인이다
 import weapons  # noqa: E402 - 부품 세우기의 주인이다
 
 # 부르는 쪽이 넣는다 — 위 머리 주석

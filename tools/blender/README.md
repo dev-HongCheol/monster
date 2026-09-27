@@ -59,7 +59,11 @@ node --experimental-strip-types tools/blender/gate.ts 0a --judge-only
 node --experimental-strip-types tools/blender/bake.ts camera
 node --experimental-strip-types tools/blender/bake.ts layers
 node --experimental-strip-types tools/blender/bake.ts reference
+node --experimental-strip-types tools/blender/bake.ts compare
+node --experimental-strip-types tools/blender/bake.ts atlas --install
 ```
+
+**마지막 `atlas --install`을 빠뜨리지 않는다.** 게임 폴더의 아틀라스에는 도장이 없어서(백로그 F113), 다시 굽고 넣지 않으면 게임은 옛 그림을 쓰는데 `check-atlas`가 통과한다.
 
 ## 종료 코드를 믿지 않는다
 
@@ -142,7 +146,7 @@ GATE_FAIL blender-version 기대 4.2~5.2, 지금 4.1.2
 | `SlotSpec.ts` | **슬롯 범위 탐침이 세우는 시험 장비 — 출하하지 않는다.** 긴 부츠 · 부피 있는 하의(온전한 것과 긴 신발용으로 자른 것) · 넓은 소매 · 망토 · 방패 둘(세로로 긴 · 뿔이 난). 슬롯의 기본 아이템이 아니라 그 슬롯에 올 수 있는 가장 나쁜 아이템을 기본 도형으로 세운 것이다. 장비는 본 하나에 강체로 붙는 조각들이고, 좌표는 기준 자세에서 잰 본의 머리(`BASE_POSE_HEAD`)에서 잰 값으로 옮겨진다(`tube` — 두 점을 잇는 속 빈 관). 명세는 `tests/logic/Blender3dGate.test.ts`에 있다 | 있음 |
 | `layers_preview.html` | 층 합성 화면의 템플릿. 다섯 층을 게임의 형제 순서(방향별 — 실행기가 `STACK_ORDER`를 넣는다. 「방향별 순서」를 끄면 모든 방향이 정면의 순서)로 캔버스 중심을 맞춰 겹치고, 네 방향을 나란히 재생한다. 상의 A · B와 무기를 켜고 끌 수 있고, 720p · 1440p 게임 크기로 볼 수 있고, 발밑 점을 표시하며, 맨 끝 칸이 제자리에서 돌아선다. 기준 컷이 구워져 있으면 층 합성 대신 기준 컷을 같은 자리에 그려(R 키) 두 그림을 번갈아 볼 수 있다. 규격값은 템플릿에 없고 `bake.ts preview`가 카메라 기록에서 박아 넣는다 | 있음 |
 | `camera.json` | **기록된 카메라** — 고도 · 겨냥 높이 · 픽셀 크기, 몸 층 캔버스, 발밑 점의 행, 그리고 카메라를 잡을 때의 입력 지문(굽기 정의 · 모델 판 셋 · Blender와 VRM 애드온의 판). 손으로 고치지 않고 `bake.ts camera`로 다시 쓴다. 모든 층이 이 카메라 하나로 구워졌다는 근거라 커밋한다 | 있음 |
-| `measure_weapon_room.py` | G1 무기 자리 측정. 기준 자세(`retarget_render.BASE_ARM_POSE`)를 입힌 몸의 세계 좌표 상자와 두 손의 세계 좌표를 덤프한다. A 포즈로 재면 손이 게임에 안 나오는 자리에 있으므로 굽기와 같은 자세로 잰다. 남는 자리를 픽셀로 환산하는 것은 실행기 몫이다 **디자인 도구라 남겼고 지금 부르는 실행기는 없다** — 새 무기의 크기 상한을 잡을 때 쓴다 | 있음 |
+| `measure_weapon_room.py` | G1 무기 자리 측정. 기준 자세(`retarget_render.BASE_ARM_POSE`)를 입힌 몸의 세계 좌표 상자와 두 손의 세계 좌표를 덤프한다. A 포즈로 재면 손이 게임에 안 나오는 자리에 있으므로 굽기와 같은 자세로 잰다. 남는 자리를 픽셀로 환산하는 것은 부르는 쪽 몫이다(지금은 `camera.json`의 픽셀 크기로 손으로 한다). **디자인 도구라 남겼고 지금 부르는 실행기는 없다** — 새 무기의 크기 상한을 잡을 때 쓴다 | 있음 |
 
 **`smoke.py`가 독립인 것이 설계다.** 공용 모듈을 거치면 애드온이나 모델 때문에 난 실패가 환경
 실패로 보고되고, 그러면 「여기서 막히면 VRoid를 설치하지 않는다」는 규칙이 조용히 깨진다. 되돌릴

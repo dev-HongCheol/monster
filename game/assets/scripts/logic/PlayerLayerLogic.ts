@@ -166,9 +166,14 @@ export function frameName(layer: string, action: string, facing: string, index: 
  * @param namesByLayer 층 이름 → 그 층의 아틀라스에 든 프레임 이름들. 이름 규칙에 안 맞는 항목과 **이름의 층 부분이
  *   그 층이 아닌 항목**(상의 B 아틀라스에 든 `topA_*` 등)은 세지 않는다 — 그래서 다른 층의 아틀라스를 잘못 끼우면
  *   그 층의 장 수가 0이 되어 층끼리 불일치로 드러난다
+ * @param facings 있어야 할 방향들. 주면 나온 동작마다 이 방향이 모두 있는지도 본다 — 모든 층에서 한 방향이
+ *   통째로 빠지면 이름이 하나도 없어 그 조합을 셀 자리가 안 생기므로, 없는 방향을 0장으로 채워 정면과 견준다
  * @returns 어긋난 (방향, 동작) 목록. 층끼리 어긋난 조합은 방향끼리 비교에서 뺀다. 전부 맞으면 빈 배열
  */
-export function validateLayers(namesByLayer: Record<string, readonly string[]>): ILayerMismatch[] {
+export function validateLayers(
+  namesByLayer: Record<string, readonly string[]>,
+  facings: readonly string[] = [],
+): ILayerMismatch[] {
   const layers = Object.keys(namesByLayer);
   const counts = new Map<string, Record<string, number>>();
   for (const layer of layers) {
@@ -183,6 +188,16 @@ export function validateLayers(namesByLayer: Record<string, readonly string[]>):
         counts.set(key, row);
       }
       row[layer] += 1;
+    }
+  }
+  const actions = new Set([...counts.keys()].map((key) => key.split('|')[1]));
+  for (const action of actions) {
+    for (const facing of facings) {
+      const key = `${facing}|${action}`;
+      if (counts.has(key)) continue;
+      const row: Record<string, number> = {};
+      for (const each of layers) row[each] = 0;
+      counts.set(key, row);
     }
   }
   const mismatches: ILayerMismatch[] = [];

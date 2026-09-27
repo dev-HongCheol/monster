@@ -2309,6 +2309,23 @@ describe('matchModels — 두 판이 같은 몸인가', () => {
     expect(match.skinOutside).toBe(0);
   });
 
+  it('더 입은 판에 같은 좌표의 점이 겹쳐도 지워진 점 수를 덜 입은 판 쪽에서 센다', () => {
+    // 머티리얼 경계에서는 같은 좌표의 점이 두 번 나온다. 더 입은 판에서 맞은 수를 빼는 식이면 한 점이 두 번
+    // 맞아 지워진 수가 과소로 나온다(여기서는 1). 실제로 지워진 것은 TORSO[1] · TORSO[2] 둘이다
+    const less = dump({ skin: TORSO });
+    const more = dump({ skin: [TORSO[0], TORSO[0]] });
+
+    expect(matchModels(less, more).skinRemoved).toBe(2);
+  });
+
+  it('맨살 머티리얼이 두 판 모두에 없으면 「두 판 모두」라고 말한다', () => {
+    const neither = dump({ skinMaterial: 'Body_CLOTH' });
+
+    const match = matchModels(neither, neither);
+
+    expect(match.problems.some((line) => line.includes('두 판 모두'))).toBe(true);
+  });
+
   it('더 입은 판에만 있는 맨살 점이 있으면 걸리고, 그 점들의 높이를 말한다', () => {
     // 모든 층이 덜 입은 판을 가림 전용 몸으로 쓴다. 더 입은 판의 살이 그 밖으로 나가 있으면 가림이 그만큼
     // 어긋나 구멍이나 겹침이 생기는데, 굽기는 끝까지 돌고 그림도 멀쩡해 보인다
@@ -2756,6 +2773,20 @@ describe('G5 게임 로직 — PlayerLayerLogic (동기화 컴포넌트가 쓰�
     ];
     expect(m.validateLayers({ body: short('body'), topA: short('topA') })).toEqual([
       { facing: 'back', action: 'walk', counts: { body: 7, topA: 7 }, reason: 'facings' },
+    ]);
+  });
+
+  it('모든 층에서 한 방향이 통째로 빠지면, 있어야 할 방향을 주었을 때 그 방향을 0장으로 낸다', () => {
+    // 이름이 하나도 없는 방향은 셀 자리가 안 생겨 층끼리 · 방향끼리 비교 어디에도 안 걸린다
+    const noLeft = (layer: string): string[] => [
+      ...names(layer, 'idle', 'front', 3),
+      ...names(layer, 'idle', 'back', 3),
+      ...names(layer, 'idle', 'right', 3),
+    ];
+    const namesByLayer = { body: noLeft('body'), topA: noLeft('topA') };
+    expect(m.validateLayers(namesByLayer)).toEqual([]);
+    expect(m.validateLayers(namesByLayer, ['front', 'back', 'left', 'right'])).toEqual([
+      { facing: 'left', action: 'idle', counts: { body: 0, topA: 0 }, reason: 'facings' },
     ]);
   });
 

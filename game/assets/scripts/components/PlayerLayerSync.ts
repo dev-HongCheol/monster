@@ -114,7 +114,7 @@ export class PlayerLayerSync extends Component {
     }
     // 장 수가 층끼리 다르면 그 조합에서 층끼리 다른 장이 겹치고, 방향끼리 다르면 시계가 모자란 방향의 빈 번호를
     // 가리킨다. 어느 아틀라스를 다시 넣을지 알 수 있게 조합과 수를 그대로 찍는다
-    const mismatches = validateLayers(names);
+    const mismatches = validateLayers(names, FACINGS);
     if (mismatches.length > 0) {
       const lines = mismatches.map((m) => {
         const counts = Object.entries(m.counts)

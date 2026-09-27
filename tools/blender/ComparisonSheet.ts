@@ -153,7 +153,6 @@ export function occlusionDelta(
   return { removed, added };
 }
 
-/** `pixelDiff`의 결과. */
 /**
  * 채널 차가 이 값을 넘어야 다른 픽셀로 센다. EEVEE의 샘플 잡음이 같은 장면을 두 번 구워도 한두 단계씩 흔드는
  * 것을 빼려는 값이다. G2 층 합성 수치(`layers.ts`)와 G4 가림 비교(`bake.ts compare`)가 같은 값을 써야 두 수치를
@@ -161,6 +160,7 @@ export function occlusionDelta(
  */
 export const DIFF_THRESHOLD = 12;
 
+/** `pixelDiff`의 결과. */
 export interface IPixelDiff {
   /** 한 채널이라도 문턱을 넘게 다른 픽셀 수 */
   changed: number;
