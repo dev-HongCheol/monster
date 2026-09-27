@@ -28,16 +28,7 @@ docs/
 
 ### 주요 결정 기록 (ADR)
 
-- [ADR 001: Cocos Creator 버전 선택](docs/decisions/001-cocos-version.md)
-- [ADR 002: scripts/logic/ 분리 패턴](docs/decisions/002-scripts-logic-pattern.md)
-- [ADR 003: 테스트 전략](docs/decisions/003-testing-strategy.md)
-- [ADR 004: 워크플로우 상태 머신](docs/decisions/004-workflow-state-machine.md)
-- [ADR 005: i18n 방식 — 자체 경량 t()](docs/decisions/005-i18n-approach.md)
-- [ADR 006: 충돌 히트박스 — 플레이어 사각형 / 적 원](docs/decisions/006-collision-hitbox.md)
-- [ADR 007: 스킨은 판정에 영향을 주지 않는다](docs/decisions/007-skin-hitbox-independence.md)
-- [ADR 008: AI 이미지 생성은 유료 서비스에서 한다](docs/decisions/008-paid-art-generation.md)
-- [ADR 009: 시각 층은 몸보다 클 수 있다](docs/decisions/009-visual-bounds-exceed-body.md)
-- [ADR 010: 플레이어 아트는 3D 마스터에서 층별 프레임으로 굽는다](docs/decisions/010-player-art-3d-layer-bake.md)
+ADR 목록과 새 ADR을 더하는 규칙은 [`docs/decisions/README.md`](docs/decisions/README.md)가 든다.
 
 > 세션 작업 문서(design doc, plan 등)는 `docs/development/sessions/`에 보관되며 CLAUDE.md에서 별도 관리하지 않는다.
 
