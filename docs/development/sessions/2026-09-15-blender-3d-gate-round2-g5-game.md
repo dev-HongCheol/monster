@@ -2,8 +2,8 @@
 
 - **작성일:** 2026-09-15
 - **브랜치:** `feat/blender-3d-gate`
-- **상태:** 진행 중 — implementation. RED 테스트와 QA 2라운드 절(2026-09-23 ~ 27, QA §13 ~ §16) 뒤 `ready-impl`을 통과했고, §1의 순수 함수(`PlayerLayerLogic.ts`, 12건 GREEN) · 동기화 컴포넌트(`PlayerLayerSync.ts`) · `PlayerController`의 getter 셋 · §2.6의 판정값과 적 크기를 구현했다(2026-09-27). 같은 날 사용자가 QA §14 · §15대로 Player 계층을 다시 짰고(§4의 씬 검사 통과 — QA §8), AI가 `PlayerController`의 방향 슬롯 · `_applyFacingFrame`을 지우고 `AiMatting.test.ts`의 표본을 `tests/fixtures/`로 옮겼다. 남은 것은 출하 2D 여섯 장의 삭제(사용자 확인) → `start-verification`
-- **정본:** [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §3.5 · [`art-direction.md`](../../design/spec/art-direction.md) §3.1 — 출하 2D 방향 슬롯을 층별 아틀라스로 교체한다
+- **상태:** G5 통과(2026-09-27) · G6 통과(2026-09-28). §1의 순수 함수(`PlayerLayerLogic.ts`)와 동기화 컴포넌트(`PlayerLayerSync.ts`), `PlayerController`의 getter 셋, §2.6의 판정값과 적 크기를 구현했고, 사용자가 QA §14 · §15대로 Player 계층을 다시 짰다. 방향 슬롯 제거 · 표본 픽스처화 · 출하 2D 삭제 · `retarget_render.py` 트림을 끝냈고, 사용자가 인게임에서 §6 · §6.1을 확인했다(QA §16, 웹 빌드 실측 포함). 코드 리뷰 둘과 수정분 재리뷰를 반영했다(`docs/qa/blender-3d-gate-review-issues.md` 「2라운드 재리뷰」). G6은 §5의 정본 개정 목록과 ADR 010을 썼다
+- **정본:** [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §3 · [`art-direction.md`](../../design/spec/art-direction.md) §3.1 · §3.2 — 출하 2D 방향 슬롯을 층별 아틀라스로 교체한다
 - **개요:** [계획 개요](2026-09-11-blender-3d-gate-plan.md)
 
 ---
@@ -163,10 +163,10 @@ Player
 | 출하 2D `player_4dir_*.png` · `player_staff.png` · `player_mage_bridge.png` | 지운다(사용자 확인). 뒤의 둘은 F101 대상이다 |
 | `game/assets/test-3d-gate/`와 그 `.meta` | 2026-09-19에 게임 폴더에서 뺐다(사용자 확인). `cloud-storage/art/evidence/`에 보관 |
 | `art-source/player/2026-09-11-3d-gate/`(1라운드 `character.vrm` · 비교 시트 · 모션) | 2026-09-19에 뺐다. `cloud-storage/art/evidence/player/2026-09-11-3d-gate/`에 보관 |
-| `tools/blender/gate.ts`의 1라운드 입력 경로 · 게이트 0b · 0c · 2 | 2026-09-19에 `tools/blender/retired/gate-round1.ts`로 갈랐다(`gate.ts`는 표를 밖에서 받고 0a만 든다). G4를 닫으며 그 폴더와 함께 지웠다(2026-09-23) |
-| `tools/blender/import_vrm.py` · `sheet.ts` · `ComparisonSheet.ts` | `ComparisonSheet.ts`는 2라운드 도구(`layers.ts`)가 써서 남긴다. 나머지 둘은 2026-09-19에 `tools/blender/retired/`로 물렸고 G4를 닫으며 그 폴더와 함께 지웠다(2026-09-23) |
+| `tools/blender/gate.ts`의 1라운드 입력 경로 · 게이트 0b · 0c · 2 | 2026-09-19에 `tools/blender/retired/gate-round1.ts`로 갈랐다. G4를 닫으며 그 폴더와 함께 지웠다(2026-09-23). `gate.ts`에 남아 있던 프레임 판정 경로와 밖에서 표를 받는 구조도 코드 리뷰 반영에서 지워 0a 실행기만 남았다(2026-09-27) |
+| `tools/blender/import_vrm.py` · `sheet.ts` · `ComparisonSheet.ts` | `ComparisonSheet.ts`는 2라운드 도구(`layers.ts` · `LayerBake.ts` · `Atlas.ts`)가 써서 남긴다 — 1라운드 비교 시트를 붙이던 함수만 코드 리뷰 반영에서 지웠다(2026-09-27). 나머지 둘은 2026-09-19에 `tools/blender/retired/`로 물렸고 G4를 닫으며 그 폴더와 함께 지웠다(2026-09-23) |
 | `retarget_render.py`의 `import_motion` · `BONE_MAP` · `SWING_SCALE` | 키프레임 굽기로 대체되면 뺀다 — 뺐다(2026-09-27). 파일에는 기준 자세 값(`BASE_ARM_POSE` · `BASE_POSE_ORDER` · `BASE_FINGER_POSE`)만 남고, 굽기 스크립트 넷이 그 값을 import하므로 이름은 그대로다. Blender 안에서 넷을 다시 import해 깨지지 않음을 확인했다 |
-| `tests/logic/Blender3dGate.test.ts`의 1라운드 단언 | 남는 도구에 해당하는 것만 둔다 — 전부 남는 도구(`tests/helpers/FrameSet.ts` · `gate.ts` · `ComparisonSheet.ts` · `Atlas.ts`)의 명세라 그대로 둔다(2026-09-27). `FrameSet.ts`는 2라운드의 `bake.ts` · `LayerBake.ts` · `slots.ts`도 쓴다 |
+| `tests/logic/Blender3dGate.test.ts`의 1라운드 단언 | 남는 도구에 해당하는 것만 둔다 — 전부 남는 도구(`tests/helpers/FrameSet.ts` · `gate.ts` · `ComparisonSheet.ts` · `Atlas.ts`)의 명세라 그대로 뒀다(2026-09-27). 코드 리뷰 반영에서 부르는 곳 없는 비교 시트 함수를 지우며 그 단언도 함께 지웠다. `FrameSet.ts`는 2라운드의 `bake.ts` · `LayerBake.ts` · `slots.ts`도 쓴다 |
 | `.gitattributes`의 `*.vrm` · `*.glb` | 남긴다. 바이너리 선언이라 대상 파일이 없어도 해가 없다 |
 | 판정에 쓴 비교 시트 · 흉내, 귀신 표본 원본 | 레포에 두지 않는다. 추적하지 않는 `cloud-storage/art/evidence/`에 모아 드라이브에 올린다(2026-09-19 사용자 결정 — 개요 §3, 한 일은 G2 §8.7). 후보 HTML · 탐침 · 중간 산출물도 커밋하지 않는다 |
 
@@ -177,7 +177,7 @@ Player
 - 출하 PNG 넷의 UUID(`c90a728c` · `40e8e4ff` · `2ced2856` · `15a10f47`)가 모든 `*.scene` · `*.prefab`에서 0건이다.
 - Player의 `_contentSize`가 §2.6의 38.42×77이고 Player 자신에는 Sprite가 없으며, 시각 자식의 원점이 (0, 0)이고 네 Sprite의 Trim이 꺼져 있다.
 
-## 5. G6 정본 · ADR — verification, `pass` 전
+## 5. G6 정본 · ADR — implementation, `start-verification` 전
 
 [개요 문서](2026-09-11-blender-3d-gate-plan.md) §6의 정본 개정 목록과 새 ADR 010을 쓰고 `pnpm wf canon-done`으로 기록한다. 번호 009는 「시각 층은 몸보다 클 수 있다」가 먼저 썼다. ADR 010에는 동작 하나 · 방향 하나 · 옷 한 벌을 더할 때의 비용 공식을 적는다. G4가 상의별 무기 층을 채택했다면 상의 N벌 × 무기 M개 곱 항도 넣는다. 리워크가 나면 정본 선언이 지워지므로 다시 기록한다.
 
