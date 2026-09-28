@@ -12,14 +12,12 @@
 
 참고 파일을 `docs/etc/`에 둔 것은 정본도 결정 기록도 아닌 초안이기 때문이다. `CLAUDE.md`의 「`docs/etc/`는 참조하지 않는다」와 부딪히므로 그 줄에 「백로그가 다음 슬라이스의 입력으로 지목한 `*-reference.md`만 예외」를 붙였다.
 
-지우는 기준은 둘이다. **추후 쓸 것은 남긴다** — 새 스킨을 만들 때 다시 읽는 3D 경로의 코드 · 문서, 적 · UI · 배경을 2D로 뽑을 때 다시 쓰는 후처리 코드와 절차. **한 번 쓰고 끝난 시도는 지운다** — 어떻게 만들었는지가 아니라 어떻게 실패했는지를 적은 것들.
+지우는 기준은 층이다. **「지금」을 주장하는 층(정본 · 매뉴얼 · ADR · 코드)에서 낡은 것은 지운다** — 908줄이 fal.ai 화면인 플레이북, 철거한 환경의 복구 매뉴얼, 부르는 곳이 없는 fal 코드처럼 남겨 두면 현재 명세로 읽히는 것들이다. **「그때」를 적는 층(세션 · QA)은 지우지 않는다** — 시점 기록은 낡아도 거짓이 되지 않고(`docs-references.md` §1 · §8), LoRA · 로컬 스택 · fal 매팅을 왜 버렸는지는 그 기록에만 있다. 정본에는 기각한 안의 이름과 날짜만 남으므로(§11), 세션을 지우면 같은 안이 다시 나올 때 막을 글이 git 이력에만 남는다.
 
 ## 2. 무엇을 지웠나
 
 | 종류 | 파일 |
 |---|---|
-| 세션 12 | `2026-07-21-art-pipeline-lora` · `2026-07-21-art-pipeline-style-lock` · `2026-07-22-art-pipeline-cross-machine-split` · `2026-07-22-player-mage-art-plan` · `2026-08-04-paid-art-pipeline-plan` · `2026-08-06-player-front-cut-generation` · `2026-08-07-art-cutout-pipeline-review` · `2026-08-07-player-4dir-postprocess` · `2026-08-07-docs-refactoring-plan` · `2026-08-20-ai-matting-plan` · `2026-08-20-license-audit-plan` · `2026-08-23-local-ai-teardown` |
-| QA 6 | `ai-matting-test` · `ai-matting-review-issues` · `player-mage-art-test` · `player-final-art-test` · `player-4dir-test` · `player-4dir-review-issues` |
 | 매뉴얼 2 | `docs/development/comfyui-setup.md` · `kohya-setup.md` — 로컬 생성 환경은 2026-08-23에 철거됐고 되돌아갈 계획이 없다 |
 | 정본 1 | `docs/design/spec/art-generation-playbook.md` — 908줄 전부가 fal.ai Sandbox 화면과 2D 플레이어 절차였다. 적 · UI에 다시 쓸 부분은 참고 파일로 뽑았다 |
 | ADR 3 | `008-paid-art-generation`(철회) · `009-visual-bounds-exceed-body` · `010-player-art-3d-layer-bake`(정본에 접었다, §7) |
@@ -29,6 +27,7 @@
 
 ## 3. 무엇을 남겼나 — 그리고 왜
 
+- **2D 시절의 세션 12 · QA 6** — `2026-07-21-art-pipeline-lora`부터 `2026-08-23-local-ai-teardown`까지의 세션과 `ai-matting` · `player-mage-art` · `player-final-art` · `player-4dir`의 QA. §1의 기준대로 결정 기록 · QA 층은 지우지 않는다. 이 문서들이 지운 플레이북 · 매뉴얼 · ADR 008로 걸던 링크 27개는 §5의 평문으로 바꿨다.
 - **3D 경로 전부** — `tools/blender/` 26개 가운데 25개, G0 ~ G6 문서, 3D QA. 새 스킨 · 새 동작을 만들 때 다시 읽는다. `slideRatio`(`MotionSpec.ts`) · `measure_weapon_room.py` · `weapons.py`의 후보 시트는 지금 부르는 실행기가 없지만 새 걸음 · 새 무기를 디자인할 때 쓰는 도구라 남긴다. `slots.ts` · `SlotSpec.ts`는 v2 장비의 예외 경우(긴 부츠 · 망토)를 검토하는 탐침이다.
 - **2D 후처리의 순수 로직** — `tools/art/SheetCrop.ts` · `Postprocess.ts` · `PngCodec.ts`, `tests/helpers/SpriteMetrics.ts`와 그 명세(`tests/logic/SpriteMetrics.test.ts`, 종전 `AiMatting.test.ts`). 적 스프라이트도 시트를 가르고 배경을 지우고 정렬해야 하므로 어느 생성 서비스를 쓰든 그대로 쓴다. 3D 층 굽기의 프레임 판정도 같은 함수를 부른다.
 - **`2026-07-24-player-4dir-plan.md`** — 방향 로직(`FacingLogic`)의 설계 근거라 남긴다. **`2026-08-04-art-decision-audit.md`** — ADR 006 · 007이 근거로 링크한다. **`2026-08-13-art-canon-move-plan.md`와 그 QA 둘** — 문서 구조 이력이다.
@@ -42,7 +41,7 @@
 
 ## 5. 남는 기록의 링크는 평문으로 바꿨다
 
-지운 문서를 링크하던 살아남는 기록(세션 · 백로그 아카이브 · ADR 006)의 링크를 `` `파일명`(2026-09-28 삭제) `` 꼴의 평문으로 바꿨다. `docs-references.md` §9의 예외 「경로를 따라가는 치환」의 연장이다 — 그때의 주장은 안 바꾸고 가리키던 파일이 없어진 사실만 적는다. 스텁 파일을 남기는 방법은 지우려는 이름이 `spec/`에 계속 남아 택하지 않았다.
+지운 정본 · 매뉴얼 · ADR 008 · 코드를 링크하던 남는 기록(세션 · QA · 백로그 · ADR 006)의 링크를 `` `파일명`(2026-09-28 삭제) `` 꼴의 평문으로 바꿨다. `docs-references.md` §9의 예외 「경로를 따라가는 치환」의 연장이다 — 그때의 주장은 안 바꾸고 가리키던 파일이 없어진 사실만 적는다. 스텁 파일을 남기는 방법은 지우려는 이름이 `spec/`에 계속 남아 택하지 않았다.
 
 ## 6. 백로그 처리
 
