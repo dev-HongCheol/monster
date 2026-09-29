@@ -159,7 +159,7 @@ user-verification  Draft PR #92 갱신 ─▶ PR 승인
 | | §3.2 · §4.1 ~ §4.3 | 플레이어 표시 크기 38.42×77(낡은 72×96 문장 정리), 몬스터 크기 규칙을 `collisionRadius` 직선(18 → 50 · 40 → 75)으로, 치수표 · 제안 갱신 — 값은 [G5 문서](2026-09-15-blender-3d-gate-round2-g5-game.md) §2.6 |
 | G2 확정값을 받을 정본 — 자리는 G6에서 정한다 | `ops-blender-toon.md`(§5 외곽선은 이미 고쳤다) · `art-asset-spec.md` | 외곽선(인버티드 헐 1 · 폭 0.0062m · 눈과 얼굴 그림 제외 · 몸 헐은 가림에 포함), 카메라 고도 15°, 발밑 마법진(위에서 본 정원 텍스처를 게임 노드로, 세로 배율 sin 15°, 지름 = 키, 캐릭터 뒤), 무기 재질 MToon, 천 그늘 문턱 0.8(후보값), 금속 matcap, 몸 표면 투영, 가는 장식의 최소 굵기 |
 | `docs/development/spec/game-combat.md` | §3 | 피격 사각형 반값 14 · 35, 이동 원 20 (G5 §2.6) |
-| `docs/design/spec/art-generation-playbook.md` | — | G6에서 플레이어 절을 떼어 냈다가, 2026-09-28 리워크에서 2D 생성 경로의 이력을 걷어 내며 플레이북째 지웠다. 적 · UI 생성에 다시 쓸 부분은 `docs/etc/2026-09-28-2d-generation-reference.md`에 남겼다 |
+| `docs/design/spec/art-generation-playbook.md` | — | G6에서 플레이어 절을 떼어 냈다가, 2026-09-28 리워크에서 2D 생성 경로의 이력을 걷어 내며 플레이북째 지웠다. 적 · UI 생성에 다시 쓸 부분은 정본 `art-generation-2d.md`로 세웠다(2026-09-29) |
 | `docs/development/spec/ops-licensing.md` | §2 | VRoid · Blender · 무기 모델 · VRM 애드온 · ChatGPT 웹 행은 이미 더했다(2026-09-15 ~ 19). 남은 것은 Quaternius 모션 행을 뺄지다 — 걷기가 키프레임 굽기로 바뀌면 그 행의 근거 자산이 main에 남지 않는다 |
 | `docs/development/spec/ops-build.md` | §6.2 | 교체 뒤 빌드 파일 수 · 용량 실측값 |
 | `docs/planning/roadmap.md` | 아트 목록 | 「플레이어 스켈레탈 리깅」 항목 |
