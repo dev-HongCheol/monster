@@ -4,7 +4,7 @@
 - **브랜치:** `feat/blender-3d-gate` (리워크)
 - **정본:** [`art-direction.md`](../../design/spec/art-direction.md) §2 · §8 · §9 · 부록 B ~ D · [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §2.7 · §3.3 · §3.4 · §5 · §6 · §8.3 · §9.1.1 · §12 · [`ops-licensing.md`](../spec/ops-licensing.md) 전체 · [`docs-glossary.md`](../spec/docs-glossary.md) §2 · §6 · [`game-combat.md`](../spec/game-combat.md) §3 — 이 정리가 2D 생성 경로의 이력을 걷어 내고 ADR 009 · 010의 내용을 접은 자리다
 - **닫는 백로그:** F59(소멸) · F75(범위 변경 — ADR 층 폐지)
-- **실행 정본:** [`art-generation-2d.md`](../../design/spec/art-generation-2d.md) — 적 · UI · 배경을 2D로 뽑을 때 다시 쓸 절차와 실측(2026-09-29 신설)
+- **실행 정본:** `art-generation-2d.md`(2026-09-29 신설, 2026-09-30 삭제 — 후처리 순서와 통과 조건은 [`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §6.5에 접었다) — 적 · UI · 배경을 2D로 뽑을 때 다시 쓸 절차와 실측
 
 ## 1. 왜
 

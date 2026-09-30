@@ -64,7 +64,7 @@
 
 **장르 클러스터:** Vampire Survivors / Brotato / Hell Maiden / Magic Survival
 **시점:** 탑다운 2D
-**그래픽:** 고해상도 스타일라이즈드 2D — 애니 셀 화풍으로, 적 · 이펙트 · 맵은 사용자가 **ChatGPT 웹**에서 뽑고, 플레이어와 해금 캐릭터는 **3D 마스터(VRoid)를 Blender에서 층별 프레임으로 구워** 움직인다. 화풍·해상도·파이프라인의 정본은 [`docs/design/spec/art-direction.md`](../design/spec/art-direction.md), 제작 규격은 [`docs/design/spec/art-asset-spec.md`](../design/spec/art-asset-spec.md), 2D 생성 실행 절차는 [`docs/design/spec/art-generation-2d.md`](../design/spec/art-generation-2d.md)이다.
+**그래픽:** 고해상도 스타일라이즈드 2D — 애니 셀 화풍으로, 적 · 이펙트 · 맵은 사용자가 **ChatGPT 웹**에서 뽑고, 플레이어와 해금 캐릭터는 **3D 마스터(VRoid)를 Blender에서 층별 프레임으로 구워** 움직인다. 화풍·해상도·파이프라인의 정본은 [`docs/design/spec/art-direction.md`](../design/spec/art-direction.md), 제작 규격은 [`docs/design/spec/art-asset-spec.md`](../design/spec/art-asset-spec.md)이다.
 **플랫폼:** v1 = itch.io 웹, v2 = Steam PC. 모바일 비목표.
 
 ---

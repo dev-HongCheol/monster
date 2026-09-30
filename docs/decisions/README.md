@@ -15,7 +15,7 @@
 | [005](005-i18n-approach.md) | i18n 방식 — 자체 경량 `t()` | `../development/spec/code-i18n.md` |
 | [006](006-collision-hitbox.md) | 충돌 히트박스 — 플레이어 사각형 / 적 원 | `../development/spec/game-combat.md` §1 (이미 있다) |
 | [007](007-skin-hitbox-independence.md) | 스킨은 판정에 영향을 주지 않는다 | `../development/spec/game-combat.md` §3 (이미 있다) |
-| 008 | AI 이미지 생성은 유료 서비스에서 한다 | **철회 · 삭제(2026-09-28)** — 2D 생성 경로의 이력을 걷어 내며 지웠다. 결정과 이유는 [`../design/spec/art-generation-2d.md`](../design/spec/art-generation-2d.md) §1이 든다 |
+| 008 | AI 이미지 생성은 유료 서비스에서 한다 | **철회 · 삭제(2026-09-28)** — 2D 생성 경로의 이력을 걷어 내며 지웠다. 지금의 결정(사용자가 ChatGPT 웹에서 직접)은 [`../design/spec/art-direction.md`](../design/spec/art-direction.md) §8 머리가 든다 |
 | 009 · 010 | 시각 층은 몸보다 클 수 있다 · 플레이어 아트는 3D 마스터에서 층별 프레임으로 굽는다 | **정본에 접었다(2026-09-28)** — `../design/spec/art-asset-spec.md` §3 · §8.3, `../design/spec/art-direction.md` §3, `../development/spec/game-combat.md` §3. 브랜치에서 썼다가 main에 올리지 않았다 |
 
 ## 새 ADR을 쓰지 않는다
