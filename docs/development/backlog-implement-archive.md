@@ -80,3 +80,7 @@
 ### 라이선스 감사 (2026-08-20)
 
 - **F68** 채택 생성 서비스·모델의 상업 이용 조건 확인 → **완료**(`feat/license-audit`, 2026-08-20). 확인 결과가 새 정본 [`spec/ops-licensing.md`](spec/ops-licensing.md)로 갔다. 물었던 셋 중 ①상업 이용은 허용(fal 모델 페이지의 `Commercial use via fal Partner agreement`), ③다른 모델 학습 제한은 실재(fal 약관 §14)로 확인됐고, ②워터마크는 예상과 달랐다 — fal이 **모든 출력에 C2PA 서명과 비가시 워터마크를 넣고** 있으며 레포의 생성 원본 넉 장에서 서명 청크가 실측됐다. 범위도 넓어졌다. 최종 PNG에 손댄 도구가 생성 모델만이 아니어서 rembg·Spine·Cocos·상점 고지까지 함께 가렸고, 거기서 실제 위험 하나가 나왔다(rembg의 기본 모델이 2026-08-17부터 상업 유료 계약을 요구하는 것으로 바뀌었다 — 정본 §2.1). 경위는 [`sessions/2026-08-20-license-audit-plan.md`](sessions/2026-08-20-license-audit-plan.md).
+
+### 플레이어 3D 층 전환 (2026-09-30)
+
+- **F101** 씬·프리팹이 안 쓰는 아트 자산 정리 → **완료**(`feat/blender-3d-gate`, PR #92, 2026-09-30). 브릿지 스프라이트 · 분리 지팡이 · 2D 네 장을 층 아틀라스로 대체하며 지웠고, 2D 생성 원본은 `cloud-storage/art/evidence/`로 옮겼다. → [`sessions/2026-09-15-blender-3d-gate-round2-g5-game.md`](sessions/2026-09-15-blender-3d-gate-round2-g5-game.md)
