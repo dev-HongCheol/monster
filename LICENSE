@@ -1,0 +1,77 @@
+monster — license
+
+Copyright (c) 2026 dev-HongCheol. All rights reserved.
+
+This repository is public so that the development of the game can be
+followed. It is NOT open source.
+
+1. Everything is reserved unless stated otherwise
+--------------------------------------------------
+
+Unless a section below says otherwise, no permission is granted to copy,
+modify, redistribute, sublicense, sell, or otherwise use any part of this
+repository. This covers, without limitation:
+
+  - game source code and game data (game/)
+  - art, sprites, atlases, and any generated or rendered images
+    (game/assets/, art-source/)
+  - design specifications that describe how a character, weapon, armor,
+    outfit, or skin is built, including the part specifications and baking
+    values under tools/blender/ (for example tools/blender/BakeSpec.ts)
+  - documentation (docs/)
+  - tests and tooling not covered by section 2
+
+Viewing and forking the repository through GitHub's own functionality is
+permitted by GitHub's Terms of Service. Nothing here grants more than that.
+
+2. Exception — Blender Python scripts
+--------------------------------------
+
+The files matching
+
+    tools/blender/**/*.py
+
+call the Blender Python API. Blender's license requires scripts that use
+that API to be shared under a GPL-compatible license when they are
+published. Those files, and only those files, are licensed under the GNU
+General Public License, version 3 or (at your option) any later version
+(SPDX: GPL-3.0-or-later). The full text is in
+
+    LICENSES/GPL-3.0-or-later.txt
+
+    Copyright (c) 2026 dev-HongCheol
+
+    These programs are free software: you can redistribute them and/or
+    modify them under the terms of the GNU General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    These programs are distributed in the hope that they will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+    General Public License for more details.
+
+The exception stops at those files. It does not reach:
+
+  - the TypeScript files in the same directory (tools/blender/**/*.ts).
+    They start Blender as a separate process from the command line and do
+    not call its API; they fall under section 1.
+  - the JSON specifications passed to the scripts, and the images, sprites,
+    and models produced by running them. They are inputs and outputs, not
+    the scripts, and fall under section 1.
+
+3. Third-party tools and material
+----------------------------------
+
+Tools, engines, models, and services used to build the game remain under
+their own terms. The terms that were checked, with the date each was read,
+are recorded in docs/development/spec/ops-licensing.md.
+
+----------------------------------------------------------------------------
+요약(한국어). 이 레포는 개발 과정을 공개하려고 열어 둔 것이고 오픈소스가 아니다.
+코드 · 아트 · 생성 이미지 · 디자인 사양(tools/blender/의 부품 사양과 굽기 값 포함) ·
+문서는 모두 권리를 보유하며, 복사 · 수정 · 재배포 · 판매를 허락하지 않는다. 예외는
+Blender 파이썬 API를 쓰는 tools/blender/**/*.py 하나로, Blender 라이선스가 공개하는
+스크립트에 GPL 호환 라이선스를 요구하므로 이 파일들에만 GPL-3.0-or-later를 붙인다(전문은
+LICENSES/GPL-3.0-or-later.txt). 같은 폴더의 TypeScript 파일, 스크립트에 넘기는 사양 JSON,
+그 스크립트로 구운 이미지와 모델은 예외에 들지 않는다.

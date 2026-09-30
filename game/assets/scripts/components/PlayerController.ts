@@ -7,8 +7,6 @@ import {
   Input,
   input,
   KeyCode,
-  Sprite,
-  SpriteFrame,
   sys,
   UITransform,
   Vec3,
@@ -31,39 +29,29 @@ import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
 import { MapManager } from '../systems/MapManager';
 
-const { ccclass, property } = _decorator;
+const { ccclass } = _decorator;
 
 /** 플레이어 이동, 바라보는 방향, HP 연동을 담당하는 컴포넌트. 자동 발사는 SpellCaster가 담당한다. */
 @ccclass('PlayerController')
 export class PlayerController extends Component {
-  // 네 방향 정지 프레임. 배열 하나로 받지 않고 이름별로 두는 이유는, 배열이면 에디터에서
-  // 순서를 잘못 끼워도 아무 에러 없이 통과해 위로 걸을 때 왼쪽 그림이 뜨는 식으로 어긋나기
-  // 때문이다. 이름 슬롯은 어긋나면 눈으로 바로 보인다.
-  /** 정면 — 카메라를 향해 선 그림(화면 아래쪽으로 걸을 때). */
-  @property(SpriteFrame) frameFront: SpriteFrame | null = null;
-  /** 뒷모습 — 화면 위쪽으로 걸어갈 때. */
-  @property(SpriteFrame) frameBack: SpriteFrame | null = null;
-  @property(SpriteFrame) frameLeft: SpriteFrame | null = null;
-  @property(SpriteFrame) frameRight: SpriteFrame | null = null;
+  // 그림은 이 컴포넌트가 그리지 않는다. 방향 · 이동 · 진행 여부를 getter로 내주고, 같은 노드의
+  // `PlayerLayerSync`가 층별 아틀라스의 프레임을 자식 Sprite 넷에 붙인다(G5 §2). 예전의 방향 슬롯 넷은
+  // 출하 2D 그림과 함께 걷어냈다.
 
   private _moveDir: Vec3 = new Vec3();
-  /** 같은 노드의 Sprite — 방향이 바뀔 때 이 컴포넌트의 `spriteFrame`을 갈아끼운다. */
-  private _sprite: Sprite | null = null;
-  /** 현재 바라보는 방향. 프레임 교체 여부를 이 값과 새 판정의 비교로 정한다. */
+  /** 현재 바라보는 방향. 새 판정과 다를 때만 바꾼다. */
   private _facing: Facing = 'front';
   private _dataReady = false;
   /** 데이터 준비 시 잡아 두는 플레이어 기본 스탯 — 매 프레임 싱글톤을 역참조하지 않게 한다. */
   private _base: IPlayerBaseData | null = null;
-  /** 그림의 반높이(px) — 이동 충돌 원을 발밑으로 내릴 거리의 입력(FootprintLogic). 0이면 오프셋 없음. */
+  /** Player 자기 노드 UITransform의 반높이(px) — 이동 충돌 원을 발밑으로 내릴 거리의 입력(FootprintLogic). 0이면 오프셋 없음. */
   private _halfHeight = 0;
 
   /** 지금 눌려 있는 이동키. 포커스를 잃으면 통째로 해제된다(`_onFocusLost`). */
   private _moveInput: IMoveInputState = createMoveInputState();
 
-  // 키 입력·포커스 유실 구독 + 같은 노드의 Sprite·그림 크기 캐시 → 초기 방향(front) 프레임
-  // 1회 적용. 초기 프레임을 코드가 정하는 이유는, 씬에 물려 둔 `Sprite.spriteFrame`이 에디터
-  // 작업 중 다른 방향으로 바뀌어 있으면 `_facing`은 front인데 화면엔 옆모습이 뜨는 불일치가
-  // 나기 때문이다. 그 상태에서 처음 좌우로 걸으면 방향이 안 바뀐 것처럼 보인다.
+  // 키 입력·포커스 유실 구독 + 반높이 캐시. 초기 프레임은 여기서 정하지 않는다 — 그림은 `PlayerLayerSync`가
+  // 그리고, 그쪽이 시작 상태를 정면 대기로 두므로 `_facing`의 초기값 front와 어긋나지 않는다.
   onLoad() {
     input.on(Input.EventType.KEY_DOWN, this._onKeyDown, this);
     input.on(Input.EventType.KEY_UP, this._onKeyUp, this);
@@ -76,12 +64,10 @@ export class PlayerController extends Component {
     // 브라우저가 아닌 플랫폼에는 위 둘이 없다. v1(웹)에서는 창 blur와 겹쳐 실행되지 않는
     // 방어이고, 네이티브 빌드에서 백그라운드로 들어갈 때가 이 신호의 유일한 무대다.
     game.on(Game.EVENT_HIDE, this._onFocusLost, this);
-    this._sprite = this.getComponent(Sprite);
-    // 반높이는 여기서 한 번만 잡는다 — 네 방향 프레임이 Size Mode CUSTOM인 같은 상자에 그려지므로
-    // 방향이 바뀌어도 값이 변하지 않는다. UITransform이 없으면 0이 남아 오프셋도 0이 되고,
-    // 이동은 리워크 이전과 똑같이 노드 원점 기준으로 굴러간다.
+    // 반높이는 여기서 한 번만 잡는다 — Player 자기 노드의 UITransform(38.42×77)에서 오고, 시각 자식이
+    // 아무리 커져도 Cocos는 자식 크기를 부모에 전파하지 않아 이 값이 안 바뀐다(G5 §2.5). UITransform이
+    // 없으면 0이 남아 오프셋도 0이 되고, 이동은 리워크 이전과 똑같이 노드 원점 기준으로 굴러간다.
     this._halfHeight = (this.getComponent(UITransform)?.height ?? 0) / 2;
-    this._applyFacingFrame();
   }
 
   start() {
@@ -128,6 +114,25 @@ export class PlayerController extends Component {
     this._updateMoveDir();
     this._updateFacing();
     this._move(dt);
+  }
+
+  /** 바라보는 방향. 층 동기화 컴포넌트(`PlayerLayerSync`)가 `lateUpdate`에서 읽는다. */
+  get facing(): Facing {
+    return this._facing;
+  }
+
+  /**
+   * 이동 입력이 있는가. 실제 변위가 아니라 입력 의도다 — `FacingLogic`이 방향을 입력 의도로 정한 것과 같은 기준이라,
+   * 벽을 밀면 제자리에서 걷는다.
+   */
+  get isMoving(): boolean {
+    return this._moveDir.x !== 0 || this._moveDir.y !== 0;
+  }
+
+  /** 재생 시계를 돌려도 되는가 — `update`가 도는 조건(데이터 준비 + Playing)과 같다. */
+  get isTicking(): boolean {
+    const gm = GameManager.instance;
+    return this._dataReady && gm !== null && gm.state === GameState.Playing;
   }
 
   /** 키 입력으로 이동 방향 플래그를 활성화한다. */
@@ -181,39 +186,13 @@ export class PlayerController extends Component {
     moveInputToVector(this._moveInput, this._moveDir);
   }
 
-  /** 이동 입력에서 바라볼 방향을 판정하고, 방향이 바뀐 프레임에만 그림을 갈아끼운다. */
+  /** 이동 입력에서 바라볼 방향을 판정하고, 방향이 바뀐 프레임에만 값을 바꾼다. */
   private _updateFacing(): void {
     const next = facingFromMoveDir(this._moveDir.x, this._moveDir.y, this._facing);
-    // 같은 방향이면 대입 자체를 하지 않는다 — 엔진이 같은 값 대입을 걸러 주는지에 기대지 않고,
-    // 교체가 일어나는 지점을 "방향이 바뀐 프레임" 하나로 좁혀 둔다.
+    // 같은 방향이면 대입 자체를 하지 않는다 — 값이 바뀌는 지점을 "방향이 바뀐 프레임" 하나로 좁혀 두면,
+    // 이 값을 읽는 쪽(`PlayerLayerSync`의 형제 순서 갱신)도 그 프레임에만 반응한다.
     if (next === this._facing) return;
     this._facing = next;
-    this._applyFacingFrame();
-  }
-
-  /** 현재 `_facing`에 해당하는 프레임을 Sprite에 적용한다. */
-  private _applyFacingFrame(): void {
-    const sprite = this._sprite;
-    if (!sprite) return;
-    const frame = this._frameFor(this._facing);
-    // 미연결 슬롯이면 직전 그림을 그대로 둔다. null을 대입하면 그 방향으로 걷는 동안 캐릭터가
-    // 화면에서 사라져, 연결을 하나 빼먹은 것이 "플레이어가 투명해지는" 버그로 보인다.
-    if (!frame) return;
-    sprite.spriteFrame = frame;
-  }
-
-  /** 방향에 대응하는 프레임을 돌려준다. 에디터에서 연결하지 않은 슬롯은 null이다. */
-  private _frameFor(facing: Facing): SpriteFrame | null {
-    switch (facing) {
-      case 'front':
-        return this.frameFront;
-      case 'back':
-        return this.frameBack;
-      case 'left':
-        return this.frameLeft;
-      case 'right':
-        return this.frameRight;
-    }
   }
 
   /** 이동 방향으로 플레이어를 이동시킨다. 매 프레임 이동속도 패시브 보너스를 곱해 라이브 반영한다. */

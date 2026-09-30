@@ -16,13 +16,16 @@ import { type Obstacle, resolveCircleMove } from './ObstacleLogic';
  * 24%로 정강이까지).
  *
  * 오프셋을 캐릭터 데이터로 받지 않고 반높이에서 유도하는 이유는, 캐릭터가 늘어도 각자의 Content
- * Size가 곧 답이라 사람이 다시 잴 값이 없기 때문이다. 유도가 성립하려면 모든 캐릭터가 네 규약을
- * 지켜야 한다 — 앵커 (0.5, 0.5) · Trim 켬 · 직립 전신 · **발이 그림의 최하단**. 넷 중 마지막이
- * 가장 먼저 깨지기 쉽다(발밑에 깔리는 불꽃·그림자·긴 망토는 알파 박스의 바닥을 발보다 아래로
- * 밀어 원을 필요 이상으로 내린다 — 그러면 캐릭터가 장애물 앞에서 허공을 두고 멈춘다).
- * 공중에 뜬 실루엣처럼 규약이 깨지는 캐릭터가 나오면 그때 캐릭터별 override를 얹는다.
+ * Size가 곧 답이라 사람이 다시 잴 값이 없기 때문이다. 유도가 성립하려면 모든 캐릭터가 세 규약을
+ * 지켜야 한다 — 앵커 (0.5, 0.5) · 직립 전신 · **발바닥이 UITransform의 아래 변**. 플레이어는 자기 노드에
+ * 그림이 없는 논리 컨테이너(38.42×77)이고 시각 층은 자식 Sprite(Trim 끔 · Size Mode CUSTOM)라, 망토 ·
+ * 그림자처럼 몸 밖으로 나가는 그림이 이 높이를 밀지 못한다(2026-09-27, G5 §2.5). 높이를 트림한 알파
+ * 상자에서 받는 캐릭터라면 발밑에 깔리는 불꽃 · 긴 망토가 상자 바닥을 발보다 아래로 밀어 원을 필요
+ * 이상으로 내리고, 그러면 장애물 앞에서 허공을 두고 멈춘다 — 그런 캐릭터가 나오면 캐릭터별 override를
+ * 얹는다.
  *
- * @param halfHeight 그림의 반높이 (px, `UITransform.height / 2`)
+ * @param halfHeight 노드 `UITransform`의 반높이 (px, `height / 2`) — 발바닥이 아래 변인 상자다. 플레이어는 그림이
+ *   없는 논리 컨테이너의 높이다
  * @param radius 이동 충돌 원의 반지름 (px, `collisionRadius`)
  * @returns 내릴 거리(음수) — 내릴 필요가 없거나 입력이 비정상이면 0
  */
@@ -67,7 +70,7 @@ export function footprintOffsetY(halfHeight: number, radius: number): number {
  * @param from 현재 위치 (노드 원점 좌표)
  * @param to 이동 후보 위치 (노드 원점 좌표)
  * @param radius 이동 충돌 원의 반지름(px)
- * @param halfHeight 그림의 반높이(px) — 0이면 오프셋 없이 원점 기준으로 푼다
+ * @param halfHeight 노드 `UITransform`의 반높이(px, `footprintOffsetY`와 같은 값) — 0이면 오프셋 없이 원점 기준으로 푼다
  * @param obstacles 장애물 목록 (맵 로드 전엔 빈 배열이라 무보정 통과)
  * @param arena 아레나 크기 — null이거나 width가 0 이하이거나 NaN이면 클램프하지 않는다(맵 로드 전)
  * @returns 최종 위치 (노드 원점 좌표, 새 객체)

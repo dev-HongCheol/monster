@@ -29,6 +29,7 @@
 | [`docs-references.md`](docs-references.md) | 문서끼리 어떻게 참조하나 |
 | [`docs-writing-style.md`](docs-writing-style.md) | 문서를 어떻게 쓰나 |
 | [`game-combat.md`](game-combat.md) | 무엇이 무엇에 맞나 (히트박스 형태와 판정 수치의 출처) |
+| [`ops-blender-toon.md`](ops-blender-toon.md) | Blender에서 VRM 툰 셰이더가 실제로 어떻게 칠하고, 그 근거 자료는 어디 있나 |
 | [`ops-build.md`](ops-build.md) | 빌드가 뭘 내놓고 어디에 올리나 |
 | [`ops-environment.md`](ops-environment.md) | 새 장비에 뭘 까나 |
 | [`ops-gbrain.md`](ops-gbrain.md) | 레포를 의미로 검색하려면 뭘 깔고 색인을 언제 갱신하나 |

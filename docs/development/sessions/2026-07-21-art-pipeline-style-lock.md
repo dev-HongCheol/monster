@@ -4,7 +4,7 @@
 - **브랜치:** design/art-pipeline-style-lock
 - **상태:** 화풍 **확정** — 애니 셀 + 주인공은 젊은 여성 불 마법사(2026-07-21). 아트북 셀셰이딩(v1~v3)은 취향이 아니라 폐기, 6화풍 비교 후 애니 선택. 스타일 LoRA 학습은 다음 슬라이스.
 - **정본:** [`../../design/spec/art-direction.md`](../../design/spec/art-direction.md) §8·§9·부록 B. 이 문서는 그 1차 실행 기록이다.
-- **셋업 절차:** [`../comfyui-setup.md`](../comfyui-setup.md) — 이 문서만으로 환경을 다시 구축할 수 있게 유지한다.
+- **셋업 절차:** `../comfyui-setup.md`(2026-09-28 삭제) — 이 문서만으로 환경을 다시 구축할 수 있게 유지한다.
 - **백로그:** [`../backlog.md`](../backlog.md) F58.
 
 ---
@@ -17,7 +17,7 @@ art-direction §9-1의 **1차 생성 테스트 + 스타일 확정**까지. 대�
 
 ## 2. 환경 구축 (완료)
 
-이 장비(RTX 3070 Ti 8GB, Python 3.12.10)에 ComfyUI를 API 서버 모드로 세웠다. 전 과정은 [`../comfyui-setup.md`](../comfyui-setup.md)에 재현 가능하게 적혀 있다. 요약:
+이 장비(RTX 3070 Ti 8GB, Python 3.12.10)에 ComfyUI를 API 서버 모드로 세웠다. 전 과정은 `../comfyui-setup.md`(2026-09-28 삭제)에 재현 가능하게 적혀 있다. 요약:
 
 - ComfyUI 0.28.0 (git clone) + venv(F:\ai\ComfyUI\venv) + torch 2.6.0+cu124.
 - **함정 1건 — torchaudio 버전 불일치.** requirements가 PyPI 기본 torchaudio(2.11.0)를 끌어와 torch 2.6.0과 ABI가 어긋나 서버가 `WinError 127`로 죽었다. cu124용 2.6.0으로 재설치해 해결(setup §3.1).

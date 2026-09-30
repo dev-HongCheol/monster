@@ -115,7 +115,7 @@ codex 부재로 각 페이즈 Claude 서브에이전트 단독 리뷰. Eng는 3�
 
 ## 생성 실행·재현 기록 (F60 브릿지 스프라이트)
 
-> 다른 PC에서 동일 환경으로 재현 가능하게 실행·세팅 정보를 남긴다. 환경 구축의 정본은 [`../comfyui-setup.md`](../comfyui-setup.md)(ComfyUI + venv + SDXL 1.0 base)와 [`../kohya-setup.md`](../kohya-setup.md)·[`2026-07-21-art-pipeline-lora.md`](2026-07-21-art-pipeline-lora.md)(스타일 LoRA 학습)이고, 여기선 이 슬라이스의 **생성 실행**만 다룬다. (경로는 이 개발 장비의 `F:\ai` 레이아웃 기준 — 기존 셋업 문서와 동일 관례.)
+> 다른 PC에서 동일 환경으로 재현 가능하게 실행·세팅 정보를 남긴다. 환경 구축의 정본은 `../comfyui-setup.md`(2026-09-28 삭제)(ComfyUI + venv + SDXL 1.0 base)와 `../kohya-setup.md`(2026-09-28 삭제)·[`2026-07-21-art-pipeline-lora.md`](2026-07-21-art-pipeline-lora.md)(스타일 LoRA 학습)이고, 여기선 이 슬라이스의 **생성 실행**만 다룬다. (경로는 이 개발 장비의 `F:\ai` 레이아웃 기준 — 기존 셋업 문서와 동일 관례.)
 
 ### 선행 환경 (다른 PC에서 먼저 갖춘다)
 1. **ComfyUI + venv + SDXL base** — `comfyui-setup.md` 절차대로 구축하고 `sd_xl_base_1.0.safetensors`를 `ComfyUI/models/checkpoints/`에 둔다.

@@ -1,0 +1,22 @@
+{
+  "camera": {
+    "pitchDeg": 15,
+    "aimZ": 0.5338054136893844,
+    "perPixelM": 0.0023558492045756404
+  },
+  "bodyCanvas": {
+    "width": 264,
+    "height": 493
+  },
+  "groundRow": 465.3664852971243,
+  "inputs": {
+    "definition": "07d525b8c2ca548616d45eef6439cddafc9d59c80fa5419794224edd3febee1e",
+    "models": {
+      "base": "4426e0b44c27cbb701c97938c28182d5f0c4668b524976358d5cda2785366241",
+      "topA": "2bb5b1f7ff98ea1cdaca0c1cb15b9ecfeb5ad2efe685176010a173470443d99e",
+      "topB": "c04ea147f765e6dc486653e532387fe51768acd713bc743adbc875a7963ac8e8"
+    },
+    "blender": "5.2.1 LTS",
+    "vrmAddon": "4.7.1"
+  }
+}

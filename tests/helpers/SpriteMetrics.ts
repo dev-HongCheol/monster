@@ -3,8 +3,8 @@
  *
  * 이 파일이 RGBA 배열만 받는 이유는 판정과 디코딩이 같이 낡지 않게 하기 위해서다. 파일을
  * 읽는 것은 `PngCodec.ts` 하나가 맡고, 여기 있는 판정은 매팅 결과든 파이프라인 중간 산출물이든
- * 합성 픽스처든 똑같이 받는다. 배경 제거를 fal 매팅으로 옮기면서 「이 그림이 됐는가」를 눈이
- * 아니라 숫자가 판정하게 만드는 것이 목적이고, 그 숫자의 정의가 여기 있다.
+ * 합성 픽스처든 똑같이 받는다. 「이 그림이 됐는가」를 눈이 아니라 숫자가 판정하게 만드는 것이
+ * 목적이고, 그 숫자의 정의가 여기 있다. 2D 후처리와 3D 층 굽기의 프레임 판정이 같은 함수를 부른다.
  */
 
 /** 8비트 RGBA 픽셀 버퍼. `data`는 `[r, g, b, a]`가 `width * height`번 이어진 길이다. */
@@ -106,6 +106,21 @@ export function alphaHistogram(img: IRgbaImage): IAlphaHistogram {
  * @returns 알파가 있는 픽셀이 하나도 없으면 `null`
  */
 export function trimBox(img: IRgbaImage): IBox | null {
+  return visibleBox(img, 1);
+}
+
+/**
+ * 알파가 `minAlpha` 이상인 픽셀을 모두 감싸는 사각형 — **눈에 보이는 형태**의 상자다.
+ *
+ * `trimBox`가 엔진이 자르는 상자라면 이것은 사람이 보는 상자다. 생성 도구가 남기는 옅은 테두리(알파
+ * 몇 %)는 트림 상자를 부풀리지만 화면에서는 안 보이고 게임 크기로 줄이면 사라진다 — 귀신 표본 셋이
+ * 그랬다(달걀귀신은 알파 10% 미만 띠가 높이의 9%, 2026-09-17). 그린 높이를 트림 상자로 맞추면 보이는
+ * 몸이 그만큼 작아지고, 크기 판정에 올린 그림이 규격보다 작은 채로 사용자에게 간다.
+ *
+ * @param minAlpha 보이는 것으로 칠 최소 알파. 1이면 `trimBox`와 같다
+ * @returns 그런 픽셀이 없으면 `null`
+ */
+export function visibleBox(img: IRgbaImage, minAlpha: number): IBox | null {
   let minX = img.width;
   let minY = img.height;
   let maxX = -1;
@@ -113,7 +128,7 @@ export function trimBox(img: IRgbaImage): IBox | null {
 
   for (let y = 0; y < img.height; y++) {
     for (let x = 0; x < img.width; x++) {
-      if (img.data[(y * img.width + x) * 4 + 3] === 0) continue;
+      if (img.data[(y * img.width + x) * 4 + 3] < minAlpha) continue;
       if (x < minX) minX = x;
       if (x > maxX) maxX = x;
       if (y < minY) minY = y;

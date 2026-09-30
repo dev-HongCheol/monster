@@ -4,7 +4,7 @@
 - **브랜치:** design/art-pipeline-lora
 - **상태:** 애니 셀 **스타일 LoRA 학습 완료 + 검증 합격**(2026-07-21). 짧은 프롬프트로 대비 3종의 룩이 잠기는 것을 확인.
 - **선행 슬라이스:** [`2026-07-21-art-pipeline-style-lock.md`](2026-07-21-art-pipeline-style-lock.md)(F58) — 화풍(애니 셀)·주인공(젊은 여성 불 마법사)·확정 씨앗을 여기서 결정했다. 이 문서는 그 씨앗으로 LoRA를 학습한 기록이다.
-- **셋업 절차:** [`../kohya-setup.md`](../kohya-setup.md) — 이 문서만으로 학습 환경을 다시 구축할 수 있게 유지한다.
+- **셋업 절차:** `../kohya-setup.md`(2026-09-28 삭제) — 이 문서만으로 학습 환경을 다시 구축할 수 있게 유지한다.
 - **정본:** [`../../design/spec/art-direction.md`](../../design/spec/art-direction.md) §8·§9. **백로그:** [`../backlog.md`](../backlog.md) F58b.
 
 ---
@@ -19,13 +19,13 @@ art-direction §9의 부트스트랩 루프에서 "확정 씨앗 → **스타일
 
 ## 2. 로컬/클라우드 결정 — 로컬 확정
 
-comfyui-setup §7과 F58 세션이 미뤄 둔 "로컬 kohya 극단 최적화 vs 클라우드 GPU" 판단을 이 장비 실측으로 내렸다 — **로컬.** 8GB에서 SDXL LoRA 학습이 극단 최적화 조합으로 들어가고(실측 VRAM 97%·OOM 없음), 씨앗 10장짜리 작은 학습이라 24분에 끝나 클라우드로 옮길 이유가 없다. 근거·플래그별 상세는 [`../kohya-setup.md`](../kohya-setup.md) §1·§3.
+comfyui-setup §7과 F58 세션이 미뤄 둔 "로컬 kohya 극단 최적화 vs 클라우드 GPU" 판단을 이 장비 실측으로 내렸다 — **로컬.** 8GB에서 SDXL LoRA 학습이 극단 최적화 조합으로 들어가고(실측 VRAM 97%·OOM 없음), 씨앗 10장짜리 작은 학습이라 24분에 끝나 클라우드로 옮길 이유가 없다. 근거·플래그별 상세는 `../kohya-setup.md`(2026-09-28 삭제) §1·§3.
 
 ---
 
 ## 3. 환경 구축 (완료)
 
-kohya `sd-scripts`를 ComfyUI와 별도 venv로 `F:\ai\sd-scripts`에 세웠다. 전 과정은 [`../kohya-setup.md`](../kohya-setup.md)에 재현 가능하게 있다. 요약:
+kohya `sd-scripts`를 ComfyUI와 별도 venv로 `F:\ai\sd-scripts`에 세웠다. 전 과정은 `../kohya-setup.md`(2026-09-28 삭제)에 재현 가능하게 있다. 요약:
 
 - sd-scripts(HEAD `6565877`) + venv(Python 3.12.10) + torch 2.6.0+cu124 + bitsandbytes 0.49.2.
 - **설치 검증:** `AdamW8bit`가 CUDA에서 실제 옵티마이저 스텝을 돌고 bf16 지원 확인(8GB 학습의 전제).

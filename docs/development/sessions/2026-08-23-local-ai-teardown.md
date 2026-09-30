@@ -4,7 +4,7 @@
 - **브랜치:** `chore/f70-local-ai-teardown`
 - **상태:** 실행 전
 - **닫는 백로그:** `F70`(로컬 생성 환경 `F:\ai` 철거)
-- **정본:** 없음 — 명세를 안 바꾼다. 디스크에서 환경을 걷어낼 뿐이고, 복구 절차 정본인 [`comfyui-setup.md`](../comfyui-setup.md)·[`kohya-setup.md`](../kohya-setup.md)는 **그대로 남긴다**(§3·§6). 배경 제거가 fal로 옮겨 간 사실은 앞 슬라이스가 이미 정본에 반영했다
+- **정본:** 없음 — 명세를 안 바꾼다. 디스크에서 환경을 걷어낼 뿐이고, 복구 절차 정본인 `comfyui-setup.md`(2026-09-28 삭제)·`kohya-setup.md`(2026-09-28 삭제)는 **그대로 남긴다**(§3·§6). 배경 제거가 fal로 옮겨 간 사실은 앞 슬라이스가 이미 정본에 반영했다
 - **절차 정본:** [유료 전환 계획](2026-08-04-paid-art-pipeline-plan.md) §12. 이 문서는 그 절차에 **2026-08-06 실측**과 **2026-08-22에 바뀐 조건**을 얹어 실행 가능한 목록으로 만든 것이고, 새 규칙을 만들지 않는다
 
 ---
@@ -41,9 +41,9 @@
 
 | 무엇 | 어디 | 결과 |
 |---|---|---|
-| 워크플로 JSON 골격 · 시드 | [`comfyui-setup.md`](../comfyui-setup.md) §5·§7 (`build_workflow`, `seed`) | 있다 |
+| 워크플로 JSON 골격 · 시드 | `comfyui-setup.md`(2026-09-28 삭제) §5·§7 (`build_workflow`, `seed`) | 있다 |
 | SDXL 체크포인트 SHA256 | 같은 문서 §4 (`31E3…7E5B`) | 있다 |
-| LoRA 학습 인자 전량 | [`kohya-setup.md`](../kohya-setup.md) §5 (`network_dim 16` · `network_alpha 8` · `1e-4` · 12에폭 · AdamW8bit) | 있다 |
+| LoRA 학습 인자 전량 | `kohya-setup.md`(2026-09-28 삭제) §5 (`network_dim 16` · `network_alpha 8` · `1e-4` · 12에폭 · AdamW8bit) | 있다 |
 | 학습 실측 | 같은 문서 §5 (1200스텝 24분 · VRAM 97%) | 있다 |
 
 **이 두 문서가 22GB를 지울 수 있는 근거다.** 그래서 환경이 사라져도 지우지 않는다.

@@ -10,6 +10,9 @@
 
 ---
 
+### 2D 생성 경로 정리 (2026-09-28)
+
+- **F59** 아트 생성·리깅 툴체인 리스크·자동화 → **완료(소멸)**(`feat/blender-3d-gate` 리워크, 2026-09-28). 두 축이 다 사라졌다 — ① 리깅 도구는 플레이어가 3D 층 굽기로 옮겨 가 쓸 곳이 없고(`../design/spec/art-direction.md` §3.2), ② 2D 자동화(fal.ai API 호출 · 매팅 · 크로스머신 분리)는 2D 생성 경로의 이력을 걷어 내며 코드(`tools/art/FalMatting.ts` · `judge.ts`)와 문서째 지웠다. 남은 결정(핸드오프 방식 · 동기화 수단)은 적 생성 슬라이스가 계획을 쓸 때 다시 정한다. 경위는 [`sessions/2026-09-28-2d-generation-history-removal.md`](sessions/2026-09-28-2d-generation-history-removal.md).
 
 ### 입력 · 포커스
 
@@ -42,6 +45,8 @@
 - **F93** 6단계 절차 1번(QA 체크박스 + 통과 근거)을 기계가 안 본다 → **완료**(`feat/docs-hygiene`, 2026-08-19). `workflow.mjs`가 `pass review` 앞에서 자동 검증 절을 잰다 — 절 안에 미체크가 남거나 통과 근거가 없으면 막는다. **절 판정은 접두어 `^## (\d+\. )?자동`이다** — 완전 일치는 55개 중 3개만 잡고, 계획 초판이 제안했던 새 문자열은 2개만 잡아 가장 최근 문서부터 검사에서 빠졌다(접두어는 46개). 레포 전체 스윕은 **절 안의 미체크만** 보고 통과 근거는 현재 슬라이스 문서에만 요구한다 — 근거 줄이 없는 문서가 15개라 레포 전체에 걸면 과거 시점 기록을 소급 수정해야 하고 그것은 `spec/docs-references.md` §9가 금지한다. **그래서 레거시 예외 목록이 없다.** 통과 근거는 날짜 + 피처 N/N + 전체 M/M까지만 요구한다 — verification 시점에는 Draft PR이 없어 PR 번호를 못 적는다. `wf skip-test` 슬라이스를 위해 `스킵 — <사유>` 탈출구를 뒀고, rework 2회차가 1회차 근거로 통과하지 않도록 검증 시작 시점의 문서 지문을 상태에 남긴다. 함께 닫은 것 둘 — **`.git-blame-ignore-revs` 생성**(`feat/eol-policy` 계획 §8 이월분. 무시 대상 커밋이 새로 만든 파일의 blame은 그 커밋에 그대로 귀속되는 것을 실험으로 확인했다)과 **`wf start` 기준점 가드**(브랜치가 이미 있으면 그 자리가 어디든 전환하던 경로. 이 슬라이스를 계획하는 중에 실제로 나서 계획이 낡은 트리 위에 섰다). → `sessions/2026-08-18-docs-hygiene-plan.md`, `../qa/docs-hygiene-test.md`, `../qa/docs-hygiene-review-issues.md`
 - **F92** `check-qa`가 산문과 미확정 표시를 형태로 못 가른다 → **완료**(`feat/docs-hygiene`, 2026-08-19). 판정 전에 코드 펜스·인라인 스팬을 덮는다. **처방이 계획 초판과 달라졌다** — 스팬을 지우는 것은 `blankFences`가 아니라 `blankInlineCode`인데 그 함수가 export되어 있지 않았다. 둘의 조합을 `scrubCode`로 뽑아 내보내고 `extractLinks`도 그것을 쓴다. 판정 로직은 `tests/helpers/QaDoc.ts` 한 벌이고 CLI는 import하지 않고 문서 경로만 `WF_QA_DOC`으로 넘겨 vitest를 띄운다(`.mjs`가 `.ts`를 못 읽는다 — `F78`이 실측으로 접은 배관이고 `wf check-links`가 세운 형태다). → `../qa/docs-hygiene-test.md` §7이 그 실험이다 — 미확정 태그를 코드 스팬으로 일부러 적어 두고 게이트가 안 무는 것을 확인한다
 
+- **F107** `.gstack/` 산출물이 `pnpm check`를 빨갛게 만든다 → **완료**(`feat/blender-3d-gate`, 2026-09-17). biome 검사 대상에서 `.gstack/`과 `docs/temp/`를 뺐다(`biome.json`의 `files.includes`). 행을 적을 때는 `.gstack/`의 JSON 둘뿐이었는데, 2라운드에서 장비 · 외곽선 · 고도 실행기가 `docs/temp/3d-gate/` 아래에 사양 · 수치 JSON을 남기면서 오류가 134건으로 불었고 그중 132건이 그쪽이었다. 둘 다 `.gitignore`에 든 산출물이라 형식을 맞출 이유가 없다 — 검사망 안에 둬야 했던 도구(`hitbox-viewer.html`, F63)와 달리 사람이 고치는 파일이 아니고 스크립트가 매번 다시 쓴다. 제외하지 않으면 검증 단계의 `wf pass lint`가 같은 명령을 보고 그 자리에서 막힌다. 정보 수준 29건(`hitbox-viewer.html`의 `useTemplate`)은 종료 코드에 영향이 없어 그대로다.
+
 ### 렌더 구조 · 일시정지 정합성
 
 - **H1** UI 항상-위 렌더 — UI 카메라 + 레이어 분리 → **완료**(`card-layer-fix`, PR #35). 레벨업 카드 패널 위로 적·플레이어가 겹쳐 보이던 문제. **근본 원인:** 단일 Canvas + 단일 카메라 구조라 2D 렌더 순서가 Canvas 자식 배열 순서로 정해지는데, 적이 런타임 `addChild`로 항상 배열 맨 뒤(=위)에 붙었다. 그래서 에디터에서 패널을 마지막 자식으로 옮기는 것만으론 안 고쳐진다. 게임/UI를 **두 Canvas**로 분리해 닫았다(단일 Canvas + 2카메라 시도는 게임 월드가 UICamera에서 컬링돼 폐기). → `sessions/2026-06-17-card-layer-fix-plan.md`
@@ -70,8 +75,12 @@
 
 ### 로컬 생성 환경 철거 (2026-08-23)
 
-- **F70** 로컬 생성 환경(`F:\ai` 약 22GB) 철거 → **완료**(`chore/f70-local-ai-teardown`, 2026-08-23). 유료 전환은 2026-08-06에 확정됐는데 **후처리 도구가 지울 폴더 안에 살아서** 1년 가까이 못 지우고 있었다 — `rembg`가 ComfyUI venv 안이고 실측 스크립트가 그 venv의 Pillow·numpy에 걸려 있었다. `feat/ai-matting`(#89)이 후처리를 통째로 레포 안 TypeScript로 옮기면서 그 매듭이 풀렸고, 파이썬 의존이 0이 돼 별도 venv를 세우는 A안·B안 선택 자체가 없어졌다. 조건부로 남기기로 했던 `u2net.onnx` 167.8MB도 함께 지웠다. 대피본 0.24GB(생성 이미지 124장·확정 씨앗 40파일·LoRA 최종본·드라이버 16개)를 **지울 폴더 바깥**인 `F:\ai-archive`로 옮긴 뒤 하위 항목을 이름으로 지목해 지웠다 — 조사 문서가 목적지를 `F:\ai\archive`, 즉 지울 폴더 안쪽으로 잡고 있어서 그대로 했으면 방금 대피시킨 것을 함께 지웠다. F: 여유 63GB → 83.4GB. 복구 근거인 `comfyui-setup.md`·`kohya-setup.md`는 남긴다. 실행 체크리스트와 결과는 [`sessions/2026-08-23-local-ai-teardown.md`](sessions/2026-08-23-local-ai-teardown.md).
+- **F70** 로컬 생성 환경(`F:\ai` 약 22GB) 철거 → **완료**(`chore/f70-local-ai-teardown`, 2026-08-23). 유료 전환은 2026-08-06에 확정됐는데 **후처리 도구가 지울 폴더 안에 살아서** 1년 가까이 못 지우고 있었다 — `rembg`가 ComfyUI venv 안이고 실측 스크립트가 그 venv의 Pillow·numpy에 걸려 있었다. `feat/ai-matting`(#89)이 후처리를 통째로 레포 안 TypeScript로 옮기면서 그 매듭이 풀렸고, 파이썬 의존이 0이 돼 별도 venv를 세우는 A안·B안 선택 자체가 없어졌다. 조건부로 남기기로 했던 `u2net.onnx` 167.8MB도 함께 지웠다. 대피본 0.24GB(생성 이미지 124장·확정 씨앗 40파일·LoRA 최종본·드라이버 16개)를 **지울 폴더 바깥**인 `F:\ai-archive`로 옮긴 뒤 하위 항목을 이름으로 지목해 지웠다 — 조사 문서가 목적지를 `F:\ai\archive`, 즉 지울 폴더 안쪽으로 잡고 있어서 그대로 했으면 방금 대피시킨 것을 함께 지웠다. F: 여유 63GB → 83.4GB. 복구 근거로 남겼던 `comfyui-setup.md`·`kohya-setup.md`는 2026-09-28에 2D 생성 경로를 정리하며 지웠다. 실행 체크리스트와 결과는 [`sessions/2026-08-23-local-ai-teardown.md`](sessions/2026-08-23-local-ai-teardown.md).
 
 ### 라이선스 감사 (2026-08-20)
 
 - **F68** 채택 생성 서비스·모델의 상업 이용 조건 확인 → **완료**(`feat/license-audit`, 2026-08-20). 확인 결과가 새 정본 [`spec/ops-licensing.md`](spec/ops-licensing.md)로 갔다. 물었던 셋 중 ①상업 이용은 허용(fal 모델 페이지의 `Commercial use via fal Partner agreement`), ③다른 모델 학습 제한은 실재(fal 약관 §14)로 확인됐고, ②워터마크는 예상과 달랐다 — fal이 **모든 출력에 C2PA 서명과 비가시 워터마크를 넣고** 있으며 레포의 생성 원본 넉 장에서 서명 청크가 실측됐다. 범위도 넓어졌다. 최종 PNG에 손댄 도구가 생성 모델만이 아니어서 rembg·Spine·Cocos·상점 고지까지 함께 가렸고, 거기서 실제 위험 하나가 나왔다(rembg의 기본 모델이 2026-08-17부터 상업 유료 계약을 요구하는 것으로 바뀌었다 — 정본 §2.1). 경위는 [`sessions/2026-08-20-license-audit-plan.md`](sessions/2026-08-20-license-audit-plan.md).
+
+### 플레이어 3D 층 전환 (2026-09-30)
+
+- **F101** 씬·프리팹이 안 쓰는 아트 자산 정리 → **완료**(`feat/blender-3d-gate`, PR #92, 2026-09-30). 브릿지 스프라이트 · 분리 지팡이 · 2D 네 장을 층 아틀라스로 대체하며 지웠고, 2D 생성 원본은 `cloud-storage/art/evidence/`로 옮겼다. → [`sessions/2026-09-15-blender-3d-gate-round2-g5-game.md`](sessions/2026-09-15-blender-3d-gate-round2-g5-game.md)

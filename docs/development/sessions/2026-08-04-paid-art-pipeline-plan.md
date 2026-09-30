@@ -2,8 +2,8 @@
 
 - **작성일:** 2026-08-04
 - **브랜치:** design/art-decision-audit
-- **성격:** 로컬 생성(ComfyUI + SDXL + 스타일 LoRA)에서 유료 서비스로 옮기는 것을 검토한 기록과, 그 판단을 닫기 위한 시험 절차. 여기서 설계한 §8 판정을 통과해 전환이 확정됐고(2026-08-06·08-07), **결정은 [ADR 008](../../decisions/008-paid-art-generation.md)이 든다.** 이 문서는 그 결정에 이른 검토와, §12의 철거 절차를 남긴다.
-- **관련:** [`2026-08-04-art-decision-audit.md`](2026-08-04-art-decision-audit.md) D2·D3·D4·D10, 백로그 [F62](../backlog.md), [`../comfyui-setup.md`](../comfyui-setup.md), [`../kohya-setup.md`](../kohya-setup.md), [`../../design/spec/art-direction.md`](../../design/spec/art-direction.md) §6·§8
+- **성격:** 로컬 생성(ComfyUI + SDXL + 스타일 LoRA)에서 유료 서비스로 옮기는 것을 검토한 기록과, 그 판단을 닫기 위한 시험 절차. 여기서 설계한 §8 판정을 통과해 전환이 확정됐고(2026-08-06·08-07), **결정은 ADR 008(2026-09-28 삭제)이 든다.** 이 문서는 그 결정에 이른 검토와, §12의 철거 절차를 남긴다.
+- **관련:** [`2026-08-04-art-decision-audit.md`](2026-08-04-art-decision-audit.md) D2·D3·D4·D10, 백로그 [F62](../backlog.md), `../comfyui-setup.md`(2026-09-28 삭제), `../kohya-setup.md`(2026-09-28 삭제), [`../../design/spec/art-direction.md`](../../design/spec/art-direction.md) §6·§8
 
 ---
 
@@ -68,7 +68,7 @@ art-direction 부록 C는 **로컬 체크포인트**의 라이선스를 가려 �
 >
 > **그리고 §6("작업은 웹에서 한다")의 판단은 예상보다 강하게 옳았다.** fal.ai에는 [Sandbox](https://fal.ai/sandbox)가 있어 **같은 프롬프트를 여러 모델에 한 번에 돌려 결과·비용·소요 시간을 나란히 비교**할 수 있다. §5가 "어느 모델이 이 케이스에서 되는지 아직 모르는 상태"를 플랫폼 선택의 첫째 이유로 들었는데, 그 비교가 화면 하나에서 끝난다. 단계마다 모델을 하나씩 지정하는 위 표의 형식 자체가 실제 도구와 안 맞는다 — 단계마다 **후보 셋을 함께 돌리는** 것이 맞다.
 >
-> 확인된 엔드포인트·칸·가격·Sandbox 사용법의 정본은 [`../../design/spec/art-generation-playbook.md`](../../design/spec/art-generation-playbook.md) §1.1~§1.2이다. **이 절은 시점 기록으로 보존한다** — 무엇을 가설로 세웠고 실측이 어디를 뒤집었는지가 남아야 다음 판단에서 같은 근거를 다시 안 쓴다.
+> 확인된 엔드포인트·칸·가격·Sandbox 사용법의 정본은 `../../design/spec/art-generation-playbook.md`(2026-09-28 삭제) §1.1~§1.2이다. **이 절은 시점 기록으로 보존한다** — 무엇을 가설로 세웠고 실측이 어디를 뒤집었는지가 남아야 다음 판단에서 같은 근거를 다시 안 쓴다.
 
 한 모델로 전부 하지 않는다. 단계마다 강한 모델이 다르다.
 
@@ -216,8 +216,8 @@ visible. Same scale and same ground line across all four views. Plain gray backg
 
 | 대상 | 크기 | 되돌리는 법 |
 |---|---|---|
-| `F:\ai\ComfyUI\` 전체 | 12.7GB | 본체·venv는 [comfyui-setup §3](../comfyui-setup.md), 체크포인트(`sd_xl_base_1.0.safetensors` 6.5GB)는 §4의 `curl` 한 줄. 같은 파일인지는 SHA256 `31E3…7E5B`로 확인한다 |
-| `F:\ai\sd-scripts\` 전체 | 5.1GB | [kohya-setup §2](../kohya-setup.md). 대부분(5.0GB)이 학습용 venv다 |
+| `F:\ai\ComfyUI\` 전체 | 12.7GB | 본체·venv는 comfyui-setup §3(2026-09-28 삭제), 체크포인트(`sd_xl_base_1.0.safetensors` 6.5GB)는 §4의 `curl` 한 줄. 같은 파일인지는 SHA256 `31E3…7E5B`로 확인한다 |
+| `F:\ai\sd-scripts\` 전체 | 5.1GB | kohya-setup §2(2026-09-28 삭제). 대부분(5.0GB)이 학습용 venv다 |
 | `F:\ai\cache\` | 3.1GB | 되돌릴 것이 없다 — pip·HuggingFace·torch 설치 캐시이고, comfyui-setup §2.1이 이미 "설치가 끝나면 지워도 되는 임시 산출물"로 적어 뒀다 |
 | LoRA 중간 에폭 9개 + 텐서보드 로그 | 0.4GB | 81.5MB짜리 에폭 체크포인트가 `models\loras`와 `train\model` 두 곳에 흩어져 10개 있다. 최종본 하나만 남기고 나머지를 지운다. 재학습은 kohya-setup §5의 인자 그대로 1200스텝 24분 |
 
@@ -237,4 +237,4 @@ visible. Same scale and same ground line across all four views. Plain gray backg
 - 레포에 **텍스트 재현 기록이 커밋돼 있는지**(워크플로 JSON·시드·체크포인트 해시·학습 인자). comfyui-setup §6과 kohya-setup §5가 정한 규약대로면 모델 바이너리를 지워도 절차는 레포에 남는다 — 이 규약이 지켜졌기 때문에 21GB를 지울 수 있는 것이다.
 - 셋업 문서 두 개(comfyui-setup·kohya-setup)를 지우지 않는다. 환경은 사라져도 **절차 기록은 남긴다** — 폴백으로 돌아올 때 그대로 다시 세운다.
 
-**결정은 [ADR 008](../../decisions/008-paid-art-generation.md)로 갔고 이 절은 여기 남는다** — ADR이 드는 것은 왜 옮겼는가이고, 21GB를 어떤 순서로 정리하는가는 절차라서 성격이 다르다. 실행은 백로그 **F70**이 잡고 있으며 그 항목이 이 절을 가리킨다.
+**결정은 ADR 008(2026-09-28 삭제)로 갔고 이 절은 여기 남는다** — ADR이 드는 것은 왜 옮겼는가이고, 21GB를 어떤 순서로 정리하는가는 절차라서 성격이 다르다. 실행은 백로그 **F70**이 잡고 있으며 그 항목이 이 절을 가리킨다.

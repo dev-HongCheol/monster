@@ -31,6 +31,8 @@
 *.woff2 binary
 *.skel binary
 *.spine binary
+*.vrm binary
+*.glb binary
 *.psd binary
 *.aseprite binary
 *.mp4 binary

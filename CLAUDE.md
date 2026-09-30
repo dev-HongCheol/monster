@@ -28,14 +28,7 @@ docs/
 
 ### 주요 결정 기록 (ADR)
 
-- [ADR 001: Cocos Creator 버전 선택](docs/decisions/001-cocos-version.md)
-- [ADR 002: scripts/logic/ 분리 패턴](docs/decisions/002-scripts-logic-pattern.md)
-- [ADR 003: 테스트 전략](docs/decisions/003-testing-strategy.md)
-- [ADR 004: 워크플로우 상태 머신](docs/decisions/004-workflow-state-machine.md)
-- [ADR 005: i18n 방식 — 자체 경량 t()](docs/decisions/005-i18n-approach.md)
-- [ADR 006: 충돌 히트박스 — 플레이어 사각형 / 적 원](docs/decisions/006-collision-hitbox.md)
-- [ADR 007: 스킨은 판정에 영향을 주지 않는다](docs/decisions/007-skin-hitbox-independence.md)
-- [ADR 008: AI 이미지 생성은 유료 서비스에서 한다](docs/decisions/008-paid-art-generation.md)
+ADR 층은 폐지 예정이다(2026-09-28, 백로그 F75) — **새 ADR을 쓰지 않는다.** 결정은 세션 문서(왜)와 정본의 절 · 이력 줄(지금)에 적는다. 남은 ADR 일곱과 접을 자리는 [`docs/decisions/README.md`](docs/decisions/README.md)가 든다.
 
 > 세션 작업 문서(design doc, plan 등)는 `docs/development/sessions/`에 보관되며 CLAUDE.md에서 별도 관리하지 않는다.
 
@@ -47,6 +40,7 @@ docs/
 - 5개 이상 파일 동시 수정 시 먼저 계획 공유
 - 씬 파일(.scene), 프리팹(.prefab), 아트 에셋 삭제
 - API 키, 크레덴셜 커밋
+- **v2 유료 아이템의 사양·코드·결과물을 공개 레포에 커밋** — 시작 전 공개 여부 확인(백로그 F109)
 
 ### 행동 규칙
 - 같은 문제 3번 실패 시 → STOP, 상황 보고 후 대기
@@ -72,17 +66,17 @@ docs/
 | 코드를 어떻게 쓰나 | `docs/development/spec/code-conventions.md` — **코드 작성 전 항상 읽는다** |
 | 문서를 어떻게 쓰나 | `docs/development/spec/docs-writing-style.md` — **문서 작성 전 항상 읽는다** |
 | 문서끼리 어떻게 참조하나 | `docs/development/spec/docs-references.md` — 층·링크 방향·순환 참조·절 번호·과거 기록 불수정·이력. **문서 작성 전 항상 읽는다** |
-| 그 밖의 개발 정본 — 용어·판정·빌드·환경·검색 | `docs/development/spec/README.md`가 목록. 안 옮긴 것은 로컬 환경 복구 매뉴얼 둘 |
+| 그 밖의 개발 정본 — 용어·판정·빌드·환경·검색 | `docs/development/spec/README.md`가 목록 |
 | 지금 단계에서 뭘 하나 | `docs/development/workflow/<phase>.md` — **절차의 정본.** `pnpm wf` 전이가 배달하고 `pnpm wf steps`로 다시 본다 |
 | 게임을 어떻게 만드나 | `docs/planning/` — 게임 디자인·컨셉·로드맵 |
-| 무엇을 왜 그리나, 몇 px로 뽑나, 어떤 프롬프트로 만드나 | `docs/design/spec/README.md`가 목록 — 아트 정본 셋이 각각 방향·규격·생성 실행을 든다 |
+| 무엇을 왜 그리나, 몇 px로 뽑나 | `docs/design/spec/README.md`가 목록 — 아트 정본 둘이 방향·규격을 든다 |
 | 다음에 뭘 하나 | `docs/development/backlog.md`(게임) + `backlog-implement.md`(코드) + `backlog-docs.md`(문서) |
 | 그 결정이 어느 슬라이스에서 났나 | `backlog-archive.md`·`backlog-implement-archive.md` — 세션 문서로 가는 실질 인덱스 |
 | 이 에러를 어떻게 고치나 | `docs/development/troubleshooting/` |
 | 그때 왜 그렇게 정했나 | `docs/development/sessions/`, `docs/decisions/` — **시점 기록이지 현재 명세가 아니다** |
 
 - `docs/development/sessions/` — 시스템별 설계 근거는 ADR이 아니라 대개 여기 `*-plan.md`에 있다. "지금 어떻게 되어 있나"는 위 정본에 묻고, 여기는 **왜 그렇게 됐나**를 되짚을 때만 연다. 뒤집힌 내용이 그대로 남아 있어도 정상이며 표시를 달지 않는다(`docs-references.md` §9). 파일명이 날짜로 시작하므로 정본 이력 줄의 날짜로 찾아 들어간다 — 정본은 여기로 링크하지 않는다
-- `docs/decisions/` — ADR. 횡단 규칙·플랫폼·프로세스 결정 위주다. 세션 문서와 같은 **결정 기록**이고 수명만 더 길다 — 결정이 뒤집혀도 기존 ADR을 고치지 않고, 새 ADR을 쓴 뒤 거기에 무엇을 반전시켰는지 적는다(ADR 006이 2026-07-22 결정을 그렇게 뒤집었다)
+- `docs/decisions/` — ADR. 횡단 규칙·플랫폼·프로세스 결정 위주다. 세션 문서와 같은 **결정 기록**이고 폐지 예정이다(F75) — 기존 ADR을 고치지 않고 새 ADR도 쓰지 않는다. 결정이 뒤집히면 정본 이력 줄에 무엇을 반전시켰는지와 세션 문서의 날짜를 적는다(링크는 걸지 않는다 — `docs-references.md` §2 · §11)
 - `docs/qa/` — 슬라이스별 시점 기록이라 코드와 어긋나면 코드 기준
 - **백로그 3분할** — 슬라이스를 가로지르는 차기 TODO의 정본. `backlog.md`=게임(콘텐츠·밸런스·게임필·UI/UX), `backlog-implement.md`=코드(아키텍처·리팩터·타입·성능), `backlog-docs.md`=문서(정본 구조·문서 규칙·검사 도구·색인). **항목 ID(`F27`·`G1`·`B2`)는 영구하며 파일이 갈려도 따라간다 — 재번호 금지.** 운영 규칙·상태 어휘의 정본은 `backlog.md` 머리말. **슬라이스 시작 조회에는 아카이브를 열지 않는다** — 그때 필요한 것은 열린 항목뿐이다
 
@@ -90,7 +84,7 @@ docs/
 
 지식 추가 기준:
 - **이번 슬라이스가 바꾼 명세** → 위 표의 해당 정본을 고친다(없으면 만든다). 세션·ADR에만 적으면 다음 사람이 시점 기록을 명세로 읽는다
-- 주요 기술/설계 결정 → `docs/decisions/NNN-title.md` ADR로 작성
+- 주요 기술/설계 결정 → 세션 문서에 「왜」를, 정본의 해당 절과 이력 줄에 「지금」을 적는다(새 ADR은 쓰지 않는다, F75)
 - 개발 세션 기록 → `docs/development/sessions/YYYY-MM-DD-topic.md`
 - 재발하는 운영/도구 이슈 + 복구 절차 → `docs/development/troubleshooting/<topic>.md` (세션 기록 아님 — 에러 발생 시 찾아보는 레퍼런스)
 - 새 기획/디자인 문서 → gstack 스킬로 정리 후 해당 폴더에 저장
@@ -168,7 +162,7 @@ planning → qa-setup → implementation → verification → user-verification 
 
 ### 문서/설계 작업 (코드 없음)
 
-`/office-hours` 또는 `/plan-ceo-review`로 방향을 검토하고, 결과물을 해당 `docs/` 하위 폴더에 저장한다. 주요 결정은 `docs/decisions/` ADR로 기록한다.
+`/office-hours` 또는 `/plan-ceo-review`로 방향을 검토하고, 결과물을 해당 `docs/` 하위 폴더에 저장한다. 주요 결정은 세션 문서와 정본 이력 줄에 기록한다(새 ADR은 쓰지 않는다).
 
 이 경로는 `wf` phase를 안 거치므로 절차 문서가 배달되지 않는다. PR을 올리기 전 문서 정리는 `docs/development/workflow/user-verification.md` §1을 직접 열어 훑는다.
 
