@@ -155,7 +155,7 @@
 
 ## 2. 배달되는 절차 문서
 
-### `workflow/verification.md` — 전문을 다시 쓴다 (3,530자 → 3,425자)
+### `workflow/verification.md` — 전문을 다시 쓴다 (3,530자 → 3,439자)
 
 ````text
 # verification — AI 검증
@@ -171,7 +171,7 @@
 자주 빠뜨리는 단계라 앞에 둔다. **`pass`가 막는다** — 아래 1·2를 안 하면 검증이 다 차도 전이가 안 된다. `skip-qa`가 유효한 슬라이스는 이 절을 건너뛴다.
 
 1. `docs/qa/<feature>-test.md`의 `## N. 자동 …` 절 항목을 `[ ]`에서 `[x]`로 바꾸고, 절 머리에 통과 근거를 적는다(날짜, 피처 테스트 N/N, 전체 스위트 M/M). 자동 검사가 없는 슬라이스는 `스킵 — <사유>`. PR 번호는 여기서 안 적는다 — Draft PR은 다음 phase에서 만든다.
-2. 프리팹·씬·에디터 연결 섹션을 **실제 구현된 컴포넌트**(`@property` 이름·노드·부모)에 맞춰 확정하고 `(잠정 …)`·`(가칭 …)` 태그를 `(확정)`으로 바꾼다. 문서와 코드가 어긋나면 코드가 기준이다 — 코드가 정본이고 QA 문서가 그 거울이다.
+2. 프리팹·씬·에디터 연결 섹션을 **실제 구현된 컴포넌트**(`@property` 이름·노드·부모)에 맞춰 확정하고 `(잠정 …)`·`(가칭 …)` 태그를 `(확정)`으로 바꾼다. 문서와 코드가 어긋나면 코드가 기준이다.
 
 태그가 남아 있으면 전이가 막힌다. `pnpm wf check-qa`로 미리 확인할 수 있다.
 
@@ -197,6 +197,8 @@
 
 `invalidate`나 리워크 뒤의 재점검은 **바뀐 부분만** 본다 — 그때 출력되는 `/cso --diff --base <직전 통과 커밋>`을 쓴다.
 
+게임 코드는 지금 결제·로그인·서버·외부 연동이 없어서 `/cso` 대상이 아니다. 구매 확인이나 Steam 연동 같은 코드가 들어오면 그 경로를 `CSO_PATHS`에 더한다.
+
 ## 커밋
 
 기능 단위로 나눠 순차 커밋한다. husky가 staged 파일에 `biome check --write`를 자동 실행한다. 새 문서로 가는 링크는 그 문서를 `git add`한 뒤에야 링크 검사를 통과한다.
@@ -216,7 +218,7 @@
 
 ## 마무리
 
-`superpowers:verification-before-completion`을 호출한다. `pass review`의 통합 검사가 통과하면 phase가 `user-verification`으로 넘어간다.
+`superpowers:verification-before-completion`을 호출한다.
 
 게임 코드를 바꾼 슬라이스는 **Cocos Creator로 프로젝트를 한 번이라도 연 머신에서** 검증한다. 안 열었으면 타입 검사 범위가 `logic-only`로 기록되고 `approve-pr`이 차단한다 — Cocos로 한 번 연 뒤 `pnpm wf rework` → `pnpm wf start-verification`.
 ````
