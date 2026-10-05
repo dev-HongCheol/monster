@@ -6,7 +6,7 @@
 - **고칠 정본:** `workflow/verification.md` · `workflow/qa-setup.md` · `workflow/implementation.md` · `workflow/user-verification.md` · `workflow/README.md` · `CLAUDE.md` 「Workflow」 절과 「에셋 `.meta` 관리 규칙」 절
 - **닫는 백로그:** F78(두 벌인 판정 코드), F95(배달되는 절차 문서의 글자 수를 재는 검사가 없다). F10은 닫지 않고 새로 확인한 사실을 행에 더한다
 - **입력:** 요구사항과 제약 [`2026-09-16-workflow-tooling-diet-brief.md`](../development/sessions/2026-09-16-workflow-tooling-diet-brief.md) · 설계 [`2026-10-05-workflow-diet-design-draft.md`](2026-10-05-workflow-diet-design-draft.md)
-- **바탕:** 2026-09-17에 리뷰를 마친 옛 계획(이 브랜치의 커밋 `211ae71`). 이 초안은 그 계획에 설계 문서의 수정 M1~M18을 반영해 처음부터 다시 쓴 것이다. 설계 문서 끝의 「Reviewer Concerns」에 남은 지적 열둘(R3-1~R3-12)도 이 초안에는 반영했다
+- **바탕:** 2026-09-17에 리뷰를 마친 옛 계획(이 브랜치의 커밋 `211ae71`). 이 초안은 그 계획에 설계 문서의 수정 M1~M19를 반영해 처음부터 다시 쓴 것이다. 설계 문서 끝의 「Reviewer Concerns」에 남은 지적 열둘(R3-1~R3-12)도 이 초안에는 반영했다
 
 ---
 
@@ -130,6 +130,7 @@ git을 띄우는 `spawnSync`에는 모두 `maxBuffer: 64 * 1024 * 1024`를 준�
 | `QA_PATHS` | `game/**` | 게임 동작을 바꿀 수 있어 사용자가 인게임에서 확인할 목록이 필요한 파일 |
 
 - `CSO_PATHS`에서 `tests/logic/**`를 빼는 것은 예외다. 테스트도 개발 장비에서 실행되는 코드지만, 넣으면 모든 슬라이스가 만드는 피처 테스트 때문에 `/cso` 해당 없음이 한 번도 나오지 않는다(2026-09-17 결정). 그 대신 프로세스를 띄우는 테스트 코드는 `tests/helpers/`에 둔다. 이 약속을 테스트 하나로 지킨다. 「`tests/logic/` 아래 파일은 `node:child_process`를 import하지 않는다」다. 지금 직접 띄우는 세 파일은 W5에서 고친다. 이 예외와 이유를 `CSO_PATHS` 위 주석에 함께 적는다.
+- `CSO_PATHS`에 게임 코드(`game/**`)가 없는 것도 조건이 붙은 예외다. 지금 게임에는 결제·로그인·서버·외부 연동이 없어서, 게임 코드가 바뀌어도 `/cso`가 찾는 위험(개발 장비에서 명령이 실행되거나 비밀값이 밖으로 나가는 것)이 생기지 않는다. 그런데 v2는 Steam 유료 출시와 스킨 판매를 계획한다(백로그 F61). 구매 확인이나 Steam 연동 코드가 게임에 들어오면 「사지 않은 스킨이 풀린다」「저장 파일을 고쳐 유료 아이템을 얻는다」 같은 위험이 게임 코드 안에 생기는데, 그 경로가 `CSO_PATHS` 밖이면 그 코드는 보안 점검 없이 머지된다. 그래서 이 조건과 「그런 코드가 들어오면 그 경로를 `CSO_PATHS`에 더한다」를 `CSO_PATHS` 위 주석과 `verification.md`의 `/cso` 적용 문장 옆에 함께 적는다. 같은 할 일을 F61 행에도 적어, v2 작업을 여는 사람이 백로그에서 보게 한다.
 - `QA_PATHS`를 `META_PATHS`보다 넓게 잡는 이유는, 화면 크기나 물리 설정이 든 `game/settings/` 아래 파일만 고쳐도 게임 동작이 바뀌기 때문이다.
 
 - `FULL_TYPECHECK_PATHS`를 `game/**` 전체로 두지 않는다. `game/assets/`에는 그림과 `.meta`가 많아서, 그렇게 두면 그림만 바꿔도 게임 전체 타입 검사 의무가 생긴다. TypeScript는 폴더가 아니라 확장자로 잡는다. 지금 `.ts`는 `game/assets/scripts/` 밖에 없지만(2026-10-05 확인), 나중에 다른 폴더에 생겨도 걸려야 하기 때문이다.
