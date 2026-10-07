@@ -15,7 +15,10 @@
  * - `--outputFile`이 없는 `exec vitest run …`(QA 문서 판정이 이 모양으로 부른다): 항상 성공.
  * - 환경변수 `WF_SHIM_FAIL=vitest`: `--outputFile`이 있는 호출(통합 검사)에만 실패 결과와 실패 종료
  *   코드를 낸다. 그래야 「넘기기 직전 검사에서 실패하면 넘어가지 않는다」는 테스트가 QA 판정이 아니라
- *   통합 검사에서 막히는 것을 확인할 수 있다. 이 변수는 이 파일만 읽는다.
+ *   통합 검사에서 막히는 것을 확인할 수 있다.
+ * - 환경변수 `WF_SHIM_FAIL=biome-format`: `exec biome check`만 형식 차이 출력과 실패 종료 코드를 내고
+ *   `exec biome lint`는 성공한다. 통합 검사는 이 조합을 「형식 차이만 있다」로 읽는다.
+ * - `WF_SHIM_FAIL`은 이 파일만 읽는다.
  * - 그 밖의 호출: 종료 코드 2. 지원하지 않는 명령이 조용히 성공하면 도구의 버그가 테스트에서 가려진다.
  */
 
@@ -53,7 +56,15 @@ function passingResult() {
     numTodoTests: 0,
     startTime: Date.now(),
     success: true,
-    testResults: [],
+    // `verify.mjs`는 파일 수를 이 배열의 길이로 센다(`numTotalTestSuites`는 describe까지 센다).
+    testResults: [
+      {
+        name: 'tests/logic/FakeShim.test.ts',
+        status: 'passed',
+        message: '',
+        assertionResults: [],
+      },
+    ],
   };
 }
 
@@ -86,6 +97,9 @@ function failingResult() {
 if (sub !== 'exec') {
   process.stderr.write(`fake pnpm: 지원하지 않는 호출이다: pnpm ${args.join(' ')}\n`);
   process.exit(2);
+} else if (tool === 'biome' && rest[0] === 'check' && process.env.WF_SHIM_FAIL === 'biome-format') {
+  process.stdout.write('  i The following files need to be formatted:\n  \n  - x.ts\n');
+  process.exit(1);
 } else if (tool === 'tsc' || tool === 'biome') {
   process.exit(0);
 } else if (tool === 'vitest') {
