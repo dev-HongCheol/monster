@@ -8,7 +8,14 @@
  * vitest가 돌지 않는다.
  */
 
-import { applicableGates, CSO_DIFF_COMMAND } from './change-set.mjs';
+import {
+  applicableGates,
+  CSO_DIFF_COMMAND,
+  CSO_PATHS,
+  FULL_TYPECHECK_PATHS,
+  META_PATHS,
+  QA_PATHS,
+} from './change-set.mjs';
 
 /** @typedef {import('./change-set.mjs').ChangeSet} ChangeSet */
 /** @typedef {import('./change-set.mjs').Gates} Gates */
@@ -296,4 +303,123 @@ export function decideTransition(input) {
     ],
     record,
   );
+}
+
+/**
+ * `approve-pr`이 `pr-ready`로 넘길지 판정한다. 타입 검사와 `.meta` 검사는 호출자가 머지 직전에 실제로
+ * 돌리고, 이 함수는 그 결과와 적용 판정만 받아 답한다.
+ *
+ * - 타입 검사가 실패하면 적용 판정과 상관없이 막는다.
+ * - 게임 전체 타입 검사(`fullTypecheck`)가 적용이면 범위가 `full`이어야 한다. Cocos를 한 번도 안 연
+ *   장비에는 `game/temp/`가 없어 게임 프로젝트를 검사할 수 없는데, 그 상태를 통과시키면 「Cocos 안 깐
+ *   장비 = 타입 게이트 프리패스」가 된다. 해당 없으면 `logic-only`여도 통과시킨다.
+ * - `.meta` 검사(`meta`)가 적용이면 git에 올리지 않은 `.meta`가 하나라도 있으면 막는다. 해당 없으면
+ *   호출자가 검사하지 않고 `missingMeta`를 null로 넘긴다 — main에 이 슬라이스와 무관한 누락이 있어도
+ *   도구 슬라이스가 막히지 않게 하려는 것이다.
+ * - 변경 집합을 구할 수 없으면 `applicableGates`가 모두 적용으로 돌려주므로 두 검사를 모두 한다.
+ *
+ * 복구 경로는 모두 `rework`다. 이 phase에서는 훅이 게임 스크립트 편집을 막고, `invalidate`는
+ * `verification`에서만 되므로 그것을 안내하면 막다른 길이 된다.
+ *
+ * @param {object} input
+ * @param {{ meta: { applies: boolean }, fullTypecheck: { applies: boolean } }} input.gates
+ * @param {'full' | 'logic-only' | null} input.tsScope 머지 직전 타입 검사가 실제로 본 범위
+ * @param {number | null} input.tsStatus 머지 직전 타입 검사의 종료 코드(0 = 통과)
+ * @param {{ error: string | null, missing: string[] } | null} input.missingMeta `.meta` 검사 결과.
+ *   검사하지 않았으면 null
+ * @returns {{ ok: boolean, reasons: string[] }}
+ */
+export function approvePrDecision({ gates, tsScope, tsStatus, missingMeta }) {
+  /** @type {string[]} */
+  const reasons = [];
+  if (tsStatus !== 0) {
+    reasons.push(
+      '타입체크 실패 — 머지될 코드에 타입 에러가 있습니다.\n' +
+        '    `pnpm wf rework` → 구현으로 복귀해 고친 뒤 → `pnpm wf start-verification`으로 검증을 다시 돌리세요.\n' +
+        '    (에러 재현: `pnpm typecheck`)',
+    );
+  } else if (gates.fullTypecheck.applies && tsScope !== 'full') {
+    reasons.push(
+      `타입체크 범위가 "${tsScope ?? '미검사'}"입니다 — 게임 코드가 검사되지 않았습니다.\n` +
+        '    Cocos Creator로 프로젝트를 한 번 열어 game/temp/를 생성한 뒤,\n' +
+        '    `pnpm wf rework` → 구현으로 복귀 → `pnpm wf start-verification` → 검증을 다시 돌리세요.',
+    );
+  }
+  if (gates.meta.applies && missingMeta) {
+    if (missingMeta.error) {
+      reasons.push(`에셋 메타 검사 실패: ${missingMeta.error}`);
+    } else if (missingMeta.missing.length > 0) {
+      reasons.push(
+        '추적되지 않은 .meta가 있는 에셋:\n' +
+          missingMeta.missing.map((m) => `    - ${m}\n`).join('') +
+          '  위 에셋의 .meta가 커밋되지 않았습니다. 머지 전 반드시 커밋해야 합니다 ' +
+          '(누락 시 타 환경에서 UUID 재생성 → 씬/프리팹 참조 깨짐). ' +
+          '에디터에서 생성된 .meta를 git add 후 커밋하고 다시 시도하세요.',
+      );
+    }
+  }
+  return { ok: reasons.length === 0, reasons };
+}
+
+/** 적용 판정 줄에 나열할 적용 경로. 짧은 목록은 그대로 들고, 긴 목록은 상수 이름으로 든다. */
+const GATE_PATHS = /** @type {const} */ ([
+  ['meta', META_PATHS, 'META_PATHS'],
+  ['fullTypecheck', FULL_TYPECHECK_PATHS, 'FULL_TYPECHECK_PATHS'],
+  ['cso', CSO_PATHS, 'CSO_PATHS'],
+  ['qa', QA_PATHS, 'QA_PATHS'],
+]);
+
+/** @param {string[]} files */
+function firstAndRest(files) {
+  return files.length <= 1 ? files.join('') : `${files[0]} 외 ${files.length - 1}개`;
+}
+
+/**
+ * 적용 판정을 출력할 줄로 만든다 — 갈라진 커밋과 항목 수(구할 수 없으면 원인별 안내), 검사마다 한 줄,
+ * QA 문서 생략 여부, 그리고 `/cso`를 해야 하면 다음 점검 명령. `status`·`start-verification`·`approve-pr`이
+ * 같은 함수를 쓴다.
+ *
+ * @param {Gates} gates
+ * @param {ChangeSet} changeSet
+ * @param {{ feature?: string | null, qa_skip_reason?: string | null, cso_commit?: string | null }} state
+ * @param {{ usable: true } | { usable: false, reason: string }} csoUsable `csoBaseUsable`의 결과.
+ *   `/cso`가 해당 없으면 쓰지 않는다
+ * @returns {string[]}
+ */
+export function formatGateLines(gates, changeSet, state, csoUsable) {
+  const lines = [
+    changeSet.measurable
+      ? `적용 판정 — 갈라진 커밋 ${changeSet.base.slice(0, 7)} · 변경 ${changeSet.items.length}개`
+      : changeSet.hint,
+  ];
+  for (const [name, patterns, constName] of GATE_PATHS) {
+    const g = gates[name];
+    let text;
+    if (!changeSet.measurable) text = '적용 (변경 집합을 구할 수 없음)';
+    else if (g.applies) text = `적용 (${firstAndRest(g.matches)})`;
+    else if (patterns.length <= 2) text = `해당 없음 (${patterns.join(' · ')} 변경 없음)`;
+    else text = `해당 없음 (${constName}에 해당하는 변경 없음)`;
+    lines.push(`  ${name}: ${text}`);
+  }
+
+  if (!state.qa_skip_reason) {
+    lines.push('QA 문서 생략: 없음');
+  } else {
+    const qa = qaRequired(state, changeSet);
+    lines.push(
+      qa.required
+        ? `QA 문서 생략: ${state.qa_skip_reason} — 지금은 유효하지 않다: ` +
+            qaMissingMessage(qa, `docs/qa/${state.feature}-test.md`)
+        : `QA 문서 생략: ${state.qa_skip_reason} — 유효(game/** 변경 없음)`,
+    );
+  }
+
+  if (gates.cso.applies) {
+    lines.push(
+      csoUsable.usable
+        ? `다음 /cso: ${CSO_DIFF_COMMAND} ${state.cso_commit}`
+        : `다음 /cso: 전체 (${csoUsable.reason})`,
+    );
+  }
+  return lines;
 }

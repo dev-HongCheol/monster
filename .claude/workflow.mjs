@@ -12,9 +12,11 @@ import { git } from "./lib/git.mjs";
 import { applicableGates, collectChangeSet, csoBaseUsable } from "./lib/change-set.mjs";
 import {
   applyPatch,
+  approvePrDecision,
   csoCommand,
   csoGuideLine,
   decideTransition,
+  formatGateLines,
   qaMissingMessage,
   qaRequired,
   recordPatch,
@@ -505,6 +507,14 @@ function csoInfo(s, gates) {
   return { line: csoGuideLine(gates, usable, s.cso_commit), command: csoCommand(usable, s.cso_commit) };
 }
 
+// 적용 판정 출력(lib/transition.mjs의 formatGateLines). `/cso`를 해야 할 때만 기준 커밋을 확인한다.
+function printGateLines(s, cs, gates) {
+  const usable = gates.cso.applies
+    ? csoBaseUsable(s.cso_commit, ROOT)
+    : { usable: false, reason: "해당 없음" };
+  for (const line of formatGateLines(gates, cs, s, usable)) console.log(line);
+}
+
 function printVerify(result) {
   for (const line of formatVerifyReport(result)) console.log(line);
 }
@@ -658,7 +668,9 @@ const commands = {
     resetVerification(s);
     save(s);
     console.log("✓ start-verification → phase=verification");
-    console.log(csoInfo(s, changeContext().gates).line);
+    // status와 같은 적용 판정을 함께 보여 status를 따로 칠 필요가 없게 한다(다음 /cso 줄 포함).
+    const { cs, gates } = changeContext({ quiet: true });
+    printGateLines(s, cs, gates);
   },
 
   // 통합 검사만 다시 돌린다. phase는 바뀌지 않고 기록용 값 셋만 적는다 — 기록용 값은 넘어가는 조건이
@@ -877,44 +889,40 @@ const commands = {
   "approve-pr"() {
     const s = load();
     requirePhase(s, "user-verification");
+    // 무엇을 검사하고 무엇을 건너뛰는지를 결과보다 먼저 보인다. 판정은 lib/transition.mjs의
+    // approvePrDecision이 하고, 여기서는 머지 직전의 실측 두 가지(타입 검사 · .meta)만 한다.
+    const { cs, gates } = changeContext({ quiet: true });
+    printGateLines(s, cs, gates);
+
     // 타입 게이트(머지 직전 실측): 기록이 아니라 **지금 코드**를 검사한다.
     //
-    // `pass ts`의 통과 기록만 믿으면 구멍이 남는다 — phase="verification"에서는 스크립트 편집이
-    // 허용되므로 `pass ts` 뒤에 코드를 고치고 invalidate를 잊으면, 나머지 pass만 채워
-    // user-verification까지 올라온 뒤 깨진 타입이 그대로 머지된다. 타 장비에서 편집한 경우도
-    // 같은 구멍의 변형이다. 여기는 사람이 트리거하는 마지막 게이트라 tsc 1회 비용이 무의미하고,
-    // 편집·invalidate 순서와 무관하게 머지될 코드 그 자체를 본다. (F44)
+    // 통합 검사의 기록만 믿으면 구멍이 남는다 — phase="verification"에서는 스크립트 편집이 허용되므로,
+    // 통합 검사 뒤에 코드를 고치면 기록과 머지될 코드가 달라진다. 타 장비에서 편집한 경우도 같은 구멍의
+    // 변형이다. 여기는 사람이 트리거하는 마지막 게이트라 tsc 1회 비용이 무의미하고, 편집 순서와 무관하게
+    // 머지될 코드 그 자체를 본다. (F44)
     console.log("\n▶ 타입체크 (머지 직전 실측)");
     const { status, scope } = runTypecheck();
     // 실측 결과를 상태에 반영한다 — 안 그러면 상태 파일이 낡은 값을 계속 말한다.
     s.ts_check_scope = status === 0 ? scope : null;
     s.verification.ts_check_clean = status === 0;
     save(s);
-    if (status !== 0) {
-      // 복구 경로를 먼저 말한다 — 지금 phase는 user-verification이라 훅이 스크립트 편집을
-      // 막고 있다. "고친 뒤 다시 승인하세요"를 앞세우면 게임 코드 에러일 때 따라갈 수 없는
-      // 안내가 된다(아래 범위 게이트가 피하는 것과 같은 막다른 길).
-      fail(
-        "타입체크 실패 — 머지될 코드에 타입 에러가 있습니다.\n" +
-          "    `pnpm wf rework` → 구현으로 복귀해 고친 뒤 → `pnpm wf start-verification`으로 검증을 다시 돌리세요.\n" +
-          "    (에러 재현: `pnpm typecheck`)"
-      );
+
+    // 메타 게이트: 신규 자산의 .meta가 모두 커밋돼야 PR을 승인할 수 있다(누락 시 머지 후 모든 환경에서
+    // 참조가 깨진다). game/assets/** 변경이 없으면 건너뛴다 — 따로 치는 check-meta는 항상 검사한다.
+    let missingMeta = null;
+    if (gates.meta.applies) {
+      console.log("\n▶ 에셋 .meta 누락 검사");
+      missingMeta = listMissingAssetMeta();
+    } else {
+      console.log("\n▶ 에셋 .meta 누락 검사 — 해당 없음 (game/assets/** 변경 없음)");
     }
-    // 범위 게이트: 게임 코드까지 봤어야 한다. Cocos를 한 번도 안 연 머신에는 game/temp/가 없어
-    // 게임 프로젝트를 검사할 수 없고, 그 상태를 통과시키면 "Cocos 안 깐 머신 = 타입 게이트 프리패스"가 된다.
-    if (scope !== "full") {
-      // 복구 경로는 rework다 — invalidate는 phase="verification"에서만 되는데
-      // approve-pr은 user-verification에서 돌므로 여기서 invalidate를 안내하면 막다른 길이다.
-      fail(
-        `타입체크 범위가 "${scope ?? "미검사"}"입니다 — 게임 코드가 검사되지 않았습니다.\n` +
-          "    Cocos Creator로 프로젝트를 한 번 열어 game/temp/를 생성한 뒤,\n" +
-          "    `pnpm wf rework` → 구현으로 복귀 → `pnpm wf start-verification` → 검증을 다시 돌리세요."
-      );
+
+    const decision = approvePrDecision({ gates, tsScope: scope, tsStatus: status, missingMeta });
+    if (!decision.ok) {
+      for (const r of decision.reasons) process.stderr.write(`✗ ${r}\n`);
+      failWithSteps("PR 승인을 막았다.", "user-verification");
     }
-    // 메타 게이트: 신규 자산의 .meta가 모두 커밋돼야 PR을 승인할 수 있다.
-    // (머지 직전 마지막 안전장치 — 누락 시 머지 후 모든 환경에서 참조가 깨진다.)
-    console.log("\n▶ 에셋 .meta 누락 검사");
-    requireAssetMeta();
+    if (missingMeta) console.log("✓ 에셋 .meta 누락 없음");
     s.phase = "pr-ready";
     save(s);
     console.log("✓ approve-pr → phase=pr-ready");
@@ -1001,18 +1009,12 @@ const commands = {
     const editable = EDITABLE_PHASES.has(s.phase);
     console.log(JSON.stringify(s, null, 2));
     console.log(`\nscripts editable: ${editable ? "YES" : "no (locked)"}`);
-    // QA 문서 생략은 적어 둔 사유만으로 정해지지 않고 지금 변경 집합으로 다시 판정한다. 옛 상태 파일에는
-    // 사유 값이 없으므로 「없음」으로 읽는다.
-    if (!s.qa_skip_reason) {
-      console.log("QA 문서 생략: 없음");
-    } else {
-      const qa = qaRequired(s, changeContext({ quiet: true }).cs);
-      console.log(
-        qa.required
-          ? `QA 문서 생략: ${s.qa_skip_reason} — 지금은 유효하지 않다: ${qaMissingMessage(qa, toRel(qaDocPath(s)))}`
-          : `QA 문서 생략: ${s.qa_skip_reason} — 유효(game/** 변경 없음)`
-      );
-    }
+    // 이번 변경 집합으로 계산한 적용 판정. 상태 파일은 고치지 않는다. git 저장소가 아니어도 멈추지 않고
+    // 원인을 첫 줄에 적는다.
+    console.log("");
+    const { cs, gates } = changeContext({ quiet: true });
+    printGateLines(s, cs, gates);
+    console.log(`\n명령: ${commandList()}`);
     // 경로 한 줄만 — 본문은 안 낸다. status는 "나 어디 있지"의 정본 커맨드라 일상적으로 돌아가고,
     // 그러면 절차 문서의 **존재**로 신호가 온다. 압축 이후 "절차를 모르면 문서를 읽어라"는 지시가
     // 안 듣는 이유가 여기에 있다 — 부재는 스스로를 알리지 않으므로 방아쇠가 될 수 없다.
@@ -1020,10 +1022,18 @@ const commands = {
     // 진단 커맨드가 그럴듯한 가짜 경로를 말하지 않게 한다.
     if (PHASES.includes(s.phase) && !DOC_EXEMPT_PHASES.has(s.phase)) {
       console.log(`\n▶ ${s.phase} 절차: ${stepDocRel(s.phase)}`);
-      console.log("   (전문: `pnpm wf steps`)");
+      console.log(`절차: \`pnpm wf steps ${s.phase}\``);
     }
   },
 };
+
+// 명령 목록. phase를 바꾸지 않는 verify에는 그 사실을 붙인다 — 이름만 보면 다른 전이 명령과 구별되지
+// 않아서, 결과만 보려고 친 명령이 다음 단계로 넘길 것처럼 읽힌다.
+function commandList() {
+  return Object.keys(commands)
+    .map((k) => (k === "verify" ? "verify (phase가 바뀌지 않음)" : k))
+    .join(", ");
+}
 
 // 디스패치 직전의 phase. 전이가 실제로 일어났는지 판정하는 기준이라 커맨드 실행 전에 읽는다.
 // 상태 파일이 없을 수 있다(start 최초 실행).
@@ -1075,9 +1085,13 @@ function deliverAfterDispatch(cmd, args, phaseBefore) {
 }
 
 const [, , cmd, ...args] = process.argv;
-if (!cmd || !commands[cmd]) {
-  console.log(`commands: ${Object.keys(commands).join(", ")}`);
-  process.exit(cmd ? 1 : 0);
+if (!cmd) {
+  console.log(`commands: ${commandList()}`);
+  process.exit(0);
+}
+if (!commands[cmd]) {
+  process.stderr.write(`✗ 알 수 없는 명령: ${cmd}\ncommands: ${commandList()}\n`);
+  process.exit(1);
 }
 const phaseBefore = DELIVERING_COMMANDS.has(cmd) ? phaseBeforeDispatch() : null;
 commands[cmd](args);

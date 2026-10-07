@@ -5,17 +5,17 @@
 ## 1. 지금 어디에 있나
 
 - 브랜치 `feat/workflow-diet`, phase `implementation`. 계획은 승인됐고(2026-10-07 `approve-plan`), QA 문서와 실패하는 테스트를 쓴 뒤 `ready-impl`을 통과했다.
-- 구현 순서는 W5 → W1 → W4 → W2 → W3 → W6 → W7이고, **W5 · W1 · W4 · W2가 끝났다.** 다음은 W3다.
-- 커밋: `7bfc5e2`(계획 문서) · `0a767c2`(`tests/` 구조 + W5) · `31042a8`(W1) · `df54f74`(W4) · W2 커밋(`git log --oneline -1 -- .claude/lib/verify.mjs`). 푸시는 사용자가 말할 때 한다.
+- 구현 순서는 W5 → W1 → W4 → W2 → W3 → W6 → W7이고, **W5 · W1 · W4 · W2 · W3가 끝났다.** 다음은 W6다.
+- 커밋: `7bfc5e2`(계획 문서) · `0a767c2`(`tests/` 구조 + W5) · `31042a8`(W1) · `df54f74`(W4) · `7474ddb`(W2) · W3 커밋(`git log --oneline -1 -- .claude/lib/transition.mjs`). 푸시는 사용자가 말할 때 한다.
 - **`docs/qa/workflow-diet-test.md`만 일부러 커밋하지 않았다.** 자동 검증 절에 `[ ]` 항목이 남은 채 커밋하면 레포 전체 검사(`tests/workflow/DocsHygiene.test.ts`)가 그것을 잡아 `start-verification`이 막힌다. 검증 단계에서 `[x]`로 채우고 통과 근거를 적은 뒤 커밋한다. **다른 장비로 옮기면 이 파일은 따라가지 않는다** — 이 장비에서 이어 하거나 파일을 따로 옮긴다.
-- 지금 상태의 확인 결과(W2 뒤): 전체 테스트 50 파일 1,216 통과(건너뜀 1) · `pnpm typecheck` 통과(범위 full) · biome 깨끗 · 이 저장소에서 `pnpm wf verify --no-write`가 실제 도구로 세 검사 모두 통과. 계획 §7의 손 확인(타입 오류 · 린트 위반 · 실패 테스트를 넣어 `start-verification`이 막히는지)도 끝났고 결과는 QA 문서 §5.1에 있다(QA 문서는 미커밋).
+- 지금 상태의 확인 결과(W3 뒤): 전체 테스트 50 파일 1,235 통과(건너뜀 1) · `pnpm typecheck` 통과(범위 full) · biome 깨끗 · 이 저장소에서 `pnpm wf verify --no-write`가 실제 도구로 세 검사 모두 통과. 계획 §7의 손 확인(타입 오류 · 린트 위반 · 실패 테스트를 넣어 `start-verification`이 막히는지)도 끝났고 결과는 QA 문서 §5.1에 있다(QA 문서는 미커밋).
 
 ## 2. 다음에 할 일
 
 작업 단위는 W(작업 묶음)다. **묶음 하나를 끝낼 때마다 멈추고 사용자 확인을 받는다**(2026-10-07 사용자 지시). 커밋은 사용자가 말할 때 하되 묶음 단위로 나눈다. 묶음을 시작할 때 그 묶음 문서의 「테스트」 절을 `tests/workflow/WorkflowDiet.test.ts`에 절로 먼저 쓰고 실패를 확인한 뒤 구현한다(W5·W1·W4 절이 그렇게 되어 있다).
 
 1. **W2 — 끝.** 문서와 다르게 한 것: `start-verification` 성공 출력의 적용 판정 표는 W3의 `formatGateLines`가 생길 때 붙인다 · `qaRequired`는 `(state, changeSet)`를 받는다(구할 수 없을 때의 안내 문구가 changeSet에 있다) · vitest 파일 수는 `testResults` 길이로 센다(`numTotalTestSuites`는 describe까지 센다) · 가짜 `pnpm`에 `WF_SHIM_FAIL=biome-format`(형식 차이만 실패)을 더했다 · `ENOBUFS`는 실제 실패로 센다.
-2. **W3 — `approve-pr` · `status` · `check-meta`.** 옛 형식 상태 파일 견본은 `tests/workflow/fixtures/workflow-state/user-verification-legacy.json`에 있다. `formatGateLines`를 만들면 `start-verification` 성공 출력에도 붙인다(W2 §2). `status`의 `QA 문서 생략` 줄은 W2가 먼저 만들어 두었다.
+2. **W3 — 끝.** 문서와 다르게 한 것: `formatGateLines`는 `csoBaseUsable` 결과를 넷째 인자로 받는다(함수가 git을 부르지 않게) · `approve-pr`은 타입 검사가 실패해도 `.meta` 검사까지 하고 막는 이유를 한 번에 낸다 · `status` 마지막 줄을 「절차: `pnpm wf steps <phase>`」로 바꿨다. 이 브랜치의 `status`는 계획 §7대로 meta·fullTypecheck 해당 없음, cso 적용을 보여 준다.
 3. **W6 — 절차 문서 · `CLAUDE.md` · 트러블슈팅 · `ops-skill-routing.md`.** 글자 수 상한 테스트. `qa-setup.md`와 `CLAUDE.md`의 기능 테스트 경로는 `tests/<영역>/<Feature>.test.ts`로 이미 바뀌어 있다.
 4. **W7 — 백로그.** 새 항목은 열 개다(9: `wf status` JSON · `check-links` · `check-qa` 비용, 10: `tests/` 구조의 나머지). 번호는 `origin/main`의 마지막 번호 다음부터.
 5. 그다음 `pnpm wf start-verification`으로 검증 단계. QA 문서를 `[x]`로 채우고 커밋 · `canon-done` · `/cso` · `pass` … 절차는 그때 배달되는 문서대로.

@@ -2,7 +2,7 @@
  * 워크플로우 다이어트 1단계(`feat/workflow-diet`)의 테스트.
  *
  * 작업 묶음마다 절을 하나씩 두고, 묶음을 시작할 때 그 절의 실패하는 테스트를 먼저 쓴다. 지금 있는
- * 절은 W1(변경 집합과 적용 판정) · W4(판정 코드 합치기) · W2(통합 검사와 전이 판정)다. W3의 테스트는 그 묶음을 시작할 때 더한다. W5(임시 저장소
+ * 절은 W1(변경 집합과 적용 판정) · W4(판정 코드 합치기) · W2(통합 검사와 전이 판정) · W3(`approve-pr` · `status`)다. W5(임시 저장소
  * 도우미)의 테스트는 `WfSandbox.test.ts`에 따로 있다 — 이 파일은 W1의 모듈을 import하므로 그
  * 모듈이 생기기 전에는 불러오기에서 실패해서, 도우미만 먼저 확인할 수 없기 때문이다. 묶음마다 무엇을 확인하기로 했는지는 계획의 묶음 문서
  * `docs/development/sessions/2026-10-06-workflow-diet-w*.md`의 「테스트」 절이 든다.
@@ -21,9 +21,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { applicableGates, collectChangeSet, csoBaseUsable } from '../../.claude/lib/change-set.mjs';
 import { EDITABLE_PHASES } from '../../.claude/lib/phases.mjs';
 import {
+  approvePrDecision,
   csoGuideLine,
   decideTransition,
   failureKind,
+  formatGateLines,
   qaRequired,
 } from '../../.claude/lib/transition.mjs';
 import {
@@ -1231,5 +1233,263 @@ describe('W2 — E2E: 통합 검사를 실제로 돌린다', SANDBOX, () => {
       '생략 사유가 더는 맞지 않는다: game/assets/scripts/x.ts — QA 문서가 필요하다: docs/qa/demo-test.md',
     );
     expect(stateOf(repo).phase).toBe('verification');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W3 — approve-pr · status · check-meta
+// ---------------------------------------------------------------------------
+
+/** 적용 판정 넷. `meta`·`fullTypecheck`만 정하고 나머지는 해당 없음이다. */
+function prGates(meta: boolean, full: boolean) {
+  return { meta: gate(meta), fullTypecheck: gate(full), cso: gate(false), qa: gate(false) };
+}
+
+describe('W3 — approvePrDecision: PR 승인 판정', () => {
+  const noMeta = { error: null, missing: [] as string[] };
+
+  it('타입 검사가 실패하면 적용 판정과 상관없이 막는다', () => {
+    const d = approvePrDecision({
+      gates: prGates(false, false),
+      tsScope: null,
+      tsStatus: 2,
+      missingMeta: null,
+    });
+    expect(d.ok).toBe(false);
+    expect(d.reasons.join('\n')).toContain('타입체크 실패');
+  });
+
+  it('게임 전체 타입 검사가 적용이고 범위가 full이면 통과한다', () => {
+    const d = approvePrDecision({
+      gates: prGates(true, true),
+      tsScope: 'full',
+      tsStatus: 0,
+      missingMeta: noMeta,
+    });
+    expect(d).toEqual({ ok: true, reasons: [] });
+  });
+
+  it('게임 전체 타입 검사가 적용인데 범위가 logic-only면 막는다', () => {
+    const d = approvePrDecision({
+      gates: prGates(false, true),
+      tsScope: 'logic-only',
+      tsStatus: 0,
+      missingMeta: null,
+    });
+    expect(d.ok).toBe(false);
+    expect(d.reasons.join('\n')).toContain('logic-only');
+  });
+
+  it('게임 전체 타입 검사가 해당 없으면 logic-only여도 통과한다', () => {
+    const d = approvePrDecision({
+      gates: prGates(false, false),
+      tsScope: 'logic-only',
+      tsStatus: 0,
+      missingMeta: null,
+    });
+    expect(d.ok).toBe(true);
+  });
+
+  it('.meta 검사가 적용이고 누락이 있으면 막고 그 파일을 든다', () => {
+    const d = approvePrDecision({
+      gates: prGates(true, false),
+      tsScope: 'logic-only',
+      tsStatus: 0,
+      missingMeta: { error: null, missing: ['game/assets/a.png'] },
+    });
+    expect(d.ok).toBe(false);
+    expect(d.reasons.join('\n')).toContain('game/assets/a.png');
+  });
+
+  it('.meta 검사가 해당 없으면 검사 결과 없이 통과한다', () => {
+    const d = approvePrDecision({
+      gates: prGates(false, false),
+      tsScope: 'full',
+      tsStatus: 0,
+      missingMeta: null,
+    });
+    expect(d.ok).toBe(true);
+  });
+
+  it('변경 집합을 구할 수 없으면 두 검사가 모두 적용이라 logic-only를 거부한다', () => {
+    const gates = applicableGates({ measurable: false, reason: 'no-origin-main', hint: 'h' });
+    const d = approvePrDecision({ gates, tsScope: 'logic-only', tsStatus: 0, missingMeta: noMeta });
+    expect(d.ok).toBe(false);
+    expect(d.reasons.join('\n')).toContain('logic-only');
+  });
+});
+
+describe('W3 — formatGateLines: 적용 판정 출력', () => {
+  const changeSet = (paths: string[]) => ({
+    measurable: true as const,
+    base: 'abcdef1234567',
+    items: paths.map((p) => ({ status: 'A' as const, path: p })),
+  });
+
+  it('검사마다 한 줄 · 갈라진 커밋과 항목 수 · QA 문서 생략 · 다음 /cso', () => {
+    const cs = changeSet([
+      '.claude/lib/x.mjs',
+      '.claude/workflow.mjs',
+      'docs/z.md',
+      'game/assets/scripts/a.ts',
+      'tools/y.py',
+    ]);
+    const lines = formatGateLines(
+      applicableGates(cs),
+      cs,
+      { feature: 'demo', cso_commit: '2c41977' },
+      { usable: true },
+    );
+    expect(lines).toEqual([
+      '적용 판정 — 갈라진 커밋 abcdef1 · 변경 5개',
+      '  meta: 적용 (game/assets/scripts/a.ts)',
+      '  fullTypecheck: 적용 (game/assets/scripts/a.ts)',
+      '  cso: 적용 (.claude/lib/x.mjs 외 2개)',
+      '  qa: 적용 (game/assets/scripts/a.ts)',
+      'QA 문서 생략: 없음',
+      '다음 /cso: /cso --diff --base 2c41977',
+    ]);
+  });
+
+  it('해당 없음은 적용 경로를 들고, /cso가 해당 없으면 다음 /cso 줄을 내지 않는다', () => {
+    const cs = changeSet(['docs/z.md']);
+    const lines = formatGateLines(
+      applicableGates(cs),
+      cs,
+      { feature: 'demo', qa_skip_reason: '문서만' },
+      { usable: false, reason: '해당 없음' },
+    );
+    expect(lines).toEqual([
+      '적용 판정 — 갈라진 커밋 abcdef1 · 변경 1개',
+      '  meta: 해당 없음 (game/assets/** 변경 없음)',
+      '  fullTypecheck: 해당 없음 (FULL_TYPECHECK_PATHS에 해당하는 변경 없음)',
+      '  cso: 해당 없음 (CSO_PATHS에 해당하는 변경 없음)',
+      '  qa: 해당 없음 (game/** 변경 없음)',
+      'QA 문서 생략: 문서만 — 유효(game/** 변경 없음)',
+    ]);
+  });
+
+  it('생략 사유가 더는 맞지 않으면 그 까닭을 든다', () => {
+    const cs = changeSet(['game/settings/a.json']);
+    const lines = formatGateLines(
+      applicableGates(cs),
+      cs,
+      { feature: 'demo', qa_skip_reason: '문서만' },
+      { usable: false, reason: '해당 없음' },
+    );
+    expect(lines).toContain(
+      'QA 문서 생략: 문서만 — 지금은 유효하지 않다: 생략 사유가 더는 맞지 않는다: ' +
+        'game/settings/a.json — QA 문서가 필요하다: docs/qa/demo-test.md',
+    );
+  });
+
+  it('변경 집합을 구할 수 없으면 원인별 안내를 첫 줄에 들고 모든 검사를 적용으로 적는다', () => {
+    const cs = {
+      measurable: false as const,
+      reason: 'no-origin-main' as const,
+      hint: '기준을 구할 수 없어 모든 검사를 한다 — origin/main 참조가 없다. `git fetch origin main`',
+    };
+    const lines = formatGateLines(
+      applicableGates(cs),
+      cs,
+      { feature: 'demo' },
+      { usable: false, reason: '기록 없음' },
+    );
+    expect(lines).toEqual([
+      '기준을 구할 수 없어 모든 검사를 한다 — origin/main 참조가 없다. `git fetch origin main`',
+      '  meta: 적용 (변경 집합을 구할 수 없음)',
+      '  fullTypecheck: 적용 (변경 집합을 구할 수 없음)',
+      '  cso: 적용 (변경 집합을 구할 수 없음)',
+      '  qa: 적용 (변경 집합을 구할 수 없음)',
+      'QA 문서 생략: 없음',
+      '다음 /cso: 전체 (기록 없음)',
+    ]);
+  });
+});
+
+/** 출력의 마지막 줄(빈 줄 제외). */
+function lastLine(text: string): string {
+  return text.trimEnd().split(/\r?\n/).at(-1) ?? '';
+}
+
+describe('W3 — 명령: status · approve-pr · check-meta', SANDBOX, () => {
+  it('옛 형식 상태 파일로 status가 적용 판정 표와 「다음 /cso: 전체 (기록 없음)」을 출력하고, approve-pr이 판정을 낸다', () => {
+    const repo = makeRepo({ csoApplicable: true });
+    fs.copyFileSync(
+      path.join(HERE, 'fixtures/workflow-state/user-verification-legacy.json'),
+      path.join(repo, '.claude/workflow-state.json'),
+    );
+    const st = runWf(repo, ['status']);
+    expect(st.status, st.stderr).toBe(0);
+    expect(st.stdout).toContain('  meta: 해당 없음 (game/assets/** 변경 없음)');
+    expect(st.stdout).toContain('  cso: 적용 (.claude/wf-sandbox.mjs)');
+    expect(st.stdout).toContain('다음 /cso: 전체 (기록 없음)');
+
+    const pr = runWf(repo, ['approve-pr']);
+    expect(pr.status, pr.stderr).toBe(0);
+    expect(stateOf(repo).phase).toBe('pr-ready');
+  });
+
+  it('cso_commit이 HEAD의 조상이면 status가 --diff --base 명령을 출력한다', () => {
+    const repo = makeRepo({ csoApplicable: true });
+    const base = git(repo, 'rev-parse', 'HEAD~1').trim();
+    patchState(repo, { cso_commit: base });
+    expect(runWf(repo, ['status']).stdout).toContain(`다음 /cso: /cso --diff --base ${base}`);
+  });
+
+  it('status의 마지막 줄은 「절차: …」이고, 명령 목록의 verify에 「(phase가 바뀌지 않음)」이 붙는다', () => {
+    const r = runWf(makeRepo({ phase: 'implementation' }), ['status']);
+    expect(lastLine(r.stdout)).toBe('절차: `pnpm wf steps implementation`');
+    expect(r.stdout).toContain('verify (phase가 바뀌지 않음)');
+  });
+
+  it('git 저장소가 아니어도 status는 멈추지 않고 원인을 출력한다', () => {
+    const r = runWf(makeRepo({ git: false }), ['status']);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain('기준을 구할 수 없어 모든 검사를 한다');
+  });
+
+  it('approve-pr은 적용 판정 표를 타입 검사보다 먼저 출력하고 pr-ready로 넘어간다', () => {
+    const repo = makeRepo({ phase: 'user-verification' });
+    const r = runWf(repo, ['approve-pr']);
+    expect(r.status, r.stderr).toBe(0);
+    const table = r.stdout.indexOf('  fullTypecheck: 해당 없음');
+    const ts = r.stdout.indexOf('▶ 타입체크');
+    expect(table).toBeGreaterThanOrEqual(0);
+    expect(table).toBeLessThan(ts);
+    expect(r.stdout).toContain('.meta 누락 검사 — 해당 없음');
+    expect(stateOf(repo).phase).toBe('pr-ready');
+  });
+
+  it('approve-pr 거부 출력의 마지막 줄은 「절차: …」다', () => {
+    // git 저장소가 아니면 변경 집합을 구할 수 없어 게임 전체 타입 검사가 적용이고, 가짜 pnpm 환경에는
+    // Cocos 생성 파일이 없어 범위가 logic-only다.
+    const repo = makeRepo({ phase: 'user-verification', git: false });
+    const r = runWf(repo, ['approve-pr']);
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('logic-only');
+    expect(lastLine(r.stderr)).toBe('절차: `pnpm wf steps user-verification`');
+    expect(stateOf(repo).phase).toBe('user-verification');
+  });
+
+  it('.meta 검사가 해당 없어 approve-pr이 건너뛰어도 check-meta는 항상 검사한다', () => {
+    // main에 이미 .meta 없는 자산이 있는 경우다. 이 슬라이스와 무관한 누락으로 도구 슬라이스가 막히지
+    // 않아야 하지만, 사용자가 일부러 부른 check-meta는 건너뛰지 않는다.
+    const repo = makeRepo({ phase: 'user-verification' });
+    write(repo, 'game/assets/a.png');
+    git(repo, 'add', '-A');
+    git(repo, 'commit', '--quiet', '-m', 'asset');
+    git(repo, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
+    const meta = runWf(repo, ['check-meta']);
+    expect(meta.status).toBe(1);
+    expect(meta.stderr).toContain('game/assets/a.png');
+    expect(runWf(repo, ['approve-pr']).status).toBe(0);
+  });
+
+  it('없는 명령을 치면 「알 수 없는 명령」과 명령 목록을 출력한다', () => {
+    const r = runWf(makeRepo({ git: false }), ['nope']);
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('알 수 없는 명령: nope');
+    expect(r.stderr).toContain('verify (phase가 바뀌지 않음)');
   });
 });
