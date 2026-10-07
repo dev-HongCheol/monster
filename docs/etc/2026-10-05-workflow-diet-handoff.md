@@ -4,21 +4,27 @@
 
 ## 1. 지금 어디에 있나
 
-- 브랜치 `feat/workflow-diet`, phase `planning`. 코드 변경은 아직 없다. 브랜치에 있는 것은 문서와 상태 파일뿐이다.
-- 설계는 승인됐다(설계 초안 머리말 `Status: APPROVED`, 2026-10-05).
-- **`/autoplan` 리뷰가 끝났고 최종 승인 게이트에서 사용자가 「그대로 승인」을 골랐다(2026-10-06).** CEO(사양 리뷰 3회 41건 + 독립 리뷰 17건) · Design 건너뜀(UI 없음) · DX(17건, 8/10) · Eng(26건, critical gap 0). 결정 99건 가운데 사용자가 본 Taste는 여섯이고 전부 권장안대로다. 기록은 계획 초안의 `## Review record`와 `docs/development/sessions/2026-10-06-workflow-diet-review.md`에 있다.
-- **리뷰를 반영한 계획을 `docs/development/sessions/`에 나눠 썼다(2026-10-06).** 개요 `2026-10-06-workflow-diet-plan.md`, 작업 묶음 `…-w1-change-set.md` ~ `…-w7-backlog.md`, 리뷰 기록 `…-review.md`. 수용 항목은 묶음 문서 본문에 녹였다. 전체 테스트(48 파일, 1,114 통과)와 `pnpm wf check-links`가 통과한다.
-- 이 변경은 아직 커밋하지 않았다(`git status`로 본다). 계획 초안 `docs/etc/2026-10-05-workflow-diet-plan-draft.md`도 리뷰 기록이 붙은 채 미커밋이다.
+- 브랜치 `feat/workflow-diet`, phase `implementation`. 계획은 승인됐고(2026-10-07 `approve-plan`), QA 문서와 실패하는 테스트를 쓴 뒤 `ready-impl`을 통과했다.
+- 구현 순서는 W5 → W1 → W4 → W2 → W3 → W6 → W7이고, **W5 · W1 · W4가 끝났다.** 다음은 W2다.
+- 커밋: `7bfc5e2`(계획 문서) · `0a767c2`(`tests/` 구조 + W5) · `31042a8`(W1) · `df54f74`(W4). 푸시는 사용자가 말할 때 한다.
+- **`docs/qa/workflow-diet-test.md`만 일부러 커밋하지 않았다.** 자동 검증 절에 `[ ]` 항목이 남은 채 커밋하면 레포 전체 검사(`tests/workflow/DocsHygiene.test.ts`)가 그것을 잡아 `start-verification`이 막힌다. 검증 단계에서 `[x]`로 채우고 통과 근거를 적은 뒤 커밋한다. **다른 장비로 옮기면 이 파일은 따라가지 않는다** — 이 장비에서 이어 하거나 파일을 따로 옮긴다.
+- 지금 상태의 확인 결과: 전체 테스트 50 파일 1,160 통과(건너뜀 1) · `pnpm typecheck` 통과(범위 full) · biome 173 파일 깨끗 · `pnpm wf check-docs` · `check-links` 통과.
 
 ## 2. 다음에 할 일
 
-1. **단계별 도구 점검 — 끝났다(2026-10-07).** 워크플로우 단계마다 불리는 직접 만든 도구(`workflow.mjs` 명령, 훅 `gate-scripts.mjs`·`check-gstack.sh`, 커밋 훅 lint-staged)의 횟수·출력 글자 수·시간을 표로 만들었다. 결과는 `docs/temp/2026-10-07-workflow-tool-inventory.md`에 있다(git 밖). 세션 기록은 2026-09-09 이후 것만 남아 있어서 직전 슬라이스 #92의 두 회차를 슬라이스 둘로 보고 셌다.
-   - 결정 규칙(「슬라이스마다 두 번 이상 불리고 1초 이상 걸리거나 1,000자 이상 출력하는 것」)에 걸린 것은 `wf status`(JSON 출력, 한 번에 최대 약 4,500자)·`wf check-links`(vitest, 1.9초, 2회차 92번)·`wf check-qa`(vitest, 약 4초) 셋이다. **사용자가 이 슬라이스에 넣지 않고 따로 하기로 정했다** — Eng 리뷰를 다시 도는 비용이 얻는 것보다 크고 W1~W7과 거의 겹치지 않아서다. W7의 새 백로그 항목 9로 적었다.
-   - 모르던 것 둘도 확인했다. `check-gstack.sh`는 Skill 호출 때만 돌고 0.03초라 셈에 들지 않는다. 절차 문서는 phase 여섯 개를 한 번씩 지나면 터미널 출력 기준 15,811자(파일 내용 13,575자)다 — 새 항목 4에 붙였다.
-   - 점검하다 전체 테스트가 하나 실패하는 것을 봤다. 새 세션 문서 아홉의 머리말 줄 이름이 `고치는 정본:`이어서 `DocsReferences.test.ts`가 `정본:` 줄 없음으로 잡았다. 규약대로 `정본:`으로 고쳤다(없는 셋은 `없음 — <사유>` 형태).
-2. 새 세션 문서 아홉과 계획 초안의 마지막 모습, 이 문서를 커밋한다(사용자가 말할 때).
-3. 사용자가 `계획 승인`을 말하면 `pnpm wf approve-plan`을 실행한다. 이 명령은 확인창이 뜨므로 실행 전에 미리 말한다. 파일명에 `workflow-diet`가 들어 있어 `approve-plan`이 계획 문서로 알아본다.
-4. `qa-setup`부터는 절차 문서가 배달하는 대로 간다. 구현 순서는 개요 §5(W5 → W1 → W4 → W2 → W3 → W6 → W7)다.
+작업 단위는 W(작업 묶음)다. **묶음 하나를 끝낼 때마다 멈추고 사용자 확인을 받는다**(2026-10-07 사용자 지시). 커밋은 사용자가 말할 때 하되 묶음 단위로 나눈다. 묶음을 시작할 때 그 묶음 문서의 「테스트」 절을 `tests/workflow/WorkflowDiet.test.ts`에 절로 먼저 쓰고 실패를 확인한 뒤 구현한다(W5·W1·W4 절이 그렇게 되어 있다).
+
+1. **W2 — 통합 검사와 전이 판정.** 문서는 `docs/development/sessions/2026-10-06-workflow-diet-w2-verify-transition.md`다. 만드는 것: `.claude/lib/verify.mjs` · `transition.mjs`, `typecheck.mjs`의 `capture` 옵션, `workflow.mjs`의 `start-verification` · `verify`(새 명령) · `pass` · `skip-qa`(새 명령) · `invalidate` · `rework`. E2E(통합 검사까지 실제로 돌리는 테스트)는 여섯 개 이하. 임시 저장소는 `tests/workflow/helpers/WfSandbox.ts`의 `makeRepo`·`runWf`를 쓰고, 가짜 `pnpm`은 `WF_SHIM_FAIL=vitest`로 실패를 만든다. 계획 §7의 손 확인(타입 오류 · 린트 위반 · 실패 테스트를 하나씩 넣어 `start-verification`이 막히는지)은 W2가 끝난 뒤, 첫 `start-verification` 전에 한다.
+2. **W3 — `approve-pr` · `status` · `check-meta`.** 옛 형식 상태 파일 견본은 `tests/workflow/fixtures/workflow-state/user-verification-legacy.json`에 있다.
+3. **W6 — 절차 문서 · `CLAUDE.md` · 트러블슈팅 · `ops-skill-routing.md`.** 글자 수 상한 테스트. `qa-setup.md`와 `CLAUDE.md`의 기능 테스트 경로는 `tests/<영역>/<Feature>.test.ts`로 이미 바뀌어 있다.
+4. **W7 — 백로그.** 새 항목은 열 개다(9: `wf status` JSON · `check-links` · `check-qa` 비용, 10: `tests/` 구조의 나머지). 번호는 `origin/main`의 마지막 번호 다음부터.
+5. 그다음 `pnpm wf start-verification`으로 검증 단계. QA 문서를 `[x]`로 채우고 커밋 · `canon-done` · `/cso` · `pass` … 절차는 그때 배달되는 문서대로.
+
+W2부터 지키는 것 셋.
+
+- **`tests/` 구조.** 새로 만들거나 고치는 파일은 영역 폴더로 둔다 — `tests/workflow/`(워크플로우 도구) · `tests/docs/`(문서 규칙), 각 안에 `helpers/` · `fixtures/`. 기존 게임 테스트(`tests/logic/`)와 `tests/helpers/`의 기존 파일은 옮기지 않는다(W7 새 항목 10). 테스트 파일은 프로세스를 직접 띄우지 않고 `helpers/`를 거친다(`WorkflowDiet.test.ts`가 잰다).
+- **블록 주석 안에 `**/` 글롭을 쓰지 않는다.** `*/`로 읽혀 주석이 닫힌다(W5에서 한 번 났다). 글롭은 줄 주석에 쓴다.
+- **`.claude/lib/*.mjs`는 첫 줄 `// @ts-check`, 내보내는 함수마다 JSDoc(`@param` · `@returns` · `@typedef`).** `pnpm typecheck`가 이 파일들을 검사하고(`allowJs`) biome도 검사한다(홑따옴표 · 세미콜론). `workflow.mjs`·`typecheck.mjs`는 biome 대상이 아니다(쌍따옴표 그대로).
 
 `/autoplan`이 이 장비에서 막혔던 원인은 이렇다(2026-10-06에 확정). gstack의 진입 검사(`autoplan/bin/phase-publication-hook.ts`)는 지금 실행하려는 도구 호출이 Claude Code의 세션 기록 파일에 2초 안에 적혀 있기를 요구하는데, Claude Code 2.1.289는 그 호출 기록을 진입 검사(PreToolUse 훅)가 끝난 뒤에야 쓴다. 그래서 세션 길이와 상관없이 첫 단계 진입에서 막혔다(「세션이 길어서 3.1초가 걸렸다」는 2026-10-05의 틀린 진단이다). 사용자가 패치(`docs/temp/2026-10-06-gstack-autoplan-in-flight-entry.patch`, git 밖)를 `cd ~/.claude/skills/gstack && git apply <패치>`로 넣어 돌게 했다. gstack 자동 업데이트가 패치를 밀어내면 다시 넣는다. AI는 이 파일을 못 고친다(자동 모드 분류기가 「자기 수정」으로 막는다).
 
