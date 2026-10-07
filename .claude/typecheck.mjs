@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // @ts-check
 // .claude/typecheck.mjs
-// 레포 소유 타입체크. `pnpm typecheck`와 `pnpm wf pass ts`가 **같은 코드**를 쓴다 —
-// 그래야 "명령은 있는데 게이트는 안 도는" 상황이 생기지 않는다.
+// 레포 소유 타입체크. `pnpm typecheck`와 `pnpm wf`의 통합 검사(lib/verify.mjs)·`approve-pr`이
+// **같은 코드**를 쓴다 — 그래야 "명령은 있는데 게이트는 안 도는" 상황이 생기지 않는다.
 //
 // 프로젝트 두 개를 검사한다.
 //   1) tsconfig.tests.json  — tests/ + logic/ + data/. cc 의존이 없어 **어디서든** 돈다.
@@ -10,8 +10,9 @@
 //
 // game/temp/는 gitignore 대상이고 내부에 절대 경로가 박혀 있어, Cocos로 프로젝트를 한 번도
 // 열지 않은 머신에서는 (2)가 TS5083으로 죽는다. 그때 날것의 에러 대신 안내를 내고,
-// **검사 범위를 "logic-only"로 보고**한다. 호출자(workflow.mjs)가 그 범위를 상태에 기록하고
-// approve-pr에서 거부한다 — 그러지 않으면 "Cocos 안 깐 머신 = 타입 게이트 프리패스"가 된다.
+// **검사 범위를 "logic-only"로 보고**한다. 호출자(workflow.mjs)가 그 범위를 상태에 기록하고,
+// 게임 코드를 바꾼 슬라이스면 approve-pr에서 거부한다 — 그러지 않으면 "Cocos 안 깐 머신 = 타입
+// 게이트 프리패스"가 된다.
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";

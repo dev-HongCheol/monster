@@ -22,4 +22,4 @@ Cocos 관련 코드는 Context7로 공식 문서를 먼저 조회한 뒤 쓴다.
 
 ## 나가는 게이트: `start-verification`
 
-`pnpm wf start-verification`이 전체 스위트를 돌려 **전부 통과할 때만** 검증으로 넘어간다. 실패가 있으면 차단되고 이 phase에 머문다. 따로 `pnpm test`를 돌릴 필요는 없다.
+`pnpm wf start-verification`이 통합 검사(biome·타입 검사·전체 테스트)를 돌려 **모두 통과할 때만** 검증으로 넘어간다. 실패가 있으면 차단되고 이 phase에 머문다. 따로 `pnpm test`를 돌릴 필요는 없다.

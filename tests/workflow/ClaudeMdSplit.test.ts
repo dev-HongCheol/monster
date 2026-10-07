@@ -190,13 +190,12 @@ describe('배달 — 전이 시점', () => {
     expect(stdout).toContain('BODY-user-verification');
   });
 
-  it('allClean 뒤 게이트에서 죽으면 배달하지 않는다', () => {
-    // pass는 allClean 이후에도 게이트에서 죽는다. 배달을 allClean 시점에 붙이면 전이하지도 않은
-    // pass에서 user-verification 절차가 샌다.
+  it('판단 검사가 다 찬 뒤 게이트에서 죽으면 배달하지 않는다', () => {
+    // pass는 판단 검사 두 개를 다 기록한 뒤에도 게이트에서 죽는다. 배달을 그 시점에 붙이면 전이하지도
+    // 않은 pass에서 user-verification 절차가 샌다.
     //
-    // 게이트 둘 중 **정본 선언** 쪽으로 잰다. QA 확정 게이트는 2026-08-19부터 판정을 vitest에
-    // 맡기는데(F92·F93 — 로직 한 벌을 tests/helpers/QaDoc.ts에 두려고), 샌드박스에는 vitest가
-    // 설치돼 있지 않아 그 게이트로는 "죽었다"와 "못 돌렸다"가 구분되지 않는다.
+    // 게이트 가운데 **정본 선언** 쪽으로 잰다. QA 확정 게이트는 판정을 vitest에 맡기는데(F92·F93),
+    // 샌드박스의 가짜 pnpm은 그 판정을 항상 통과시키므로 그 게이트로는 막히는 경우를 만들 수 없다.
     const box = makeSandbox({
       phase: 'verification',
       allChecksClean: true,
@@ -490,6 +489,40 @@ describe('의무 독서 예산 (재성장 차단)', () => {
   });
 });
 
+/**
+ * phase가 바뀔 때마다 출력되는 절차 문서 여섯 개의 글자 수 합계 상한.
+ *
+ * 이 문서들은 전이할 때마다 AI가 읽는 양이라, 늘어나면 모든 슬라이스의 비용이 함께 는다. 문장을 더해야
+ * 하면 같은 변경에서 줄일 문장을 먼저 찾는다. 그래도 넘으면 그 슬라이스의 계획 문서에 이유를 적고 이
+ * 값을 올린다 — 이유를 적지 않고 값만 올리거나 테스트를 끄면 상한이 없는 것과 같다.
+ *
+ * 세는 법: 줄 끝 CRLF를 LF로 바꾼 뒤 `String.prototype.length`(UTF-16 단위)로 센다. CRLF를 그대로 세면
+ * 체크아웃 설정이 다른 장비에서 줄 수만큼 값이 달라져 「상한을 넘었다」고 나온다.
+ */
+const STEP_DOC_LIMIT = 13_575;
+
+describe('절차 문서 글자 수 상한', () => {
+  it(`배달되는 절차 문서 여섯 개의 합계가 ${STEP_DOC_LIMIT}자 이하다`, () => {
+    const sizes = DELIVERED_PHASES.map((phase): [string, number] => [
+      `${phase}.md`,
+      fs.readFileSync(path.join(STEP_DOC_DIR, `${phase}.md`), 'utf8').replace(/\r\n/g, '\n').length,
+    ]);
+    const total = sizes.reduce((sum, [, chars]) => sum + chars, 0);
+    // 의무 독서 예산과 같은 이유로 숫자 대신 리포트 문자열을 비교한다 — 실패 메시지가 어느 문서가
+    // 얼마나 큰지와 무엇을 해야 하는지를 직접 든다.
+    const report =
+      total <= STEP_DOC_LIMIT
+        ? ''
+        : [
+            `절차 문서 합계가 ${total}자로 상한 ${STEP_DOC_LIMIT}자를 ${total - STEP_DOC_LIMIT}자 넘었다.`,
+            ...sizes.map(([name, chars]) => `  ${String(chars).padStart(6)}자  ${name}`),
+            '',
+            '같은 변경에서 줄일 문장을 먼저 찾는다. 그래도 넘으면 계획 문서에 이유를 적고 상한을 올린다.',
+          ].join('\n');
+    expect(report).toBe('');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // 4.4 정본 선언 게이트 — 샌드박스 E2E
 // ---------------------------------------------------------------------------
@@ -513,7 +546,7 @@ const SPEC_README = `# 정본
 `;
 
 describe('정본 선언 게이트', () => {
-  it('선언이 없으면 네 검증이 다 차도 전이를 막는다', () => {
+  it('선언이 없으면 판단 검사가 다 차도 전이를 막는다', () => {
     const box = makeSandbox({ phase: 'verification', allChecksClean: true });
     const { status, stderr } = runWf(box, ['pass', 'review']);
 

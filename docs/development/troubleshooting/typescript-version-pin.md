@@ -19,7 +19,7 @@ C:\ProgramData\cocos\editors\Creator\3.8.8\resources\app.asar.unpacked\node_modu
 
 | 어디 | 무엇을 쓰는가 |
 |---|---|
-| 레포 CLI (`pnpm typecheck`, `pnpm wf pass ts`) | `node_modules/typescript` = **5.8.2** |
+| 레포 CLI (`pnpm typecheck`, `pnpm wf verify`) | `node_modules/typescript` = **5.8.2** |
 | VS Code | `.vscode/settings.json`의 `typescript.tsdk` → 같은 5.8.2 |
 | Cocos 빌드 | 번들 5.8.2 (단, **타입 검사는 하지 않는다** — 트랜스파일만) |
 
@@ -36,7 +36,7 @@ node -e "console.log(require('C:/ProgramData/cocos/editors/Creator/<새버전>/r
 ## 증상별 대처
 
 **`pnpm typecheck`가 TS5083(`Cannot read file .../temp/tsconfig.cocos.json`)으로 죽는다**
-→ 그 머신에서 Cocos Creator로 프로젝트를 한 번도 안 열었다. `game/temp/`는 Cocos가 만드는 생성물이고 gitignore 대상이다. 프로젝트를 한 번 열면 생긴다. 이 상태에서는 `pnpm typecheck`가 **테스트 프로젝트만 검사하고 `logic-only` 범위를 보고**하며, `pnpm wf approve-pr`이 그 범위를 거부한다.
+→ 그 머신에서 Cocos Creator로 프로젝트를 한 번도 안 열었다. `game/temp/`는 Cocos가 만드는 생성물이고 gitignore 대상이다. 프로젝트를 한 번 열면 생긴다. 이 상태에서는 `pnpm typecheck`가 **테스트 프로젝트만 검사하고 `logic-only` 범위를 보고**하며, 게임 코드를 바꾼 슬라이스면 `pnpm wf approve-pr`이 그 범위를 거부한다.
 
 **게임은 잘 도는데 타입 에러가 난다**
 → 정상이다. Cocos는 타입을 검사하지 않는다. 게임이 도는 것은 타입이 맞다는 증거가 아니다.

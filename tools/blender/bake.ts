@@ -1077,7 +1077,7 @@ function installAtlases(fromDir: string, ids: readonly string[]): void {
  * 실리는 것이 검사 대상이어야 하고, 넣은 뒤에 손으로 바뀐 것도 여기서 걸린다.
  *
  * vitest가 아니라 명령인 것은 `.meta`가 PR 승인 전까지 추적되지 않아서다. vitest에 넣으면 Cocos를 안 연 장비에서
- * 전체 스위트의 GREEN 게이트가 깨진다. 판정 함수(`checkSourceSizes` · `checkFrameCounts`)는 vitest가 단언한다.
+ * `start-verification`의 통합 검사(전체 테스트 포함)가 깨진다. 판정 함수(`checkSourceSizes` · `checkFrameCounts`)는 vitest가 단언한다.
  */
 function commandCheckAtlas(): void {
   const record = readCameraRecord();

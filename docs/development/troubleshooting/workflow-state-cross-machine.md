@@ -45,6 +45,10 @@ pnpm wf approve-pr                          # phase만 보므로 통과
 
 - **main 오염:** 상태 파일이 PR diff에 실려 머지되면 main이 `user-verification`·`done` 같은 중간/완료 phase를 품은 채 남는다. 다음 슬라이스가 그 main에서 분기하면 상태를 물려받는다. `wf start`가 리셋하므로 대개는 괜찮지만, `wf start`를 깜빡하고 바로 편집하면 훅이 잠긴 phase로 오인해 막거나 엉뚱하게 허용한다.
 - **머지 충돌:** 두 피처 브랜치가 각자 전이를 커밋하면 `workflow-state.json` 한 파일에서 머지 충돌이 난다.
+
+### 상태 파일 충돌을 푸는 법
+
+진행 중인 슬라이스의 상태 쪽을 고른다. 리베이스 중이면 `git checkout --theirs -- .claude/workflow-state.json`, 머지 중이면 `git checkout --ours -- .claude/workflow-state.json`이다. 리베이스는 지금 브랜치의 커밋을 main 위에 다시 얹으므로 `--theirs`가 지금 브랜치 쪽이고, 머지는 그 반대라서 이렇게 갈린다. 반대쪽을 고르면 진행 중인 슬라이스의 상태가 main에 있던 다른 슬라이스의 상태로 바뀐다. 푼 뒤에는 `pnpm wf status`로 슬라이스 이름(`feature`)과 phase가 지금 작업 중인 슬라이스의 것인지 확인한다.
 - **여전한 stale(거울상):** 커밋했더라도 타 장비가 pull을 깜빡하면 옛 상태를 본다 — 방향 1과 같은 증상이 원인만 바뀐 채 재발한다.
 
 즉 "커밋한다 / 안 한다" 둘 다 함정이 있고, 근본은 **진행 상태(가변·머신 로컬 성격)를 버전 관리 파일에 담았다**는 점이다.
@@ -61,4 +65,4 @@ pnpm wf approve-pr                          # phase만 보므로 통과
 
 ### 권장
 
-**(c) 핸드오프 시점만 커밋.** 2-머신 흐름(구현=Mac, 승인=Windows)에서는 "승인 장비가 user-verification을 정확히 인계받는 것"만 보장되면 충분하다. 7단계 Draft PR 생성 단계에서 상태 파일을 함께 커밋하도록 규칙을 두면(가능하면 `wf` CLI·훅이 강제) 방향 1을 막고 방향 2의 오염·충돌은 최소화된다. 정책 확정 시 ADR 004에 "상태 파일 커밋 시점" 절을 추가한다.
+**(c) 핸드오프 시점만 커밋.** 2-머신 흐름(구현=Mac, 승인=Windows)에서는 "승인 장비가 user-verification을 정확히 인계받는 것"만 보장되면 충분하다. 7단계 Draft PR 생성 단계에서 상태 파일을 함께 커밋하도록 규칙을 두면(가능하면 `wf` CLI·훅이 강제) 방향 1을 막고 방향 2의 오염·충돌은 최소화된다. 정책을 확정하면 `docs/development/workflow/README.md`에 "상태 파일 커밋 시점"을 적는다.

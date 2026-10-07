@@ -62,7 +62,10 @@ export interface RepoOptions {
   feature?: string;
   /** 상태 파일에 덮어쓸 값. 옵션으로는 못 만드는 모양(새 키, 옛 형식)을 넣을 때 쓴다 */
   state?: Record<string, unknown>;
-  /** 네 검증 플래그를 모두 통과로 둘지 (전체 pass 경로 테스트용) */
+  /**
+   * `/cso` 통과 표시와 기록용 값 셋(타입·린트·범위)을 통과로 둘지 (전체 pass 경로 테스트용). 코드 리뷰
+   * 표시는 거짓으로 남겨 `pass review`가 마지막 기록이 되게 한다
+   */
   allChecksClean?: boolean;
   /** 이미 배달된 phase 목록 (차등 배달 테스트용) */
   docsDelivered?: string[];
