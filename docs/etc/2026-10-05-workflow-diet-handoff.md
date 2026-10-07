@@ -1,23 +1,28 @@
-# 워크플로우 다이어트 — 다음 세션이 이어받는 자리 (2026-10-05)
+# 워크플로우 다이어트 — 다음 세션이 이어받는 자리 (2026-10-05, 2026-10-06 갱신)
 
 새 세션(다른 장비 포함)이 이 문서 하나만 읽고 이어 갈 수 있게 적었다. 계획 초안과 함께 최종 PR 전에 지운다.
 
 ## 1. 지금 어디에 있나
 
 - 브랜치 `feat/workflow-diet`, phase `planning`. 코드 변경은 아직 없다. 브랜치에 있는 것은 문서와 상태 파일뿐이다.
-- `/office-hours`가 거의 끝났다. 설계 문서를 쓰고 독립 리뷰를 세 번 받았다(7 → 8 → 8점, 지적 47개 가운데 35개 해결 확인, 마지막 12개는 설계 문서 끝 「Reviewer Concerns」에 기록).
-- **사용자가 설계를 보고 다음으로 넘어가라고 했다(2026-10-05).** 설계 문서 머리말은 `Status: APPROVED`다. 다음은 `/autoplan`이다.
-- 마지막 지적 12개는 계획 초안과 설계 문서 본문에 모두 반영했다. 설계 문서 끝의 「Reviewer Concerns」는 지적 원문을 그대로 둔 기록이다. 이 반영분은 아직 리뷰를 받지 않았다.
+- 설계는 승인됐다(설계 초안 머리말 `Status: APPROVED`, 2026-10-05).
+- **`/autoplan` 리뷰가 끝났고 최종 승인 게이트에서 사용자가 「그대로 승인」을 골랐다(2026-10-06).** CEO(사양 리뷰 3회 41건 + 독립 리뷰 17건) · Design 건너뜀(UI 없음) · DX(17건, 8/10) · Eng(26건, critical gap 0). 결정 99건 가운데 사용자가 본 Taste는 여섯이고 전부 권장안대로다. 기록은 계획 초안의 `## Review record`와 `docs/development/sessions/2026-10-06-workflow-diet-review.md`에 있다.
+- **리뷰를 반영한 계획을 `docs/development/sessions/`에 나눠 썼다(2026-10-06).** 개요 `2026-10-06-workflow-diet-plan.md`, 작업 묶음 `…-w1-change-set.md` ~ `…-w7-backlog.md`, 리뷰 기록 `…-review.md`. 수용 항목은 묶음 문서 본문에 녹였다. 전체 테스트(48 파일, 1,114 통과)와 `pnpm wf check-links`가 통과한다.
+- 이 변경은 아직 커밋하지 않았다(`git status`로 본다). 계획 초안 `docs/etc/2026-10-05-workflow-diet-plan-draft.md`도 리뷰 기록이 붙은 채 미커밋이다.
 
 ## 2. 다음에 할 일
 
-1. `/autoplan`으로 계획 초안을 리뷰한다. 리뷰어는 반드시 서브에이전트로 띄운다.
-2. 리뷰를 반영한 계획 문서를 `docs/development/sessions/`에 쓴다. 개요 하나와 작업 묶음(W1~W7)별 문서로 나눈다. 파일명에 `workflow-diet`가 들어가야 `approve-plan`이 계획 문서로 알아본다.
-3. 사용자가 `계획 승인`을 말하면 `pnpm wf approve-plan`을 실행한다. 이 명령은 확인창이 뜨므로 실행 전에 미리 말한다.
+1. **단계별 도구 점검 — 끝났다(2026-10-07).** 워크플로우 단계마다 불리는 직접 만든 도구(`workflow.mjs` 명령, 훅 `gate-scripts.mjs`·`check-gstack.sh`, 커밋 훅 lint-staged)의 횟수·출력 글자 수·시간을 표로 만들었다. 결과는 `docs/temp/2026-10-07-workflow-tool-inventory.md`에 있다(git 밖). 세션 기록은 2026-09-09 이후 것만 남아 있어서 직전 슬라이스 #92의 두 회차를 슬라이스 둘로 보고 셌다.
+   - 결정 규칙(「슬라이스마다 두 번 이상 불리고 1초 이상 걸리거나 1,000자 이상 출력하는 것」)에 걸린 것은 `wf status`(JSON 출력, 한 번에 최대 약 4,500자)·`wf check-links`(vitest, 1.9초, 2회차 92번)·`wf check-qa`(vitest, 약 4초) 셋이다. **사용자가 이 슬라이스에 넣지 않고 따로 하기로 정했다** — Eng 리뷰를 다시 도는 비용이 얻는 것보다 크고 W1~W7과 거의 겹치지 않아서다. W7의 새 백로그 항목 9로 적었다.
+   - 모르던 것 둘도 확인했다. `check-gstack.sh`는 Skill 호출 때만 돌고 0.03초라 셈에 들지 않는다. 절차 문서는 phase 여섯 개를 한 번씩 지나면 터미널 출력 기준 15,811자(파일 내용 13,575자)다 — 새 항목 4에 붙였다.
+   - 점검하다 전체 테스트가 하나 실패하는 것을 봤다. 새 세션 문서 아홉의 머리말 줄 이름이 `고치는 정본:`이어서 `DocsReferences.test.ts`가 `정본:` 줄 없음으로 잡았다. 규약대로 `정본:`으로 고쳤다(없는 셋은 `없음 — <사유>` 형태).
+2. 새 세션 문서 아홉과 계획 초안의 마지막 모습, 이 문서를 커밋한다(사용자가 말할 때).
+3. 사용자가 `계획 승인`을 말하면 `pnpm wf approve-plan`을 실행한다. 이 명령은 확인창이 뜨므로 실행 전에 미리 말한다. 파일명에 `workflow-diet`가 들어 있어 `approve-plan`이 계획 문서로 알아본다.
+4. `qa-setup`부터는 절차 문서가 배달하는 대로 간다. 구현 순서는 개요 §5(W5 → W1 → W4 → W2 → W3 → W6 → W7)다.
 
-`/autoplan`은 2026-10-05에 한 번 시작했다가 첫 리뷰(CEO 단계)에 들어가지 못하고 멈췄다. gstack 1.91.25가 단계마다 다는 진입 검사는, 지금 실행하려는 도구 호출이 Claude Code의 세션 기록 파일에 2초 안에 적혀 있기를 요구한다. 그 세션은 길어서 적히는 데 3.1초가 걸렸고, 단계 지침을 읽는 호출이 매번 「Native parent evidence has not reached the journal yet」로 막혔다. 같은 세션에서 다시 시도해도 풀리지 않는다. 리뷰는 하나도 돌지 않았고, 계획 초안은 `/autoplan`이 손대기 전 내용으로 되돌려 두었다.
+`/autoplan`이 이 장비에서 막혔던 원인은 이렇다(2026-10-06에 확정). gstack의 진입 검사(`autoplan/bin/phase-publication-hook.ts`)는 지금 실행하려는 도구 호출이 Claude Code의 세션 기록 파일에 2초 안에 적혀 있기를 요구하는데, Claude Code 2.1.289는 그 호출 기록을 진입 검사(PreToolUse 훅)가 끝난 뒤에야 쓴다. 그래서 세션 길이와 상관없이 첫 단계 진입에서 막혔다(「세션이 길어서 3.1초가 걸렸다」는 2026-10-05의 틀린 진단이다). 사용자가 패치(`docs/temp/2026-10-06-gstack-autoplan-in-flight-entry.patch`, git 밖)를 `cd ~/.claude/skills/gstack && git apply <패치>`로 넣어 돌게 했다. gstack 자동 업데이트가 패치를 밀어내면 다시 넣는다. AI는 이 파일을 못 고친다(자동 모드 분류기가 「자기 수정」으로 막는다).
 
-다시 할 때 지킬 것은 둘이다. 새 세션에서 시작한다. 그리고 `gstack-autoplan-snapshot.ts`의 `init`·`methodology`·`create`·`amend-input`은 다른 명령이나 파이프(`| head`, `2>&1`)와 묶지 않고 단독으로 실행한다. 묶으면 진입 검사가 초기화 기록을 알아보지 못한다. 새 세션에서도 같은 자리에서 막히면 다시 시도하지 말고 사용자에게 알린다. 그때 고를 길은 진입 검사의 대기 시간을 늘리도록 gstack 설치본을 고치거나, `/plan-ceo-review` · `/plan-devex-review` · `/plan-eng-review`를 하나씩 돌리는 것이다.
+다음 `/autoplan`에서 지킬 것은 셋이다. `gstack-autoplan-snapshot.ts`의 명령은 다른 명령이나 파이프와 묶지 않고 단독으로 실행한다. 단계 보고는 「Phase N complete.」 한 줄만 따로 보낸다(긴 글은 세션 기록에 요약으로 적혀 검사가 못 찾는다). 그리고 도중에 사용자가 말을 걸면 진입 검사가 그 호출을 끝난 것으로 봐서 뒤의 Read·Agent가 「identity is unavailable after this invocation ended」로 막히고 되살릴 길이 없다 — 컨텍스트가 차면 새 세션이 아니라 `/compact`로 잇는다.
 
 ## 3. 사용자가 정한 것
 
@@ -28,6 +33,8 @@
 | 2026-09-30 | 전제 아홉에 동의(설계 문서 「전제」) |
 | 2026-10-05 | 접근은 축소형 A다. 두 단계를 유지하고, 2단계는 약속 넷만 지금 적는다 |
 | 2026-10-05 | 코드를 고친 뒤의 `/cso`는 바뀐 부분만 다시 본다. 2026-09-17의 「대상 파일 목록이 같으면 다시 하지 않는다」를 뒤집었다 |
+| 2026-10-07 | 점검에 걸린 `wf status` · `check-links` · `check-qa`는 이 슬라이스에 넣지 않고 따로 한다(W7 새 항목 9). 확인은 작업 묶음(W) 하나가 끝날 때마다 받는다 |
+| 2026-10-07 | `tests/` 아래를 무엇을 검사하나로 나눈다(`logic` · `workflow` · `docs`, 각 안에 `helpers/` · `fixtures/`). 새로 만들거나 고치는 파일만 옮기고 나머지와 `logic/` 세분화는 W7 새 항목 10. Eng 리뷰는 다시 돌리지 않는다 |
 
 ## 4. 문서가 어디에 있나
 
@@ -37,7 +44,8 @@ git에 있는 것(어느 장비에서나 보인다):
 |---|---|
 | `docs/development/sessions/2026-09-16-workflow-tooling-diet-brief.md` | 요구사항, 실측, 범위, 제약 |
 | `docs/etc/2026-10-05-workflow-diet-design-draft.md` | 설계 문서. 무엇을 그대로 두고 무엇을 고치는지의 결정 기록 |
-| `docs/etc/2026-10-05-workflow-diet-plan-draft.md` | 계획 초안. 개요, 작업 묶음 W1~W7, 2단계 약속 넷 |
+| `docs/development/sessions/2026-10-06-workflow-diet-plan.md` + `…-w1-change-set.md` ~ `…-w7-backlog.md` + `…-review.md` | 리뷰를 반영한 계획(개요 · 작업 묶음 일곱 · 리뷰 기록). 구현은 이것을 본다 |
+| `docs/etc/2026-10-05-workflow-diet-plan-draft.md` | 계획 초안. `/autoplan` 리뷰 기록이 붙은 마지막 모습이고, 위 세션 문서가 이어받았다 |
 | `docs/etc/2026-10-05-workflow-diet-w6-wording-draft.md` | `CLAUDE.md`와 절차 문서에서 바꿀 문구의 초안. 계획 초안의 글자 수 표가 이 문구로 잰 값이다 |
 | 커밋 `211ae71` | 옛 계획 문서 아홉. `git show 211ae71 --stat`으로 목록을 본다 |
 
@@ -53,6 +61,7 @@ git에 있는 것(어느 장비에서나 보인다):
 |---|---|---|
 | 두 검토의 원문(Claude 서브에이전트, GPT) | `docs/temp/2026-09-30-workflow-diet-gpt-review/` 폴더의 `11`·`12` 파일 | 결론은 설계 문서와 계획 초안에 다 옮겼다. 세부 근거만 못 본다 |
 | 사용자용 전체 그림 설명 | `docs/temp/2026-10-03-workflow-diet-overview.md` | 2026-10-05의 결정 셋이 빠져 있어 지금은 맞지 않는 곳이 있다. 사용자가 원하면 고쳐 준다 |
+| `/autoplan` 테스트 계획 | `~/.gstack/projects/dev-HongCheol-monster/Choi-HC-feat-workflow-diet-eng-review-test-plan-20261006-125851.md` | QA 문서를 쓸 때 옮겨 적을 확인 항목이고, 내용은 리뷰 기록 Eng 단계 「테스트 검토」에도 있다 |
 | 설계 문서 리뷰 기록 세 회차 | `~/.gstack/projects/dev-HongCheol-monster/` 아래 설계 문서 이름 뒤에 `.review.R4lrng`가 붙은 폴더 | 마지막 지적은 설계 문서 끝에 그대로 있다 |
 | gstack의 결정 기록, Claude 메모리 | `~/.gstack`, `~/.claude` | 다른 장비의 Claude는 이 문서로 대신한다 |
 
