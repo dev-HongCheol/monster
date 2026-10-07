@@ -8,6 +8,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { git } from "./lib/git.mjs";
 import { runTypecheck } from "./typecheck.mjs";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -354,17 +355,12 @@ function runVitest(extraArgs = [], env = {}) {
   return r.status;
 }
 
-// git 명령 실행 헬퍼. encoding="utf8"로 출력 캡처, 결과 객체 반환.
-function git(args, opts = {}) {
-  return spawnSync("git", args, { cwd: ROOT, encoding: "utf8", ...opts });
-}
-
 // Cocos 규칙: assets/ 아래 모든 파일·디렉터리는 형제 `.meta`(UUID 보관)를 가진다.
 // `.meta`가 추적되지 않으면 클론·타 환경에서 UUID가 재생성돼 씬/프리팹 참조가 깨진다.
 // 추적(git index)되는 에셋 중 `<경로>.meta`가 추적되지 않는 항목 목록을 반환한다.
 // 반환: { error: string|null, missing: string[] }
 function listMissingAssetMeta() {
-  const r = git(["ls-files", "game/assets"]);
+  const r = git(ROOT, ["ls-files", "game/assets"]);
   if (r.status !== 0) {
     return { error: (r.stderr || "git ls-files 실패").trim(), missing: [] };
   }
@@ -422,12 +418,12 @@ function requireAssetMeta() {
 // 자동으로 rebase하지 않는다. 브랜치에 남의 커밋이 얹혀 있을 수 있고, 무엇을 버리고 무엇을 살릴지는
 // 사람의 판단이다. 여기서는 막고 다음에 칠 명령을 알려 주기만 한다.
 function requireCurrentBase(base, branch) {
-  git(["fetch", "origin", "main", "--quiet"]); // 오프라인이면 실패해도 그냥 로컬 기준으로 잰다
-  const originMain = git(["rev-parse", "--verify", "--quiet", "refs/remotes/origin/main"]);
+  git(ROOT, ["fetch", "origin", "main", "--quiet"]); // 오프라인이면 실패해도 그냥 로컬 기준으로 잰다
+  const originMain = git(ROOT, ["rev-parse", "--verify", "--quiet", "refs/remotes/origin/main"]);
   if (originMain.status !== 0) return; // origin이 없는 클론에서는 잴 기준이 없다
-  if (git(["merge-base", "--is-ancestor", "origin/main", base]).status === 0) return;
+  if (git(ROOT, ["merge-base", "--is-ancestor", "origin/main", base]).status === 0) return;
 
-  const behind = git(["rev-list", "--count", `${base}..origin/main`]).stdout.trim();
+  const behind = git(ROOT, ["rev-list", "--count", `${base}..origin/main`]).stdout.trim();
   fail(
     `${base}이(가) origin/main보다 ${behind}커밋 뒤처져 있습니다 — 여기서 시작하면 최근 머지된 ` +
       "인프라·백로그 항목이 없는 트리 위에 슬라이스가 섭니다.\n" +
@@ -442,11 +438,11 @@ function requireCurrentBase(base, branch) {
 function ensureFeatureBranch(feature) {
   const branch = `feat/${feature}`;
   const exists =
-    git(["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]).status === 0;
+    git(ROOT, ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]).status === 0;
   requireCurrentBase(exists ? branch : "main", branch);
   const r = exists
-    ? git(["switch", branch], { stdio: "inherit" })
-    : git(["switch", "-c", branch, "main"], { stdio: "inherit" });
+    ? git(ROOT, ["switch", branch], { stdio: "inherit" })
+    : git(ROOT, ["switch", "-c", branch, "main"], { stdio: "inherit" });
   if (r.status !== 0) {
     fail(
       `브랜치 전환/생성 실패: ${branch}\n` +
