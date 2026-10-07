@@ -16,11 +16,10 @@
  * 형태라 가장 나쁘다.
  */
 
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ROOT } from '../helpers/DocFs';
+import { listIndexEolLines, ROOT } from '../helpers/DocFs';
 
 /**
  * `git ls-files --eol`의 한 줄에서 인덱스 줄 끝과 경로를 뽑는다.
@@ -37,11 +36,7 @@ function parseEolLine(line: string): { indexEol: string; file: string } | null {
 
 /** 추적 파일 전체의 인덱스 줄 끝 목록. */
 function listIndexEol(): { indexEol: string; file: string }[] {
-  const r = spawnSync('git', ['ls-files', '--eol'], { cwd: ROOT, encoding: 'utf8' });
-  if (r.status !== 0) throw new Error(`git ls-files --eol 실패: ${r.stderr}`);
-  return r.stdout
-    .split('\n')
-    .filter(Boolean)
+  return listIndexEolLines()
     .map(parseEolLine)
     .filter((e) => e !== null);
 }

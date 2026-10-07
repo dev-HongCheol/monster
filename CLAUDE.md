@@ -145,7 +145,7 @@ planning → qa-setup → implementation → verification → user-verification 
 ```
 1~2 계획       wf start <feature> → 백로그 3종 확인 → /office-hours → /autoplan
                → sessions/<날짜>-<feature>-plan.md 작성 → 사용자 `계획 승인`
-3~4 QA·테스트  docs/qa/<feature>-test.md + tests/logic/<Feature>.test.ts(RED)
+3~4 QA·테스트  docs/qa/<feature>-test.md + tests/<영역>/<Feature>.test.ts(RED)
                → wf ready-impl (RED 게이트)
 5   구현       GREEN → REFACTOR → wf start-verification (GREEN 게이트)
 6   AI 검증    QA 문서 확정(잠정→확정) → 정본 갱신(wf canon/canon-done/canon-skip)

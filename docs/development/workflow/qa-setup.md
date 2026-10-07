@@ -3,7 +3,7 @@
 `superpowers:executing-plans` → `superpowers:test-driven-development`를 호출해 진행한다. 이 phase에서 만드는 것은 둘이다.
 
 - `docs/qa/<feature>-test.md` — 사용자가 에디터를 열고 인게임 테스트를 할 때 볼 문서
-- `tests/logic/<Feature>.test.ts` — 아직 실패하는(RED) 테스트. 파일명은 기능 슬러그를 PascalCase로 바꾼 것이어야 아래 게이트가 찾는다
+- `tests/<영역>/<Feature>.test.ts` — 아직 실패하는(RED) 테스트. 영역 폴더는 무엇을 검사하나로 고른다(게임 로직 `logic` · 워크플로우 도구 `workflow` · 문서 규칙 `docs`). 파일명은 기능 슬러그를 PascalCase로 바꾼 것이어야 아래 게이트가 찾는다
 
 ## 테스트를 생략할 수 있는 조건
 

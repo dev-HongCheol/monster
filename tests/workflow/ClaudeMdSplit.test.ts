@@ -8,28 +8,24 @@
  * 초기화되므로, 이름은 그대로 두고 여기 적어 둔다.
  */
 
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { findStepDocIssues, parsePhases } from '../helpers/WorkflowSteps';
+import {
+  cleanupSandboxes,
+  DELIVERED_PHASES,
+  makeRepo,
+  type RepoOptions,
+  runWf,
+  type SandboxState,
+} from './helpers/WfSandbox';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
 const WORKFLOW_MJS = path.join(ROOT, '.claude', 'workflow.mjs');
 const STEP_DOC_DIR = path.join(ROOT, 'docs', 'development', 'workflow');
-
-/** 배달 대상 phase — `done`은 제외한다(문서 여섯 개, phase 일곱 개). */
-const DELIVERED_PHASES = [
-  'planning',
-  'qa-setup',
-  'implementation',
-  'verification',
-  'user-verification',
-  'pr-ready',
-];
 
 // ---------------------------------------------------------------------------
 // 4.1 절차 문서 정합 — 순수 함수 (fixture)
@@ -136,145 +132,14 @@ describe('절차 문서 실물 게이트', () => {
 // 4.4 배달 로직 — 샌드박스 E2E
 // ---------------------------------------------------------------------------
 
-/** 샌드박스 상태 파일의 모양 — `docs_delivered`는 verification 객체 **밖**이다. */
-interface SandboxState {
-  feature: string;
-  phase: string;
-  test_skipped: boolean;
-  test_skip_reason: string | null;
-  ts_check_scope: string | null;
-  verification: {
-    cso_done: boolean;
-    ts_check_clean: boolean;
-    lint_clean: boolean;
-    code_review_clean: boolean;
-  };
-  docs_delivered: string[];
-  canon_updated: string[];
-  canon_skip_reason: string | null;
-}
+afterEach(cleanupSandboxes);
 
-interface SandboxOptions {
-  /** 시작 phase */
-  phase: string;
-  /** 네 검증 플래그를 모두 통과로 둘지 (전체 pass 경로 테스트용) */
-  allChecksClean?: boolean;
-  /** 이미 배달된 phase 목록 (차등 배달 테스트용) */
-  docsDelivered?: string[];
-  /** 정본 갱신 선언 (pass의 정본 게이트) */
-  canonUpdated?: string[];
-  /** 정본 갱신 없음 사유 (pass의 정본 게이트) */
-  canonSkipReason?: string;
-  /** 테스트 스킵 상태 — ready-impl이 vitest를 띄우지 않게 한다 */
-  testSkipped?: boolean;
-  /** 계획 문서를 만들지 (approve-plan 게이트) */
-  planDoc?: boolean;
-  /** QA 문서에 미확정 표시를 넣을지 (pass의 QA 확정 게이트) */
-  qaProvisional?: boolean;
-  /** 이 phase 문서만 만들지 않는다 */
-  omitDoc?: string;
-  /** 이 phase 문서를 읽을 수 없게 만든다 (파일 자리에 디렉터리를 둔다) */
-  unreadableDoc?: string;
-  /** 인덱스(README.md)를 만들지 않는다 */
-  omitIndex?: boolean;
-  /** 절차 문서 디렉터리 자체를 만들지 않는다 */
-  omitDir?: boolean;
-}
-
-const FEATURE = 'demo';
-const sandboxes: string[] = [];
-
-afterEach(() => {
-  for (const dir of sandboxes.splice(0)) {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-/** stub 절차 문서 — 제목 줄(요약에 살아남는 부분)과 본문 표식을 분리해 둔다. */
-function stubDoc(phase: string): string {
-  return [
-    `# ${phase} 절차`,
-    '',
-    '## 첫 게이트',
-    '',
-    `BODY-${phase}`,
-    '',
-    '## 둘째 게이트',
-    '',
-    `BODY-${phase}-끝`,
-    '',
-  ].join('\n');
-}
-
-/** 임시 디렉터리에 최소 레포 구조를 꾸미고 경로를 반환한다. 정리는 afterEach가 한다. */
-function makeSandbox(opts: SandboxOptions): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-steps-'));
-  sandboxes.push(dir);
-
-  const write = (rel: string, body: string): void => {
-    const full = path.join(dir, rel);
-    fs.mkdirSync(path.dirname(full), { recursive: true });
-    fs.writeFileSync(full, body);
-  };
-
-  const clean = opts.allChecksClean === true;
-  const state: SandboxState = {
-    feature: FEATURE,
-    phase: opts.phase,
-    test_skipped: opts.testSkipped === true,
-    test_skip_reason: opts.testSkipped === true ? '순수 로직 없음' : null,
-    ts_check_scope: clean ? 'full' : null,
-    verification: {
-      cso_done: clean,
-      ts_check_clean: clean,
-      lint_clean: clean,
-      code_review_clean: false,
-    },
-    docs_delivered: opts.docsDelivered ?? [],
-    canon_updated: opts.canonUpdated ?? [],
-    canon_skip_reason: opts.canonSkipReason ?? null,
-  };
-  write('.claude/workflow-state.json', `${JSON.stringify(state, null, 2)}\n`);
-
-  write(
-    `docs/qa/${FEATURE}-test.md`,
-    opts.qaProvisional === true ? '# QA\n\n## 프리팹 (잠정 이름)\n' : '# QA\n\n## 프리팹 (확정)\n',
-  );
-
-  if (opts.planDoc !== false) {
-    write(`docs/development/sessions/2026-01-01-${FEATURE}-plan.md`, '# 계획\n');
-  }
-
-  if (opts.omitDir !== true) {
-    fs.mkdirSync(path.join(dir, 'docs', 'development', 'workflow'), { recursive: true });
-    if (opts.omitIndex !== true) write('docs/development/workflow/README.md', '# 인덱스\n');
-    for (const phase of DELIVERED_PHASES) {
-      if (phase === opts.omitDoc) continue;
-      write(`docs/development/workflow/${phase}.md`, stubDoc(phase));
-    }
-    if (opts.unreadableDoc !== undefined) {
-      // 이름은 readdir에 남되 readFileSync가 EISDIR로 던지게 만든다. 권한 조작보다 이식성이 좋다.
-      const target = path.join(dir, 'docs/development/workflow', `${opts.unreadableDoc}.md`);
-      fs.rmSync(target, { force: true });
-      fs.mkdirSync(target);
-    }
-  }
-
-  return dir;
-}
-
-/** 샌드박스를 ROOT로 삼아 실제 workflow.mjs 프로세스를 띄운다. */
-function runWf(
-  sandbox: string,
-  args: string[],
-  extraEnv: Record<string, string> = {},
-): { status: number | null; stdout: string; stderr: string } {
-  const r = spawnSync(process.execPath, [WORKFLOW_MJS, ...args], {
-    cwd: sandbox,
-    encoding: 'utf8',
-    env: { ...process.env, CLAUDE_PROJECT_DIR: sandbox, ...extraEnv },
-  });
-  return { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
+/**
+ * git 저장소 없는 폴더로 만든다. 이 파일의 테스트는 변경 집합이나 `cso_commit`을 확인하지 않으므로
+ * 저장소가 필요 없고, 전부 저장소로 만들면 Windows에서 전체 테스트 시간이 몇 초 는다.
+ */
+function makeSandbox(opts: RepoOptions): string {
+  return makeRepo({ ...opts, git: false });
 }
 
 /** 샌드박스의 현재 상태를 읽는다. */

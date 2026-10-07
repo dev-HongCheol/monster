@@ -479,8 +479,20 @@ function planDocPath(state) {
 function qaDocPath(state) {
   return path.join(ROOT, "docs", "qa", `${state.feature}-test.md`);
 }
+// 기능 테스트는 tests/ 바로 아래 영역 폴더(logic·workflow·docs …) 어디에나 둘 수 있다 — 영역은
+// 무엇을 검사하나로 나뉘고, 게이트가 보는 것은 파일명뿐이다. 어디에도 없으면 안내용으로
+// tests/logic 경로를 돌려준다(그 경로가 없다는 메시지가 나간다).
 function testFilePath(state) {
-  return path.join(ROOT, "tests", "logic", `${toPascal(state.feature)}.test.ts`);
+  const name = `${toPascal(state.feature)}.test.ts`;
+  const testsDir = path.join(ROOT, "tests");
+  const fallback = path.join(testsDir, "logic", name);
+  if (!fs.existsSync(testsDir)) return fallback;
+  const hit = fs
+    .readdirSync(testsDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => path.join(testsDir, d.name, name))
+    .find((p) => fs.existsSync(p));
+  return hit ?? fallback;
 }
 
 // 현재 슬라이스 QA 문서를 검사한다. 통과하면 true.
@@ -497,25 +509,25 @@ function testFilePath(state) {
 //
 // 옛 인라인 판정은 줄 전체에서 태그 문자열만 찾아 **코드 스팬 안팎을 못 갈랐다.** 그래서 "미확정
 // 항목이 없다"고 설명한 문장 자체가 위반으로 잡혀 게이트가 거짓으로 실패했다(2026-08-18, F92).
-const QA_JUDGE_TEST = "tests/logic/DocsHygiene.test.ts";
+const QA_JUDGE_TEST = "tests/workflow/DocsHygiene.test.ts";
 
 function qaDocClean(state) {
   const p = qaDocPath(state);
   if (!fs.existsSync(p)) return true; // 존재 강제는 ready-impl의 몫이다
-  // 테스트 트리가 통째로 없으면 건너뛴다 — 이 경로를 타는 것은 workflow.mjs 자신을 시험하는 E2E
-  // 샌드박스뿐이다(문서와 상태 파일만 꾸미고 tests/는 안 만든다). 그 샌드박스에는 vitest도 없어서
-  // 띄우면 다른 게이트를 시험하던 테스트가 이 검사 때문에 실패한다.
+  // 테스트 트리가 통째로 없으면 건너뛴다. 시험용 임시 저장소(tests/workflow/helpers/WfSandbox.ts)는
+  // 판정 파일 자리를 만들고 가짜 pnpm을 PATH에 두므로 여기 걸리지 않는다 — 걸리는 것은 tests/가
+  // 아예 없는 폴더뿐이다.
   //
   // **판정 파일 하나만 없는 경우는 건너뛰지 않고 막는다.** 그렇게 하지 않으면 그 파일을 지우는 것만으로
   // 게이트가 꺼지는데, 지워도 스위트는 초록을 유지하므로(그 파일이 자기 존재를 단언할 수는 없다)
   // 아무도 알아채지 못한다. 이 슬라이스가 없애려는 형태 그대로다.
-  if (!fs.existsSync(path.join(ROOT, "tests", "logic"))) return true;
+  if (!fs.existsSync(path.join(ROOT, "tests"))) return true;
   if (!fs.existsSync(path.join(ROOT, QA_JUDGE_TEST))) {
     process.stderr.write(`✗ ${QA_JUDGE_TEST}이 없습니다 — QA 문서 게이트의 판정 파일입니다.\n`);
     return false;
   }
   const rel = path.relative(ROOT, p).split(path.sep).join("/");
-  if (runVitest(["tests/logic/DocsHygiene.test.ts"], { WF_QA_DOC: rel }) !== 0) return false;
+  if (runVitest([QA_JUDGE_TEST], { WF_QA_DOC: rel }) !== 0) return false;
 
   // 검증을 다시 시작한 뒤로 문서가 손대지지 않았으면 근거가 낡은 것이다(resetVerification 참조).
   if (state.qa_doc_fingerprint && state.qa_doc_fingerprint === qaDocFingerprint(state)) {

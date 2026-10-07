@@ -18,9 +18,7 @@
  * 적어 두었지만 자각이 문장에만 있고 게이트에는 없었다.
  */
 
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { loadDocs, ROOT } from '../helpers/DocFs';
@@ -33,6 +31,7 @@ import {
   listProvisionalMarkers,
   RENORMALIZE_COMMIT,
 } from '../helpers/QaDoc';
+import { cleanupSandboxes, git, makeRepo, runWf } from './helpers/WfSandbox';
 
 /** QA 슬라이스 문서만 고른다. `*-review-issues.md`·`*-security-issues.md`는 대상이 아니다. */
 function qaTestDocs(): { path: string; content: string }[] {
@@ -48,12 +47,8 @@ describe('blame 무시 목록', () => {
 
   it('적힌 SHA가 실재하는 커밋이다', () => {
     // 존재 확인 없이 두면 오타가 조용히 산다 — git은 모르는 SHA를 무시 목록에서 그냥 넘긴다.
-    const r = spawnSync('git', ['cat-file', '-t', RENORMALIZE_COMMIT], {
-      cwd: ROOT,
-      encoding: 'utf8',
-    });
-    expect(r.status, `${RENORMALIZE_COMMIT}을 못 찾는다: ${r.stderr}`).toBe(0);
-    expect(r.stdout.trim()).toBe('commit');
+    // 못 찾으면 `git()`이 stderr를 담은 예외를 던진다.
+    expect(git(ROOT, 'cat-file', '-t', RENORMALIZE_COMMIT).trim()).toBe('commit');
   });
 });
 
@@ -179,51 +174,17 @@ describe('hasEvidenceLine — 통과 근거와 스킵 탈출구', () => {
  * 동작이고, 그 배선이 틀리면 가드가 **조용히 통과**해서 낡은 트리 위에서 슬라이스가 선다.
  */
 describe('wf start — 기준점 가드', () => {
-  const sandboxes: string[] = [];
-  afterEach(() => {
-    for (const d of sandboxes.splice(0)) fs.rmSync(d, { recursive: true, force: true });
-  });
+  afterEach(cleanupSandboxes);
 
-  /** main에 커밋 둘, `feat/stale`은 첫 커밋에 세워 두고, origin/main은 두 번째를 가리키게 한다. */
-  function makeRepo(): string {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-base-'));
-    sandboxes.push(dir);
-    const run = (...args: string[]): void => {
-      const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
-      if (r.status !== 0) throw new Error(`git ${args.join(' ')}: ${r.stderr}`);
-    };
-    run('init', '--quiet', '--initial-branch=main');
-    run('config', 'user.email', 't@t');
-    run('config', 'user.name', 't');
-    fs.writeFileSync(path.join(dir, 'a.txt'), 'one\n');
-    run('add', '-A');
-    run('commit', '--quiet', '-m', 'c1');
-    run('branch', 'feat/stale'); // 여기서 갈라져 뒤처진 브랜치
-    fs.writeFileSync(path.join(dir, 'a.txt'), 'two\n');
-    run('add', '-A');
-    run('commit', '--quiet', '-m', 'c2');
-    run('update-ref', 'refs/remotes/origin/main', 'main'); // origin/main = c2
-    fs.mkdirSync(path.join(dir, '.claude'), { recursive: true });
-    return dir;
-  }
-
+  /** `HEAD`를 `main`에 둔 임시 저장소에서 `wf start`를 친다. */
   function wfStart(dir: string, feature: string): { status: number | null; stderr: string } {
-    const r = spawnSync(
-      process.execPath,
-      [path.join(ROOT, '.claude', 'workflow.mjs'), 'start', feature],
-      {
-        cwd: dir,
-        encoding: 'utf8',
-        env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
-      },
-    );
-    return { status: r.status, stderr: r.stderr ?? '' };
+    return runWf(dir, ['start', feature]);
   }
 
   it('이미 있는 브랜치가 origin/main보다 뒤처졌으면 막는다', () => {
     // 2026-08-19에 실제로 난 경로다. 브랜치가 예전에 만들어져 있으면 `wf start`가 그 낡은 지점으로
     // 그냥 전환했고, 계획이 최근 머지된 인프라가 없는 트리 위에 섰다.
-    const dir = makeRepo();
+    const dir = makeRepo({ checkout: 'main' });
     const r = wfStart(dir, 'stale');
     expect(r.status).not.toBe(0);
     expect(r.stderr).toContain('origin/main보다 1커밋 뒤');
@@ -232,8 +193,8 @@ describe('wf start — 기준점 가드', () => {
 
   it('로컬 main이 뒤처졌으면 새 이름이어도 막는다', () => {
     // 이 경로로 두 번 샜고 백로그 ID 충돌로 남았다(F47·F48).
-    const dir = makeRepo();
-    spawnSync('git', ['reset', '--hard', '--quiet', 'HEAD~1'], { cwd: dir, encoding: 'utf8' });
+    const dir = makeRepo({ checkout: 'main' });
+    git(dir, 'reset', '--hard', '--quiet', 'HEAD~1');
     const r = wfStart(dir, 'brand-new');
     expect(r.status).not.toBe(0);
     expect(r.stderr).toContain('main이(가) origin/main보다 1커밋 뒤');
@@ -245,7 +206,7 @@ describe('wf start — 기준점 가드', () => {
     //
     // **막는 쪽까지는 여기서 못 잰다.** 그 판정은 vitest를 띄우는데 샌드박스에는 vitest가 없다.
     // 이 테스트가 고정하는 것은 "기준값이 실제로 기록되는가"까지다.
-    const dir = makeRepo();
+    const dir = makeRepo({ checkout: 'main' });
     fs.writeFileSync(
       path.join(dir, '.claude', 'workflow-state.json'),
       `${JSON.stringify({
@@ -265,15 +226,7 @@ describe('wf start — 기준점 가드', () => {
       '## 4. 자동 검증\n- [x] 돌렸다\n',
     );
 
-    const r = spawnSync(
-      process.execPath,
-      [path.join(ROOT, '.claude', 'workflow.mjs'), 'invalidate'],
-      {
-        cwd: dir,
-        encoding: 'utf8',
-        env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
-      },
-    );
+    const r = runWf(dir, ['invalidate']);
     expect(r.status, r.stderr).toBe(0);
     const state = JSON.parse(
       fs.readFileSync(path.join(dir, '.claude', 'workflow-state.json'), 'utf8'),
@@ -282,7 +235,7 @@ describe('wf start — 기준점 가드', () => {
   });
 
   it('기준점이 origin/main을 담고 있으면 통과시킨다', () => {
-    const dir = makeRepo();
+    const dir = makeRepo({ checkout: 'main' });
     const r = wfStart(dir, 'brand-new');
     expect(r.status, r.stderr).toBe(0);
     const state = JSON.parse(
