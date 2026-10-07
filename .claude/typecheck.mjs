@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 // .claude/typecheck.mjs
 // 레포 소유 타입체크. `pnpm typecheck`와 `pnpm wf pass ts`가 **같은 코드**를 쓴다 —
 // 그래야 "명령은 있는데 게이트는 안 도는" 상황이 생기지 않는다.
@@ -25,6 +26,10 @@ const COCOS_BASE = path.join(ROOT, "game", "temp", "tsconfig.cocos.json");
 // 따라서 `!== 0`으로만 판정한다 — `=== 1` 비교를 쓰면 모든 타입 에러를 통과시킨다.
 // spawnSync 자체가 실패하면 status가 null이라 fail-closed지만, error를 따로 보고한다.
 // 반환: 0 = 통과, 그 외 = 실패.
+/**
+ * @param {string} project tsconfig 경로(레포 루트 기준)
+ * @returns {number | null}
+ */
 function runTsc(project) {
   const r = spawnSync("pnpm", ["exec", "tsc", "-p", project, "--noEmit"], {
     cwd: ROOT,

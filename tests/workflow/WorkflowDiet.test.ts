@@ -2,7 +2,7 @@
  * 워크플로우 다이어트 1단계(`feat/workflow-diet`)의 테스트.
  *
  * 작업 묶음마다 절을 하나씩 두고, 묶음을 시작할 때 그 절의 실패하는 테스트를 먼저 쓴다. 지금 있는
- * 절은 W1(변경 집합과 적용 판정)이다. W2~W4의 테스트는 그 묶음을 시작할 때 더한다. W5(임시 저장소
+ * 절은 W1(변경 집합과 적용 판정)과 W4(판정 코드 합치기)다. W2·W3의 테스트는 그 묶음을 시작할 때 더한다. W5(임시 저장소
  * 도우미)의 테스트는 `WfSandbox.test.ts`에 따로 있다 — 이 파일은 W1의 모듈을 import하므로 그
  * 모듈이 생기기 전에는 불러오기에서 실패해서, 도우미만 먼저 확인할 수 없기 때문이다. 묶음마다 무엇을 확인하기로 했는지는 계획의 묶음 문서
  * `docs/development/sessions/2026-10-06-workflow-diet-w*.md`의 「테스트」 절이 든다.
@@ -19,6 +19,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { applicableGates, collectChangeSet, csoBaseUsable } from '../../.claude/lib/change-set.mjs';
+import { EDITABLE_PHASES } from '../../.claude/lib/phases.mjs';
 import { cleanupSandboxes, git, makeRepo } from './helpers/WfSandbox';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -26,6 +27,22 @@ const ROOT = path.resolve(HERE, '../..');
 
 /** 임시 저장소를 쓰는 절의 시간 제한. */
 const SANDBOX = { timeout: 30_000 };
+
+type ChangeSet = ReturnType<typeof collectChangeSet>;
+type Measured = Extract<ChangeSet, { measurable: true }>;
+type Unmeasured = Extract<ChangeSet, { measurable: false }>;
+
+/** 구할 수 있었다고 단언하고 좁힌 타입으로 돌려준다 — `base`·`items`를 읽기 위해서다. */
+function measured(cs: ChangeSet): Measured {
+  if (!cs.measurable) throw new Error(`변경 집합을 구하지 못했다: ${cs.hint}`);
+  return cs;
+}
+
+/** 구할 수 없었다고 단언하고 좁힌 타입으로 돌려준다 — `hint`를 읽기 위해서다. */
+function unmeasured(cs: ChangeSet): Unmeasured {
+  if (cs.measurable) throw new Error('변경 집합을 구할 수 있었다 — 구할 수 없어야 하는 경우다');
+  return cs;
+}
 
 afterEach(cleanupSandboxes);
 
@@ -83,8 +100,7 @@ function tsFilesUnder(dir: string): string[] {
 describe('W1 — collectChangeSet: 변경 집합', SANDBOX, () => {
   it('기준은 origin/main과 갈라진 커밋이고, 상태 파일만 바뀐 저장소의 변경 집합은 비어 있다', () => {
     const repo = makeRepo();
-    const cs = collectChangeSet(repo);
-    expect(cs.measurable).toBe(true);
+    const cs = measured(collectChangeSet(repo));
     expect(cs.base).toBe(git(repo, 'rev-parse', 'origin/main').trim());
     expect(cs.items).toEqual([]);
   });
@@ -94,7 +110,7 @@ describe('W1 — collectChangeSet: 변경 집합', SANDBOX, () => {
     write(repo, 'README.md', 'changed\n');
     write(repo, 'docs/new.md');
     fs.rmSync(path.join(repo, 'docs/development/workflow/README.md'));
-    const cs = collectChangeSet(repo);
+    const cs = measured(collectChangeSet(repo));
     expect(cs.items).toEqual(
       expect.arrayContaining([
         { status: 'M', path: 'README.md' },
@@ -110,7 +126,7 @@ describe('W1 — collectChangeSet: 변경 집합', SANDBOX, () => {
     const repo = makeRepo();
     fs.renameSync(path.join(repo, 'README.md'), path.join(repo, 'docs/moved.md'));
     git(repo, 'add', '-A');
-    const cs = collectChangeSet(repo);
+    const cs = measured(collectChangeSet(repo));
     expect(cs.items).toEqual(
       expect.arrayContaining([
         { status: 'D', path: 'README.md' },
@@ -126,13 +142,16 @@ describe('W1 — collectChangeSet: 변경 집합', SANDBOX, () => {
     const repo = makeRepo();
     write(repo, 'docs/staged.md');
     git(repo, 'add', 'docs/staged.md');
-    expect(collectChangeSet(repo).items).toContainEqual({ status: 'A', path: 'docs/staged.md' });
+    expect(measured(collectChangeSet(repo)).items).toContainEqual({
+      status: 'A',
+      path: 'docs/staged.md',
+    });
   });
 
   it('공백과 한글이 든 파일명을 그대로 돌려준다', () => {
     const repo = makeRepo();
     write(repo, 'docs/새 문서 초안.md');
-    expect(collectChangeSet(repo).items).toContainEqual({
+    expect(measured(collectChangeSet(repo)).items).toContainEqual({
       status: 'A',
       path: 'docs/새 문서 초안.md',
     });
@@ -144,21 +163,20 @@ describe('W1 — collectChangeSet: 변경 집합', SANDBOX, () => {
     const repo = makeRepo();
     write(repo, '.claude/workflow-state.json', '{"phase":"verification"}\n');
     write(repo, 'game/assets/art/a.png.meta');
-    const paths = collectChangeSet(repo).items.map((i: { path: string }) => i.path);
+    const paths = measured(collectChangeSet(repo)).items.map((i: { path: string }) => i.path);
     expect(paths).not.toContain('.claude/workflow-state.json');
     expect(paths).not.toContain('game/assets/art/a.png.meta');
   });
 
   it('--name-status의 T(파일 형식 변경)는 M으로 읽는다', () => {
-    const cs = collectChangeSet(ROOT, { run: fakeGitWithDiff('T\0tools/x.sh\0') });
-    expect(cs.measurable).toBe(true);
+    const cs = measured(collectChangeSet(ROOT, { run: fakeGitWithDiff('T\0tools/x.sh\0') }));
     expect(cs.items).toEqual([{ status: 'M', path: 'tools/x.sh' }]);
   });
 });
 
 describe('W1 — 변경 집합을 구할 수 없으면 모든 검사를 한다', SANDBOX, () => {
   /** 네 검사가 전부 「적용」인지. 건너뛰어도 되는지 알 수 없을 때는 건너뛰지 않는다. */
-  function expectAllApply(cs: unknown): void {
+  function expectAllApply(cs: ChangeSet): void {
     const gates = applicableGates(cs);
     for (const name of ['meta', 'fullTypecheck', 'cso', 'qa'] as const) {
       expect(gates[name].applies, name).toBe(true);
@@ -168,8 +186,7 @@ describe('W1 — 변경 집합을 구할 수 없으면 모든 검사를 한다',
   it('origin/main 참조가 없다 → git fetch origin main', () => {
     const repo = makeRepo();
     git(repo, 'update-ref', '-d', 'refs/remotes/origin/main');
-    const cs = collectChangeSet(repo);
-    expect(cs.measurable).toBe(false);
+    const cs = unmeasured(collectChangeSet(repo));
     expect(cs.hint).toContain('git fetch origin main');
     expectAllApply(cs);
   });
@@ -185,16 +202,14 @@ describe('W1 — 변경 집합을 구할 수 없으면 모든 검사를 한다',
     const unrelated = git(repo, 'rev-parse', 'HEAD').trim();
     git(repo, 'switch', '-');
     git(repo, 'update-ref', 'refs/remotes/origin/main', unrelated);
-    const cs = collectChangeSet(repo);
-    expect(cs.measurable).toBe(false);
+    const cs = unmeasured(collectChangeSet(repo));
     expect(cs.hint).toContain('git fetch --unshallow');
     expectAllApply(cs);
   });
 
   it('git 저장소가 아니다 → 저장소 루트에서 실행(여기는 git 저장소가 아니다)', () => {
     const dir = makeRepo({ git: false });
-    const cs = collectChangeSet(dir);
-    expect(cs.measurable).toBe(false);
+    const cs = unmeasured(collectChangeSet(dir));
     expect(cs.hint).toContain('여기는 git 저장소가 아니다');
     expectAllApply(cs);
   });
@@ -203,8 +218,7 @@ describe('W1 — 변경 집합을 구할 수 없으면 모든 검사를 한다',
     // 경로 문자열을 비교하지 않는다. 이 장비에서 git은 `F:/…`를, Node는 `F:\…`를 내서 비교가 항상
     // 틀린다. `rev-parse --show-prefix`가 비어 있지 않으면 하위 폴더다.
     const repo = makeRepo();
-    const cs = collectChangeSet(path.join(repo, 'docs'));
-    expect(cs.measurable).toBe(false);
+    const cs = unmeasured(collectChangeSet(path.join(repo, 'docs')));
     expect(cs.hint).toContain('저장소 루트에서 실행');
     expect(cs.hint).not.toContain('여기는 git 저장소가 아니다');
     expectAllApply(cs);
@@ -218,8 +232,7 @@ describe('W1 — 변경 집합을 구할 수 없으면 모든 검사를 한다',
         error: new Error('spawn git ENOENT'),
       },
     });
-    const cs = collectChangeSet(ROOT, { run });
-    expect(cs.measurable).toBe(false);
+    const cs = unmeasured(collectChangeSet(ROOT, { run }));
     expect(cs.hint).toContain('spawn git ENOENT');
     expect(cs.hint).not.toContain('둘째 줄');
     expect(cs.hint).toContain('git status');
@@ -227,8 +240,7 @@ describe('W1 — 변경 집합을 구할 수 없으면 모든 검사를 한다',
   });
 
   it('U 같은 알 수 없는 상태 글자 → 충돌을 풀고 다시', () => {
-    const cs = collectChangeSet(ROOT, { run: fakeGitWithDiff('U\0x.txt\0') });
-    expect(cs.measurable).toBe(false);
+    const cs = unmeasured(collectChangeSet(ROOT, { run: fakeGitWithDiff('U\0x.txt\0') }));
     expect(cs.hint).toContain('충돌을 풀고 다시');
     expect(cs.hint).toContain('docs/development/troubleshooting/workflow-state-cross-machine.md');
     expectAllApply(cs);
@@ -443,5 +455,46 @@ describe('W1 — 파일 내용으로 확인하는 것', () => {
         /['"](node:)?(child_process|worker_threads)['"]/.test(fs.readFileSync(f, 'utf8')),
       );
     expect(offenders.map((f) => path.relative(ROOT, f))).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W4 — 두 곳에 복사된 판정 코드를 하나로 합치기
+// ---------------------------------------------------------------------------
+
+describe('W4 — 판정 코드는 .claude/lib/ 한 곳에만 있다', () => {
+  it('workflow.mjs가 canon.mjs · workflow-steps.mjs · phases.mjs를 import한다', () => {
+    const src = fs.readFileSync(path.join(ROOT, '.claude/workflow.mjs'), 'utf8');
+    for (const mod of ['./lib/canon.mjs', './lib/workflow-steps.mjs', './lib/phases.mjs']) {
+      const escaped = mod.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      expect(src, mod).toMatch(new RegExp(`from ["']${escaped}["']`));
+    }
+  });
+
+  it('테스트용 복사본이 없다 — tests/helpers/CanonDoc.ts · WorkflowSteps.ts', () => {
+    // 복사본이 남아 있으면 「규칙을 바꾸면 두 곳을 함께 고친다」는 주석이 다시 필요해진다(F78).
+    expect(fs.existsSync(path.join(ROOT, 'tests/helpers/CanonDoc.ts'))).toBe(false);
+    expect(fs.existsSync(path.join(ROOT, 'tests/helpers/WorkflowSteps.ts'))).toBe(false);
+  });
+
+  it('훅의 EDITABLE_PHASES 값이 phases.mjs와 같다 — 훅은 import하지 않고 값만 맞춘다', () => {
+    // Claude Code는 PreToolUse 훅이 종료 코드 2가 아닌 코드로 죽으면 편집을 막지 않는다. 훅이 다른
+    // 파일을 import하다 실패하면 경고만 하고 편집은 통과시키므로, 훅은 값을 직접 들고 이 테스트가
+    // 두 값이 같은지 본다(W4 §2).
+    const hook = fs.readFileSync(path.join(ROOT, '.claude/hooks/gate-scripts.mjs'), 'utf8');
+    const m = /EDITABLE_PHASES\s*=\s*new Set\(\[([^\]]*)\]\)/.exec(hook);
+    expect(m).not.toBeNull();
+    const inHook = [...(m as RegExpExecArray)[1].matchAll(/["']([^"']+)["']/g)]
+      .map((x) => x[1])
+      .sort();
+    expect(inHook).toEqual([...EDITABLE_PHASES].sort());
+  });
+
+  it('lint-staged 대상에 mjs가 있다', () => {
+    // .claude/lib/*.mjs는 biome 검사 대상인데 커밋 훅이 형식을 맞춰 주지 않으면, 커밋은 되는데
+    // 통합 검사에서 실패한다.
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+    const patterns = Object.keys(pkg['lint-staged'] ?? {});
+    expect(patterns.some((p) => /\bmjs\b/.test(p))).toBe(true);
   });
 });

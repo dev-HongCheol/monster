@@ -12,7 +12,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { findStepDocIssues, parsePhases } from '../helpers/WorkflowSteps';
+import { PHASES } from '../../.claude/lib/phases.mjs';
+import { findStepDocIssues } from '../../.claude/lib/workflow-steps.mjs';
 import {
   cleanupSandboxes,
   DELIVERED_PHASES,
@@ -24,7 +25,6 @@ import {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
-const WORKFLOW_MJS = path.join(ROOT, '.claude', 'workflow.mjs');
 const STEP_DOC_DIR = path.join(ROOT, 'docs', 'development', 'workflow');
 
 // ---------------------------------------------------------------------------
@@ -89,38 +89,13 @@ describe('findStepDocIssues — fixture', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4.2 phase 어휘 파싱 (fixture)
-// ---------------------------------------------------------------------------
-
-describe('parsePhases — fixture', () => {
-  it('PHASES 배열의 문자열을 선언 순서대로 뽑는다', () => {
-    const src = [
-      'const CHECKS = ["cso"];',
-      'const PHASES = [',
-      '  "planning",',
-      "  'qa-setup',",
-      '  "done",',
-      '];',
-    ].join('\n');
-    expect(parsePhases(src)).toEqual(['planning', 'qa-setup', 'done']);
-  });
-
-  it('PHASES를 찾지 못하면 예외를 던진다', () => {
-    // 빈 배열을 돌려주면 기대 문서가 0개가 되어 정합 테스트가 조용히 통과한다 —
-    // 가드가 침묵으로 죽는 경로를 막는다.
-    expect(() => parsePhases('const NOTHING = [];')).toThrow();
-  });
-});
-
-// ---------------------------------------------------------------------------
 // 4.3 실물 게이트
 // ---------------------------------------------------------------------------
 
 describe('절차 문서 실물 게이트', () => {
   it('workflow.mjs의 phase 어휘와 docs/development/workflow/가 정합한다', () => {
-    const phases = parsePhases(fs.readFileSync(WORKFLOW_MJS, 'utf8'));
     const files = fs.readdirSync(STEP_DOC_DIR);
-    expect(findStepDocIssues(phases, files)).toEqual([]);
+    expect(findStepDocIssues(PHASES, files)).toEqual([]);
   });
 
   it('README.md가 존재한다 (통독 경로)', () => {
@@ -415,9 +390,8 @@ describe('배달 — 누락 처리', () => {
   });
 
   it('check-docs가 README.md 누락도 잡는다 (CLI와 순수 함수가 같은 규칙이어야 한다)', () => {
-    // 판정 로직이 workflow.mjs와 tests/helpers/WorkflowSteps.ts 두 곳에 복사돼 있다(CLI가 그
-    // 모듈을 import할 수 없다). 헬퍼 쪽만 fixture로 덮으면 CLI 쪽을 되돌려도 초록불이 뜨므로,
-    // "두 곳을 함께 고친다"는 규율에 이빨이 없다. 이 단언이 그 이빨이다.
+    // 판정 로직은 .claude/lib/workflow-steps.mjs 한 곳에 있고 CLI와 이 파일이 함께 import한다.
+    // 이 단언은 CLI가 그 모듈을 실제로 쓰는지(복사본을 다시 만들지 않았는지)를 실제 프로세스로 본다.
     const box = makeSandbox({ phase: 'planning', omitIndex: true });
     const r = runWf(box, ['check-docs']);
 

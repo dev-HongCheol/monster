@@ -2,9 +2,9 @@
  * 문서 규칙을 기계가 잡게 하는 게이트 셋의 회귀망.
  *
  * 판정 로직은 `tests/helpers/QaDoc.ts` 한 벌이고 이 파일과 `.claude/workflow.mjs`의
- * `check-qa`가 그것을 쓴다. **CLI는 로직을 베끼지 않고 vitest를 띄운다** — `.mjs`가 `.ts`를
- * import할 수 없기 때문이다(`tsconfig.tests.json`에 `allowJs`가 없어 TS7016으로 `pass ts`가
- * 막힌다. 백로그 F78이 실측으로 접었고, `wf check-links`가 세운 형태를 따른다).
+ * `check-qa`가 그것을 쓴다. **CLI는 로직을 베끼지 않고 vitest를 띄운다** — Node는 `.ts`를 그대로
+ * 불러오지 못하기 때문이다. 정본·절차 문서 판정은 `.claude/lib/*.mjs`로 옮겨 CLI와 테스트가 함께
+ * import하게 했지만(F78), QA 문서 판정은 `wf check-links`가 세운 이 형태를 둔다.
  *
  * **레포 전체에 거는 것과 현재 슬라이스에만 거는 것을 갈랐다.** 스윕은 자동 검증 절 안의
  * 미체크만 본다 — 실측상 46개 문서 전부가 이미 0건이라 오늘부터 초록이고 되돌아가면 빨개지는,

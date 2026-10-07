@@ -9,21 +9,26 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { git } from "./lib/git.mjs";
+import {
+  CANON_INDEX,
+  DESIGN_PREFIXES,
+  DEV_PREFIXES,
+  assertOneLineField,
+  insertCanonRow,
+  parseCanonSlug,
+  renderCanonDoc,
+} from "./lib/canon.mjs";
+import { EDITABLE_PHASES, PHASES } from "./lib/phases.mjs";
+import {
+  DOC_EXEMPT_PHASES,
+  STEP_DOC_DIR,
+  STEP_DOC_INDEX,
+  findStepDocIssues,
+} from "./lib/workflow-steps.mjs";
 import { runTypecheck } from "./typecheck.mjs";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const STATE_PATH = path.join(ROOT, ".claude", "workflow-state.json");
-
-// phase = 단일 진실. 아래 순서가 곧 정상 진행 순서다.
-const PHASES = [
-  "planning",
-  "qa-setup",
-  "implementation",
-  "verification",
-  "user-verification",
-  "pr-ready",
-  "done",
-];
 
 const CHECKS = ["cso", "ts", "lint", "review"]; // verification 하위 단계
 const CHECK_FLAG = {
@@ -33,8 +38,6 @@ const CHECK_FLAG = {
   review: "code_review_clean",
 };
 
-// 스크립트 편집이 허용되는 phase (hook과 동일한 기준)
-export const EDITABLE_PHASES = new Set(["implementation", "verification"]);
 
 function fail(msg) {
   process.stderr.write(`✗ ${msg}\n`);
@@ -115,92 +118,6 @@ function resetVerification(state) {
   // 매번 전문이 나가 차등 배달이 통째로 무력해진다. 초기화는 phase가 바뀌는 지점에서 한다.
 }
 
-// ── 정본(canon) 문서 ────────────────────────────────────────────────────────
-// 같은 판정이 tests/helpers/CanonDoc.ts에도 있다(그쪽이 fixture로 검증된다). CLI에서 그 모듈을
-// import할 수 없어 생긴 복사본이므로, 규칙을 바꾸면 두 곳을 함께 고친다.
-const DEV_PREFIXES = ["code", "game", "docs", "ops"];
-const DESIGN_PREFIXES = ["art", "ui"];
-const CANON_ROW_START = "| [`";
-const CANON_LIST_HEADING = "## 목록";
-const CANON_SEPARATOR = /^\|(?:\s*:?-+:?\s*\|)+$/;
-/** 정본 폴더의 인덱스 파일명. STEP_DOC_INDEX와 값은 같지만 다른 개념이라 따로 둔다. */
-const CANON_INDEX = "README.md";
-
-function locateCanonListTable(lines) {
-  const headingIdx = lines.findIndex((l) => l.trim() === CANON_LIST_HEADING);
-  if (headingIdx < 0) {
-    throw new Error(
-      `README에서 「${CANON_LIST_HEADING}」 절을 찾지 못했습니다 — 등재할 표가 없습니다.`
-    );
-  }
-  const sepIdx = lines.findIndex((l, i) => i > headingIdx && CANON_SEPARATOR.test(l.trim()));
-  if (sepIdx < 0) {
-    throw new Error(`「${CANON_LIST_HEADING}」 절에 표가 없습니다 — 헤더와 구분선이 있어야 합니다.`);
-  }
-  const rowIdxs = [];
-  for (let i = sepIdx + 1; i < lines.length && lines[i].startsWith("|"); i++) {
-    if (lines[i].startsWith(CANON_ROW_START)) rowIdxs.push(i);
-  }
-  return { sepIdx, rowIdxs };
-}
-
-function parseCanonSlug(slug, allowed) {
-  const m = /^([a-z]+)-([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(slug);
-  if (!m) {
-    throw new Error(
-      `정본 슬러그 형식이 아닙니다: "${slug}"\n` +
-        "  <분류>-<주제> 꼴이어야 하고 소문자·숫자·하이픈만 씁니다(확장자는 붙이지 않습니다)."
-    );
-  }
-  if (!allowed.includes(m[1])) {
-    throw new Error(
-      `허용되지 않은 분류 접두사입니다: "${m[1]}"\n` +
-        `  이 폴더가 받는 접두사: ${allowed.join(", ")}\n` +
-        "  늘리려면 해당 spec/README.md를 먼저 고치세요."
-    );
-  }
-  return { prefix: m[1], topic: m[2] };
-}
-
-function assertOneLineField(value, label) {
-  if (value.trim() === "") throw new Error(`${label}이(가) 비었습니다.`);
-  if (/[\r\n]/.test(value)) throw new Error(`${label}에 줄바꿈을 넣을 수 없습니다.`);
-  if (value.includes("|")) throw new Error(`${label}에 \`|\`를 넣을 수 없습니다(표의 열 구분자).`);
-}
-
-function renderCanonDoc(o) {
-  return [
-    `# ${o.title}`,
-    "",
-    `> ${o.question}`,
-    "",
-    `- **최초 작성:** ${o.date}`,
-    "- **상태:** CONFIRMED",
-    `- **이력:** ${o.date} — 신설`,
-    "",
-    "---",
-    "",
-    "이 문서는 **정본**이다. 내용이 낡으면 새로 만들지 않고 이 문서를 고친다. 이력 절에는",
-    "날짜와 무엇이 바뀌었는지만 한 줄 남기고, 그렇게 정한 경위는 그 슬라이스의 세션 문서가 든다.",
-    "",
-    "## (본문)",
-    "",
-  ].join("\n");
-}
-
-function insertCanonRow(readme, slug, question) {
-  const lines = readme.split("\n");
-  const { sepIdx, rowIdxs } = locateCanonListTable(lines);
-  const marker = `${CANON_ROW_START}${slug}.md\`]`;
-  if (rowIdxs.some((i) => lines[i].startsWith(marker))) return readme;
-  const row = `| [\`${slug}.md\`](${slug}.md) | ${question} |`;
-  const slugOf = (line) => line.slice(CANON_ROW_START.length).split("`")[0];
-  const at = rowIdxs.find((i) => slugOf(lines[i]) > `${slug}.md`);
-  const insertAt = at ?? (rowIdxs.length > 0 ? rowIdxs[rowIdxs.length - 1] + 1 : sepIdx + 1);
-  lines.splice(insertAt, 0, row);
-  return lines.join("\n");
-}
-
 /** 레포 루트 기준 상대 경로 — 항상 슬래시. Windows 구분자가 상태 파일에 들어가면 머신마다 갈린다. */
 function toRel(full) {
   return path.relative(ROOT, full).split(path.sep).join("/");
@@ -228,11 +145,6 @@ function recordCanon(...rels) {
 // ② 절대 throw하지 않고 종료코드를 바꾸지 않는다 — 배달이 실패로 보이면 상태는 이미 전이됐는데
 // 재실행이 requirePhase에 막혀 사람이 갇힌다. ③ 문서가 없어도 전이를 막지 않는다 — 막으면 문서
 // 하나 누락으로 워크플로가 멈추는데 빠져나올 경로가 없다.
-const STEP_DOC_DIR = ["docs", "development", "workflow"];
-const STEP_DOC_INDEX = "README.md";
-// done = 슬라이스가 끝난 상태라 뒤에 밟을 절차가 없다. 면제하지 않으면 pr-done이 없는 done.md를
-// 찾아 매 슬라이스 마지막마다 누락 경고를 헛발화한다.
-const DOC_EXEMPT_PHASES = new Set(["done"]);
 const DELIVERING_COMMANDS = new Set([
   "start",
   "approve-plan",
@@ -501,7 +413,8 @@ function testFilePath(state) {
 // **판정을 여기 베끼지 않고 vitest를 띄운다.** 로직은 tests/helpers/QaDoc.ts 한 벌이고, 이
 // 커맨드는 문서 경로만 `WF_QA_DOC`으로 건넨다 — 상태 파일을 아는 쪽은 CLI뿐이고 판정을 아는 쪽은
 // 그 헬퍼뿐이라 경로 하나만 넘기면 사본이 안 생긴다. check-links가 세운 형태이고, CLI가 판정을
-// 복사하면 한쪽만 고쳤을 때 나머지가 낡은 채로 초록불을 유지한다(백로그 F78이 그 상태다).
+// 복사하면 한쪽만 고쳤을 때 나머지가 낡은 채로 초록불을 유지한다. 정본·절차 문서 판정은 lib/로 옮겨
+// CLI와 테스트가 함께 import하지만(F78), 이 판정은 .ts 도우미에 있어 Node가 바로 불러올 수 없다.
 //
 // 옛 인라인 판정은 줄 전체에서 태그 문자열만 찾아 **코드 스팬 안팎을 못 갈랐다.** 그래서 "미확정
 // 항목이 없다"고 설명한 문장 자체가 위반으로 잡혀 게이트가 거짓으로 실패했다(2026-08-18, F92).
@@ -537,7 +450,7 @@ function qaDocClean(state) {
 }
 
 // QA 문서의 지문. **절이 아니라 파일 전체**를 해싱한다 — 절만 잘라 내려면 판정 로직을 CLI에
-// 복사해야 하고(F78이 그 상태다), 그 대가가 여기서 얻는 정밀도보다 크다. 문서의 다른 곳만
+// 복사해야 하고(F78이 막은 형태다), 그 대가가 여기서 얻는 정밀도보다 크다. 문서의 다른 곳만
 // 고쳐도 지문이 바뀌므로 이 검사는 "손댔는가"까지만 보장하고 "근거를 갱신했는가"는 사람이 진다.
 function qaDocFingerprint(state) {
   const p = qaDocPath(state);
@@ -886,8 +799,8 @@ const commands = {
   //
   // 판정을 여기 베끼지 않고 vitest를 띄운다. 로직은 tests/helpers/LinkCheck.ts 한 벌뿐이고
   // tests/logic/DocLinks.test.ts가 그것을 부르므로, 이 커맨드는 그 테스트를 실행하기만 한다.
-  // check-docs·insertCanonRow처럼 CLI가 판정을 복사하면 한쪽만 고쳤을 때 나머지가 낡은 채로
-  // 초록불을 유지하는데(백로그 F78이 그 상태다), 새로 만드는 검사에까지 그 함정을 파지 않는다.
+  // CLI가 판정을 복사하면 한쪽만 고쳤을 때 나머지가 낡은 채로 초록불을 유지한다(F78이 있던 상태다.
+  // check-docs·canon의 판정은 lib/로 옮겨 닫았다). 새로 만드는 검사에까지 그 함정을 파지 않는다.
   //
   // 회귀를 실제로 막는 것은 이 커맨드가 아니라 vitest 스위트다 — start-verification의 GREEN
   // 게이트가 매 슬라이스 강제로 돌린다. 이 커맨드는 사람이 중간에 확인할 때 쓴다.
@@ -925,25 +838,25 @@ const commands = {
   },
 
   // 절차 문서 정합 검사 (단독 실행 — 언제든 확인용). 누락·잉여가 있으면 종료코드 1.
-  // 같은 판정이 tests/helpers/WorkflowSteps.ts에도 있다(그쪽이 fixture로 검증된다).
-  // CLI에서 그 모듈을 import할 수 없어 생긴 복사본이므로, 규칙을 바꾸면 두 곳을 함께 고친다.
+  // 판정은 lib/workflow-steps.mjs의 findStepDocIssues가 하고, ClaudeMdSplit.test.ts가 같은 함수를
+  // fixture로 검증한다.
   "check-docs"() {
     const files = stepDocDirFiles();
     if (files === null) fail(`절차 문서 디렉터리 없음: ${STEP_DOC_DIR.join("/")}/`);
-    const phaseDocs = PHASES.filter((p) => !DOC_EXEMPT_PHASES.has(p)).map((p) => `${p}.md`);
-    const expected = [STEP_DOC_INDEX, ...phaseDocs]; // 인덱스도 있어야 한다 — 통독 경로가 그것뿐이다
-    const markdown = files.filter((f) => f.endsWith(".md"));
-    const missing = expected.filter((n) => !markdown.includes(n));
-    const unexpected = markdown.filter((n) => !expected.includes(n));
-    if (missing.length > 0 || unexpected.length > 0) {
+    const issues = findStepDocIssues(PHASES, files);
+    if (issues.length > 0) {
       process.stderr.write("✗ 절차 문서 정합 실패:\n");
-      for (const n of missing) process.stderr.write(`    - 누락: ${n}\n`);
-      for (const n of unexpected) {
-        process.stderr.write(`    - 잉여: ${n} (배달되지 않는 문서 — 읽히지 않은 채 낡는다)\n`);
+      for (const { type, name } of issues) {
+        process.stderr.write(
+          type === "missing"
+            ? `    - 누락: ${name}\n`
+            : `    - 잉여: ${name} (배달되지 않는 문서 — 읽히지 않은 채 낡는다)\n`
+        );
       }
       process.exit(1);
     }
-    console.log(`✓ 절차 문서 정합 (phase ${phaseDocs.length}개 + ${STEP_DOC_INDEX})`);
+    const phaseDocs = PHASES.filter((p) => !DOC_EXEMPT_PHASES.has(p)).length;
+    console.log(`✓ 절차 문서 정합 (phase ${phaseDocs}개 + ${STEP_DOC_INDEX})`);
   },
 
   status() {

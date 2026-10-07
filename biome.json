@@ -1,19 +1,12 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
   "files": {
-    "includes": [
-      "**",
-      "!**/.claude",
-      "!**/game/library",
-      "!**/game/local",
-      "!**/game/temp",
-      "!**/game/extensions",
-      "!**/game/build",
-      "!**/game/profiles",
-      "!**/docs/temp",
-      "!**/cloud-storage",
-      "!**/.gstack"
-    ]
+    "includes": ["**", "!**/.claude/hooks", "!**/.claude/*.mjs", "!**/.claude/*.json"]
   },
   "formatter": {
     "enabled": true,

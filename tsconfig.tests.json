@@ -26,12 +26,19 @@
        기본적으로 TS5097로 막는다. `noEmit`이라 컴파일 산출물의 경로가 어긋날 여지가 없다. */
     "allowImportingTsExtensions": true,
     "forceConsistentCasingInFileNames": true,
+    /* `.claude/lib/*.mjs`는 도구 코드인데 테스트가 import한다. allowJs가 없으면 그 import가 TS7016으로
+       막히고, 있어야 `// @ts-check`를 붙인 모듈의 JSDoc 타입이 테스트 쪽에서도 검사된다. */
+    "allowJs": true,
     /* @types/node가 캐럿 범위라, 마이너 업그레이드가 선언 파일 에러를 들여오면 우리 코드와
        무관하게 게이트가 빨간불이 된다. 게임 프로젝트와 대칭을 맞춘다. */
     "skipLibCheck": true
   },
   "include": [
     "tests/**/*.ts",
+    /* pnpm wf의 부품. 테스트가 import하므로 함께 검사한다. typecheck.mjs는 verify.mjs가 import하게 되는
+       파일이라 미리 넣는다. */
+    ".claude/lib/**/*.mjs",
+    ".claude/typecheck.mjs",
     /* 아트 파이프라인 도구. 게임도 테스트도 아니지만 `cc`를 import하지 않으므로 여기 속한다 —
        biome만 지나가게 두면 타입이 검사 밖에서 낡는다. */
     "tools/**/*.ts",
