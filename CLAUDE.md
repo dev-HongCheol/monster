@@ -45,6 +45,7 @@ ADR 층은 폐지 예정이다(2026-09-28, 백로그 F75) — **새 ADR을 쓰�
 ### 행동 규칙
 - 같은 문제 3번 실패 시 → STOP, 상황 보고 후 대기
 - 패키지/플러그인 설치 전 반드시 확인
+- 도구·검사 고장 시 우회 말고 멈춰 알린 뒤 확인받는다
 - 현재 작업과 무관한 파일 수정 금지
 - 발견한 무관 이슈 → 즉시 수정하지 말고 언급만 (슬라이스 밖 항목은 백로그로)
 - **이번에 건드리지 않은 코드의 주석은 손대지 않는다** — 한 함수를 고치면서 같은 파일 다른 함수의 주석이 딸려 지워지는 사고를 막는 규칙이다. **바꾼 코드의 주석은 반드시 함께 갱신하고**(`@param` 포함), 지운 코드의 주석은 함께 지운다.
@@ -94,7 +95,7 @@ ADR 층은 폐지 예정이다(2026-09-28, 백로그 F75) — **새 ADR을 쓰�
 
 ### 워크플로우 상태
 
-상태의 단일 진실은 `.claude/workflow-state.json`의 **`phase`** 하나다. 상태 변경은 **반드시 `pnpm wf <command>` CLI로만** 한다. PreToolUse 훅(`gate-scripts.mjs`)이 상태 파일 직접 편집을 차단하고, phase 기준으로 `game/assets/scripts/**/*.ts` 편집을 게이팅한다. (편집 허용 phase: `implementation`, `verification`)
+상태의 단일 진실은 `.claude/workflow-state.json`의 **`phase`** 하나다. 상태 변경은 **반드시 `pnpm wf <command>` CLI로만** 한다. PreToolUse 훅(`gate-scripts.mjs`)이 상태 파일 직접 편집을 차단하고, 코드 편집은 `implementation`·`verification`에서만 허용한다(테스트는 `qa-setup`부터).
 
 ```
 planning → qa-setup → implementation → verification → user-verification → pr-ready → done
@@ -105,12 +106,14 @@ planning → qa-setup → implementation → verification → user-verification 
 | `pnpm wf start <feature>` | AI | `feat/<feature>` 브랜치 생성·전환 + 전체 초기화 → `planning` |
 | `pnpm wf approve-plan` | 사용자 트리거(`계획 승인`)→AI | `planning` → `qa-setup` (**계획 문서 존재** 확인 후 전환) |
 | `pnpm wf skip-test "<사유>"` | AI | 테스트 스킵 (순수 로직 없음, 사유 필수) |
+| `pnpm wf skip-qa "<사유>"` | AI | QA 문서 생략 (`game/**` 변경이 없을 때만 유효) |
 | `pnpm wf ready-impl` | AI | `qa-setup` → `implementation` (문서·테스트 파일 확인 + 피처 테스트 **RED** 검증) |
-| `pnpm wf start-verification` | AI | `implementation` → `verification` (전체 스위트 **GREEN** 검증 후 전환) |
-| `pnpm wf pass <cso\|ts\|lint\|review>` | AI | 개별 검증 통과 (4개 모두 통과 + **QA 확정 게이트** + **정본 선언 게이트** 통과 시 자동 `user-verification`). **`pass ts`는 타입체크를 직접 실행**해 실패하면 차단한다 |
-| `pnpm wf invalidate` | AI | `verification` 중 코드 변경 → 전체 검증 초기화 |
+| `pnpm wf start-verification` | AI | `implementation` → `verification` (통합 검사: biome·타입·전체 테스트 통과 후 전환) |
+| `pnpm wf verify` | AI | 통합 검사만 다시 실행 (phase는 그대로) |
+| `pnpm wf pass <cso\|review>` | AI | 판단 검사 통과 기록(`cso`는 해야 할 때만). 둘 다 통과하면 **QA 확정 게이트** · **정본 선언 게이트** · 통합 검사를 거쳐 자동 `user-verification` |
+| `pnpm wf invalidate` | AI | `verification` 중 코드 변경 → 판단 검사 초기화 |
 | `pnpm wf rework` | 사용자 트리거(`리워크`)→AI | `user-verification` → `implementation` (버그 발견 복귀) |
-| `pnpm wf approve-pr` | 사용자 트리거(`PR 승인`)→AI | `user-verification` → `pr-ready` (**에셋 `.meta` 게이트** + **타입체크 범위 게이트**: `logic-only`면 차단) |
+| `pnpm wf approve-pr` | 사용자 트리거(`PR 승인`)→AI | `user-verification` → `pr-ready` (해당 변경이 있을 때만 **에셋 `.meta` 게이트** · **타입체크 범위 게이트**) |
 | `pnpm wf pr-done` | AI | `pr-ready` → `done` |
 | `pnpm wf canon <분류>-<주제> "<제목>" "<질문>" [--design]` | AI | 새 정본 문서 생성 + `spec/README.md` 등재 + 갱신 기록 |
 | `pnpm wf canon-done <경로...>` | AI | 기존 정본을 고쳤음을 기록 (경로 존재 확인) |
@@ -119,10 +122,10 @@ planning → qa-setup → implementation → verification → user-verification 
 | `pnpm wf check-meta` | AI/사용자 | 에셋 `.meta` 누락 검사 (누락 시 종료코드 1) |
 | `pnpm wf check-qa` | AI/사용자 | QA 문서 미확정(잠정) 표시 검사 (남아 있으면 종료코드 1) |
 | `pnpm wf check-docs` | AI/사용자 | 절차 문서 정합 검사 (누락·잉여 시 종료코드 1) |
-| `pnpm wf check-links` | AI/사용자 | 마크다운 링크·앵커 검사 (깨진 링크 시 종료코드 1) |
-| `pnpm wf status` | — | 현재 상태 + 편집 가능 여부 + 현재 phase 절차 문서 경로 |
+| `pnpm wf check-links` | AI/사용자 | 마크다운 링크·앵커 검사 (깨진 링크 시 종료코드 1) · 통합 검사에 포함 |
+| `pnpm wf status` | — | 현재 상태 + 편집 가능 여부 + 검사별 적용 여부 + 절차 문서 경로 |
 
-> **`pnpm typecheck`** (wf 커맨드가 아님) — 타입체크 단독 실행. `pass ts`가 내부적으로 **같은 코드**(`.claude/typecheck.mjs`)를 호출하므로, 여기서 통과하면 게이트도 통과한다.
+> **`pnpm typecheck`** (wf 커맨드가 아님) — 타입체크 단독 실행. 통합 검사도 같은 코드를 부른다.
 
 > **절차는 phase가 배달한다.** 전이에 성공하면 `docs/development/workflow/<phase>.md`가 터미널에 출력된다. 같은 phase에 두 번째부터는 제목만 나오고, 전문은 `pnpm wf steps`로 다시 본다. `wf start`를 재출력 수단으로 쓰지 않는다 — phase 가드가 없어 상태가 초기화된다.
 
@@ -145,13 +148,12 @@ planning → qa-setup → implementation → verification → user-verification 
 ```
 1~2 계획       wf start <feature> → 백로그 3종 확인 → /office-hours → /autoplan
                → sessions/<날짜>-<feature>-plan.md 작성 → 사용자 `계획 승인`
-3~4 QA·테스트  docs/qa/<feature>-test.md + tests/logic/<Feature>.test.ts(RED)
+3~4 QA·테스트  docs/qa/<feature>-test.md + tests/<영역>/<Feature>.test.ts(RED)
                → wf ready-impl (RED 게이트)
-5   구현       GREEN → REFACTOR → wf start-verification (GREEN 게이트)
+5   구현       GREEN → REFACTOR → wf start-verification (통합 검사 게이트)
 6   AI 검증    QA 문서 확정(잠정→확정) → 정본 갱신(wf canon/canon-done/canon-skip)
-               → /cso → pass cso → pnpm typecheck → pass ts → pnpm check --write
-               → pass lint → 기능 단위 커밋 → 코드리뷰 → pass review
-               코드 수정이 끼면 invalidate로 cso·정본 선언부터 다시
+               → 기능 단위 커밋 → (해야 할 때만 /cso → pass cso) → 코드리뷰 → pass review
+               코드를 고치면 invalidate 후 정본 선언부터 다시
 7   사용자 검증 정본 갱신·문서 정리 → gh pr create --draft → 사용자 에디터 세팅·인게임 테스트
                버그 발견 시 사용자 `리워크`
 8   PR 승인    신규 .meta 커밋·push → 사용자 `PR 승인` → wf approve-pr
@@ -183,7 +185,7 @@ Cocos는 `game/assets/` 아래 **모든 파일·디렉터리에 `.meta`(UUID 보
 | 7단계 사용자 테스트 | 사용자가 Cocos 에디터로 인게임 테스트 → Cocos가 신규 자산의 `.meta`를 모두 생성 |
 | 8단계 `PR 승인` | Cocos가 생성한 **모든 신규 `.meta`를 먼저 커밋·push**한 뒤 `pnpm wf approve-pr` |
 
-**게이트:** `pnpm wf approve-pr`이 추적되지 않은 `.meta`를 자동 검사해 **누락 시 PR 승인을 차단**한다(머지 후 모든 환경에서 UUID 재생성 → 참조 깨짐 방지). 언제든 `pnpm wf check-meta`로 확인.
+**게이트:** 에셋 변경이 있으면 `pnpm wf approve-pr`이 추적되지 않은 `.meta`를 자동 검사해 **누락 시 PR 승인을 차단**한다(머지 후 모든 환경에서 UUID 재생성 → 참조 깨짐 방지). 언제든 `pnpm wf check-meta`로 확인.
 
 ## 도구 스택
 

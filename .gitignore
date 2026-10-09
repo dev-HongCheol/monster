@@ -42,3 +42,18 @@ __pycache__/
 # API 키 — 값이 든 `.env`는 막는다. 새면 남이 그 계정의 크레딧을 쓸 수 있다.
 .env
 .env.local
+
+# Claude Code가 장비마다 만드는 파일 — 저장소가 추적하는 `.claude` 파일은 workflow.mjs · typecheck.mjs ·
+# hooks/ · lib/ · settings.json · workflow-state.json뿐이다. 이 규칙이 전역 git 설정에만 있으면, biome이
+# 저장소의 .gitignore만 읽기 때문에(`vcs.useIgnoreFile`) 그 설정이 없는 장비에서는 아래 파일까지 검사한다.
+.claude/settings.local.json
+.claude/scheduled_tasks.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+.claude/checkpoints/
+.claude/mailbox/
+.claude/routines/.state/
+.claude/agent-registry.json
+.claude/agent-memory-local
+.claude/first-run
+.claude/assistant-daemon-state.json
