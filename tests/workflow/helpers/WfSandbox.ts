@@ -1,5 +1,6 @@
 /**
- * 워크플로우 도구(`.claude/workflow.mjs`)를 실제 프로세스로 띄워 보는 시험용 임시 저장소.
+ * 워크플로우 도구(`.claude/workflow.mjs`)와 편집 잠금 훅(`.claude/hooks/gate-scripts.mjs`)을 실제
+ * 프로세스로 띄워 보는 시험용 임시 저장소.
  *
  * 두 테스트 파일에 따로 있던 도우미를 합쳤다. `DocsHygiene.test.ts`의 `makeRepo`·`runWf`(임시 git
  * 저장소에서 도구를 실행한다)와 `ClaudeMdSplit.test.ts`의 `makeSandbox`(git이 아닌 폴더에 상태 파일과
@@ -24,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../../..');
 const WORKFLOW_MJS = path.join(ROOT, '.claude', 'workflow.mjs');
+const GATE_HOOK = path.join(ROOT, '.claude', 'hooks', 'gate-scripts.mjs');
 const FAKE_PNPM_SRC = path.join(ROOT, 'tests', 'workflow', 'fixtures', 'fake-pnpm.mjs');
 
 /** 배달 대상 phase — `done`은 제외한다(문서 여섯 개, phase 일곱 개). */
@@ -442,6 +444,31 @@ export function runFakePnpm(
     env: { ...process.env, ...extraEnv },
   });
   return { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
+}
+
+/**
+ * 임시 저장소를 `CLAUDE_PROJECT_DIR`로 삼아 실제 편집 잠금 훅(`.claude/hooks/gate-scripts.mjs`)을 띄우고,
+ * Claude Code가 Edit 도구를 부를 때와 같은 모양의 입력을 넣는다. 받는 것을 편집할 파일 경로 하나로
+ * 좁혀서, 테스트 파일이 훅에 다른 입력을 실을 수 없게 한다.
+ *
+ * 훅은 막을 때만 결정을 출력한다. 그래서 막혔으면 그 이유 문장을, 통과했으면 `null`을 돌려준다.
+ *
+ * @param repo `makeRepo`가 돌려준 경로. 훅은 이 폴더의 상태 파일에서 phase를 읽는다
+ * @param filePath 편집하려는 파일. 저장소 기준 상대 경로나 절대 경로
+ */
+export function runGateHook(repo: string, filePath: string): string | null {
+  const r = spawnSync(process.execPath, [GATE_HOOK], {
+    cwd: repo,
+    encoding: 'utf8',
+    input: JSON.stringify({ tool_name: 'Edit', tool_input: { file_path: filePath } }),
+    env: { ...envFor(repo), CLAUDE_PROJECT_DIR: repo },
+  });
+  if (r.status !== 0) {
+    throw new Error(`WfSandbox.runGateHook: 훅이 종료 코드 ${r.status}로 끝났다: ${r.stderr}`);
+  }
+  const out = (r.stdout ?? '').trim();
+  if (out === '') return null;
+  return JSON.parse(out).hookSpecificOutput.permissionDecisionReason as string;
 }
 
 /**

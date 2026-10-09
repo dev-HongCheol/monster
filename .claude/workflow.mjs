@@ -31,7 +31,7 @@ import {
   parseCanonSlug,
   renderCanonDoc,
 } from "./lib/canon.mjs";
-import { EDITABLE_PHASES, PHASES } from "./lib/phases.mjs";
+import { EDITABLE_PHASES, PHASES, TEST_EDITABLE_PHASES } from "./lib/phases.mjs";
 import {
   DOC_EXEMPT_PHASES,
   STEP_DOC_DIR,
@@ -645,7 +645,7 @@ const commands = {
 
     s.phase = "implementation";
     save(s);
-    console.log("✓ ready-impl → phase=implementation (스크립트 편집 허용)");
+    console.log("✓ ready-impl → phase=implementation (코드 편집 허용)");
   },
 
   // 구현 종료 → 검증 진입
@@ -876,14 +876,14 @@ const commands = {
     console.log(csoInfo(s, changeContext().gates).line);
   },
 
-  // 사용자 검증 중 버그 발견 → 구현으로 복귀 (편집 재허용)
+  // 사용자 검증 중 버그 발견 → 구현으로 복귀 (코드 편집 재허용)
   rework() {
     const s = load();
     requirePhase(s, "user-verification");
     s.phase = "implementation";
     resetVerification(s);
     save(s);
-    console.log("✓ rework → phase=implementation (스크립트 편집 재허용)");
+    console.log("✓ rework → phase=implementation (코드 편집 재허용)");
   },
 
   // 사람의 PR 승인
@@ -1007,9 +1007,14 @@ const commands = {
 
   status() {
     const s = load();
-    const editable = EDITABLE_PHASES.has(s.phase);
+    // 훅(gate-scripts.mjs)이 막는 범위와 같은 말로 보여 준다. 테스트 코드만 한 phase 먼저 열린다.
+    const editable = EDITABLE_PHASES.has(s.phase)
+      ? "YES"
+      : TEST_EDITABLE_PHASES.has(s.phase)
+        ? "tests only"
+        : "no (locked)";
     console.log(JSON.stringify(s, null, 2));
-    console.log(`\nscripts editable: ${editable ? "YES" : "no (locked)"}`);
+    console.log(`\ncode editable: ${editable}`);
     // 이번 변경 집합으로 계산한 적용 판정. 상태 파일은 고치지 않는다. git 저장소가 아니어도 멈추지 않고
     // 원인을 첫 줄에 적는다.
     console.log("");

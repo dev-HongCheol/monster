@@ -2,7 +2,7 @@
  * 워크플로우 다이어트 1단계(`feat/workflow-diet`)의 테스트.
  *
  * 작업 묶음마다 절을 하나씩 두고, 묶음을 시작할 때 그 절의 실패하는 테스트를 먼저 쓴다. 지금 있는
- * 절은 W1(변경 집합과 적용 판정) · W4(판정 코드 합치기) · W2(통합 검사와 전이 판정) · W3(`approve-pr` · `status`)다. W5(임시 저장소
+ * 절은 W1(변경 집합과 적용 판정) · W4(판정 코드 합치기) · W2(통합 검사와 전이 판정) · W3(`approve-pr` · `status`) · W8(편집 잠금을 모든 코드로 넓히기)다. W5(임시 저장소
  * 도우미)의 테스트는 `WfSandbox.test.ts`에 따로 있다 — 이 파일은 W1의 모듈을 import하므로 그
  * 모듈이 생기기 전에는 불러오기에서 실패해서, 도우미만 먼저 확인할 수 없기 때문이다. 묶음마다 무엇을 확인하기로 했는지는 계획의 묶음 문서
  * `docs/development/sessions/2026-10-06-workflow-diet-w*.md`의 「테스트」 절이 든다.
@@ -21,11 +21,12 @@
  */
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { applicableGates, collectChangeSet, csoBaseUsable } from '../../.claude/lib/change-set.mjs';
-import { EDITABLE_PHASES } from '../../.claude/lib/phases.mjs';
+import { EDITABLE_PHASES, TEST_EDITABLE_PHASES } from '../../.claude/lib/phases.mjs';
 import {
   approvePrDecision,
   csoGuideLine,
@@ -45,6 +46,7 @@ import {
   git,
   makeRepo,
   type RepoOptions,
+  runGateHook,
   runWf,
   type SandboxState,
 } from './helpers/WfSandbox';
@@ -513,17 +515,20 @@ describe('W4 — 판정 코드는 .claude/lib/ 한 곳에만 있다', () => {
     expect(fs.existsSync(path.join(ROOT, 'tests/helpers/WorkflowSteps.ts'))).toBe(false);
   });
 
-  it('훅의 EDITABLE_PHASES 값이 phases.mjs와 같다 — 훅은 import하지 않고 값만 맞춘다', () => {
+  it.each([
+    ['EDITABLE_PHASES', EDITABLE_PHASES],
+    ['TEST_EDITABLE_PHASES', TEST_EDITABLE_PHASES],
+  ])('훅의 %s 값이 phases.mjs와 같다 — 훅은 import하지 않고 값만 맞춘다', (name, phases) => {
     // Claude Code는 PreToolUse 훅이 종료 코드 2가 아닌 코드로 죽으면 편집을 막지 않는다. 훅이 다른
-    // 파일을 import하다 실패하면 경고만 하고 편집은 통과시키므로, 훅은 값을 직접 들고 이 테스트가
+    // 파일을 import하다 실패하면 경고만 하고 편집은 통과시키므로, 훅은 값을 직접 갖고 있고 이 테스트가
     // 두 값이 같은지 본다(W4 §2).
     const hook = fs.readFileSync(path.join(ROOT, '.claude/hooks/gate-scripts.mjs'), 'utf8');
-    const m = /EDITABLE_PHASES\s*=\s*new Set\(\[([^\]]*)\]\)/.exec(hook);
+    const m = new RegExp(`\\b${name}\\s*=\\s*new Set\\(\\[([^\\]]*)\\]\\)`).exec(hook);
     expect(m).not.toBeNull();
     const inHook = [...(m as RegExpExecArray)[1].matchAll(/["']([^"']+)["']/g)]
       .map((x) => x[1])
       .sort();
-    expect(inHook).toEqual([...EDITABLE_PHASES].sort());
+    expect(inHook).toEqual([...phases].sort());
   });
 
   it('lint-staged 대상에 mjs가 있다', () => {
@@ -1532,5 +1537,148 @@ describe('W3 — 명령: status · approve-pr · check-meta', SANDBOX, () => {
     expect(r.status).toBe(1);
     expect(r.stderr).toContain('알 수 없는 명령: nope');
     expect(r.stderr).toContain('verify (phase가 바뀌지 않음)');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W8 — 편집 잠금을 모든 코드로 넓힌다
+// ---------------------------------------------------------------------------
+
+/** 훅이 내보내는 판정 함수. 훅은 import만 해도 main()을 돌리므로 환경변수를 켜고 불러온다. */
+type GateHook = {
+  EDITABLE_PHASES: Set<string>;
+  TEST_EDITABLE_PHASES: Set<string>;
+  editablePhasesFor: (rel: string) => Set<string> | null;
+};
+
+describe('W8 — editablePhasesFor: 어떤 파일을 잠그나', () => {
+  let hook: GateHook;
+  beforeAll(async () => {
+    process.env.GATE_HOOK_IMPORT_ONLY = '1';
+    try {
+      hook = (await import('../../.claude/hooks/gate-scripts.mjs')) as GateHook;
+    } finally {
+      delete process.env.GATE_HOOK_IMPORT_ONLY;
+    }
+  });
+
+  it.each([
+    'game/assets/scripts/Player.ts',
+    '.claude/workflow.mjs',
+    '.claude/typecheck.mjs',
+    '.claude/lib/verify.mjs',
+    '.claude/hooks/gate-scripts.mjs',
+    '.claude/hooks/check-gstack.sh',
+    'tools/blender/bake.py',
+    'tools/art/postprocess.ts',
+    'tools/win/setup.ps1',
+    'vitest.config.ts',
+  ])('코드 %s → implementation/verification에서만', (rel) => {
+    expect(hook.editablePhasesFor(rel)).toBe(hook.EDITABLE_PHASES);
+  });
+
+  it.each([
+    '.claude/settings.json',
+    'package.json',
+    'game/package.json',
+    'biome.json',
+    'tsconfig.tests.json',
+    'game/tsconfig.json',
+    '.husky/pre-commit',
+  ])('훅이나 검사를 끌 수 있는 설정 %s → implementation/verification에서만', (rel) => {
+    expect(hook.editablePhasesFor(rel)).toBe(hook.EDITABLE_PHASES);
+  });
+
+  it.each([
+    'tests/workflow/Demo.test.ts',
+    'tests/workflow/helpers/WfSandbox.ts',
+    'tests/workflow/fixtures/fake-pnpm.mjs',
+  ])('테스트 코드 %s → qa-setup에서도', (rel) => {
+    expect(hook.editablePhasesFor(rel)).toBe(hook.TEST_EDITABLE_PHASES);
+  });
+
+  it.each([
+    'docs/development/plan.md',
+    'docs/design/mockups/result-stats.html',
+    'game/assets/resources/i18n/ko.json',
+    'tests/workflow/fixtures/state.json',
+    '.claude/settings.local.json',
+    '../scratch/probe.mjs',
+    'node_modules/vitest/index.js',
+  ])('코드가 아니거나 저장소 밖 %s → 잠그지 않는다', (rel) => {
+    expect(hook.editablePhasesFor(rel)).toBeNull();
+  });
+});
+
+describe('W8 — 편집 잠금 훅을 실제로 띄운다', SANDBOX, () => {
+  // 훅은 phase를 상태 파일에서 읽기만 하므로 git이 없는 폴더로 충분하다. phase마다 하나씩 만들어
+  // 절 안에서 돌려쓴다. 어떤 파일을 잠그는지는 위 절이 재고, 여기서는 phase와 파일 종류의 조합만 본다.
+  const repos = new Map<string, string>();
+  const repoAt = (phase: string): string => {
+    let repo = repos.get(phase);
+    if (!repo) {
+      repo = makeRepo({ git: false, phase });
+      repos.set(phase, repo);
+    }
+    return repo;
+  };
+  const GAME = 'game/assets/scripts/Player.ts';
+  const TOOL = '.claude/workflow.mjs';
+  const CONFIG = '.claude/settings.json';
+  const TEST = 'tests/workflow/Demo.test.ts';
+
+  it.each([
+    'planning',
+    'user-verification',
+    'pr-ready',
+    'done',
+  ])('%s에서는 게임 스크립트·도구 코드·검사 설정·테스트 코드를 모두 막는다', (phase) => {
+    for (const file of [GAME, TOOL, CONFIG, TEST]) {
+      expect(runGateHook(repoAt(phase), file), file).not.toBeNull();
+    }
+  });
+
+  it('qa-setup에서는 테스트 코드만 고칠 수 있다 — RED 테스트를 이 phase에서 쓴다', () => {
+    const repo = repoAt('qa-setup');
+    expect(runGateHook(repo, TEST)).toBeNull();
+    for (const file of [GAME, TOOL, CONFIG]) expect(runGateHook(repo, file), file).not.toBeNull();
+  });
+
+  it.each(['implementation', 'verification'])('%s에서는 코드를 모두 고칠 수 있다', (phase) => {
+    for (const file of [GAME, TOOL, CONFIG, TEST]) {
+      expect(runGateHook(repoAt(phase), file), file).toBeNull();
+    }
+  });
+
+  it('코드가 아닌 파일과 저장소 밖 파일은 잠긴 phase에서도 통과한다', () => {
+    const repo = repoAt('user-verification');
+    expect(runGateHook(repo, 'docs/development/plan.md')).toBeNull();
+    expect(runGateHook(repo, path.join(os.tmpdir(), 'scratch', 'probe.mjs'))).toBeNull();
+  });
+
+  it('절대 경로로 줘도 저장소 안의 코드면 막는다', () => {
+    const repo = repoAt('user-verification');
+    expect(runGateHook(repo, path.join(repo, '.claude', 'workflow.mjs'))).not.toBeNull();
+  });
+
+  it('상태 파일은 implementation에서도 막는다', () => {
+    expect(runGateHook(repoAt('implementation'), '.claude/workflow-state.json')).not.toBeNull();
+  });
+
+  it('막을 때는 멈추고 사용자에게 알리라고 안내한다 — 다른 길로 돌아가지 않는다', () => {
+    const reason = runGateHook(repoAt('user-verification'), TOOL) ?? '';
+    expect(reason).toContain('user-verification');
+    expect(reason).toContain('사용자에게 알리');
+  });
+});
+
+describe('W8 — status가 지금 무엇을 고칠 수 있는지 보여 준다', SANDBOX, () => {
+  it.each([
+    ['implementation', 'code editable: YES'],
+    ['qa-setup', 'code editable: tests only'],
+    ['user-verification', 'code editable: no (locked)'],
+  ])('%s → %s', (phase, line) => {
+    const r = runWf(makeRepo({ git: false, phase }), ['status']);
+    expect(r.stdout).toContain(line);
   });
 });
