@@ -1,6 +1,6 @@
 # 코드 리뷰 이슈 — 워크플로우 다이어트 1단계 (`feat/workflow-diet`)
 
-- **리뷰 커밋:** `5c9d741`(base, `origin/main`) → `388f5c5`(head)
+- **리뷰 커밋:** `5c9d741`(base, `origin/main`) → `cba973e`(head, W8 재리뷰까지)
 - **계획:** [`../development/sessions/2026-10-06-workflow-diet-plan.md`](../development/sessions/2026-10-06-workflow-diet-plan.md) (묶음 문서 W1~W7은 같은 폴더의 `2026-10-06-workflow-diet-w*.md`)
 - **리뷰어:** `superpowers:requesting-code-review` 템플릿으로 띄운 서브에이전트. 검토 범위는 `.claude/lib/*.mjs` · `.claude/workflow.mjs` · `.claude/typecheck.mjs` · `tests/workflow/**` · `tests/docs/**` · `tests/helpers/**` · `biome.json` · `tsconfig.tests.json` · `package.json` · `.gitignore`다. 리뷰어가 직접 `pnpm vitest run tests/workflow tests/docs`(251 통과 · 1 건너뜀)와 `pnpm typecheck`(통과, 범위 full)를 돌려 확인했다.
 - **판정:** 수정 후 승인 — Critical 0 · Important 1 · Minor 6 · 권고 2
