@@ -107,7 +107,7 @@ biome, 타입 검사, vitest를 이 순서로 실행하고 각 출력을 받아 
 
 `/cso`가 「해당 없음」인데 `pass cso`를 치면 명령은 받는다. 다만 「`/cso` 해당 없음(`CSO_PATHS`에 해당하는 변경 없음 — `pnpm wf status`로 확인) — 기준 커밋만 기록한다」를 출력하고 `cso_commit`만 적는다. `cso_done`은 거짓으로 둔다. 하지 않아도 되는데 스스로 돌린 점검의 기준 커밋은 남기되, 통과 표시는 `/cso`를 해야 할 때만 생기게 하려는 것이다. 「해당 없음」일 때 `cso_done`을 참으로 적어 두면 이런 문제가 생긴다. 나중에 `.claude/**`를 고쳐서 `/cso`를 해야 하는 상황으로 바뀌었는데 `invalidate`를 잊으면, 그 참 값 때문에 판정이 그냥 통과한다. 할지 말지는 매번 다시 계산하는데 통과 표시는 그와 상관없이 남아 있어서 생기는 문제다.
 
-`pass review`·`canon-done`·`canon-skip`과 `user-verification`으로 넘어갈 때의 출력 줄에 그때 `HEAD`의 짧은 해시를 적는다(예: `✓ pass review (HEAD 2c41977)`). 상태 파일에는 적지 않는다(개요 §4 「새로 더하는 값은 두 개」). 개요 §6의 셋째 값(③)은 이 해시와 `git diff --stat`로 잰다.
+`pass review`·`canon-done`·`canon-skip`과 `user-verification`으로 넘어갈 때의 출력 줄에 그때 `HEAD`의 짧은 해시를 적는다(예: `✓ pass review (HEAD 2c41977)`). 상태 파일에는 적지 않는다(개요 §4 「새로 더하는 값은 두 개」). 개요 §6의 셋째 값(다 항목)은 이 해시와 `git diff --stat`로 잰다.
 
 ## 5. 코드를 고친 뒤 `/cso`는 바뀐 부분만 본다
 
