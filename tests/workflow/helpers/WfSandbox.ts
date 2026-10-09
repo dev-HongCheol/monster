@@ -211,6 +211,54 @@ function installFakePnpm(bin: string): void {
   fs.chmodSync(sh, 0o755);
 }
 
+/** 임시 저장소 커밋의 작성자. 테스트가 뒤에 하는 커밋은 `envFor`의 같은 값을 쓴다. */
+const AUTHOR = 'wf-sandbox <wf-sandbox@example.invalid>';
+
+/** 상태 파일의 저장소 기준 경로. */
+const STATE_FILE = '.claude/workflow-state.json';
+
+/** fast-import 스트림의 `data` 블록. 길이는 글자 수가 아니라 바이트 수다(절차 문서 제목에 한글이 든다). */
+function dataBlock(body: string): string {
+  return `data ${Buffer.byteLength(body)}\n${body}\n`;
+}
+
+/**
+ * 커밋 하나를 fast-import 명령으로 적는다. `files`는 그 커밋에서 바뀌는 파일만 든다 — `from`이 가리키는
+ * 커밋의 트리를 이어받으므로 나머지 파일은 그대로다.
+ */
+function commitBlock(
+  ref: string,
+  mark: number,
+  message: string,
+  from: number | null,
+  files: Record<string, string>,
+): string {
+  const who = `${AUTHOR} ${Math.floor(Date.now() / 1000)} +0000`;
+  let out = `commit ${ref}\nmark :${mark}\nauthor ${who}\ncommitter ${who}\n${dataBlock(message)}`;
+  if (from !== null) out += `from :${from}\n`;
+  for (const [rel, body] of Object.entries(files)) {
+    out += `M 100644 inline ${rel}\n${dataBlock(body)}`;
+  }
+  return `${out}\n`;
+}
+
+/**
+ * 커밋과 브랜치를 `git fast-import` 한 번으로 만든다. 커밋마다 `add`·`commit`을 띄우면 저장소 하나에
+ * git을 열두 번 띄워 약 0.3초가 걸리고, 이렇게 하면 세 번(`init` · `fast-import` · `reset`)에 약 0.15초다.
+ * 스트림은 이 파일이 옵션으로 조립하므로 테스트가 명령을 넣을 자리가 없다 — 그래서 `git()`의 허용
+ * 목록에는 넣지 않는다.
+ */
+function fastImport(repo: string, stream: string): void {
+  const r = spawnSync('git', ['fast-import', '--quiet'], {
+    cwd: repo,
+    encoding: 'utf8',
+    env: envFor(repo),
+    input: stream,
+  });
+  if (r.error) throw r.error;
+  if (r.status !== 0) throw new Error(`git fast-import: ${r.stderr}`);
+}
+
 /**
  * 임시 폴더 아래에 `repo/`(저장소)와 `bin/`(가짜 `pnpm`)을 나란히 만들고 `repo/`의 경로를 돌려준다.
  *
@@ -221,7 +269,7 @@ function installFakePnpm(bin: string): void {
  * 파일 자리·상태 파일, `c3`은 상태 파일을 지정한 phase에 맞게 고친 것이다. `main`과 `origin/main`은
  * `c2`, `feat/stale`은 `c1`, `feat/<feature>`는 `c3`이고 `HEAD`는 `feat/<feature>`에 둔다. 변경 집합
  * 테스트의 기준 커밋이 `c2`라서, 옵션 없이 만든 저장소의 변경 집합은 비어 있다(상태 파일은 변경
- * 집합에서 빠진다).
+ * 집합에서 빠진다). 세 커밋은 파일 목록을 메모리에서 조립해 `fastImport`로 한 번에 만든다.
  *
  * `git: false`면 저장소 없이 같은 파일만 폴더에 둔다. 변경 집합이나 `cso_commit`을 확인하지 않는
  * 테스트가 이 방식을 쓴다 — 전부 git 저장소로 만들면 Windows에서 전체 테스트 시간이 몇 초 는다.
@@ -232,15 +280,19 @@ export function makeRepo(opts: RepoOptions = {}): string {
   const repo = path.join(tmp, 'repo');
   fs.mkdirSync(repo);
   installFakePnpm(path.join(tmp, 'bin'));
-  fs.writeFileSync(path.join(tmp, 'gitconfig'), '');
+  // 저장소 설정이 아니라 `envFor`가 가리키는 전역 설정 파일에 적는다. `git config`를 띄우지 않아도 되고,
+  // 테스트가 뒤에 하는 커밋에도 같은 설정이 적용된다.
+  fs.writeFileSync(
+    path.join(tmp, 'gitconfig'),
+    '[core]\n\tautocrlf = false\n[commit]\n\tgpgsign = false\n',
+  );
 
   const feature = opts.feature ?? 'demo';
+  if (!/^[A-Za-z0-9._-]+$/.test(feature)) {
+    // 브랜치 이름과 fast-import 스트림의 경로에 그대로 들어간다.
+    throw new Error(`WfSandbox.makeRepo: feature에 쓸 수 없는 글자가 있다: ${feature}`);
+  }
   const useGit = opts.git !== false;
-  const write = (rel: string, body: string): void => {
-    const full = path.join(repo, rel);
-    fs.mkdirSync(path.dirname(full), { recursive: true });
-    fs.writeFileSync(full, body);
-  };
 
   const clean = opts.allChecksClean === true;
   const state: SandboxState = {
@@ -262,56 +314,56 @@ export function makeRepo(opts: RepoOptions = {}): string {
   };
   const stateJson = (s: SandboxState): string => `${JSON.stringify(s, null, 2)}\n`;
 
-  if (useGit) {
-    git(repo, 'init', '--quiet', '--initial-branch=main');
-    // `git -c <설정> init`으로 주면 init 한 번에만 적용되고 뒤의 add·commit·diff는 전역 설정을 읽는다.
-    git(repo, 'config', 'core.autocrlf', 'false');
-    git(repo, 'config', 'commit.gpgsign', 'false');
-    write('README.md', '');
-    git(repo, 'add', '-A');
-    git(repo, 'commit', '--quiet', '-m', 'c1');
-    git(repo, 'branch', 'feat/stale');
-  }
-
-  // c2 — 기준 커밋
+  // c2 — 기준 커밋의 파일
+  const c2: Record<string, string> = {};
   if (opts.omitDir !== true) {
-    fs.mkdirSync(path.join(repo, 'docs', 'development', 'workflow'), { recursive: true });
-    if (opts.omitIndex !== true) write('docs/development/workflow/README.md', '# 인덱스\n');
+    if (opts.omitIndex !== true) c2['docs/development/workflow/README.md'] = '# 인덱스\n';
     for (const phase of DELIVERED_PHASES) {
       if (phase === opts.omitDoc) continue;
-      write(`docs/development/workflow/${phase}.md`, stubDoc(phase));
+      c2[`docs/development/workflow/${phase}.md`] = stubDoc(phase);
     }
   }
   if (opts.planDoc !== false) {
-    write(`docs/development/sessions/2026-01-01-${feature}-plan.md`, '# 계획\n');
+    c2[`docs/development/sessions/2026-01-01-${feature}-plan.md`] = '# 계획\n';
   }
   if (opts.qaDoc !== false) {
-    write(
-      `docs/qa/${feature}-test.md`,
+    c2[`docs/qa/${feature}-test.md`] =
       opts.qaProvisional === true
         ? '# QA\n\n## 프리팹 (잠정 이름)\n'
-        : '# QA\n\n## 프리팹 (확정)\n',
-    );
+        : '# QA\n\n## 프리팹 (확정)\n';
   }
   // 가짜 vitest는 항상 성공으로 끝나므로 내용은 상관없다. `qaDocClean`이 「판정 파일이 있는가」를
   // 확인할 때 통과하려고 둔다.
-  write('tests/workflow/DocsHygiene.test.ts', '');
-  write('.claude/workflow-state.json', stateJson({ ...state, phase: 'planning' }));
-  if (useGit) {
-    git(repo, 'add', '-A');
-    git(repo, 'commit', '--quiet', '-m', 'c2');
-    git(repo, 'update-ref', 'refs/remotes/origin/main', 'main');
-    git(repo, 'switch', '--quiet', '-c', `feat/${feature}`);
-  }
+  c2['tests/workflow/DocsHygiene.test.ts'] = '';
+  c2[STATE_FILE] = stateJson({ ...state, phase: 'planning' });
 
-  // c3 — 요청한 상태
-  write('.claude/workflow-state.json', stateJson(state));
-  if (opts.gameChange === true) write('game/assets/scripts/x.ts', 'export const x = 1;\n');
-  if (opts.csoApplicable === true) write('.claude/wf-sandbox.mjs', 'export {};\n');
+  // c3 — 요청한 상태에서 c2와 달라지는 파일
+  const c3: Record<string, string> = { [STATE_FILE]: stateJson(state) };
+  if (opts.gameChange === true) c3['game/assets/scripts/x.ts'] = 'export const x = 1;\n';
+  if (opts.csoApplicable === true) c3['.claude/wf-sandbox.mjs'] = 'export {};\n';
+
   if (useGit) {
-    git(repo, 'add', '-A');
-    git(repo, 'commit', '--quiet', '--allow-empty', '-m', 'c3');
-    if (opts.checkout === 'main') git(repo, 'switch', '--quiet', 'main');
+    // HEAD가 설 브랜치를 init에서 정하면 뒤에 switch를 띄우지 않아도 된다. fast-import가 끝나도 index와
+    // 작업 트리는 비어 있으므로 reset --hard로 HEAD의 트리를 꺼낸다.
+    const head = opts.checkout === 'main' ? 'main' : `feat/${feature}`;
+    git(repo, 'init', '--quiet', `--initial-branch=${head}`);
+    fastImport(
+      repo,
+      commitBlock('refs/heads/main', 1, 'c1', null, { 'README.md': '' }) +
+        commitBlock('refs/heads/main', 2, 'c2', 1, c2) +
+        'reset refs/heads/feat/stale\nfrom :1\n\nreset refs/remotes/origin/main\nfrom :2\n\n' +
+        commitBlock(`refs/heads/feat/${feature}`, 3, 'c3', 2, c3),
+    );
+    git(repo, 'reset', '--hard', '--quiet');
+  } else {
+    if (opts.omitDir !== true) {
+      fs.mkdirSync(path.join(repo, 'docs', 'development', 'workflow'), { recursive: true });
+    }
+    for (const [rel, body] of Object.entries({ ...c2, ...c3 })) {
+      const full = path.join(repo, rel);
+      fs.mkdirSync(path.dirname(full), { recursive: true });
+      fs.writeFileSync(full, body);
+    }
   }
 
   if (opts.unreadableDoc !== undefined) {
@@ -379,7 +431,8 @@ export function runFakePnpm(
 }
 
 /**
- * 이 세션이 만든 임시 폴더를 전부 지운다. `afterEach`에 건다.
+ * 이 세션이 만든 임시 폴더를 전부 지운다. `afterEach`에 건다. 절 안에서 저장소를 돌려쓰는 파일은
+ * `afterAll`에 건다(`WorkflowDiet.test.ts`).
  *
  * Windows에서는 Defender가 새 파일을 읽는 중이거나 git이 파일을 아직 놓지 않았을 때 `EBUSY`/`EPERM`이
  * 나므로 다시 시도한다.

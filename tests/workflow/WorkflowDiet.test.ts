@@ -10,6 +10,12 @@
  * 임시 저장소를 쓰는 절은 시간 제한을 30초로 둔다. 기본값 5초로는 git을 여러 번 띄우는 테스트가
  * CPU가 바쁠 때 시간 초과로 실패한다.
  *
+ * 임시 git 저장소는 만드는 데 한 개에 약 0.15초가 걸린다(git 세 번). 그래서 세 가지로 아낀다. 판정 함수(`applicableGates` · `qaRequired` · `decideTransition`)는 경로와 확장자만 보므로
+ * 변경 집합을 손으로 적어(`changeSet`) git 없이 부른다. 실제 저장소는 git이 목록을 맞게 주는지를
+ * 재는 `collectChangeSet`과 `csoBaseUsable`에만 쓴다. 명령을 실제로 띄우는 테스트는 같은 상황을 쓰는
+ * 것끼리 절 안에서 저장소 하나를 돌려쓰고(`sharedRepo`), git이 필요 없으면 `makeRepo({ git: false })`를
+ * 쓴다. 돌려쓰는 저장소 때문에 임시 폴더는 테스트마다가 아니라 파일이 끝날 때 지운다.
+ *
  * 이 파일은 프로세스를 직접 띄우지 않는다. git과 가짜 `pnpm`은 `helpers/WfSandbox.ts`를 거쳐
  * 실행한다 — 테스트 파일을 `/cso` 대상에서 빼는 조건이 그것이다(W1 §3).
  */
@@ -17,7 +23,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { applicableGates, collectChangeSet, csoBaseUsable } from '../../.claude/lib/change-set.mjs';
 import { EDITABLE_PHASES } from '../../.claude/lib/phases.mjs';
 import {
@@ -65,13 +71,47 @@ function unmeasured(cs: ChangeSet): Unmeasured {
   return cs;
 }
 
-afterEach(cleanupSandboxes);
+// 절 안에서 돌려쓰는 저장소(`sharedRepo`)가 절이 끝날 때까지 살아 있어야 해서 파일이 끝날 때 지운다.
+afterAll(cleanupSandboxes);
 
 /** 임시 저장소 안에 파일 하나를 쓴다. 중간 폴더는 만든다. */
 function write(repo: string, rel: string, body = 'x\n'): void {
   const full = path.join(repo, rel);
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, body);
+}
+
+/** 임시 저장소의 상태 파일 경로. */
+function statePath(repo: string): string {
+  return path.join(repo, '.claude/workflow-state.json');
+}
+
+/**
+ * 절 안의 테스트들이 저장소 하나를 돌려쓴다. 절이 시작할 때 `make`로 한 번 만들고, 테스트마다 상태
+ * 파일만 만들었을 때 값으로 되돌린다 — 명령이 상태 파일에 적은 값이 다음 테스트로 새지 않게 하려는
+ * 것이다. 작업 트리나 git 이력은 되돌리지 않으므로 그것을 바꾸는 테스트는 절의 마지막에 둔다.
+ *
+ * @returns 저장소 경로를 돌려주는 함수. `beforeAll`이 돌기 전에는 경로가 없어서 함수로 감싼다
+ */
+function sharedRepo(make: () => string): () => string {
+  let repo = '';
+  let initialState = '';
+  beforeAll(() => {
+    repo = make();
+    initialState = fs.readFileSync(statePath(repo), 'utf8');
+  });
+  beforeEach(() => {
+    fs.writeFileSync(statePath(repo), initialState);
+  });
+  return () => repo;
+}
+
+/**
+ * 손으로 적은 변경 집합. 판정 함수는 파일 경로와 확장자만 보므로 git 없이 이 모양으로 부른다.
+ * 항목은 전부 새 파일(`A`)로 둔다 — 적용 판정은 상태 글자를 보지 않는다.
+ */
+function changeSet(...paths: string[]): Measured {
+  return { measurable: true, base: 'abc123', items: paths.map((p) => ({ status: 'A', path: p })) };
 }
 
 /** `spawnSync`가 돌려주는 모양 가운데 변경 집합 코드가 읽는 부분. */
@@ -119,19 +159,21 @@ function tsFilesUnder(dir: string): string[] {
 // ---------------------------------------------------------------------------
 
 describe('W1 — collectChangeSet: 변경 집합', SANDBOX, () => {
+  // 저장소 하나를 돌려쓴다. 각 테스트가 더한 변경이 다음 테스트에 남지만, 단언이 전부 「이 항목을
+  // 포함한다/포함하지 않는다」라서 서로 걸리지 않는다. 빈 변경 집합을 보는 첫 테스트만 맨 앞에 둔다.
+  const repo = sharedRepo(() => makeRepo());
+
   it('기준은 origin/main과 갈라진 커밋이고, 상태 파일만 바뀐 저장소의 변경 집합은 비어 있다', () => {
-    const repo = makeRepo();
-    const cs = measured(collectChangeSet(repo));
-    expect(cs.base).toBe(git(repo, 'rev-parse', 'origin/main').trim());
+    const cs = measured(collectChangeSet(repo()));
+    expect(cs.base).toBe(git(repo(), 'rev-parse', 'origin/main').trim());
     expect(cs.items).toEqual([]);
   });
 
   it('추적 파일의 수정·새 파일·삭제를 M·A·D로 잡는다', () => {
-    const repo = makeRepo();
-    write(repo, 'README.md', 'changed\n');
-    write(repo, 'docs/new.md');
-    fs.rmSync(path.join(repo, 'docs/development/workflow/README.md'));
-    const cs = measured(collectChangeSet(repo));
+    write(repo(), 'README.md', 'changed\n');
+    write(repo(), 'docs/new.md');
+    fs.rmSync(path.join(repo(), 'docs/development/workflow/README.md'));
+    const cs = measured(collectChangeSet(repo()));
     expect(cs.items).toEqual(
       expect.arrayContaining([
         { status: 'M', path: 'README.md' },
@@ -144,10 +186,9 @@ describe('W1 — collectChangeSet: 변경 집합', SANDBOX, () => {
   it('이름을 바꾼 파일은 삭제 하나와 추가 하나로 잡는다', () => {
     // `--no-renames`가 없으면 한 항목이 세 조각(R100·옛 경로·새 경로)으로 나와 그 뒤의 항목까지
     // 잘못 읽는다.
-    const repo = makeRepo();
-    fs.renameSync(path.join(repo, 'README.md'), path.join(repo, 'docs/moved.md'));
-    git(repo, 'add', '-A');
-    const cs = measured(collectChangeSet(repo));
+    fs.renameSync(path.join(repo(), 'README.md'), path.join(repo(), 'docs/moved.md'));
+    git(repo(), 'add', '-A');
+    const cs = measured(collectChangeSet(repo()));
     expect(cs.items).toEqual(
       expect.arrayContaining([
         { status: 'D', path: 'README.md' },
@@ -160,19 +201,17 @@ describe('W1 — collectChangeSet: 변경 집합', SANDBOX, () => {
   });
 
   it('git add만 한 새 파일도 A로 잡는다', () => {
-    const repo = makeRepo();
-    write(repo, 'docs/staged.md');
-    git(repo, 'add', 'docs/staged.md');
-    expect(measured(collectChangeSet(repo)).items).toContainEqual({
+    write(repo(), 'docs/staged.md');
+    git(repo(), 'add', 'docs/staged.md');
+    expect(measured(collectChangeSet(repo())).items).toContainEqual({
       status: 'A',
       path: 'docs/staged.md',
     });
   });
 
   it('공백과 한글이 든 파일명을 그대로 돌려준다', () => {
-    const repo = makeRepo();
-    write(repo, 'docs/새 문서 초안.md');
-    expect(measured(collectChangeSet(repo)).items).toContainEqual({
+    write(repo(), 'docs/새 문서 초안.md');
+    expect(measured(collectChangeSet(repo())).items).toContainEqual({
       status: 'A',
       path: 'docs/새 문서 초안.md',
     });
@@ -181,10 +220,9 @@ describe('W1 — collectChangeSet: 변경 집합', SANDBOX, () => {
   it('상태 파일과 git이 추적하지 않는 *.meta는 변경 집합에서 뺀다', () => {
     // 상태 파일은 도구가 스스로 쓰는 파일이라 넣으면 모든 슬라이스가 `/cso`를 하게 되고, 추적하지 않는
     // `.meta`는 Cocos가 만든 것이지 개발자가 바꾼 것이 아니다.
-    const repo = makeRepo();
-    write(repo, '.claude/workflow-state.json', '{"phase":"verification"}\n');
-    write(repo, 'game/assets/art/a.png.meta');
-    const paths = measured(collectChangeSet(repo)).items.map((i: { path: string }) => i.path);
+    write(repo(), '.claude/workflow-state.json', '{"phase":"verification"}\n');
+    write(repo(), 'game/assets/art/a.png.meta');
+    const paths = measured(collectChangeSet(repo())).items.map((i: { path: string }) => i.path);
     expect(paths).not.toContain('.claude/workflow-state.json');
     expect(paths).not.toContain('game/assets/art/a.png.meta');
   });
@@ -204,10 +242,13 @@ describe('W1 — 변경 집합을 구할 수 없으면 모든 검사를 한다',
     }
   }
 
+  // 저장소 하나를 돌려쓴다. origin/main 참조를 지우고 다시 만드는 순서라 세 테스트가 서로 걸리지
+  // 않는다 — 하위 폴더 테스트는 origin/main을 보기 전에 끝난다.
+  const repo = sharedRepo(() => makeRepo());
+
   it('origin/main 참조가 없다 → git fetch origin main', () => {
-    const repo = makeRepo();
-    git(repo, 'update-ref', '-d', 'refs/remotes/origin/main');
-    const cs = unmeasured(collectChangeSet(repo));
+    git(repo(), 'update-ref', '-d', 'refs/remotes/origin/main');
+    const cs = unmeasured(collectChangeSet(repo()));
     expect(cs.hint).toContain('git fetch origin main');
     expectAllApply(cs);
   });
@@ -215,15 +256,14 @@ describe('W1 — 변경 집합을 구할 수 없으면 모든 검사를 한다',
   it('origin/main과 공통 조상이 없다 → git fetch --unshallow', () => {
     // 이때 `merge-base`는 종료 코드 1과 빈 출력을 낸다. 따로 잡지 않으면 기준 커밋이 빈 문자열인
     // 채로 `git diff`를 실행한다.
-    const repo = makeRepo();
-    git(repo, 'checkout', '--orphan', 'unrelated');
-    write(repo, 'other.txt');
-    git(repo, 'add', '-A');
-    git(repo, 'commit', '--quiet', '-m', 'unrelated');
-    const unrelated = git(repo, 'rev-parse', 'HEAD').trim();
-    git(repo, 'switch', '-');
-    git(repo, 'update-ref', 'refs/remotes/origin/main', unrelated);
-    const cs = unmeasured(collectChangeSet(repo));
+    git(repo(), 'checkout', '--orphan', 'unrelated');
+    write(repo(), 'other.txt');
+    git(repo(), 'add', '-A');
+    git(repo(), 'commit', '--quiet', '-m', 'unrelated');
+    const unrelated = git(repo(), 'rev-parse', 'HEAD').trim();
+    git(repo(), 'switch', '--quiet', 'feat/demo');
+    git(repo(), 'update-ref', 'refs/remotes/origin/main', unrelated);
+    const cs = unmeasured(collectChangeSet(repo()));
     expect(cs.hint).toContain('git fetch --unshallow');
     expectAllApply(cs);
   });
@@ -238,8 +278,7 @@ describe('W1 — 변경 집합을 구할 수 없으면 모든 검사를 한다',
   it('하위 폴더에서 실행했다 → 저장소 루트에서 실행', () => {
     // 경로 문자열을 비교하지 않는다. 이 장비에서 git은 `F:/…`를, Node는 `F:\…`를 내서 비교가 항상
     // 틀린다. `rev-parse --show-prefix`가 비어 있지 않으면 하위 폴더다.
-    const repo = makeRepo();
-    const cs = unmeasured(collectChangeSet(path.join(repo, 'docs')));
+    const cs = unmeasured(collectChangeSet(path.join(repo(), 'docs')));
     expect(cs.hint).toContain('저장소 루트에서 실행');
     expect(cs.hint).not.toContain('여기는 git 저장소가 아니다');
     expectAllApply(cs);
@@ -268,37 +307,16 @@ describe('W1 — 변경 집합을 구할 수 없으면 모든 검사를 한다',
   });
 });
 
-describe('W1 — applicableGates: 대표 변경 집합', SANDBOX, () => {
-  /** 변경을 만드는 함수와 기대 판정. 열 순서는 계획 W1 §4 표와 같다(meta · fullTypecheck · cso · QA). */
-  const ROWS: Array<[string, (repo: string) => void, boolean, boolean, boolean, boolean]> = [
-    ['문서만(docs/**)', (r) => write(r, 'docs/x.md'), false, false, false, false],
-    [
-      '도구만(tools/blender/**)',
-      (r) => write(r, 'tools/blender/bake.py'),
-      false,
-      false,
-      true,
-      false,
-    ],
-    [
-      '도구만(.claude/workflow.mjs)',
-      (r) => write(r, '.claude/workflow.mjs'),
-      false,
-      false,
-      true,
-      false,
-    ],
-    [
-      '순수 로직 테스트만(tests/logic/**)',
-      (r) => write(r, 'tests/logic/X.test.ts'),
-      false,
-      false,
-      false,
-      false,
-    ],
+describe('W1 — applicableGates: 대표 변경 집합', () => {
+  /** 바뀐 파일 하나와 기대 판정. 열 순서는 계획 W1 §4 표와 같다(meta · fullTypecheck · cso · QA). */
+  const ROWS: Array<[string, string, boolean, boolean, boolean, boolean]> = [
+    ['문서만(docs/**)', 'docs/x.md', false, false, false, false],
+    ['도구만(tools/blender/**)', 'tools/blender/bake.py', false, false, true, false],
+    ['도구만(.claude/workflow.mjs)', '.claude/workflow.mjs', false, false, true, false],
+    ['순수 로직 테스트만(tests/logic/**)', 'tests/logic/X.test.ts', false, false, false, false],
     [
       '워크플로우 테스트 파일만(tests/workflow/*.test.ts)',
-      (r) => write(r, 'tests/workflow/X.test.ts'),
+      'tests/workflow/X.test.ts',
       false,
       false,
       false,
@@ -306,31 +324,16 @@ describe('W1 — applicableGates: 대표 변경 집합', SANDBOX, () => {
     ],
     [
       '테스트 도우미(tests/workflow/helpers/**)',
-      (r) => write(r, 'tests/workflow/helpers/x.ts'),
+      'tests/workflow/helpers/x.ts',
       false,
       false,
       true,
       false,
     ],
-    [
-      '추적하지 않는 .meta만',
-      (r) => write(r, 'game/assets/art/a.png.meta'),
-      false,
-      false,
-      false,
-      false,
-    ],
-    [
-      '그림과 .meta만(game/assets/art/**)',
-      (r) => write(r, 'game/assets/art/a.png'),
-      true,
-      false,
-      false,
-      true,
-    ],
+    ['그림과 .meta만(game/assets/art/**)', 'game/assets/art/a.png', true, false, false, true],
     [
       '게임 TypeScript(game/assets/scripts/**)',
-      (r) => write(r, 'game/assets/scripts/a.ts'),
+      'game/assets/scripts/a.ts',
       true,
       true,
       false,
@@ -338,7 +341,7 @@ describe('W1 — applicableGates: 대표 변경 집합', SANDBOX, () => {
     ],
     [
       '게임 프로젝트 설정만(game/settings/**)',
-      (r) => write(r, 'game/settings/v2/project.json'),
+      'game/settings/v2/project.json',
       false,
       true,
       false,
@@ -346,38 +349,40 @@ describe('W1 — applicableGates: 대표 변경 집합', SANDBOX, () => {
     ],
   ];
 
-  it.each(ROWS)('%s', (_name, change, meta, fullTypecheck, cso, qa) => {
-    const repo = makeRepo();
-    change(repo);
-    const gates = applicableGates(collectChangeSet(repo));
+  it.each(ROWS)('%s', (_name, changed, meta, fullTypecheck, cso, qa) => {
+    const gates = applicableGates(changeSet(changed));
     expect(gates.meta.applies, 'meta').toBe(meta);
     expect(gates.fullTypecheck.applies, 'fullTypecheck').toBe(fullTypecheck);
     expect(gates.cso.applies, 'cso').toBe(cso);
     expect(gates.qa.applies, 'qa').toBe(qa);
   });
 
-  it('적용이면 어느 파일 때문인지(matches)와 어느 경로 규칙인지(rule)를 든다', () => {
+  it('추적하지 않는 .meta만', SANDBOX, () => {
+    // 표의 다른 줄과 달리 실제 저장소가 필요하다. 경로만 보면 `game/assets/**`에 해당하는데, 그 파일을
+    // 변경 집합에서 빼는 것은 판정이 아니라 `collectChangeSet`이 git의 추적 여부로 하기 때문이다.
     const repo = makeRepo();
-    write(repo, 'game/assets/scripts/a.ts');
+    write(repo, 'game/assets/art/a.png.meta');
     const gates = applicableGates(collectChangeSet(repo));
+    for (const name of ['meta', 'fullTypecheck', 'cso', 'qa'] as const) {
+      expect(gates[name].applies, name).toBe(false);
+    }
+  });
+
+  it('적용이면 어느 파일 때문인지(matches)와 어느 경로 규칙인지(rule)를 든다', () => {
+    const gates = applicableGates(changeSet('game/assets/scripts/a.ts'));
     expect(gates.meta.matches).toEqual(['game/assets/scripts/a.ts']);
     expect(gates.meta.rule).toBeTruthy();
     expect(gates.cso.matches).toEqual([]);
   });
 });
 
-describe('W1 — 적용 경로의 폴더 경계', SANDBOX, () => {
-  // pathspec 시험(W1 §3.1)에서 git에 경로 비교를 맡기기로 하면 이 절은 뺀다.
+describe('W1 — 적용 경로의 폴더 경계', () => {
   it('toolsmith/x는 tools/**에 해당하지 않는다', () => {
-    const repo = makeRepo();
-    write(repo, 'toolsmith/x.txt');
-    expect(applicableGates(collectChangeSet(repo)).cso.applies).toBe(false);
+    expect(applicableGates(changeSet('toolsmith/x.txt')).cso.applies).toBe(false);
   });
 
   it('game/elsewhere/x.ts는 게임 전체 타입 검사에 해당한다 — 폴더가 아니라 확장자로 본다', () => {
-    const repo = makeRepo();
-    write(repo, 'game/elsewhere/x.ts');
-    expect(applicableGates(collectChangeSet(repo)).fullTypecheck.applies).toBe(true);
+    expect(applicableGates(changeSet('game/elsewhere/x.ts')).fullTypecheck.applies).toBe(true);
   });
 
   it('대소문자만 다른 .Claude/는 같은 폴더로 본다', () => {
@@ -388,41 +393,40 @@ describe('W1 — 적용 경로의 폴더 경계', SANDBOX, () => {
 });
 
 describe('W1 — csoBaseUsable: cso_commit을 기준으로 쓸 수 있나', SANDBOX, () => {
+  // 네 테스트가 저장소를 읽기만 하므로 하나를 돌려쓴다.
+  const repo = sharedRepo(() => makeRepo());
+
   it('값이 없으면 「기록 없음」이다', () => {
-    const repo = makeRepo();
-    expect(csoBaseUsable(null, repo)).toEqual({ usable: false, reason: '기록 없음' });
-    expect(csoBaseUsable(undefined, repo)).toEqual({ usable: false, reason: '기록 없음' });
+    expect(csoBaseUsable(null, repo())).toEqual({ usable: false, reason: '기록 없음' });
+    expect(csoBaseUsable(undefined, repo())).toEqual({ usable: false, reason: '기록 없음' });
   });
 
   it('HEAD의 조상이면 쓸 수 있다', () => {
-    const repo = makeRepo();
-    const base = git(repo, 'rev-parse', 'HEAD~1').trim();
-    expect(csoBaseUsable(base, repo)).toEqual({ usable: true });
-  });
-
-  it('조상이 아닌 커밋이면 그 이유를 단다', () => {
-    // 리베이스를 했거나 main에서 들어온 변경이 섞였을 때다. 그 커밋을 기준으로 안내하면 명령이
-    // 실패하거나 main의 변경까지 점검 범위에 들어간다.
-    const repo = makeRepo();
-    git(repo, 'checkout', '--orphan', 'unrelated');
-    write(repo, 'other.txt');
-    git(repo, 'add', '-A');
-    git(repo, 'commit', '--quiet', '-m', 'unrelated');
-    const unrelated = git(repo, 'rev-parse', 'HEAD').trim();
-    git(repo, 'switch', '-');
-    expect(csoBaseUsable(unrelated, repo)).toEqual({
-      usable: false,
-      reason: '지금 HEAD의 조상이 아님',
-    });
+    const base = git(repo(), 'rev-parse', 'HEAD~1').trim();
+    expect(csoBaseUsable(base, repo())).toEqual({ usable: true });
   });
 
   it('저장소에 없는 커밋이면 다른 이유를 단다', () => {
     // 다른 장비로 옮겼는데 그 장비에 그 커밋이 없을 때다. 어떤 검사를 할지는 바꾸지 않고 전체 `/cso`만
     // 안내하므로, 변경 집합을 구할 수 없는 경우와 섞지 않는다.
-    const repo = makeRepo();
-    expect(csoBaseUsable('0'.repeat(40), repo)).toEqual({
+    expect(csoBaseUsable('0'.repeat(40), repo())).toEqual({
       usable: false,
       reason: '지금 저장소에 없는 커밋',
+    });
+  });
+
+  it('조상이 아닌 커밋이면 그 이유를 단다', () => {
+    // 리베이스를 했거나 main에서 들어온 변경이 섞였을 때다. 그 커밋을 기준으로 안내하면 명령이
+    // 실패하거나 main의 변경까지 점검 범위에 들어간다. 브랜치를 하나 더 만들므로 절의 마지막에 둔다.
+    git(repo(), 'checkout', '--orphan', 'unrelated');
+    write(repo(), 'other.txt');
+    git(repo(), 'add', '-A');
+    git(repo(), 'commit', '--quiet', '-m', 'unrelated');
+    const unrelated = git(repo(), 'rev-parse', 'HEAD').trim();
+    git(repo(), 'switch', '--quiet', 'feat/demo');
+    expect(csoBaseUsable(unrelated, repo())).toEqual({
+      usable: false,
+      reason: '지금 HEAD의 조상이 아님',
     });
   });
 });
@@ -999,26 +1003,31 @@ function patchState(repo: string, patch: Record<string, unknown>): void {
   );
 }
 
+/** 판단 검사 두 개와 정본 기록이 다 찬 verification 상태. `readyRepo`와 돌려쓰는 저장소가 쓴다. */
+const READY: Record<string, unknown> = {
+  ts_check_scope: 'full',
+  canon_skip_reason: '바꾼 명세 없음',
+  verification: {
+    cso_done: true,
+    ts_check_clean: true,
+    lint_clean: true,
+    code_review_clean: true,
+  },
+};
+
 /** 판단 검사 두 개와 정본 기록이 다 찬 verification 저장소. */
 function readyRepo(opts: RepoOptions = {}): string {
-  const repo = makeRepo({
-    phase: 'verification',
-    allChecksClean: true,
-    canonSkipReason: '바꾼 명세 없음',
-    ...opts,
-  });
-  patchState(repo, {
-    verification: {
-      cso_done: true,
-      ts_check_clean: true,
-      lint_clean: true,
-      code_review_clean: true,
-    },
-  });
+  const repo = makeRepo({ phase: 'verification', ...opts });
+  patchState(repo, READY);
   return repo;
 }
 
 describe('W2 — 명령: pass · invalidate · skip-qa · verify', SANDBOX, () => {
+  /** `/cso`를 해야 하는 verification 저장소. 판단 검사 상태는 테스트마다 `patchState`로 정한다. */
+  const csoRepo = sharedRepo(() => makeRepo({ csoApplicable: true }));
+  /** 아직 구현 전인 qa-setup 저장소(`game/**` 변경 없음). */
+  const qaSetupRepo = sharedRepo(() => makeRepo({ phase: 'qa-setup' }));
+
   it('pass ts · pass lint는 안내와 함께 실패한다', () => {
     const repo = makeRepo({ git: false });
     for (const check of ['ts', 'lint']) {
@@ -1040,7 +1049,7 @@ describe('W2 — 명령: pass · invalidate · skip-qa · verify', SANDBOX, () =
   });
 
   it('/cso를 해야 할 때 pass cso는 cso_done과 cso_commit을 적고 출력에 HEAD를 적는다', () => {
-    const repo = makeRepo({ csoApplicable: true });
+    const repo = csoRepo();
     const r = runWf(repo, ['pass', 'cso']);
     expect(r.status, r.stderr).toBe(0);
     const head = git(repo, 'rev-parse', 'HEAD').trim();
@@ -1051,9 +1060,9 @@ describe('W2 — 명령: pass · invalidate · skip-qa · verify', SANDBOX, () =
   });
 
   it('invalidate는 /cso 통과 표시를 지우고 cso_commit과 기록용 값 셋은 남긴다', () => {
-    const repo = readyRepo({ csoApplicable: true });
+    const repo = csoRepo();
     const base = git(repo, 'rev-parse', 'HEAD~1').trim();
-    patchState(repo, { cso_commit: base, ts_check_scope: 'full' });
+    patchState(repo, { ...READY, cso_commit: base });
     const r = runWf(repo, ['invalidate']);
     expect(r.status, r.stderr).toBe(0);
     expect(r.stdout).toContain(`/cso --diff --base ${base}`);
@@ -1068,24 +1077,26 @@ describe('W2 — 명령: pass · invalidate · skip-qa · verify', SANDBOX, () =
     expect(s.cso_commit).toBe(base);
   });
 
-  it('cso_commit이 HEAD의 조상이 아니면(리베이스 뒤) invalidate가 전체 /cso를 안내한다', () => {
-    const repo = readyRepo({ csoApplicable: true });
-    git(repo, 'commit', '--quiet', '--allow-empty', '-m', 'c4');
-    const gone = git(repo, 'rev-parse', 'HEAD').trim();
-    git(repo, 'reset', '--hard', '--quiet', 'HEAD~1');
-    git(repo, 'commit', '--quiet', '--allow-empty', '-m', 'c4 다시');
-    patchState(repo, { cso_commit: gone });
-    const r = runWf(repo, ['invalidate']);
-    expect(r.stdout).toContain('지금 HEAD의 조상이 아님');
-    expect(r.stdout).not.toContain('--diff');
-  });
-
   it('/cso를 해야 하는데 pass cso 전에 pass review를 치면 통합 검사를 돌리지 않는다', () => {
-    const repo = makeRepo({ csoApplicable: true, canonSkipReason: '없음' });
+    const repo = csoRepo();
+    patchState(repo, { canon_skip_reason: '없음' });
     const r = runWf(repo, ['pass', 'review']);
     expect(r.status, r.stderr).toBe(0);
     expect(r.stdout).not.toContain('▶ 통합 검사');
     expect(stateOf(repo).phase).toBe('verification');
+  });
+
+  it('cso_commit이 HEAD의 조상이 아니면(리베이스 뒤) invalidate가 전체 /cso를 안내한다', () => {
+    // 커밋을 다시 쌓아 HEAD를 바꾸므로 csoRepo를 쓰는 테스트 가운데 마지막에 둔다.
+    const repo = csoRepo();
+    git(repo, 'commit', '--quiet', '--allow-empty', '-m', 'c4');
+    const gone = git(repo, 'rev-parse', 'HEAD').trim();
+    git(repo, 'reset', '--hard', '--quiet', 'HEAD~1');
+    git(repo, 'commit', '--quiet', '--allow-empty', '-m', 'c4 다시');
+    patchState(repo, { ...READY, cso_commit: gone });
+    const r = runWf(repo, ['invalidate']);
+    expect(r.stdout).toContain('지금 HEAD의 조상이 아님');
+    expect(r.stdout).not.toContain('--diff');
   });
 
   it('skip-qa는 game/** 변경이 있으면 받지 않는다', () => {
@@ -1098,7 +1109,7 @@ describe('W2 — 명령: pass · invalidate · skip-qa · verify', SANDBOX, () =
   });
 
   it('skip-qa는 사유를 적고, --clear 뒤 status는 「QA 문서 생략: 없음」을 출력한다', () => {
-    const repo = makeRepo({ phase: 'qa-setup' });
+    const repo = qaSetupRepo();
     const set = runWf(repo, ['skip-qa', '문서만 바뀐다']);
     expect(set.status, set.stderr).toBe(0);
     expect(set.stdout).toContain('생략은 `game/**` 변경이 없는 동안만 유효하다');
@@ -1110,7 +1121,8 @@ describe('W2 — 명령: pass · invalidate · skip-qa · verify', SANDBOX, () =
   });
 
   it('origin/main이 없으면 skip-qa가 변경 집합을 구할 수 없다는 안내와 함께 받지 않는다', () => {
-    const repo = makeRepo({ phase: 'qa-setup' });
+    // origin/main 참조를 지우므로 qaSetupRepo를 쓰는 테스트 가운데 마지막에 둔다.
+    const repo = qaSetupRepo();
     git(repo, 'update-ref', '-d', 'refs/remotes/origin/main');
     const r = runWf(repo, ['skip-qa', '문서만 바뀐다']);
     expect(r.status).toBe(1);
@@ -1162,8 +1174,11 @@ describe('W2 — 옛 형식 상태 파일(새 값이 없다)', SANDBOX, () => {
 
 // 통합 검사까지 실제로 돌리는 테스트. Windows에서 한 건에 1~1.5초가 걸려 여섯 개 이하로 둔다(W2 §8).
 describe('W2 — E2E: 통합 검사를 실제로 돌린다', SANDBOX, () => {
+  /** `/cso`를 해야 하는 implementation 저장소. 두 start-verification 테스트가 돌려쓴다. */
+  const implRepo = sharedRepo(() => makeRepo({ phase: 'implementation', csoApplicable: true }));
+
   it('start-verification 성공 — verification으로 넘어가고 기록용 값 셋을 적고, 전체 /cso를 안내한다', () => {
-    const repo = makeRepo({ phase: 'implementation', csoApplicable: true });
+    const repo = implRepo();
     const r = runWf(repo, ['start-verification']);
     expect(r.status, r.stderr).toBe(0);
     expect(r.stdout).toMatch(/^vitest: 통과 · 파일 1개/m);
@@ -1175,7 +1190,7 @@ describe('W2 — E2E: 통합 검사를 실제로 돌린다', SANDBOX, () => {
   });
 
   it('start-verification 실패 — 넘어가지 않고 절차 문서를 찾아갈 한 줄로 끝낸다', () => {
-    const repo = makeRepo({ phase: 'implementation' });
+    const repo = implRepo();
     const r = runWf(repo, ['start-verification'], { WF_SHIM_FAIL: 'vitest' });
     expect(r.status).toBe(1);
     expect(r.stdout).toMatch(/^vitest: 실패/m);
@@ -1413,11 +1428,16 @@ function lastLine(text: string): string {
 }
 
 describe('W3 — 명령: status · approve-pr · check-meta', SANDBOX, () => {
+  /** `/cso`를 해야 하는 verification 저장소. status 테스트 둘이 돌려쓴다. */
+  const csoRepo = sharedRepo(() => makeRepo({ csoApplicable: true }));
+  /** 변경이 없는 user-verification 저장소. approve-pr과 check-meta 테스트가 돌려쓴다. */
+  const uvRepo = sharedRepo(() => makeRepo({ phase: 'user-verification' }));
+
   it('옛 형식 상태 파일로 status가 적용 판정 표와 「다음 /cso: 전체 (기록 없음)」을 출력하고, approve-pr이 판정을 낸다', () => {
-    const repo = makeRepo({ csoApplicable: true });
+    const repo = csoRepo();
     fs.copyFileSync(
       path.join(HERE, 'fixtures/workflow-state/user-verification-legacy.json'),
-      path.join(repo, '.claude/workflow-state.json'),
+      statePath(repo),
     );
     const st = runWf(repo, ['status']);
     expect(st.status, st.stderr).toBe(0);
@@ -1431,14 +1451,15 @@ describe('W3 — 명령: status · approve-pr · check-meta', SANDBOX, () => {
   });
 
   it('cso_commit이 HEAD의 조상이면 status가 --diff --base 명령을 출력한다', () => {
-    const repo = makeRepo({ csoApplicable: true });
+    const repo = csoRepo();
     const base = git(repo, 'rev-parse', 'HEAD~1').trim();
     patchState(repo, { cso_commit: base });
     expect(runWf(repo, ['status']).stdout).toContain(`다음 /cso: /cso --diff --base ${base}`);
   });
 
   it('status의 마지막 줄은 「절차: …」이고, 명령 목록의 verify에 「(phase가 바뀌지 않음)」이 붙는다', () => {
-    const r = runWf(makeRepo({ phase: 'implementation' }), ['status']);
+    // 출력의 모양만 보므로 변경 집합을 구할 수 있을 필요가 없다.
+    const r = runWf(makeRepo({ phase: 'implementation', git: false }), ['status']);
     expect(lastLine(r.stdout)).toBe('절차: `pnpm wf steps implementation`');
     expect(r.stdout).toContain('verify (phase가 바뀌지 않음)');
   });
@@ -1450,7 +1471,7 @@ describe('W3 — 명령: status · approve-pr · check-meta', SANDBOX, () => {
   });
 
   it('approve-pr은 적용 판정 표를 타입 검사보다 먼저 출력하고 pr-ready로 넘어간다', () => {
-    const repo = makeRepo({ phase: 'user-verification' });
+    const repo = uvRepo();
     const r = runWf(repo, ['approve-pr']);
     expect(r.status, r.stderr).toBe(0);
     const table = r.stdout.indexOf('  fullTypecheck: 해당 없음');
@@ -1474,8 +1495,9 @@ describe('W3 — 명령: status · approve-pr · check-meta', SANDBOX, () => {
 
   it('.meta 검사가 해당 없어 approve-pr이 건너뛰어도 check-meta는 항상 검사한다', () => {
     // main에 이미 .meta 없는 자산이 있는 경우다. 이 슬라이스와 무관한 누락으로 도구 슬라이스가 막히지
-    // 않아야 하지만, 사용자가 일부러 부른 check-meta는 건너뛰지 않는다.
-    const repo = makeRepo({ phase: 'user-verification' });
+    // 않아야 하지만, 사용자가 일부러 부른 check-meta는 건너뛰지 않는다. 자산을 커밋해 origin/main을
+    // 옮기므로 uvRepo를 쓰는 테스트 가운데 마지막에 둔다.
+    const repo = uvRepo();
     write(repo, 'game/assets/a.png');
     git(repo, 'add', '-A');
     git(repo, 'commit', '--quiet', '-m', 'asset');
