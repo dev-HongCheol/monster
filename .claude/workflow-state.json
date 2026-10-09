@@ -1,6 +1,6 @@
 {
   "feature": "workflow-diet",
-  "phase": "verification",
+  "phase": "user-verification",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": "full",
@@ -17,13 +17,13 @@
   "canon_skip_reason": null,
   "qa_doc_fingerprint": "e9766bd1019571a6",
   "verification": {
-    "cso_done": false,
+    "cso_done": true,
     "ts_check_clean": true,
     "lint_clean": true,
-    "code_review_clean": false
+    "code_review_clean": true
   },
   "docs_delivered": [
-    "verification"
+    "user-verification"
   ],
-  "cso_commit": "388f5c534490b4f2fe492c25df48b71db5261221"
+  "cso_commit": "0278a556afd63919857bab0cbfde0ed1bb4762f1"
 }
