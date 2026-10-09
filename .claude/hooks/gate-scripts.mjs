@@ -141,7 +141,10 @@ async function main() {
   deny(lockedReason(rel, phase, phases));
 }
 
-// 테스트는 판정 함수만 쓰려고 이 값을 켜고 import한다. Claude Code가 훅을 띄울 때는 이 값이 없으므로
-// 늘 main()이 돈다. 반대로 「직접 실행됐을 때만 main()」으로 가르면, 경로 표기(드라이브 문자 대소문자 등)가
-// 어긋나는 장비에서 훅이 아무것도 하지 않고 끝나 잠금이 조용히 풀린다.
-if (process.env.GATE_HOOK_IMPORT_ONLY !== "1") await main();
+// 테스트는 판정 함수만 쓰려고 GATE_HOOK_IMPORT_ONLY를 켜고 import한다. 그런데 이 값만 보고 main()을
+// 건너뛰면, 사용자 설정(settings.local.json의 env 등)에 이 값이 들어갔을 때 훅이 아무것도 하지 않아
+// 잠금이 풀린다. 그래서 훅 파일을 직접 실행했으면 이 값과 상관없이 main()을 돈다. 직접 실행인지는 파일
+// 이름만 비교한다 — 전체 경로를 비교하면 드라이브 문자 대소문자 같은 표기 차이로 어긋나서, 훅이 아무것도
+// 하지 않고 끝날 수 있다.
+const launchedDirectly = path.basename(process.argv[1] ?? "") === "gate-scripts.mjs";
+if (launchedDirectly || process.env.GATE_HOOK_IMPORT_ONLY !== "1") await main();

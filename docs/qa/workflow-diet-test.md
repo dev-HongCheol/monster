@@ -42,7 +42,7 @@
 
 ## 4. 자동 테스트로 검증 (`tests/workflow/WorkflowDiet.test.ts` · `WfSandbox.test.ts` + 기존 파일 넷)
 
-**통과 근거:** 2026-10-09 · 피처 테스트 168/168(`WorkflowDiet.test.ts` 157 · `WfSandbox.test.ts` 11) · 전체 스위트 1281/1282(건너뜀 1) — 편집 잠금(W8)을 더한 뒤 `start-verification`의 vitest 줄(biome 통과 · typecheck 통과 범위 full). W8로 피처 테스트가 42개 늘었다.
+**통과 근거:** 2026-10-09 · 피처 테스트 169/169(`WorkflowDiet.test.ts` 158 · `WfSandbox.test.ts` 11) · 전체 스위트 1282/1283(건너뜀 1) — 편집 잠금(W8)을 더한 뒤 `pnpm wf verify`의 vitest 줄(biome 통과 · typecheck 통과 범위 full). W8로 피처 테스트가 43개 늘었다.
 
 > 이 슬라이스가 만드는 코드는 `.claude/lib/*.mjs`와 `workflow.mjs`의 명령 처리다. 입력만 받아 답하는 함수는 단위 테스트로, git을 실행하는 함수는 임시 저장소에서, 명령은 실제 프로세스를 띄워서 확인한다. 통합 검사까지 실제로 돌리는 처음부터 끝까지 테스트(E2E)는 여섯 개 이하로 둔다(Windows에서 한 건이 node를 약 다섯 번 띄운다). 묶음의 순서는 구현 순서(W5 → W1 → W4 → W2 → W3 → W8)다.
 
@@ -106,6 +106,7 @@
 - [x] 훅 프로세스가 `planning`·`user-verification`·`pr-ready`·`done`에서 코드를 모두 막고, `qa-setup`에서는 테스트 코드만 통과시키고, `implementation`·`verification`에서는 모두 통과시킨다.
 - [x] 절대 경로로 준 저장소 안의 코드도 막고, 상태 파일은 `implementation`에서도 막는다.
 - [x] 막는 문장에 지금 phase와 「사용자에게 알리」가 들어 있다.
+- [x] `GATE_HOOK_IMPORT_ONLY=1`이 켜진 환경에서 훅을 직접 띄워도 막는다(테스트용 import 스위치로 잠금이 풀리지 않는다).
 - [x] `pnpm wf status`가 `code editable: YES` · `tests only` · `no (locked)`를 phase에 맞게 출력한다.
 - [x] 훅의 `TEST_EDITABLE_PHASES` 값이 `phases.mjs`의 값과 같다.
 

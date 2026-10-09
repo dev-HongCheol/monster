@@ -1661,6 +1661,17 @@ describe('W8 — 편집 잠금 훅을 실제로 띄운다', SANDBOX, () => {
     expect(runGateHook(repo, path.join(repo, '.claude', 'workflow.mjs'))).not.toBeNull();
   });
 
+  it('import 전용 환경변수가 켜져 있어도 훅을 직접 띄우면 막는다', () => {
+    // 이 값만 보고 main()을 건너뛰면, 사용자 설정(settings.local.json의 env 등)에 이 값이 들어갔을 때
+    // 훅이 아무것도 하지 않아 잠금이 풀린다. runGateHook은 이 프로세스의 환경을 물려준다.
+    process.env.GATE_HOOK_IMPORT_ONLY = '1';
+    try {
+      expect(runGateHook(repoAt('user-verification'), TOOL)).not.toBeNull();
+    } finally {
+      delete process.env.GATE_HOOK_IMPORT_ONLY;
+    }
+  });
+
   it('상태 파일은 implementation에서도 막는다', () => {
     expect(runGateHook(repoAt('implementation'), '.claude/workflow-state.json')).not.toBeNull();
   });

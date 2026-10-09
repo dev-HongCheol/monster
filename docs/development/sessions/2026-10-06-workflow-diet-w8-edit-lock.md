@@ -36,7 +36,7 @@
 
 파일을 가르는 판정은 훅 안의 함수 `editablePhasesFor`로 꺼내 내보낸다. 테스트가 이 함수를 직접 불러 파일 종류를 하나하나 재고, 훅 프로세스는 phase와 파일 종류의 조합만 띄워서 확인한다. 모든 조합을 프로세스로 띄우면 120번쯤 띄우게 되어 테스트가 약 2초 늘었다.
 
-훅은 import만 해도 입력을 기다리는 `main()`을 돌린다. 테스트는 환경변수 `GATE_HOOK_IMPORT_ONLY=1`을 켜고 import해서 `main()`을 건너뛴다. 반대로 「직접 실행됐을 때만 `main()`을 돈다」로 가르는 방법은 쓰지 않았다. 그렇게 하면 `process.argv[1]`과 모듈 경로의 표기(드라이브 문자 대소문자 등)가 어긋나는 장비에서 훅이 아무것도 하지 않고 끝나, 잠금이 아무 경고 없이 풀린다.
+훅은 import만 해도 입력을 기다리는 `main()`을 돌린다. 테스트는 환경변수 `GATE_HOOK_IMPORT_ONLY=1`을 켜고 import해서 `main()`을 건너뛴다. 다만 훅 파일을 직접 실행했으면 이 값과 상관없이 `main()`을 돈다. 이 값만 보면, 사용자 설정(`settings.local.json`의 env 등)에 이 값이 들어갔을 때 훅이 아무것도 하지 않아 잠금이 풀리기 때문이다(보안 점검 중에 찾았다). 직접 실행인지는 `process.argv[1]`의 파일 이름만 비교한다. 전체 경로를 비교하면 드라이브 문자 대소문자 같은 표기 차이로 어긋나서, 훅이 아무것도 하지 않고 끝날 수 있다.
 
 막을 때 내는 문장에는 「다른 방법으로 돌아가지 말고 멈춘 뒤 사용자에게 알리고 확인을 받으세요」를 넣는다. AI가 막힌 뒤 바로 보는 글이 이 문장이기 때문이다.
 
@@ -61,5 +61,6 @@
 - 훅 프로세스가 `planning`·`user-verification`·`pr-ready`·`done`에서 게임 스크립트·도구 코드·설정·테스트 코드를 모두 막고, `qa-setup`에서는 테스트 코드만 통과시키고, `implementation`·`verification`에서는 모두 통과시키는지.
 - 저장소 밖 파일과 문서는 잠긴 phase에서도 통과하고, 절대 경로로 준 저장소 안의 코드는 막는지.
 - 막는 문장에 phase와 「사용자에게 알리」가 들어 있는지.
+- `GATE_HOOK_IMPORT_ONLY=1`이 켜진 환경에서 훅을 직접 띄워도 막는지.
 - `pnpm wf status`가 `code editable: YES` · `tests only` · `no (locked)`를 phase에 맞게 출력하는지.
 - 훅의 `EDITABLE_PHASES`·`TEST_EDITABLE_PHASES`가 `phases.mjs`와 같은지(W4 절).
