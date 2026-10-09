@@ -1,24 +1,44 @@
-# 워크플로우 다이어트 — 다음 세션이 이어받는 자리 (2026-10-05, 2026-10-07 갱신)
+# 워크플로우 다이어트 — 다음 세션이 이어받는 자리 (2026-10-05, 2026-10-09 갱신)
 
 새 세션(다른 장비 포함)이 이 문서 하나만 읽고 이어 갈 수 있게 적었다. 계획 초안과 함께 최종 PR 전에 지운다.
 
 ## 1. 지금 어디에 있나
 
-- 브랜치 `feat/workflow-diet`, phase `implementation`. 계획은 승인됐고(2026-10-07 `approve-plan`), QA 문서와 실패하는 테스트를 쓴 뒤 `ready-impl`을 통과했다.
-- 구현 순서는 W5 → W1 → W4 → W2 → W3 → W6 → W7이고, **일곱 묶음이 모두 끝났다.** 다음은 `pnpm wf start-verification`으로 검증 단계다.
-- 커밋: `7bfc5e2`(계획 문서) · `0a767c2`(`tests/` 구조 + W5) · `31042a8`(W1) · `df54f74`(W4) · `7474ddb`(W2) · `fabdc85`(W3) · `271058f`(W6) · W7 커밋(`git log --oneline -1 -- docs/development/backlog-implement.md`). 푸시는 사용자가 말할 때 한다.
-- **`docs/qa/workflow-diet-test.md`만 일부러 커밋하지 않았다.** 자동 검증 절에 `[ ]` 항목이 남은 채 커밋하면 레포 전체 검사(`tests/workflow/DocsHygiene.test.ts`)가 그것을 잡아 `start-verification`이 막힌다. 검증 단계에서 `[x]`로 채우고 통과 근거를 적은 뒤 커밋한다. **다른 장비로 옮기면 이 파일은 따라가지 않는다** — 이 장비에서 이어 하거나 파일을 따로 옮긴다.
-- 지금 상태의 확인 결과(W6 뒤): 전체 테스트 50 파일 1,236 통과(건너뜀 1) · `pnpm typecheck` 통과(범위 full) · biome 깨끗 · 이 저장소에서 `pnpm wf verify --no-write`가 실제 도구로 세 검사 모두 통과. 계획 §7의 손 확인(타입 오류 · 린트 위반 · 실패 테스트를 넣어 `start-verification`이 막히는지)도 끝났고 결과는 QA 문서 §5.1에 있다(QA 문서는 미커밋).
+- 브랜치 `feat/workflow-diet`, phase `verification`(2026-10-07 `start-verification` 통과). 구현 묶음 일곱(W5 → W1 → W4 → W2 → W3 → W6 → W7)이 모두 끝났고 커밋됐다. 작업 트리는 깨끗하고 상태 파일도 커밋돼 있어 다른 장비로 옮겨도 phase가 따라간다. 푸시는 안 했다.
+- 커밋: `7bfc5e2`(계획 문서) · `0a767c2`(`tests/` 구조 + W5) · `31042a8`(W1) · `df54f74`(W4) · `7474ddb`(W2) · `fabdc85`(W3) · `271058f`(W6) · `2d1849a`(W7) · `7c19f58`(QA 문서 §4 확정 + 상태 파일).
+- 검증 단계에서 이미 한 것: QA 문서 §4 전부 `[x]`와 통과 근거(피처 123/123 · 전체 1,236/1,237), §5.1 · §5.2 세 항목 · §5.5 손 확인 결과 기록, `pnpm wf check-qa` 통과, `pnpm wf canon-done`으로 정본 여덟 개(절차 문서 여섯 + `CLAUDE.md` + `spec/ops-skill-routing.md`) 기록. `/cso`와 코드 리뷰는 아직 안 했다(`cso_done` · `code_review_clean` 둘 다 거짓).
+- 지금 상태의 확인 결과: 전체 테스트 50 파일 1,236 통과(건너뜀 1) · `pnpm typecheck` 통과(범위 full) · biome 깨끗 · `check-docs` · `check-links` 통과.
 
 ## 2. 다음에 할 일
 
-작업 단위는 W(작업 묶음)다. **묶음 하나를 끝낼 때마다 멈추고 사용자 확인을 받는다**(2026-10-07 사용자 지시). 커밋은 사용자가 말할 때 하되 묶음 단위로 나눈다. 묶음을 시작할 때 그 묶음 문서의 「테스트」 절을 `tests/workflow/WorkflowDiet.test.ts`에 절로 먼저 쓰고 실패를 확인한 뒤 구현한다(W5·W1·W4 절이 그렇게 되어 있다).
+**먼저 할 일 — 테스트 시간 줄이기(2026-10-09 사용자와 합의, 이 슬라이스 안에서 한다).** 통합 검사 한 번이 약 24초인데 계획의 비교 기준은 약 7초다(vitest 3.6초 → 21초). 늘어난 것은 거의 `tests/workflow/WorkflowDiet.test.ts`(18.9초)이고, 원인은 테스트 98개 가운데 약 35개가 임시 폴더에 git 저장소를 처음부터 만들고(`makeRepo` — 커밋 셋, git 약 열 번) 그 안에서 `workflow.mjs`를 프로세스로 띄우기 때문이다. 판정 규칙은 파일 경로와 확장자만 보므로 대부분은 git 없이 확인할 수 있다. 사용자에게는 「통합 검사 = 명령, vitest = 그 안의 검사 하나, `WorkflowDiet.test.ts` = vitest가 돌리는 파일 하나」로 구분해 설명했고, 임시 저장소가 GitHub에 가지 않는 로컬 폴더라는 것도 확인해 드렸다.
+
+고치는 방향 셋. **도구(`.claude/**`)는 건드리지 않는다.** 확인하는 내용도 바꾸지 않는다 — 테스트 이름을 지우지 말고 입력 방식만 바꾼다.
+
+- 가. 적용 판정(`applicableGates`) · QA 필요 판정(`qaRequired`) · 전이 판정(`decideTransition`)은 테스트가 변경 집합 객체(`{ measurable: true, base, items: [{ status, path }] }`)를 손으로 적어 함수를 직접 부른다. W1의 「대표 변경 집합」 표와 「폴더 경계」 절이 첫 대상이다.
+- 나. 실제 git 저장소는 「git이 목록을 맞게 주는가」를 재는 `collectChangeSet` 테스트(수정 · 새 파일 · 삭제 · 이름 바꾸기 · 한글 파일명 · `git add`만 한 파일 · 구할 수 없는 경우들)와 `csoBaseUsable`에만 남긴다.
+- 다. `runWf`로 명령을 실제로 띄우는 테스트는 함수만 불러서는 안 보이는 것(종료 코드 · 출력 순서 · 실패 뒤 상태 파일에 남는 값)만 남긴다. 같은 상황을 쓰는 테스트는 저장소를 하나 만들어 돌려쓰고, git이 필요 없으면 `makeRepo({ git: false })`를 쓴다. E2E 여섯 개 이하 규칙(W2 §8)은 그대로다.
+
+하지 않는 것(2026-10-09에 사용자에게 설명하고 합의): 도구가 바뀐 파일 목록을 환경변수나 상태 파일에서 읽게 만들지 않는다. 그러면 `pnpm wf pass review`를 칠 때 목록을 바꿔 넣어 `/cso`를 건너뛸 수 있다 — 계획 §2.2가 기각한 「환경변수로 실행기를 바꿔 끼우는 장치」와 같은 뒷문이다. 목록은 언제나 git에서 가져오고, 저장해 두면 낡는다(계획 §2.1의 2026-09-16 결정). 목표는 vitest를 기준(약 3.6초) 가까이로 되돌리는 것이다.
+
+그다음 순서(절차 문서 `verification.md`대로).
+
+1. 테스트 코드를 고쳤으므로 `pnpm wf invalidate`(판단 검사 기록은 아직 없지만 정본 기록을 지우고 QA 해시값을 새로 찍는다) → `pnpm wf verify`로 통과와 시간을 확인한다.
+2. QA 문서 §5.5의 시간 측정 항목에 고친 뒤 값을 더한다(지금 적힌 약 24초는 「고치기 전」으로 남긴다). §4 통과 근거의 테스트 수가 바뀌면 함께 고친다.
+3. `pnpm wf canon-done`을 같은 여덟 경로로 다시 친다(`invalidate`가 지운다).
+4. 커밋.
+5. `/cso`를 처음부터 전체로 돈다(`status`의 「다음 /cso」 줄이 「전체 (기록 없음)」이다) → `pnpm wf pass cso`. 제출 규칙은 메모리 `feedback_cso_helper_submission`.
+6. `superpowers:requesting-code-review`로 서브에이전트 리뷰 → `docs/qa/workflow-diet-review-issues.md` → `pnpm wf pass review`(넘기기 직전에 통합 검사를 한 번 더 돌린다).
+7. `user-verification`: 문서 정리 · Draft PR. **최종 PR 전에 지울 것:** 이 인계 문서와 `docs/etc/2026-10-05-workflow-diet-*.md` 초안 넷(계획 개요 §9).
+
+**함께 처리할 것 — 동그라미 숫자.** 2026-10-09에 전역 규칙이 생겼다. 문서와 터미널 출력에 `①②③`을 쓰지 않고 `가.` `나.` `다.`를 쓴다(`~/.claude/CLAUDE.md`). 이 브랜치가 새로 적은 줄 가운데 동그라미 숫자가 든 곳은 `backlog-implement.md` 5줄(F10 · F126 · F127) · `backlog-docs.md` 1줄(F96) · `backlog.md` 1줄(F109) · 계획 개요 15줄 · 리뷰 기록 4줄 · W2 문서 1줄 · 초안 3줄이다. 이 슬라이스의 문서는 아직 고칠 수 있으므로(`docs-references.md` §9) PR 전에 바꾼다. 다른 슬라이스가 쓴 옛 줄은 건드리지 않는다.
+
+### 묶음별로 문서와 다르게 한 것
 
 1. **W2 — 끝.** 문서와 다르게 한 것: `start-verification` 성공 출력의 적용 판정 표는 W3의 `formatGateLines`가 생길 때 붙인다 · `qaRequired`는 `(state, changeSet)`를 받는다(구할 수 없을 때의 안내 문구가 changeSet에 있다) · vitest 파일 수는 `testResults` 길이로 센다(`numTotalTestSuites`는 describe까지 센다) · 가짜 `pnpm`에 `WF_SHIM_FAIL=biome-format`(형식 차이만 실패)을 더했다 · `ENOBUFS`는 실제 실패로 센다.
 2. **W3 — 끝.** 문서와 다르게 한 것: `formatGateLines`는 `csoBaseUsable` 결과를 넷째 인자로 받는다(함수가 git을 부르지 않게) · `approve-pr`은 타입 검사가 실패해도 `.meta` 검사까지 하고 막는 이유를 한 번에 낸다 · `status` 마지막 줄을 「절차: `pnpm wf steps <phase>`」로 바꿨다. 이 브랜치의 `status`는 계획 §7대로 meta·fullTypecheck 해당 없음, cso 적용을 보여 준다.
 3. **W6 — 끝.** 절차 문서 여섯 개 합계 13,575자(main과 같음, 상한 테스트 `ClaudeMdSplit.test.ts`의 `STEP_DOC_LIMIT`) · `CLAUDE.md` 11,294자(main 11,301자). 합계를 맞추려고 W6 표 밖에서도 다른 정본이 이미 든 내용을 옮겨 적은 문장(PR 본문 규칙 목록 · 문서 참조 조항 나열 · `pnpm typecheck` 각주 경로)을 줄였다. 옛 절차를 가리키던 코드·테스트 주석 일곱 곳도 고쳤다(사용자 지시).
 4. **W7 — 끝.** 새 항목 F118~F127. F96 · F10 · F71 · F109의 내용을 고쳤고 F61은 이미 맞아 그대로 뒀다. F78 · F95는 상태만 「진행중」으로 바꿨다 — 아카이브 이동은 `pr-ready.md`대로 `pr-ready`에서 한다. 그때 `backlog-docs.md` 「문서 규칙 · 절차 문서」 머리 문장도 F95가 빠진 상태와 맞는지 본다.
-5. 그다음 `pnpm wf start-verification`으로 검증 단계. QA 문서를 `[x]`로 채우고 커밋 · `canon-done` · `/cso` · `pass` … 절차는 그때 배달되는 문서대로.
 
 W2부터 지키는 것 셋.
 
@@ -81,6 +101,9 @@ git에 있는 것(어느 장비에서나 보인다):
 - **리뷰는 서브에이전트로 띄운다.** `/autoplan`과 코드 리뷰가 그렇다.
 - **확인창이 뜨는 명령은 미리 말한다.** `pnpm wf start`·`approve-plan`·`approve-pr`·`rework`다.
 - **절차가 시키는 커밋 말고는, 커밋과 푸시는 사용자가 말할 때 한다.**
+- **측정값이 계획의 기준과 크게 다르면 그 묶음을 보고할 때 바로 짚는다.** 2026-10-07에 W2를 마치고 `verify`를 돌렸을 때 vitest가 이미 17.9초(기준 3.6초)였는데 숫자만 보여 주고 늘었다고 말하지 않아, 사용자가 검증 단계 보고에서야 알았다. 사용자가 「프로젝트 지식 누락이 점점 증가하고 있다 — 마지막 결과물을 알릴 때 캐치하고 있다」고 했다(2026-10-09).
+- **같은 말로 다른 것을 가리키지 않는다.** 「통합 검사」(명령) · 「vitest」(그 안의 검사 하나) · 「`WorkflowDiet.test.ts`」(vitest가 돌리는 파일 하나)를 섞어 써서 사용자가 「통합 테스트 파일이 왜 git 저장소를 만드나」로 읽었다. 도구 · 검사 · 테스트 파일을 가를 때는 이름을 따로 쓴다.
+- **동그라미 숫자(①②③)를 쓰지 않는다.** 순서는 `가.` `나.` `다.`로 적는다(2026-10-09 전역 규칙, `~/.claude/CLAUDE.md`).
 - **초안은 원래 `docs/temp/`에 쓰고, 정리된 내용만 세션 문서로 쓴다.** `docs/etc/`에는 새 문서를 만들지 않는다. 이 슬라이스의 초안 넷만 사용자 결정(2026-10-05)으로 `docs/etc/`에 그대로 두고, 최종 PR 전에 지운다. 다른 곳으로 옮기지 않는다.
 
 ## 6. 다른 장비에서 시작할 때
