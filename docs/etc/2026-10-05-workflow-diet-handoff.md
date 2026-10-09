@@ -5,31 +5,21 @@
 ## 1. 지금 어디에 있나
 
 - 브랜치 `feat/workflow-diet`, phase `verification`(2026-10-07 `start-verification` 통과). 구현 묶음 일곱(W5 → W1 → W4 → W2 → W3 → W6 → W7)이 모두 끝났고 커밋됐다. 작업 트리는 깨끗하고 상태 파일도 커밋돼 있어 다른 장비로 옮겨도 phase가 따라간다. 푸시는 안 했다.
-- 커밋: `7bfc5e2`(계획 문서) · `0a767c2`(`tests/` 구조 + W5) · `31042a8`(W1) · `df54f74`(W4) · `7474ddb`(W2) · `fabdc85`(W3) · `271058f`(W6) · `2d1849a`(W7) · `7c19f58`(QA 문서 §4 확정 + 상태 파일).
-- 검증 단계에서 이미 한 것: QA 문서 §4 전부 `[x]`와 통과 근거(피처 123/123 · 전체 1,236/1,237), §5.1 · §5.2 세 항목 · §5.5 손 확인 결과 기록, `pnpm wf check-qa` 통과, `pnpm wf canon-done`으로 정본 여덟 개(절차 문서 여섯 + `CLAUDE.md` + `spec/ops-skill-routing.md`) 기록. `/cso`와 코드 리뷰는 아직 안 했다(`cso_done` · `code_review_clean` 둘 다 거짓).
-- 지금 상태의 확인 결과: 전체 테스트 50 파일 1,236 통과(건너뜀 1) · `pnpm typecheck` 통과(범위 full) · biome 깨끗 · `check-docs` · `check-links` 통과.
+- 커밋: `7bfc5e2`(계획 문서) · `0a767c2`(`tests/` 구조 + W5) · `31042a8`(W1) · `df54f74`(W4) · `7474ddb`(W2) · `fabdc85`(W3) · `271058f`(W6) · `2d1849a`(W7) · `7c19f58`(QA 문서 §4 확정 + 상태 파일) · `99ea135`(테스트 시간 줄이기 + QA 문서 §5.5 + 상태 파일).
+- 검증 단계에서 이미 한 것: QA 문서 §4 전부 `[x]`와 통과 근거(피처 123/123 · 전체 1,236/1,237), §5.1 · §5.2 세 항목 · §5.5 측정값 기록, `pnpm wf check-qa` 통과, 2026-10-09 테스트 시간 줄이기 뒤 `pnpm wf invalidate` → `pnpm wf verify` 통과 → `pnpm wf canon-done`으로 정본 여덟 개(절차 문서 여섯 + `CLAUDE.md` + `spec/ops-skill-routing.md`) 다시 기록. `/cso`와 코드 리뷰는 아직 안 했다(`cso_done` · `code_review_clean` 둘 다 거짓).
+- 지금 상태의 확인 결과: 통합 검사 약 13초(biome 0.5초 · 타입 검사 2.6초 범위 full · vitest 10.0초 — 50 파일 1,236 통과 · 건너뜀 1).
+
+**테스트 시간 줄이기(2026-10-09 사용자와 합의, 끝).** 통합 검사 한 번이 약 24초였고(vitest 약 21초, 거의 `tests/workflow/WorkflowDiet.test.ts` 18.9초) 계획의 비교 기준은 약 7초(vitest 약 3.6초)다. 한 것은 셋이다. 가. 판정 함수(`applicableGates`)의 「대표 변경 집합」 표와 「폴더 경계」 절은 손으로 적은 변경 집합(`changeSet()`)으로 git 없이 부른다. 나. 실제 git 저장소는 `collectChangeSet`과 `csoBaseUsable` 테스트에만 남겼다. 다. 명령을 띄우는 테스트는 같은 상황끼리 절마다 저장소 하나를 돌려쓴다(`sharedRepo()` — 테스트마다 상태 파일만 되돌리고, git 이력을 바꾸는 테스트는 절의 마지막에 둔다). 그래서 임시 폴더는 `afterEach`가 아니라 `afterAll`에서 지운다. 임시 git 저장소는 42개에서 12개가 됐다. 여기에 더해 도우미 `makeRepo`(`tests/workflow/helpers/WfSandbox.ts`)가 커밋 셋을 `git add`·`commit` 열두 번 대신 `git fast-import` 한 번으로 만든다(저장소 하나 약 0.3초 → 약 0.15초, `git config` 둘은 전역 설정 파일로 옮겼다). 도구(`.claude/**`)는 건드리지 않았고 확인하는 내용과 테스트 이름도 그대로다. 결과는 `WorkflowDiet.test.ts` 18.9초 → 7.4초, 통합 검사 24초 → 13초다. 남은 시간은 명령을 실제 프로세스로 띄우는 테스트 약 35건의 몫이다. 기준 7초까지 더 줄이려면 테스트 파일을 나눠 vitest가 병렬로 돌리게 하거나 프로세스 테스트 수를 줄여야 하는데, 둘 다 사용자 결정으로 남겼다(QA 문서 §5.5).
+
+하지 않은 것(2026-10-09에 사용자에게 설명하고 합의): 도구가 바뀐 파일 목록을 환경변수나 상태 파일에서 읽게 만들지 않는다. 그러면 `pnpm wf pass review`를 칠 때 목록을 바꿔 넣어 `/cso`를 건너뛸 수 있다 — 계획 §2.2가 기각한 「환경변수로 실행기를 바꿔 끼우는 장치」와 같은 뒷문이다. 목록은 언제나 git에서 가져오고, 저장해 두면 낡는다(계획 §2.1의 2026-09-16 결정).
 
 ## 2. 다음에 할 일
 
-**먼저 할 일 — 테스트 시간 줄이기(2026-10-09 사용자와 합의, 이 슬라이스 안에서 한다).** 통합 검사 한 번이 약 24초인데 계획의 비교 기준은 약 7초다(vitest 3.6초 → 21초). 늘어난 것은 거의 `tests/workflow/WorkflowDiet.test.ts`(18.9초)이고, 원인은 테스트 98개 가운데 약 35개가 임시 폴더에 git 저장소를 처음부터 만들고(`makeRepo` — 커밋 셋, git 약 열 번) 그 안에서 `workflow.mjs`를 프로세스로 띄우기 때문이다. 판정 규칙은 파일 경로와 확장자만 보므로 대부분은 git 없이 확인할 수 있다. 사용자에게는 「통합 검사 = 명령, vitest = 그 안의 검사 하나, `WorkflowDiet.test.ts` = vitest가 돌리는 파일 하나」로 구분해 설명했고, 임시 저장소가 GitHub에 가지 않는 로컬 폴더라는 것도 확인해 드렸다.
+절차 문서 `verification.md`대로 한다.
 
-고치는 방향 셋. **도구(`.claude/**`)는 건드리지 않는다.** 확인하는 내용도 바꾸지 않는다 — 테스트 이름을 지우지 말고 입력 방식만 바꾼다.
-
-- 가. 적용 판정(`applicableGates`) · QA 필요 판정(`qaRequired`) · 전이 판정(`decideTransition`)은 테스트가 변경 집합 객체(`{ measurable: true, base, items: [{ status, path }] }`)를 손으로 적어 함수를 직접 부른다. W1의 「대표 변경 집합」 표와 「폴더 경계」 절이 첫 대상이다.
-- 나. 실제 git 저장소는 「git이 목록을 맞게 주는가」를 재는 `collectChangeSet` 테스트(수정 · 새 파일 · 삭제 · 이름 바꾸기 · 한글 파일명 · `git add`만 한 파일 · 구할 수 없는 경우들)와 `csoBaseUsable`에만 남긴다.
-- 다. `runWf`로 명령을 실제로 띄우는 테스트는 함수만 불러서는 안 보이는 것(종료 코드 · 출력 순서 · 실패 뒤 상태 파일에 남는 값)만 남긴다. 같은 상황을 쓰는 테스트는 저장소를 하나 만들어 돌려쓰고, git이 필요 없으면 `makeRepo({ git: false })`를 쓴다. E2E 여섯 개 이하 규칙(W2 §8)은 그대로다.
-
-하지 않는 것(2026-10-09에 사용자에게 설명하고 합의): 도구가 바뀐 파일 목록을 환경변수나 상태 파일에서 읽게 만들지 않는다. 그러면 `pnpm wf pass review`를 칠 때 목록을 바꿔 넣어 `/cso`를 건너뛸 수 있다 — 계획 §2.2가 기각한 「환경변수로 실행기를 바꿔 끼우는 장치」와 같은 뒷문이다. 목록은 언제나 git에서 가져오고, 저장해 두면 낡는다(계획 §2.1의 2026-09-16 결정). 목표는 vitest를 기준(약 3.6초) 가까이로 되돌리는 것이다.
-
-그다음 순서(절차 문서 `verification.md`대로).
-
-1. 테스트 코드를 고쳤으므로 `pnpm wf invalidate`(판단 검사 기록은 아직 없지만 정본 기록을 지우고 QA 해시값을 새로 찍는다) → `pnpm wf verify`로 통과와 시간을 확인한다.
-2. QA 문서 §5.5의 시간 측정 항목에 고친 뒤 값을 더한다(지금 적힌 약 24초는 「고치기 전」으로 남긴다). §4 통과 근거의 테스트 수가 바뀌면 함께 고친다.
-3. `pnpm wf canon-done`을 같은 여덟 경로로 다시 친다(`invalidate`가 지운다).
-4. 커밋.
-5. `/cso`를 처음부터 전체로 돈다(`status`의 「다음 /cso」 줄이 「전체 (기록 없음)」이다) → `pnpm wf pass cso`. 제출 규칙은 메모리 `feedback_cso_helper_submission`.
-6. `superpowers:requesting-code-review`로 서브에이전트 리뷰 → `docs/qa/workflow-diet-review-issues.md` → `pnpm wf pass review`(넘기기 직전에 통합 검사를 한 번 더 돌린다).
-7. `user-verification`: 문서 정리 · Draft PR. **최종 PR 전에 지울 것:** 이 인계 문서와 `docs/etc/2026-10-05-workflow-diet-*.md` 초안 넷(계획 개요 §9).
+1. `/cso`를 처음부터 전체로 돈다(`status`의 「다음 /cso」 줄이 「전체 (기록 없음)」이다) → `pnpm wf pass cso`. 제출 규칙은 메모리 `feedback_cso_helper_submission`. 테스트 도우미(`tests/workflow/helpers/**`)가 `/cso` 대상이므로 `fastImport`(스트림을 도우미가 옵션으로 조립하고, `feature`는 글자 검사를 거친다)도 점검 범위다.
+2. `superpowers:requesting-code-review`로 서브에이전트 리뷰 → `docs/qa/workflow-diet-review-issues.md` → `pnpm wf pass review`(넘기기 직전에 통합 검사를 한 번 더 돌린다).
+3. `user-verification`: 문서 정리 · Draft PR. **최종 PR 전에 지울 것:** 이 인계 문서와 `docs/etc/2026-10-05-workflow-diet-*.md` 초안 넷(계획 개요 §9).
 
 **함께 처리할 것 — 동그라미 숫자.** 2026-10-09에 전역 규칙이 생겼다. 문서와 터미널 출력에 `①②③`을 쓰지 않고 `가.` `나.` `다.`를 쓴다(`~/.claude/CLAUDE.md`). 이 브랜치가 새로 적은 줄 가운데 동그라미 숫자가 든 곳은 `backlog-implement.md` 5줄(F10 · F126 · F127) · `backlog-docs.md` 1줄(F96) · `backlog.md` 1줄(F109) · 계획 개요 15줄 · 리뷰 기록 4줄 · W2 문서 1줄 · 초안 3줄이다. 이 슬라이스의 문서는 아직 고칠 수 있으므로(`docs-references.md` §9) PR 전에 바꾼다. 다른 슬라이스가 쓴 옛 줄은 건드리지 않는다.
 
