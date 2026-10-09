@@ -89,7 +89,8 @@ function statePath(repo: string): string {
 /**
  * 절 안의 테스트들이 저장소 하나를 돌려쓴다. 절이 시작할 때 `make`로 한 번 만들고, 테스트마다 상태
  * 파일만 만들었을 때 값으로 되돌린다 — 명령이 상태 파일에 적은 값이 다음 테스트로 새지 않게 하려는
- * 것이다. 작업 트리나 git 이력은 되돌리지 않으므로 그것을 바꾸는 테스트는 절의 마지막에 둔다.
+ * 것이다. 작업 트리나 git 이력은 되돌리지 않으므로 그것을 바꾸는 테스트는 절의 마지막에 둔다. 이 순서는
+ * vitest가 `it`을 선언한 차례로 돌린다는 데 기댄다 — `sequence.shuffle`을 켜면 깨진다.
  *
  * @returns 저장소 경로를 돌려주는 함수. `beforeAll`이 돌기 전에는 경로가 없어서 함수로 감싼다
  */
@@ -385,6 +386,14 @@ describe('W1 — 적용 경로의 폴더 경계', () => {
     expect(applicableGates(changeSet('game/elsewhere/x.ts')).fullTypecheck.applies).toBe(true);
   });
 
+  it('game/package.json은 루트 package.json 규칙이 아니라 game/package.json 규칙에 해당한다', () => {
+    // 글롭은 경로의 처음부터 끝까지 맞춘다. 앞을 고정하지 않으면 `package.json`이 하위 폴더의 같은
+    // 이름까지 조용히 잡는다.
+    const gates = applicableGates(changeSet('game/package.json'));
+    expect(gates.cso.rule).toBe('game/package.json');
+    expect(gates.fullTypecheck.rule).toBe('game/package.json');
+  });
+
   it('대소문자만 다른 .Claude/는 같은 폴더로 본다', () => {
     // Windows 파일 시스템은 두 폴더를 구분하지 못해 실제로 만들 수 없으므로 git 출력을 흉내 낸다.
     const cs = collectChangeSet(ROOT, { run: fakeGitWithDiff('A\0.Claude/hooks/x.mjs\0') });
@@ -468,7 +477,9 @@ describe('W1 — 파일 내용으로 확인하는 것', () => {
 
   it('helpers/·fixtures/ 밖의 tests/ 파일은 프로세스를 띄우지 않는다', () => {
     // 테스트 파일을 `/cso` 대상에서 빼는 조건이다. 프로세스를 띄우는 테스트 코드는 각 영역의
-    // `helpers/`에 두고, 가짜 도구처럼 복사해 실행하는 파일은 `fixtures/`에 둔다.
+    // `helpers/`에 두고, 가짜 도구처럼 복사해 실행하는 파일은 `fixtures/`에 둔다. 아래 정규식은 문자열
+    // 리터럴 import만 본다 — 동적 import나 다른 모듈을 거친 우회는 잡지 못하므로, 도우미의 API를 좁게
+    // 두는 것(`WfSandbox.git`의 허용 목록, `runWf`의 `WF_` 환경변수)이 이 검사의 나머지 절반이다.
     const isHelperOrFixture = (f: string): boolean =>
       path
         .relative(ROOT, f)
@@ -787,8 +798,16 @@ describe('W2 — runVerify: 통합 검사', SANDBOX, () => {
     const r = runVerify(makeRunners({ root, spawn: fakeSpawn(), tmpRoot: 'C:\\a"b' }));
     expect(r.results.vitest.status).toBe('not-run');
     expect(formatVerifyReport(r).join('\n')).toContain(
-      '임시 폴더 경로에 따옴표가 들어 있어 명령줄을 만들 수 없다: C:\\a"b',
+      '임시 폴더 경로에 셸이 푸는 글자(따옴표 · $ · 백틱 · %)가 들어 있어 명령줄을 만들 수 없다: C:\\a"b',
     );
+  });
+
+  it('임시 폴더 경로에 $나 %가 있어도 명령줄을 만들지 않는다 — 셸이 큰따옴표 안에서도 푼다', () => {
+    const root = makeRepo({ git: false });
+    for (const tmpRoot of ['/tmp/$x', 'C:\\%TEMP%']) {
+      const r = runVerify(makeRunners({ root, spawn: fakeSpawn(), tmpRoot }));
+      expect(r.results.vitest.status, tmpRoot).toBe('not-run');
+    }
   });
 });
 

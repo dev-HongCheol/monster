@@ -107,26 +107,27 @@ export interface RunResult {
 }
 
 /**
- * `git(dir, ...args)`가 받는 하위 명령.
+ * `git(dir, ...args)`가 받는 하위 명령. 테스트가 실제로 쓰는 것만 둔다.
  *
  * 전역 옵션(`-c`·`-C`·`--exec-path`·`--git-dir`·`--work-tree`·`--config-env`)은 하위 명령 앞에 오므로
  * 첫 인자를 이 목록과 비교하는 것으로 함께 막힌다. 받은 인자를 그대로 넘기면 `-c core.fsmonitor=<명령>`
- * 으로 테스트 파일에서 아무 명령이나 실행할 수 있다.
+ * 으로 테스트 파일에서 아무 명령이나 실행할 수 있다. 같은 이유로 `config`(`core.fsmonitor`를 적어 두면
+ * 그 뒤의 모든 git 호출이 그 명령을 실행한다)와 `rebase`(`--exec <명령>`)는 넣지 않는다.
+ *
+ * 이 목록은 실행 경로를 좁히는 것이지 완전한 격리는 아니다 — `commit`은 저장소의 `.git/hooks`를,
+ * `init --template`은 템플릿의 훅을 실행할 수 있다. 목록을 늘릴 때는 그 명령이 다른 명령을 실행할 수
+ * 있는지를 먼저 본다.
  */
 const ALLOWED_GIT = new Set([
   'init',
-  'config',
   'add',
   'commit',
-  'branch',
   'switch',
   'checkout',
   'update-ref',
   'reset',
   'cat-file',
   'rev-parse',
-  'merge-base',
-  'rebase',
 ]);
 
 /** 이 세션이 만든 임시 폴더(저장소와 `bin/`의 부모). `cleanupSandboxes`가 지운다. */
@@ -390,17 +391,30 @@ function pathWithFakePnpm(repo: string): Record<string, string> {
 }
 
 /**
+ * `runWf`의 `extraEnv`가 받는 키. 도구와 가짜 `pnpm`이 읽는 `WF_` 변수만 받는다 — `NODE_OPTIONS` 같은
+ * 키를 받으면 테스트 파일이 자식 node에 아무 코드나 실을 수 있어, `git()`의 허용 목록과 같은 구멍이 된다.
+ */
+const ALLOWED_ENV = /^WF_[A-Z_]+$/;
+
+/**
  * 임시 저장소를 `CLAUDE_PROJECT_DIR`로 삼아 실제 `workflow.mjs` 프로세스를 띄운다.
  *
  * @param repo `makeRepo`가 돌려준 경로
  * @param args `workflow.mjs`에 넘길 인자
- * @param extraEnv 더 넣을 환경변수(예: `WF_SHIM_FAIL`)
+ * @param extraEnv 더 넣을 환경변수. `WF_`로 시작하는 키만 받는다(예: `WF_SHIM_FAIL`)
  */
 export function runWf(
   repo: string,
   args: string[],
   extraEnv: Record<string, string> = {},
 ): RunResult {
+  for (const key of Object.keys(extraEnv)) {
+    if (!ALLOWED_ENV.test(key)) {
+      throw new Error(
+        `WfSandbox.runWf: 허용하지 않는 환경변수다: ${key} (WF_로 시작하는 키만 받는다)`,
+      );
+    }
+  }
   const r = spawnSync(process.execPath, [WORKFLOW_MJS, ...args], {
     cwd: repo,
     encoding: 'utf8',

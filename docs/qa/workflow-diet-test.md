@@ -42,7 +42,7 @@
 
 ## 4. 자동 테스트로 검증 (`tests/workflow/WorkflowDiet.test.ts` · `WfSandbox.test.ts` + 기존 파일 넷)
 
-**통과 근거:** 2026-10-07 · 피처 테스트 123/123(`WorkflowDiet.test.ts` 113 · `WfSandbox.test.ts` 10) · `tests/workflow` 전체 248/249(건너뜀 1) · 전체 스위트 1236/1237(건너뜀 1) — `start-verification` 통합 검사의 vitest 줄(biome 통과 · typecheck 통과 범위 full).
+**통과 근거:** 2026-10-09 · 피처 테스트 126/126(`WorkflowDiet.test.ts` 115 · `WfSandbox.test.ts` 11) · `tests/workflow` 전체 251/252(건너뜀 1) · 전체 스위트 1239/1240(건너뜀 1) — 코드 리뷰 수정 뒤 `pnpm wf verify`의 vitest 줄(biome 통과 · typecheck 통과 범위 full). 2026-10-07 `start-verification` 때는 123/123 · 1236/1237이었고, 테스트 시간 줄이기(§5.5)와 리뷰 수정(폴더 경계 · 셸 글자 · `runWf` 환경변수 · git 허용 목록 테스트)으로 셋이 늘었다.
 
 > 이 슬라이스가 만드는 코드는 `.claude/lib/*.mjs`와 `workflow.mjs`의 명령 처리다. 입력만 받아 답하는 함수는 단위 테스트로, git을 실행하는 함수는 임시 저장소에서, 명령은 실제 프로세스를 띄워서 확인한다. 통합 검사까지 실제로 돌리는 처음부터 끝까지 테스트(E2E)는 여섯 개 이하로 둔다(Windows에서 한 건이 node를 약 다섯 번 띄운다). 묶음의 순서는 구현 순서(W5 → W1 → W4 → W2 → W3)다.
 

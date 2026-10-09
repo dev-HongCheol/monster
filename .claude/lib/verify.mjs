@@ -21,7 +21,8 @@ import { runTypecheck } from '../typecheck.mjs';
 /**
  * 검사 하나의 결과. `not-run`은 실행기를 실행하지 못했거나 결과 없이 끝난 경우다 — 코드가 아니라 실행
  * 환경의 문제라서, 전이 판정(`transition.mjs`)이 판단 검사 결과를 지우지 않는다. `format-only`는 biome의
- * 형식 차이만 있는 경우다.
+ * 형식 차이만 있는 경우다 — `check`는 실패했는데 `lint`는 통과한 것이라, import 정렬처럼 `--write`가
+ * 고치는 다른 차이도 여기 든다.
  * @typedef {'pass' | 'fail' | 'format-only' | 'not-run'} CheckStatus
  */
 /**
@@ -277,8 +278,9 @@ export function makeRunners({ root, spawn = SPAWN_SYNC, tmpRoot = os.tmpdir() })
     },
 
     vitest() {
-      if (tmpRoot.includes('"')) {
-        const note = `임시 폴더 경로에 따옴표가 들어 있어 명령줄을 만들 수 없다: ${tmpRoot}`;
+      // 명령줄을 셸로 돌리므로(`shell: true`) 큰따옴표 안에서도 POSIX는 `$`·백틱을, cmd는 `%`를 푼다.
+      if (/["$`%]/.test(tmpRoot)) {
+        const note = `임시 폴더 경로에 셸이 푸는 글자(따옴표 · $ · 백틱 · %)가 들어 있어 명령줄을 만들 수 없다: ${tmpRoot}`;
         return {
           status: 'not-run',
           summary: label('not-run'),

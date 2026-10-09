@@ -16,7 +16,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanupSandboxes, git, makeRepo, runFakePnpm } from './helpers/WfSandbox';
+import { cleanupSandboxes, git, makeRepo, runFakePnpm, runWf } from './helpers/WfSandbox';
 
 /** 임시 저장소를 쓰는 절의 시간 제한. */
 const SANDBOX = { timeout: 30_000 };
@@ -25,9 +25,19 @@ afterEach(cleanupSandboxes);
 
 describe('WfSandbox.git은 허용된 하위 명령만 받는다', SANDBOX, () => {
   it('허용 목록 밖의 하위 명령은 예외다', () => {
+    // `config`는 `core.fsmonitor=<명령>`을 적어 그 뒤의 모든 git 호출이 그 명령을 실행하게 하고,
+    // `rebase`는 `--exec <명령>`으로 바로 실행한다. 둘 다 어느 테스트도 쓰지 않으므로 목록에 없어야 한다.
     const repo = makeRepo();
-    expect(() => git(repo, 'log')).toThrow(/허용/);
-    expect(() => git(repo, 'push')).toThrow(/허용/);
+    for (const sub of ['log', 'push', 'config', 'rebase']) {
+      expect(() => git(repo, sub, 'x')).toThrow(/허용/);
+    }
+  });
+
+  it('runWf는 WF_로 시작하는 환경변수만 받는다', () => {
+    // `NODE_OPTIONS=--require <파일>`을 넘기면 자식 node가 그 파일을 먼저 싣는다. 허용 목록과 같은 구멍이다.
+    const repo = makeRepo({ git: false });
+    expect(() => runWf(repo, ['status'], { NODE_OPTIONS: '--require x' })).toThrow(/허용/);
+    expect(runWf(repo, ['status'], { WF_QUIET: '1' }).status).toBe(0);
   });
 
   it('전역 옵션이 첫 인자여도 예외다', () => {

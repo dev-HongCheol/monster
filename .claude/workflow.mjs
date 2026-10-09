@@ -500,20 +500,20 @@ function changeContext({ quiet = false } = {}) {
   return { cs, gates: applicableGates(cs) };
 }
 
-// 다음 `/cso` 안내 한 줄과 안내에 넣을 명령. 해당 없으면 기준 커밋을 확인하지 않는다(git을 띄우지 않는다).
+// `/cso`의 기준 커밋을 쓸 수 있는지. 해당 없으면 기준 커밋을 확인하지 않는다(git을 띄우지 않는다).
+function csoUsable(s, gates) {
+  return gates.cso.applies ? csoBaseUsable(s.cso_commit, ROOT) : { usable: false, reason: "해당 없음" };
+}
+
+// 다음 `/cso` 안내 한 줄과 안내에 넣을 명령.
 function csoInfo(s, gates) {
-  const usable = gates.cso.applies
-    ? csoBaseUsable(s.cso_commit, ROOT)
-    : { usable: false, reason: "해당 없음" };
+  const usable = csoUsable(s, gates);
   return { line: csoGuideLine(gates, usable, s.cso_commit), command: csoCommand(usable, s.cso_commit) };
 }
 
-// 적용 판정 출력(lib/transition.mjs의 formatGateLines). `/cso`를 해야 할 때만 기준 커밋을 확인한다.
+// 적용 판정 출력(lib/transition.mjs의 formatGateLines).
 function printGateLines(s, cs, gates) {
-  const usable = gates.cso.applies
-    ? csoBaseUsable(s.cso_commit, ROOT)
-    : { usable: false, reason: "해당 없음" };
-  for (const line of formatGateLines(gates, cs, s, usable)) console.log(line);
+  for (const line of formatGateLines(gates, cs, s, csoUsable(s, gates))) console.log(line);
 }
 
 function printVerify(result) {
