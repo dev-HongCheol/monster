@@ -147,7 +147,7 @@
 ### 5.3 PR 전
 
 - [ ] 새 `.meta`가 하나도 없다(`pnpm wf check-meta`, `git status`). 하나라도 있으면 `.meta` 「해당 없음」 판정이 틀린 것이다.
-- [ ] `user-verification`에서 Edit 도구로 `.claude/workflow.mjs`를 고치려 하면 Claude Code가 막고, 「멈추고 사용자에게 알리라」는 문장이 보인다. `docs/` 아래 문서는 그대로 고쳐진다.
+- [x] `user-verification`에서 Edit 도구로 `.claude/workflow.mjs`를 고치려 하면 Claude Code가 막고, 「멈추고 사용자에게 알리라」는 문장이 보인다. `docs/` 아래 문서는 그대로 고쳐진다. (2026-10-09, HEAD 1ffede5: 「PreToolUse:Edit hook error: ⛔ [GATE] 현재 phase="user-verification". .claude/workflow.mjs 파일은 implementation/verification에서만 고칠 수 있습니다. … 다른 방법으로 돌아가지 말고 멈춘 뒤 사용자에게 알리고 확인을 받으세요.」 이 줄은 같은 phase에서 Edit 도구로 고쳤다)
 - [ ] `pnpm wf approve-pr`이 적용 판정 표를 타입 검사 결과보다 먼저 출력하고 `pr-ready`로 넘어간다.
 
 ### 5.4 머지 뒤 — 원래 폴더(`F:\work\monster`)에서
