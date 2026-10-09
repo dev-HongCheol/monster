@@ -7,7 +7,7 @@
 - **닫는 백로그 항목:** F78(판정 코드가 두 곳에 복사돼 있다) · F95(매번 출력되는 절차 문서의 글자 수를 재는 검사가 없다).
 - **닫지 않고 내용만 고치는 백로그 항목:** F10 · F61 · F71 · F96 · F109. 이 슬라이스가 그 항목에 적힌 사실을 바꾸거나 새 조건을 만들기 때문이다. 항목마다 무엇을 고치는지는 W7 문서에 있다.
 - **리뷰 기록:** [`/autoplan` 리뷰 기록](2026-10-06-workflow-diet-review.md). 세 단계의 분석과 결정 근거, 결정 99개를 정리한 표가 거기 있다. 받아들인 지적은 이 개요와 작업 묶음 문서 본문에 이미 반영했다.
-- **입력 문서:** 요구사항과 제약은 [`2026-09-16-workflow-tooling-diet-brief.md`](2026-09-16-workflow-tooling-diet-brief.md). 설계 초안 `docs/etc/2026-10-05-workflow-diet-design-draft.md`(수정 사항 M1~M19, 최종 PR에서 지운다)와 계획 초안 `docs/etc/2026-10-05-workflow-diet-plan-draft.md`(리뷰를 반영한 마지막 판, 최종 PR에서 지운다)도 입력이다.
+- **입력 문서:** 요구사항과 제약은 [`2026-09-16-workflow-diet-brief.md`](2026-09-16-workflow-diet-brief.md). 설계 초안 `docs/etc/2026-10-05-workflow-diet-design-draft.md`(수정 사항 M1~M19, 최종 PR에서 지운다)와 계획 초안 `docs/etc/2026-10-05-workflow-diet-plan-draft.md`(리뷰를 반영한 마지막 판, 최종 PR에서 지운다)도 입력이다.
 - **출발점:** 2026-09-17에 리뷰를 마친 옛 계획(이 브랜치의 커밋 `211ae71`)이다. 설계 초안의 수정 사항 M1~M19와, 설계 초안 끝의 리뷰어 지적 열두 개(R3-1~R3-12)를 반영해 처음부터 다시 썼다.
 
 ---
@@ -156,7 +156,7 @@ ADR 004(워크플로우 상태 머신)의 명령 표는 이 슬라이스 뒤로 
 | W5 | [시험용 임시 저장소](2026-10-06-workflow-diet-w5-sandbox.md) | `tests/workflow/helpers/WfSandbox.ts`, 가짜 `pnpm`, 옛 형식 상태 파일 견본, 이 슬라이스의 테스트 파일 |
 | W6 | [절차 문서 · `CLAUDE.md` · 그 밖의 문서](2026-10-06-workflow-diet-w6-docs.md) | 절차 문서 다섯 개와 README, `CLAUDE.md`의 열 군데, 트러블슈팅 문서 세 개, `ops-skill-routing.md` |
 | W7 | [백로그](2026-10-06-workflow-diet-w7-backlog.md) | 닫는 항목 두 개, 내용을 고치는 항목 다섯 개, 새 항목 열한 개 |
-| W8 | [편집 잠금을 모든 코드로 넓히기](2026-10-06-workflow-diet-w8-edit-lock.md) | `.claude/hooks/gate-scripts.mjs`가 게임 스크립트뿐 아니라 도구·훅·테스트·`tools/`·검사 설정까지 phase로 막는다. 고장 때는 멈춰서 확인받는다는 규칙을 문서에 넣는다 |
+| W8 | [편집 잠금을 모든 코드로 넓히기](2026-10-09-workflow-diet-w8-edit-lock.md) | `.claude/hooks/gate-scripts.mjs`가 게임 스크립트뿐 아니라 도구·훅·테스트·`tools/`·검사 설정까지 phase로 막는다. 고장 때는 멈춰서 확인받는다는 규칙을 문서에 넣는다 |
 
 새 모듈은 일곱 개이고, 하는 일에 따라 세 종류로 나뉜다. git을 실행하는 파일(`git.mjs`·`change-set.mjs`), 입력만 받아 답을 돌려주는 파일(`transition.mjs`·`canon.mjs`·`workflow-steps.mjs`·`phases.mjs`), 검사 실행기를 띄우는 파일(`verify.mjs`)이다. 이 구분에 따라 테스트할 때 임시 저장소가 필요한지가 정해진다. `.claude/lib/*.mjs`는 상태 파일을 읽거나 쓰지 않는다. 상태 파일은 `workflow.mjs`만 쓴다.
 
