@@ -15,7 +15,7 @@
     "docs/development/workflow/verification.md"
   ],
   "canon_skip_reason": null,
-  "qa_doc_fingerprint": "89d73c256561d0b7",
+  "qa_doc_fingerprint": "3764cc8adfbf2415",
   "verification": {
     "cso_done": false,
     "ts_check_clean": true,
@@ -25,5 +25,5 @@
   "docs_delivered": [
     "verification"
   ],
-  "cso_commit": "0278a556afd63919857bab0cbfde0ed1bb4762f1"
+  "cso_commit": "f9702f6ef1f2aa409f6b721007fd75615518ae16"
 }

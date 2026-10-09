@@ -20,14 +20,15 @@
 
 | 파일 | 고칠 수 있는 phase |
 |---|---|
-| 저장소 안의 코드 파일(`.ts`·`.tsx`·`.js`·`.mjs`·`.cjs`·`.py`·`.sh`·`.ps1`) | `implementation`·`verification` |
+| 저장소 안의 코드 파일(`.ts`·`.tsx`·`.mts`·`.cts`·`.js`·`.jsx`·`.mjs`·`.cjs`·`.py`·`.sh`·`.ps1`·`.cmd`·`.bat`) | `implementation`·`verification` |
 | 그중 `tests/` 아래 코드 | `qa-setup`·`implementation`·`verification` |
-| 고치면 훅이나 검사를 끌 수 있는 설정(`.claude/settings.json`·`package.json`·`biome.json`·`tsconfig*.json`·`.husky/`) | `implementation`·`verification` |
+| 고치면 훅이나 검사를 끌 수 있는 설정(`.claude/settings.json`·`.claude/settings.local.json`·`package.json`·`biome.json(c)`·`tsconfig*.json(c)`·`.husky/`) | `implementation`·`verification` |
 | 상태 파일(`.claude/workflow-state.json`) | 없음(늘 `pnpm wf`로만) |
-| 그 밖의 파일(문서, 데이터 `.json`, 저장소 밖 파일, `node_modules/`) | 잠그지 않는다 |
+| 그 밖의 파일(문서, 데이터 `.json`, 저장소 밖 파일, `node_modules/`) | 잠그지 않는다. 저장소 밖에는 같은 저장소의 다른 작업 폴더도 들어간다 — 그쪽 phase는 보지 않는다 |
 
 - **확장자로 가른다.** 폴더 목록으로 가르면 새 폴더에 스크립트를 두었을 때 잠금이 빠진다. 지금 저장소에서 코드 확장자를 가진 파일은 `.claude/`·`game/assets/`·`tests/`·`tools/`·루트 `vitest.config.ts`에만 있고, `docs/`에는 없다.
-- **설정 파일도 잠근다.** 코드만 잠그면 `.claude/settings.json`에서 훅 등록을 지우거나 `package.json`·biome·tsconfig에서 검사 범위를 줄여 잠금과 검사를 끌 수 있다. `.vscode/settings.json`과 `.claude/settings.local.json`은 검사와 상관없는 개인 설정이라 잠그지 않는다.
+- **설정 파일도 잠근다.** 코드만 잠그면 `.claude/settings.json`에서 훅 등록을 지우거나 `package.json`·biome·tsconfig에서 검사 범위를 줄여 잠금과 검사를 끌 수 있다. `.claude/settings.local.json`도 잠근다. 개인 설정이지만 훅을 모두 끄는 설정(`disableAllHooks`)이나 환경변수를 넣을 수 있기 때문이다(코드 리뷰에서 짚었고 2026-10-09에 사용자가 잠그기로 정했다). `.vscode/settings.json`은 검사와 상관없는 편집기 설정이라 잠그지 않는다.
+- **대소문자를 가리지 않고 판정한다.** Windows 파일 시스템은 대소문자를 가리지 않아서, `.CLAUDE/Settings.json`·`tools/a.MJS`처럼 대소문자만 바꾼 경로로 고쳐도 같은 파일이 바뀐다. 상태 파일 비교도 같다(코드 리뷰에서 찾았다).
 - **테스트 코드는 `qa-setup`부터 연다.** RED 테스트를 `qa-setup`에서 쓰고 `ready-impl`이 그 테스트가 실패하는지 확인하기 때문이다. 테스트 폴더의 데이터 파일(`fixtures/*.json`)은 코드가 아니라서 원래 잠그지 않는다.
 
 ## 3. 훅의 짜임새
@@ -43,8 +44,10 @@
 ## 4. 잠그면 생기는 일
 
 - **도구가 고장 나면 AI 혼자서는 고칠 수 없는 phase가 생긴다.** `user-verification`·`pr-ready`·`done`에서 도구가 고장 나면, 사용자가 `리워크`를 입력하거나 옛 도구로 상태를 넘기도록 승인해야 고칠 수 있다. 사용자가 정한 「고장 때는 멈춰서 확인받기」와 같은 방향이라 그대로 둔다.
+- **잠긴 phase에서는 `.claude/settings.json`·`.claude/settings.local.json`의 권한 규칙도 AI가 고칠 수 없다.** 사용자가 「이 명령 허용해 줘」라고 해도 훅이 막는다. 그때는 사용자가 직접 고치거나 구현 단계에서 고친다.
 - **훅 자체가 죽으면 잠금이 풀린다.** Claude Code는 PreToolUse 훅이 종료 코드 2가 아닌 코드로 죽으면 편집을 막지 않는다(W4 §2). 훅에 문법 오류가 생겼을 때 그 오류를 고칠 길을 남기려고 이 동작을 그대로 둔다.
 - **Bash로 고치는 것은 막지 않는다.** 훅은 Edit·Write 도구에만 걸려서, `sed`나 스크립트로 파일을 고치면 잠금을 거치지 않는다. 이번에 넓힌 범위뿐 아니라 원래 잠그던 게임 스크립트도 마찬가지다. Bash 명령을 읽고 어떤 파일을 고치는지 가르는 일은 이 묶음보다 커서 백로그로 보낸다(W7에 더한 새 항목).
+- **저장소 밖의 설정은 잠그지 않는다.** 사용자 전역 설정(`~/.claude/settings.json`)에도 `disableAllHooks`를 넣을 수 있지만, 저장소 밖 파일이라 이 훅이 판정하지 않는다. Bash와 같은 백로그 항목에 함께 적는다.
 
 ## 5. 문서
 
@@ -60,6 +63,7 @@
 - `editablePhasesFor`가 코드·설정·테스트 코드·잠그지 않는 파일을 각각 맞게 가르는지.
 - 훅 프로세스가 `planning`·`user-verification`·`pr-ready`·`done`에서 게임 스크립트·도구 코드·설정·테스트 코드를 모두 막고, `qa-setup`에서는 테스트 코드만 통과시키고, `implementation`·`verification`에서는 모두 통과시키는지.
 - 저장소 밖 파일과 문서는 잠긴 phase에서도 통과하고, 절대 경로로 준 저장소 안의 코드는 막는지.
+- 대소문자만 바꾼 경로(`.CLAUDE/Settings.json`·`.claude/WORKFLOW.MJS`·`.claude/Workflow-State.json`)도 막는지.
 - 막는 문장에 phase와 「사용자에게 알리」가 들어 있는지.
 - `GATE_HOOK_IMPORT_ONLY=1`이 켜진 환경에서 훅을 직접 띄워도 막는지.
 - `pnpm wf status`가 `code editable: YES` · `tests only` · `no (locked)`를 phase에 맞게 출력하는지.

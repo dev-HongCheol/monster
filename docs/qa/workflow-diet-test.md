@@ -42,7 +42,7 @@
 
 ## 4. 자동 테스트로 검증 (`tests/workflow/WorkflowDiet.test.ts` · `WfSandbox.test.ts` + 기존 파일 넷)
 
-**통과 근거:** 2026-10-09 · 피처 테스트 169/169(`WorkflowDiet.test.ts` 158 · `WfSandbox.test.ts` 11) · 전체 스위트 1282/1283(건너뜀 1) — 편집 잠금(W8)을 더한 뒤 `pnpm wf verify`의 vitest 줄(biome 통과 · typecheck 통과 범위 full). W8로 피처 테스트가 43개 늘었다.
+**통과 근거:** 2026-10-09 · 피처 테스트 181/181(`WorkflowDiet.test.ts` 170 · `WfSandbox.test.ts` 11) · 전체 스위트 1294/1295(건너뜀 1) — 편집 잠금(W8)을 더한 뒤 `pnpm wf verify`의 vitest 줄(biome 통과 · typecheck 통과 범위 full). W8로 피처 테스트가 55개 늘었다.
 
 > 이 슬라이스가 만드는 코드는 `.claude/lib/*.mjs`와 `workflow.mjs`의 명령 처리다. 입력만 받아 답하는 함수는 단위 테스트로, git을 실행하는 함수는 임시 저장소에서, 명령은 실제 프로세스를 띄워서 확인한다. 통합 검사까지 실제로 돌리는 처음부터 끝까지 테스트(E2E)는 여섯 개 이하로 둔다(Windows에서 한 건이 node를 약 다섯 번 띄운다). 묶음의 순서는 구현 순서(W5 → W1 → W4 → W2 → W3 → W8)다.
 
@@ -101,8 +101,9 @@
 
 ### 4.7 W8 — 편집 잠금을 모든 코드로 넓히기 (`.claude/hooks/gate-scripts.mjs`)
 
-- [x] `editablePhasesFor`가 코드 파일(게임 스크립트·`.claude/` 도구와 훅·`tools/`·루트 `vitest.config.ts`)과 검사 설정(`.claude/settings.json`·`package.json`·`biome.json`·`tsconfig*.json`·`.husky/`)을 `implementation`·`verification`에만, `tests/` 아래 코드는 `qa-setup`부터 연다.
-- [x] 문서·데이터 `.json`·`.claude/settings.local.json`·저장소 밖 파일·`node_modules/`는 잠그지 않는다.
+- [x] `editablePhasesFor`가 코드 파일(게임 스크립트·`.claude/` 도구와 훅·`tools/`·루트 `vitest.config.ts`, `.mts`·`.cts`·`.jsx`·`.cmd`·`.bat` 포함)과 검사 설정(`.claude/settings.json`·`.claude/settings.local.json`·`package.json`·`biome.json(c)`·`tsconfig*.json`·`.husky/`)을 `implementation`·`verification`에만, `tests/` 아래 코드는 `qa-setup`부터 연다.
+- [x] 대소문자만 바꾼 경로(`.CLAUDE/Settings.json`·`tools/a.MJS`·`.claude/Workflow-State.json`)도 같은 파일로 보고 막는다.
+- [x] 문서·데이터 `.json`·`.vscode/settings.json`·저장소 밖 파일·`node_modules/`는 잠그지 않는다.
 - [x] 훅 프로세스가 `planning`·`user-verification`·`pr-ready`·`done`에서 코드를 모두 막고, `qa-setup`에서는 테스트 코드만 통과시키고, `implementation`·`verification`에서는 모두 통과시킨다.
 - [x] 절대 경로로 준 저장소 안의 코드도 막고, 상태 파일은 `implementation`에서도 막는다.
 - [x] 막는 문장에 지금 phase와 「사용자에게 알리」가 들어 있다.

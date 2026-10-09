@@ -1573,6 +1573,14 @@ describe('W8 — editablePhasesFor: 어떤 파일을 잠그나', () => {
     'tools/art/postprocess.ts',
     'tools/win/setup.ps1',
     'vitest.config.ts',
+    'tools/x.mts',
+    'tools/x.cts',
+    'tools/x.jsx',
+    'tools/win/run.cmd',
+    'tools/win/run.bat',
+    // Windows 파일 시스템은 대소문자를 가리지 않으므로 대문자로 바꾼 경로도 같은 파일이다.
+    'tools/a.MJS',
+    'game/assets/scripts/A.TS',
   ])('코드 %s → implementation/verification에서만', (rel) => {
     expect(hook.editablePhasesFor(rel)).toBe(hook.EDITABLE_PHASES);
   });
@@ -1585,6 +1593,10 @@ describe('W8 — editablePhasesFor: 어떤 파일을 잠그나', () => {
     'tsconfig.tests.json',
     'game/tsconfig.json',
     '.husky/pre-commit',
+    'biome.jsonc',
+    '.CLAUDE/Settings.json',
+    '.claude/settings.local.json',
+    'Package.json',
   ])('훅이나 검사를 끌 수 있는 설정 %s → implementation/verification에서만', (rel) => {
     expect(hook.editablePhasesFor(rel)).toBe(hook.EDITABLE_PHASES);
   });
@@ -1602,7 +1614,7 @@ describe('W8 — editablePhasesFor: 어떤 파일을 잠그나', () => {
     'docs/design/mockups/result-stats.html',
     'game/assets/resources/i18n/ko.json',
     'tests/workflow/fixtures/state.json',
-    '.claude/settings.local.json',
+    '.vscode/settings.json',
     '../scratch/probe.mjs',
     'node_modules/vitest/index.js',
   ])('코드가 아니거나 저장소 밖 %s → 잠그지 않는다', (rel) => {
@@ -1654,6 +1666,13 @@ describe('W8 — 편집 잠금 훅을 실제로 띄운다', SANDBOX, () => {
     const repo = repoAt('user-verification');
     expect(runGateHook(repo, 'docs/development/plan.md')).toBeNull();
     expect(runGateHook(repo, path.join(os.tmpdir(), 'scratch', 'probe.mjs'))).toBeNull();
+  });
+
+  it('대소문자만 바꾼 경로도 막는다 — Windows에서는 같은 파일이다', () => {
+    const repo = repoAt('user-verification');
+    expect(runGateHook(repo, '.CLAUDE/Settings.json')).not.toBeNull();
+    expect(runGateHook(repo, '.claude/WORKFLOW.MJS')).not.toBeNull();
+    expect(runGateHook(repoAt('implementation'), '.claude/Workflow-State.json')).not.toBeNull();
   });
 
   it('절대 경로로 줘도 저장소 안의 코드면 막는다', () => {

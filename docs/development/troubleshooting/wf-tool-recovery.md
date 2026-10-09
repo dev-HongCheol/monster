@@ -19,12 +19,13 @@ AI는 고장을 혼자 돌아서 지나가지 않는다. 아래 방법 가운데
 
 ## 코드는 어느 단계에서 고칠 수 있나
 
-훅(`.claude/hooks/gate-scripts.mjs`)은 저장소 안의 코드를 `implementation`·`verification`에서만 고칠 수 있게 막는다. 코드는 게임 스크립트, 워크플로우 도구(`.claude/workflow.mjs`·`.claude/lib/**`)와 훅, 테스트, `tools/` 스크립트, 그리고 고치면 훅이나 검사를 끌 수 있는 설정 파일(`.claude/settings.json`·`package.json`·biome·tsconfig·`.husky/`)이다. 테스트 코드만은 RED 테스트를 쓰는 `qa-setup`에서도 고칠 수 있다. 정확한 범위는 훅의 머리 주석에 있다.
+훅(`.claude/hooks/gate-scripts.mjs`)은 저장소 안의 코드를 `implementation`·`verification`에서만 고칠 수 있게 막는다. 코드는 게임 스크립트, 워크플로우 도구(`.claude/workflow.mjs`·`.claude/lib/**`)와 훅, 테스트, `tools/` 스크립트, 그리고 고치면 훅이나 검사를 끌 수 있는 설정 파일(`.claude/settings.json`·`.claude/settings.local.json`·`package.json`·biome·tsconfig·`.husky/`)이다. 대소문자만 바꾼 경로도 같은 파일로 본다. 테스트 코드만은 RED 테스트를 쓰는 `qa-setup`에서도 고칠 수 있다. 정확한 범위는 훅의 머리 주석에 있다.
 
 그래서 도구를 고치려면 지금 슬라이스가 그 두 단계에 있어야 한다.
 
 - **`verification`에서 생긴 문제는 그 자리에서 고친다.**
 - **`user-verification`에서 생긴 문제(`approve-pr` 포함)는 사용자에게 알리고, 사용자가 `리워크`를 입력하면 구현으로 돌아가 고친다.**
+- **`pr-ready`에서 생긴 문제는 `rework`로 돌아갈 수 없다.** 아래 방법 2를 쓸지 사용자에게 묻는다.
 - **`rework` 자체가 고장 나서 돌아갈 수 없으면** 아래 방법 2를 쓸지 사용자에게 묻는다.
 
 ## 방법 1 — 도구를 고치는 슬라이스를 따로 만든다

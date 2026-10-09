@@ -19,18 +19,20 @@ export const EDITABLE_PHASES = new Set(["implementation", "verification"]);
 export const TEST_EDITABLE_PHASES = new Set(["qa-setup", "implementation", "verification"]);
 
 /** 확장자로 가르는 코드 파일. 저장소 어디에 있든 잠근다. */
-const CODE_EXT = /\.(ts|tsx|js|mjs|cjs|py|sh|ps1)$/;
+const CODE_EXT = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|py|sh|ps1|cmd|bat)$/;
 
 /**
- * 확장자는 코드가 아니지만 잠그는 파일. 훅을 등록하는 `.claude/settings.json`, 실행할 스크립트와 커밋 훅
+ * 확장자는 코드가 아니지만 잠그는 파일. 훅을 등록하는 `.claude/settings.json`, 훅을 모두 끄거나
+ * (`disableAllHooks`) 환경변수를 넣을 수 있는 `.claude/settings.local.json`, 실행할 스크립트와 커밋 훅
  * 대상을 정하는 `package.json`, 검사 범위를 정하는 biome·tsconfig 설정, 커밋 훅이다. 이 파일들을 고치면
  * 이 훅이나 통합 검사를 끌 수 있어서, 코드만 잠그면 잠금을 빠져나갈 길이 남는다.
  */
 function isCheckConfig(rel) {
   return (
     rel === ".claude/settings.json" ||
+    rel === ".claude/settings.local.json" ||
     rel.startsWith(".husky/") ||
-    /(^|\/)(package|biome|tsconfig[^/]*)\.json$/.test(rel)
+    /(^|\/)(package\.json|(biome|tsconfig[^/]*)\.jsonc?)$/.test(rel)
   );
 }
 
@@ -38,10 +40,14 @@ function isCheckConfig(rel) {
  * 저장소 기준 상대 경로의 파일을 고칠 수 있는 phase 목록. 잠그지 않는 파일이면 `null`이다.
  * 상태 파일은 여기서 다루지 않는다 — phase와 상관없이 늘 막는다.
  *
- * @param {string} rel `/`로 구분한 저장소 기준 상대 경로. 저장소 밖이면 `../`로 시작한다
+ * 소문자로 바꿔서 판정한다. Windows 파일 시스템은 대소문자를 가리지 않아서, `.CLAUDE/Settings.json`처럼
+ * 대소문자만 바꾼 경로로 고쳐도 같은 파일이 바뀌기 때문이다.
+ *
+ * @param {string} relPath `/`로 구분한 저장소 기준 상대 경로. 저장소 밖이면 `../`로 시작한다
  * @returns {Set<string> | null}
  */
-export function editablePhasesFor(rel) {
+export function editablePhasesFor(relPath) {
+  const rel = relPath.toLowerCase();
   if (rel.startsWith("../") || path.isAbsolute(rel)) return null;
   if (rel.startsWith("node_modules/") || rel.includes("/node_modules/")) return null;
   if (isCheckConfig(rel)) return EDITABLE_PHASES;
@@ -112,8 +118,8 @@ async function main() {
 
   const rel = norm(filePath);
 
-  // (1) 상태 파일 직접 편집 차단 — 모든 전이는 CLI로만
-  if (rel === ".claude/workflow-state.json") {
+  // (1) 상태 파일 직접 편집 차단 — 모든 전이는 CLI로만. 대소문자만 바꾼 경로도 같은 파일이다.
+  if (rel.toLowerCase() === ".claude/workflow-state.json") {
     deny(
       "⛔ [GATE] workflow-state.json은 직접 수정할 수 없습니다. " +
         "`node .claude/workflow.mjs <command>`로 전이하세요."
