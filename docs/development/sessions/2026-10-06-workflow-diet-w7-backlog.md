@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-10-06
 - **브랜치:** `feat/workflow-diet`
-- **만드는 것:** `docs/development/backlog-docs.md`·`backlog-implement.md`·`backlog.md`의 항목 수정, 새 항목 열 개, 아카이브로 옮기는 항목 두 개
+- **만드는 것:** `docs/development/backlog-docs.md`·`backlog-implement.md`·`backlog.md`의 항목 수정, 새 항목 열한 개, 아카이브로 옮기는 항목 두 개
 - **정본:** 없음 — 백로그는 정본이 아니라 다음에 할 일의 목록이다. 백로그 운영 규칙은 `backlog.md` 머리말에 적혀 있다.
 - **개요:** [계획 개요](2026-10-06-workflow-diet-plan.md)
 
@@ -38,7 +38,7 @@
 - **F61**(v2 Steam·유료 아이템) — 「구매 확인이나 Steam 연동 코드가 게임에 들어오면 그 경로를 `CSO_PATHS`에 더한다」 한 줄을 더한다(W1 §3). v2 작업을 시작하는 사람이 백로그에서 보게 하려는 것이다.
 - **F109**(레포 공개 여부) — 「외부 기여자의 PR을 받기 시작하면 `CLAUDE.md`·`.claude/commands/**`·`docs/development/workflow/**`를 `CSO_PATHS`에 더한다」 한 줄을 더한다(W1 §3).
 
-## 3. 새 항목 열 개
+## 3. 새 항목 열한 개
 
 2단계와 관계없는 일은 2단계 항목 안에 넣지 않고 따로 만든다. 2단계를 하지 않기로 정하면 2단계 항목이 닫히면서 그 안에 적은 일도 함께 사라지기 때문이다.
 
@@ -57,5 +57,6 @@
    - 둘을 vitest 없이 돌리려면 `DocLinks`·`DocsHygiene`의 판정 코드를 `.claude/lib/`로 옮겨야 한다. W4가 F78을 닫는 방식(도구와 테스트가 함께 `.claude/lib/*.mjs`를 import한다)을 그대로 따르면 된다.
    - 같은 점검에서 훅 둘(`gate-scripts.mjs` 0.05초 · `check-gstack.sh` 0.03초, Skill 호출 때만 돈다)과 커밋 훅 lint-staged(0.5초), 나머지 `wf` 명령(0.3초)은 비용이 작아 걸리지 않았다. `pnpm typecheck`를 따로 친 것은 한 번에 2.9초지만 tsc 자체가 쓰는 시간이라 도구를 고쳐도 줄지 않는다.
 10. `tests/` 아래를 무엇을 검사하나로 나누는 일의 나머지. 이 슬라이스는 새로 만들거나 고치는 파일만 영역 폴더(`tests/workflow/` · `tests/docs/`, 각 안에 `helpers/` · `fixtures/`)로 옮겼다(2026-10-07 사용자 결정). 남은 일은 셋이다. 기존 문서 검사 테스트(`DocLinks` · `DocsReferences` · `CanonDoc` · `ArtCanonMove` · `CanonSpecMove` 등)를 `tests/docs/`로 옮기고, `tests/helpers/`의 문서 도우미(`DocFs` · `LinkCheck` · `QaDoc` · `CanonRef`)를 `tests/docs/helpers/`로 옮겨 `tests/helpers/`를 비운다. `tests/logic/`은 게임 영역(`tests/game/`)으로 이름을 바꾸고 안을 게임 시스템별(플레이어 · 적 · 마법 · 맵 · UI 등)로 더 나눈다 — 그러면 `ready-impl`이 기능 테스트를 찾는 `testFilePath`를 하위 폴더까지 보게 넓혀야 한다. `workflow.mjs`가 경로를 적어 둔 곳(`check-links`가 띄우는 `tests/logic/DocLinks.test.ts`)과 옛 QA 문서가 아닌 절차 문서 · `CLAUDE.md`의 경로를 함께 고친다. `backlog-implement.md`.
+11. Bash로 고치는 코드도 phase로 잠근다(W8 §4). 편집 잠금 훅은 Edit·Write 도구에만 걸린다. `backlog-implement.md`.
 
 옛 계획이 만들려던 항목 중 「`engines.node` 명시」와 「상태를 장비 사이에 넘기는 방법」은 따로 만들지 않는다. 앞의 것은 기각한 안에서만 필요했고, 뒤의 것은 F10에 포함된다.

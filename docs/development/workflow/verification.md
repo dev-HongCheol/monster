@@ -1,6 +1,6 @@
 # verification — AI 검증
 
-통합 검사(biome·타입 검사·전체 테스트)는 `start-verification`에서 통과했다. 이 phase에 남은 것은 `pnpm wf pass <cso|review>`로 기록하는 판단 검사 두 개(보안 점검·코드 리뷰)다. 둘을 기록하면 `pass`가 통합 검사를 한 번 더 돌리고, 통과하면 `user-verification`으로 넘어가면서 스크립트 편집이 잠긴다. 할 검사는 `pnpm wf status`의 적용 판정 표가 보여 준다.
+통합 검사(biome·타입 검사·전체 테스트)는 `start-verification`에서 통과했다. 이 phase에 남은 것은 `pnpm wf pass <cso|review>`로 기록하는 판단 검사 두 개(보안 점검·코드 리뷰)다. 둘을 기록하면 `pass`가 통합 검사를 한 번 더 돌리고, 통과하면 `user-verification`으로 넘어가면서 코드 편집이 잠긴다. 할 검사는 `pnpm wf status`의 적용 판정 표가 보여 준다.
 
 **중간에 코드를 고쳤으면 `pnpm wf invalidate`로 판단 검사 기록을 지우고 (`/cso`를 해야 할 때만) 보안 점검부터 다시 한다.** 코드 리뷰에서 나온 수정도 예외가 아니다. 고친 코드가 보안 점검 없이 머지되는 일을 막기 위해서다. biome이 고친 형식 차이만 있으면 예외다.
 

@@ -45,6 +45,7 @@ ADR 층은 폐지 예정이다(2026-09-28, 백로그 F75) — **새 ADR을 쓰�
 ### 행동 규칙
 - 같은 문제 3번 실패 시 → STOP, 상황 보고 후 대기
 - 패키지/플러그인 설치 전 반드시 확인
+- 도구·검사 고장 시 우회 말고 멈춰 알린 뒤 확인받는다
 - 현재 작업과 무관한 파일 수정 금지
 - 발견한 무관 이슈 → 즉시 수정하지 말고 언급만 (슬라이스 밖 항목은 백로그로)
 - **이번에 건드리지 않은 코드의 주석은 손대지 않는다** — 한 함수를 고치면서 같은 파일 다른 함수의 주석이 딸려 지워지는 사고를 막는 규칙이다. **바꾼 코드의 주석은 반드시 함께 갱신하고**(`@param` 포함), 지운 코드의 주석은 함께 지운다.
@@ -94,7 +95,7 @@ ADR 층은 폐지 예정이다(2026-09-28, 백로그 F75) — **새 ADR을 쓰�
 
 ### 워크플로우 상태
 
-상태의 단일 진실은 `.claude/workflow-state.json`의 **`phase`** 하나다. 상태 변경은 **반드시 `pnpm wf <command>` CLI로만** 한다. PreToolUse 훅(`gate-scripts.mjs`)이 상태 파일 직접 편집을 차단하고, phase 기준으로 `game/assets/scripts/**/*.ts` 편집을 게이팅한다. (편집 허용 phase: `implementation`, `verification`)
+상태의 단일 진실은 `.claude/workflow-state.json`의 **`phase`** 하나다. 상태 변경은 **반드시 `pnpm wf <command>` CLI로만** 한다. PreToolUse 훅(`gate-scripts.mjs`)이 상태 파일 직접 편집을 차단하고, 코드 편집은 `implementation`·`verification`에서만 허용한다(테스트는 `qa-setup`부터).
 
 ```
 planning → qa-setup → implementation → verification → user-verification → pr-ready → done

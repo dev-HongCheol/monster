@@ -18,7 +18,7 @@
 | 디자인 리뷰 | `/design-consultation` 또는 `/plan-design-review` |
 | 전체 리뷰 파이프라인 | `/autoplan` |
 | 버그·에러 디버깅 | `/investigate` |
-| 보안 점검 (OWASP + STRIDE) | `/cso`. 코드를 고친 뒤에는 `/cso --diff --base <커밋>`으로 그 커밋 이후 바뀐 부분만 본다(기준 커밋은 `pnpm wf status`가 보여 준다). gstack이 고장 났으면 Claude Code의 `security-review`로 대신한다. 브랜치에서 아직 main에 들어가지 않은 변경을 본다 |
+| 보안 점검 (OWASP + STRIDE) | `/cso`. 코드를 고친 뒤에는 `/cso --diff --base <커밋>`으로 그 커밋 이후 바뀐 부분만 본다(기준 커밋은 `pnpm wf status`가 보여 준다). gstack이 고장 났으면 멈추고 사용자에게 알린다. 확인을 받은 뒤에만 Claude Code의 `security-review`로 대신한다. 브랜치에서 아직 main에 들어가지 않은 변경을 본다 |
 | UI 개선 (코드 리뷰가 아니다) | `/design-review` |
 | 복잡한 기능 분해 | `superpowers:brainstorming` |
 | 병렬 구현 (worktree) | `superpowers:dispatching-parallel-agents` |

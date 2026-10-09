@@ -13,7 +13,7 @@
 | `.claude/lib/*.mjs` | **신규 일곱 개**(`git` · `change-set` · `verify` · `transition` · `canon` · `workflow-steps` · `phases`). 상태 파일을 읽거나 쓰지 않는다. git을 실행하는 것은 `git.mjs`와 `change-set.mjs`뿐이고 나머지는 입력만 받아 답을 돌려준다. |
 | `.claude/workflow.mjs` | `start-verification` · `pass` · `invalidate` · `rework` · `approve-pr` · `status` · `check-meta`가 바뀌고 `verify` · `skip-qa`가 새로 생긴다. **바뀌지 않아야 하는 것:** `start` · `approve-plan` · `ready-impl` · `canon*` · `steps` · `check-*` · `pr-done`의 동작과 절차 문서 배달. 기존 E2E 85건(`ClaudeMdSplit.test.ts` 56건 · `DocsHygiene.test.ts` 29건)이 그 회귀망이다. |
 | `.claude/typecheck.mjs` | `runTypecheck`에 `capture` 옵션이 생기고 `// @ts-check`가 붙는다. `pnpm typecheck`의 동작은 그대로다. |
-| `.claude/hooks/gate-scripts.mjs` | 고치지 않는다. `EDITABLE_PHASES` 값이 `phases.mjs`와 같은지만 테스트로 확인한다(W4 §2). |
+| `.claude/hooks/gate-scripts.mjs` | 게임 스크립트뿐 아니라 저장소 안의 모든 코드(도구·훅·테스트·`tools/`)와 훅이나 검사를 끌 수 있는 설정 파일을 phase로 막는다. 테스트 코드는 `qa-setup`부터 열린다. 막을 때 「멈추고 사용자에게 알리라」는 문장을 낸다(W8). `EDITABLE_PHASES`·`TEST_EDITABLE_PHASES` 값은 `phases.mjs`와 같다(W4 §2). |
 | `.claude/workflow-state.json` | `cso_commit` · `qa_skip_reason` · 통합 검사 기록용 값 셋이 생긴다. 새 값이 없는 옛 형식 파일을 읽어도 멈추지 않아야 한다. |
 | `tests/workflow/helpers/WfSandbox.ts` | **신규.** 임시 git 저장소 · 가짜 `pnpm` · 허용 목록이 있는 `git` 도우미. 테스트 파일에서 프로세스를 띄우는 코드가 전부 여기로 온다. |
 | `tests/helpers/CanonDoc.ts` · `WorkflowSteps.ts` | **삭제.** 테스트는 `.claude/lib/canon.mjs` · `workflow-steps.mjs`를 import한다. |
@@ -24,7 +24,7 @@
 | `tests/` 폴더 구조 | 2026-10-07 사용자 결정으로 무엇을 검사하나(`logic` · `workflow` · `docs`)로 나눈다. 이 슬라이스는 새로 만들거나 고치는 파일만 옮기고 나머지는 백로그(W7 새 항목 10). 그래서 `ready-impl`이 기능 테스트를 `tests/*/<Feature>.test.ts`에서 찾고, `qaDocClean`이 띄우는 판정 파일 경로가 바뀐다. |
 | `tsconfig.tests.json` · `biome.json` · `package.json` · `.gitignore` | `allowJs` + `.claude/lib/**` 포함 · `.claude/lib/**`만 biome 대상 + `vcs.useIgnoreFile` · lint-staged에 `mjs` · `cjs` · Claude Code가 만드는 파일 무시. biome이 검사하는 파일 수가 165개에서 `.claude/lib/**`만큼만 늘어야 한다. |
 | `docs/development/workflow/*.md` · `CLAUDE.md` · `ops-skill-routing.md` · 트러블슈팅 문서 | 절차와 명령 표가 새 명령에 맞게 바뀐다. 매번 출력되는 절차 문서 여섯 개의 글자 수 합계가 지금(13,575자)보다 늘지 않아야 한다(W6 §1의 상한 테스트). |
-| `docs/development/backlog*.md` | 닫는 항목 두 개(F78 · F95, 아카이브 이동은 `pr-ready`), 내용을 고친 항목 넷(F96 · F10 · F71 · F109. F61은 이미 맞았다), 새 항목 열 개(F118~F127). |
+| `docs/development/backlog*.md` | 닫는 항목 두 개(F78 · F95, 아카이브 이동은 `pr-ready`), 내용을 고친 항목 넷(F96 · F10 · F71 · F109. F61은 이미 맞았다), 새 항목 열한 개(F118~F127). |
 
 > **게임 실행 경로 변경 없음.** `game/assets/` 아래 파일이 하나도 바뀌지 않으므로 인게임 회귀 항목이 없다. 이 슬라이스의 회귀는 **다음 슬라이스에서 검사가 잘못 건너뛰어지거나 전이가 막히는 것**으로 나타난다. 그래서 자동 테스트가 대표 변경 집합 일곱 개의 판정을 고정하고(§4.2), §5.4가 머지 뒤 실제 폴더에서 한 바퀴 확인한다.
 
@@ -42,9 +42,9 @@
 
 ## 4. 자동 테스트로 검증 (`tests/workflow/WorkflowDiet.test.ts` · `WfSandbox.test.ts` + 기존 파일 넷)
 
-**통과 근거:** 2026-10-09 · 피처 테스트 126/126(`WorkflowDiet.test.ts` 115 · `WfSandbox.test.ts` 11) · `tests/workflow` 전체 251/252(건너뜀 1) · 전체 스위트 1239/1240(건너뜀 1) — 코드 리뷰 수정 뒤 `pnpm wf verify`의 vitest 줄(biome 통과 · typecheck 통과 범위 full). 2026-10-07 `start-verification` 때는 123/123 · 1236/1237이었고, 테스트 시간 줄이기(§5.5)와 리뷰 수정(폴더 경계 · 셸 글자 · `runWf` 환경변수 · git 허용 목록 테스트)으로 셋이 늘었다.
+**통과 근거:** 2026-10-09 · 피처 테스트 168/168(`WorkflowDiet.test.ts` 157 · `WfSandbox.test.ts` 11) · 전체 스위트 1281/1282(건너뜀 1) — 편집 잠금(W8)을 더한 뒤 `start-verification`의 vitest 줄(biome 통과 · typecheck 통과 범위 full). W8로 피처 테스트가 42개 늘었다.
 
-> 이 슬라이스가 만드는 코드는 `.claude/lib/*.mjs`와 `workflow.mjs`의 명령 처리다. 입력만 받아 답하는 함수는 단위 테스트로, git을 실행하는 함수는 임시 저장소에서, 명령은 실제 프로세스를 띄워서 확인한다. 통합 검사까지 실제로 돌리는 처음부터 끝까지 테스트(E2E)는 여섯 개 이하로 둔다(Windows에서 한 건이 node를 약 다섯 번 띄운다). 묶음의 순서는 구현 순서(W5 → W1 → W4 → W2 → W3)다.
+> 이 슬라이스가 만드는 코드는 `.claude/lib/*.mjs`와 `workflow.mjs`의 명령 처리다. 입력만 받아 답하는 함수는 단위 테스트로, git을 실행하는 함수는 임시 저장소에서, 명령은 실제 프로세스를 띄워서 확인한다. 통합 검사까지 실제로 돌리는 처음부터 끝까지 테스트(E2E)는 여섯 개 이하로 둔다(Windows에서 한 건이 node를 약 다섯 번 띄운다). 묶음의 순서는 구현 순서(W5 → W1 → W4 → W2 → W3 → W8)다.
 
 ### 4.1 W5 — 시험용 임시 저장소 (`tests/workflow/helpers/WfSandbox.ts`, 테스트는 `tests/workflow/WfSandbox.test.ts`)
 
@@ -99,6 +99,16 @@
 
 - [x] 매번 출력되는 절차 문서 여섯 개의 글자 수 합계가 상한을 넘지 않는다(`ClaudeMdSplit.test.ts`의 상한 테스트, W6 §1).
 
+### 4.7 W8 — 편집 잠금을 모든 코드로 넓히기 (`.claude/hooks/gate-scripts.mjs`)
+
+- [x] `editablePhasesFor`가 코드 파일(게임 스크립트·`.claude/` 도구와 훅·`tools/`·루트 `vitest.config.ts`)과 검사 설정(`.claude/settings.json`·`package.json`·`biome.json`·`tsconfig*.json`·`.husky/`)을 `implementation`·`verification`에만, `tests/` 아래 코드는 `qa-setup`부터 연다.
+- [x] 문서·데이터 `.json`·`.claude/settings.local.json`·저장소 밖 파일·`node_modules/`는 잠그지 않는다.
+- [x] 훅 프로세스가 `planning`·`user-verification`·`pr-ready`·`done`에서 코드를 모두 막고, `qa-setup`에서는 테스트 코드만 통과시키고, `implementation`·`verification`에서는 모두 통과시킨다.
+- [x] 절대 경로로 준 저장소 안의 코드도 막고, 상태 파일은 `implementation`에서도 막는다.
+- [x] 막는 문장에 지금 phase와 「사용자에게 알리」가 들어 있다.
+- [x] `pnpm wf status`가 `code editable: YES` · `tests only` · `no (locked)`를 phase에 맞게 출력한다.
+- [x] 훅의 `TEST_EDITABLE_PHASES` 값이 `phases.mjs`의 값과 같다.
+
 ---
 
 ## 5. 수동 테스트 체크리스트
@@ -135,6 +145,7 @@
 ### 5.3 PR 전
 
 - [ ] 새 `.meta`가 하나도 없다(`pnpm wf check-meta`, `git status`). 하나라도 있으면 `.meta` 「해당 없음」 판정이 틀린 것이다.
+- [ ] `user-verification`에서 Edit 도구로 `.claude/workflow.mjs`를 고치려 하면 Claude Code가 막고, 「멈추고 사용자에게 알리라」는 문장이 보인다. `docs/` 아래 문서는 그대로 고쳐진다.
 - [ ] `pnpm wf approve-pr`이 적용 판정 표를 타입 검사 결과보다 먼저 출력하고 `pr-ready`로 넘어간다.
 
 ### 5.4 머지 뒤 — 원래 폴더(`F:\work\monster`)에서
