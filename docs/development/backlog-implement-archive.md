@@ -10,6 +10,11 @@
 
 ---
 
+### 워크플로우 다이어트 1단계 (2026-10-11)
+
+- **F78** `insertCanonRow`가 두 벌이다 → **완료**(`feat/workflow-diet` W4, 2026-10-11). `tsconfig.tests.json`에 `allowJs`를 켜고 판정 코드를 `.claude/lib/*.mjs`(`canon.mjs` · `workflow-steps.mjs` · `phases.mjs`) 한 곳에 두어 도구와 테스트가 같은 코드를 import한다. 테스트용 사본(`tests/helpers/CanonDoc.ts` · `WorkflowSteps.ts`)은 지웠다. 출처: [`sessions/2026-08-13-canon-spec-move-plan.md`](sessions/2026-08-13-canon-spec-move-plan.md) E4 · [`sessions/2026-10-06-workflow-diet-w4-single-source.md`](sessions/2026-10-06-workflow-diet-w4-single-source.md)
+- **F95** 의무 독서 예산이 배달되는 절차 문서를 안 잰다 → **완료**(`feat/workflow-diet` W6, 2026-10-11). `tests/workflow/ClaudeMdSplit.test.ts`가 배달되는 절차 문서 여섯 개의 합계를 상한 13,575자로 잰다. 출처: [`../qa/docs-guard-cut-review-issues.md`](../qa/docs-guard-cut-review-issues.md) I1 · [`sessions/2026-10-06-workflow-diet-w6-docs.md`](sessions/2026-10-06-workflow-diet-w6-docs.md)
+
 ### 2D 생성 경로 정리 (2026-09-28)
 
 - **F59** 아트 생성·리깅 툴체인 리스크·자동화 → **완료(소멸)**(`feat/blender-3d-gate` 리워크, 2026-09-28). 두 축이 다 사라졌다 — ① 리깅 도구는 플레이어가 3D 층 굽기로 옮겨 가 쓸 곳이 없고(`../design/spec/art-direction.md` §3.2), ② 2D 자동화(fal.ai API 호출 · 매팅 · 크로스머신 분리)는 2D 생성 경로의 이력을 걷어 내며 코드(`tools/art/FalMatting.ts` · `judge.ts`)와 문서째 지웠다. 남은 결정(핸드오프 방식 · 동기화 수단)은 적 생성 슬라이스가 계획을 쓸 때 다시 정한다. 경위는 [`sessions/2026-09-28-2d-generation-history-removal.md`](sessions/2026-09-28-2d-generation-history-removal.md).

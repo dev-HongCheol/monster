@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-10-06. 2026-10-05에 쓴 초안을 `/autoplan`의 리뷰 세 단계(CEO · DX · Eng)에 넣고 지적을 반영한 뒤, 개요 문서와 작업 묶음별 문서로 나눴다.
 - **브랜치:** `feat/workflow-diet` · 작업 폴더 `F:\work\monster-wf` · phase `planning`
-- **상태:** `/autoplan` 최종 승인을 받았다(2026-10-06, 사용자가 「그대로 승인」). 사용자의 `계획 승인`을 기다린다.
+- **상태:** 완료(2026-10-11, PR #95). `/autoplan` 최종 승인은 2026-10-06에 받았다(사용자가 「그대로 승인」).
 - **정본:** 이 슬라이스는 아래 문서에 적힌 절차를 바꾼다. [`workflow/verification.md`](../workflow/verification.md) · [`workflow/qa-setup.md`](../workflow/qa-setup.md) · [`workflow/implementation.md`](../workflow/implementation.md) · [`workflow/user-verification.md`](../workflow/user-verification.md) · [`workflow/planning.md`](../workflow/planning.md)(한 곳만) · [`workflow/README.md`](../workflow/README.md) · [`CLAUDE.md`](../../../CLAUDE.md)의 「Workflow」 절과 「에셋 `.meta` 관리 규칙」 절 · [`spec/ops-skill-routing.md`](../spec/ops-skill-routing.md)의 `/cso` 행. 코드 쪽은 `.claude/lib/*.mjs`의 JSDoc과 `tests/logic/WorkflowDiet.test.ts`가 정본이다.
 - **닫는 백로그 항목:** F78(판정 코드가 두 곳에 복사돼 있다) · F95(매번 출력되는 절차 문서의 글자 수를 재는 검사가 없다).
 - **닫지 않고 내용만 고치는 백로그 항목:** F10 · F61 · F71 · F96 · F109. 이 슬라이스가 그 항목에 적힌 사실을 바꾸거나 새 조건을 만들기 때문이다. 항목마다 무엇을 고치는지는 W7 문서에 있다.
