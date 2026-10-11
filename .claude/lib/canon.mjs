@@ -1,11 +1,9 @@
+// @ts-check
 /**
  * 정본(canon) 문서 생성기의 순수 로직.
  *
- * `pnpm wf canon <슬러그>`가 이 함수들을 거쳐 문서를 만들고 인덱스에 등재한다. CLI가 아니라
- * 여기 두는 이유는 vitest가 `workflow.mjs`를 import할 수 없어서다 — 그 파일은 모듈 스코프에서
- * 디스패치하고 `process.exit()`을 부른다(`WorkflowSteps.ts`와 같은 사정).
- *
- * **CLI에도 같은 판정이 복사돼 있다.** 한쪽만 고치면 조용히 갈라지므로 양쪽을 함께 고친다.
+ * `pnpm wf canon <슬러그>`가 이 함수들을 거쳐 문서를 만들고 인덱스에 등재한다. `workflow.mjs`와
+ * `CanonDoc.test.ts`가 함께 import한다 — 판정이 두 곳에 있으면 한쪽만 고쳤을 때 조용히 갈라진다.
  */
 
 /**
@@ -13,17 +11,13 @@
  * 늘리려면 `docs/development/spec/README.md`를 먼저 고친다. 아무나 새 접두사를 만들면
  * 분류가 아니라 장식이 되어, 폴더를 훑어 무엇이 있는지 보는 목적 자체가 사라진다.
  */
-export const DEV_PREFIXES = ['code', 'game', 'docs', 'ops'] as const;
+export const DEV_PREFIXES = ['code', 'game', 'docs', 'ops'];
 
 /** 디자인 정본 분류 접두사 — 닫힌 집합. 근거는 `DEV_PREFIXES`와 같다. */
-export const DESIGN_PREFIXES = ['art', 'ui'] as const;
+export const DESIGN_PREFIXES = ['art', 'ui'];
 
-export interface CanonSlug {
-  /** 분류 접두사 (`code`) */
-  prefix: string;
-  /** 주제 (`architecture`). 하이픈을 포함할 수 있다 */
-  topic: string;
-}
+/** 정본 폴더의 인덱스 파일명. 절차 문서 인덱스와 값은 같지만 다른 개념이라 따로 둔다. */
+export const CANON_INDEX = 'README.md';
 
 /**
  * `<분류>-<주제>` 슬러그를 가른다.
@@ -32,11 +26,12 @@ export interface CanonSlug {
  * 통과하는 파일명이 생기기 때문이고, **경로 구분자와 `..`를 막는 이유**는 CLI가 이 값을
  * 그대로 파일 경로로 쓰기 때문이다.
  *
- * @param slug 검사할 슬러그 (확장자 없이)
- * @param allowed 이 폴더에서 허용하는 접두사 집합
+ * @param {string} slug 검사할 슬러그 (확장자 없이)
+ * @param {readonly string[]} allowed 이 폴더에서 허용하는 접두사 집합
+ * @returns {{ prefix: string, topic: string }} 분류 접두사(`code`)와 주제(`architecture`, 하이픈 포함 가능)
  * @throws 규칙에 맞지 않으면 사람이 읽을 메시지와 함께
  */
-export function parseCanonSlug(slug: string, allowed: readonly string[]): CanonSlug {
+export function parseCanonSlug(slug, allowed) {
   const m = /^([a-z]+)-([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(slug);
   if (!m) {
     throw new Error(
@@ -61,11 +56,11 @@ export function parseCanonSlug(slug: string, allowed: readonly string[]): CanonS
  * 개행이 들어가면 인덱스 표에 행이 통째로 더 생긴다(가짜 정본이 목록에 앉는다). 파이프는
  * 그 자리에서 열이 갈려 표가 어긋난다. 둘 다 조용히 깨지므로 값을 받는 자리에서 막는다.
  *
- * @param value 검사할 값
- * @param label 오류 메시지에 쓸 필드 이름
+ * @param {string} value 검사할 값
+ * @param {string} label 오류 메시지에 쓸 필드 이름
  * @throws 비었거나 개행·파이프를 포함하면
  */
-export function assertOneLineField(value: string, label: string): void {
+export function assertOneLineField(value, label) {
   if (value.trim() === '') throw new Error(`${label}이(가) 비었습니다.`);
   if (/[\r\n]/.test(value)) throw new Error(`${label}에 줄바꿈을 넣을 수 없습니다.`);
   if (value.includes('|')) throw new Error(`${label}에 \`|\`를 넣을 수 없습니다(표의 열 구분자).`);
@@ -77,17 +72,12 @@ export function assertOneLineField(value: string, label: string): void {
  * 템플릿에 **결정 기록으로 가는 링크를 넣지 않는다** — 정본이 세션 문서·ADR을 가리키면
  * 링크를 타고 들어간 사람이 폐기된 내용을 현재 명세로 읽는다(`spec/docs-references.md` §2).
  *
- * @param o.slug 파일 슬러그 (본문에는 안 쓰지만 호출부 실수를 줄이려고 받는다)
- * @param o.title 문서 제목
- * @param o.question 이 문서가 답하는 질문 한 줄
- * @param o.date `YYYY-MM-DD`
+ * @param {{ slug: string, title: string, question: string, date: string }} o
+ *   `slug`는 파일 슬러그(본문에는 안 쓰지만 호출부 실수를 줄이려고 받는다), `title`은 문서 제목,
+ *   `question`은 이 문서가 답하는 질문 한 줄, `date`는 `YYYY-MM-DD`
+ * @returns {string}
  */
-export function renderCanonDoc(o: {
-  slug: string;
-  title: string;
-  question: string;
-  date: string;
-}): string {
+export function renderCanonDoc(o) {
   return [
     `# ${o.title}`,
     '',
@@ -116,8 +106,12 @@ const LIST_HEADING = '## 목록';
 /** 표 구분선. 정렬 지정자(`:---`·`---:`)도 받는다. */
 const SEPARATOR = /^\|(?:\s*:?-+:?\s*\|)+$/;
 
-/** 「목록」 표의 데이터 행 인덱스와 구분선 위치를 찾는다. */
-function locateListTable(lines: string[]): { sepIdx: number; rowIdxs: number[] } {
+/**
+ * 「목록」 표의 데이터 행 인덱스와 구분선 위치를 찾는다.
+ * @param {string[]} lines
+ * @returns {{ sepIdx: number, rowIdxs: number[] }}
+ */
+function locateListTable(lines) {
   const headingIdx = lines.findIndex((l) => l.trim() === LIST_HEADING);
   if (headingIdx < 0) {
     throw new Error(`README에서 「${LIST_HEADING}」 절을 찾지 못했습니다 — 등재할 표가 없습니다.`);
@@ -127,7 +121,8 @@ function locateListTable(lines: string[]): { sepIdx: number; rowIdxs: number[] }
     throw new Error(`「${LIST_HEADING}」 절에 표가 없습니다 — 헤더와 구분선이 있어야 합니다.`);
   }
   // 표는 `|`로 시작하지 않는 줄에서 끝난다. 파일 전체를 훑으면 뒤따르는 다른 표까지 먹는다.
-  const rowIdxs: number[] = [];
+  /** @type {number[]} */
+  const rowIdxs = [];
   for (let i = sepIdx + 1; i < lines.length && lines[i].startsWith('|'); i++) {
     if (lines[i].startsWith(ROW_START)) rowIdxs.push(i);
   }
@@ -144,13 +139,14 @@ function locateListTable(lines: string[]): { sepIdx: number; rowIdxs: number[] }
  * 두 README 모두 「분류 접두사」 표가 먼저 오므로, 목록이 비어 있을 때 행이 그 표에 들어가
  * 접두사 정의를 망가뜨리면서 정작 등재는 안 된다(코드리뷰 4차에서 재현했다).
  *
- * @param readme 현재 README 전문
- * @param slug 등재할 슬러그 (확장자 없이)
- * @param question 그 문서가 답하는 질문
+ * @param {string} readme 현재 README 전문
+ * @param {string} slug 등재할 슬러그 (확장자 없이)
+ * @param {string} question 그 문서가 답하는 질문
+ * @returns {string}
  * @throws 「목록」 절이나 그 표를 찾지 못하면. 조용히 통과시키면 등재되지 않은 정본이 생겨,
  *   폴더를 훑어 무엇이 있는지 보려는 목적이 깨진다
  */
-export function insertCanonRow(readme: string, slug: string, question: string): string {
+export function insertCanonRow(readme, slug, question) {
   const lines = readme.split('\n');
   const { sepIdx, rowIdxs } = locateListTable(lines);
 
@@ -160,7 +156,8 @@ export function insertCanonRow(readme: string, slug: string, question: string): 
   const row = `| [\`${slug}.md\`](${slug}.md) | ${question} |`;
   // 슬러그 사전순 첫 자리. 행 전체를 비교해도 접두사가 같아 결과는 같지만, 슬러그를 꺼내
   // 비교해야 질문 텍스트가 순서 판정에 끼어들 여지가 없다.
-  const slugOf = (line: string): string => line.slice(ROW_START.length).split('`')[0];
+  /** @param {string} line */
+  const slugOf = (line) => line.slice(ROW_START.length).split('`')[0];
   const at = rowIdxs.find((i) => slugOf(lines[i]) > `${slug}.md`);
   const insertAt = at ?? (rowIdxs.length > 0 ? rowIdxs[rowIdxs.length - 1] + 1 : sepIdx + 1);
   lines.splice(insertAt, 0, row);

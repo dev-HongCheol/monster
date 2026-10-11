@@ -16,7 +16,7 @@ import {
   insertCanonRow,
   parseCanonSlug,
   renderCanonDoc,
-} from '../helpers/CanonDoc';
+} from '../../.claude/lib/canon.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 

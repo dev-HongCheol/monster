@@ -3,9 +3,9 @@
  *
  * **문자열 in, 위반 out이다.** 디스크도 `.claude/workflow-state.json`도 안 읽는다. 그래야 같은
  * 판정을 vitest(레포 전체 스윕)와 `wf check-qa`(현재 슬라이스 문서)가 한 벌로 나눠 쓸 수 있다.
- * CLI는 이 파일을 import하지 않고 **vitest를 띄운다** — `.mjs`가 `.ts`를 import하면
- * `tsconfig.tests.json`에 `allowJs`가 없어 TS7016으로 `pass ts`가 막힌다(백로그 F78이 실측으로
- * 접었고, `wf check-links`가 세운 형태를 따른다).
+ * CLI는 이 파일을 import하지 않고 **vitest를 띄운다** — Node는 `.ts`를 그대로 불러오지 못한다.
+ * 정본·절차 문서 판정은 `.claude/lib/*.mjs`로 옮겨 CLI와 테스트가 함께 import하게 했지만(F78),
+ * QA 문서 판정은 `wf check-links`가 세운 이 형태를 둔다(옮기는 일은 백로그에 있다).
  *
  * 판정 전에 항상 `scrubCode`로 코드 펜스·인라인 스팬을 덮는다. 규칙을 **설명하려고** 적은 예시가
  * 위반으로 잡히는 것을 막기 위해서다(F92).

@@ -8,32 +8,54 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { git } from "./lib/git.mjs";
+import { applicableGates, collectChangeSet, csoBaseUsable } from "./lib/change-set.mjs";
+import {
+  applyPatch,
+  approvePrDecision,
+  csoCommand,
+  csoGuideLine,
+  decideTransition,
+  formatGateLines,
+  qaMissingMessage,
+  qaRequired,
+  recordPatch,
+} from "./lib/transition.mjs";
+import { formatVerifyReport, runVerify, writeModeFor } from "./lib/verify.mjs";
+import {
+  CANON_INDEX,
+  DESIGN_PREFIXES,
+  DEV_PREFIXES,
+  assertOneLineField,
+  insertCanonRow,
+  parseCanonSlug,
+  renderCanonDoc,
+} from "./lib/canon.mjs";
+import { EDITABLE_PHASES, PHASES, TEST_EDITABLE_PHASES } from "./lib/phases.mjs";
+import {
+  DOC_EXEMPT_PHASES,
+  STEP_DOC_DIR,
+  STEP_DOC_INDEX,
+  findStepDocIssues,
+} from "./lib/workflow-steps.mjs";
 import { runTypecheck } from "./typecheck.mjs";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const STATE_PATH = path.join(ROOT, ".claude", "workflow-state.json");
 
-// phase = 단일 진실. 아래 순서가 곧 정상 진행 순서다.
-const PHASES = [
-  "planning",
-  "qa-setup",
-  "implementation",
-  "verification",
-  "user-verification",
-  "pr-ready",
-  "done",
-];
-
-const CHECKS = ["cso", "ts", "lint", "review"]; // verification 하위 단계
+// `pass`로 기록하는 판단 검사. 타입·린트는 통합 검사(lib/verify.mjs)가 돌리고 결과를 기록용 값
+// (ts_check_clean·lint_clean·ts_check_scope)으로 적으므로 여기 없다. 그래서 resetVerification이 그
+// 기록용 값을 건드리지 않는다.
+const CHECKS = ["cso", "review"];
 const CHECK_FLAG = {
   cso: "cso_done",
-  ts: "ts_check_clean",
-  lint: "lint_clean",
   review: "code_review_clean",
 };
+// 통합 검사(`verify`)를 칠 수 있는 phase. 코드를 고치거나 고친 코드를 확인하는 phase들이다.
+const VERIFY_PHASES = new Set(["implementation", "verification", "user-verification"]);
+// QA 문서 생략(`skip-qa`)을 적을 수 있는 phase. 생략은 적은 뒤에도 필요할 때마다 다시 판정한다.
+const SKIP_QA_PHASES = new Set(["qa-setup", "implementation", "verification"]);
 
-// 스크립트 편집이 허용되는 phase (hook과 동일한 기준)
-export const EDITABLE_PHASES = new Set(["implementation", "verification"]);
 
 function fail(msg) {
   process.stderr.write(`✗ ${msg}\n`);
@@ -46,10 +68,13 @@ function freshState(feature) {
     phase: "planning",
     test_skipped: false,
     test_skip_reason: null,
-    // `pass ts`가 실제로 검사한 범위. "full" = 게임 코드 포함, "logic-only" = Cocos 생성물이
-    // 없어 게임 코드를 못 봄. approve-pr이 "full"이 아니면 거부한다(머신 상태로 게이트를
-    // 우회하는 것을 막는다). verification 안이 아니라 밖에 두는 이유: pass()의
-    // `Object.values(verification).every(Boolean)` 판정에 문자열이 섞이면 안 된다.
+    // 마지막 통합 검사의 타입 검사가 실제로 검사한 범위. "full" = 게임 코드 포함, "logic-only" =
+    // Cocos 생성물이 없어 게임 코드를 못 봄. approve-pr이 "full"이 아니면 거부한다(머신 상태로
+    // 게이트를 우회하는 것을 막는다). 넘어가는 조건이 아니라 기록이다 — ts_check_clean·lint_clean과
+    // 함께 통합 검사가 적고, invalidate·rework는 지우지 않는다. verification 안이 아니라 밖에 두는
+    // 이유: 옛 도구의 `Object.values(verification).every(Boolean)` 판정에 문자열이 섞이면 안 된다.
+    // 이 슬라이스가 더한 cso_commit(`pass cso`를 친 커밋)·qa_skip_reason(QA 문서 생략 사유)은 처음
+    // 상태에 두지 않는다. 그 값을 쓴 적이 없는 상태 파일에는 없고, 읽는 코드는 모두 「없음」을 처리한다.
     ts_check_scope: null,
     // 이번 슬라이스가 갱신·신설한 정본 경로. 비어 있고 canon_skip_reason도 없으면 pass가
     // user-verification 진입을 막는다 — 바꾼 명세가 정본에 안 실린 채 끝나는 것을 막는 게이트다.
@@ -98,9 +123,12 @@ function requirePhase(state, expected) {
   }
 }
 
+// 판단 검사(`/cso`·리뷰)의 통과 표시를 지운다. 기록용 값 셋(ts_check_clean·lint_clean·ts_check_scope)과
+// cso_commit은 건드리지 않는다 — 앞의 셋은 넘어가는 조건이 아니라 마지막 통합 검사의 기록이고,
+// cso_commit은 통과 표시가 아니라 다음 `/cso`가 어디부터 볼지의 기준이다.
 function resetVerification(state) {
+  state.verification = state.verification ?? {};
   for (const f of Object.values(CHECK_FLAG)) state.verification[f] = false;
-  state.ts_check_scope = null; // 검사 범위도 함께 무효화 — 재검증 없이 남으면 안 된다
   // 정본 판단도 함께 무효화한다. 이 함수를 부르는 두 경로(invalidate·rework)는 둘 다 "코드가
   // 바뀌었다"는 뜻이고, 코드가 바뀌면 "명세도 바뀌었나"라는 판단이 낡는다. 남겨 두면 초기 구현
   // 기준으로 한 번 declare한 뒤 그 뒤의 모든 변경이 게이트를 그냥 통과한다.
@@ -112,92 +140,6 @@ function resetVerification(state) {
   state.qa_doc_fingerprint = qaDocFingerprint(state);
   // docs_delivered는 여기서 건드리지 않는다. invalidate가 이 함수를 부르므로 초기화를 넣으면
   // 매번 전문이 나가 차등 배달이 통째로 무력해진다. 초기화는 phase가 바뀌는 지점에서 한다.
-}
-
-// ── 정본(canon) 문서 ────────────────────────────────────────────────────────
-// 같은 판정이 tests/helpers/CanonDoc.ts에도 있다(그쪽이 fixture로 검증된다). CLI에서 그 모듈을
-// import할 수 없어 생긴 복사본이므로, 규칙을 바꾸면 두 곳을 함께 고친다.
-const DEV_PREFIXES = ["code", "game", "docs", "ops"];
-const DESIGN_PREFIXES = ["art", "ui"];
-const CANON_ROW_START = "| [`";
-const CANON_LIST_HEADING = "## 목록";
-const CANON_SEPARATOR = /^\|(?:\s*:?-+:?\s*\|)+$/;
-/** 정본 폴더의 인덱스 파일명. STEP_DOC_INDEX와 값은 같지만 다른 개념이라 따로 둔다. */
-const CANON_INDEX = "README.md";
-
-function locateCanonListTable(lines) {
-  const headingIdx = lines.findIndex((l) => l.trim() === CANON_LIST_HEADING);
-  if (headingIdx < 0) {
-    throw new Error(
-      `README에서 「${CANON_LIST_HEADING}」 절을 찾지 못했습니다 — 등재할 표가 없습니다.`
-    );
-  }
-  const sepIdx = lines.findIndex((l, i) => i > headingIdx && CANON_SEPARATOR.test(l.trim()));
-  if (sepIdx < 0) {
-    throw new Error(`「${CANON_LIST_HEADING}」 절에 표가 없습니다 — 헤더와 구분선이 있어야 합니다.`);
-  }
-  const rowIdxs = [];
-  for (let i = sepIdx + 1; i < lines.length && lines[i].startsWith("|"); i++) {
-    if (lines[i].startsWith(CANON_ROW_START)) rowIdxs.push(i);
-  }
-  return { sepIdx, rowIdxs };
-}
-
-function parseCanonSlug(slug, allowed) {
-  const m = /^([a-z]+)-([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(slug);
-  if (!m) {
-    throw new Error(
-      `정본 슬러그 형식이 아닙니다: "${slug}"\n` +
-        "  <분류>-<주제> 꼴이어야 하고 소문자·숫자·하이픈만 씁니다(확장자는 붙이지 않습니다)."
-    );
-  }
-  if (!allowed.includes(m[1])) {
-    throw new Error(
-      `허용되지 않은 분류 접두사입니다: "${m[1]}"\n` +
-        `  이 폴더가 받는 접두사: ${allowed.join(", ")}\n` +
-        "  늘리려면 해당 spec/README.md를 먼저 고치세요."
-    );
-  }
-  return { prefix: m[1], topic: m[2] };
-}
-
-function assertOneLineField(value, label) {
-  if (value.trim() === "") throw new Error(`${label}이(가) 비었습니다.`);
-  if (/[\r\n]/.test(value)) throw new Error(`${label}에 줄바꿈을 넣을 수 없습니다.`);
-  if (value.includes("|")) throw new Error(`${label}에 \`|\`를 넣을 수 없습니다(표의 열 구분자).`);
-}
-
-function renderCanonDoc(o) {
-  return [
-    `# ${o.title}`,
-    "",
-    `> ${o.question}`,
-    "",
-    `- **최초 작성:** ${o.date}`,
-    "- **상태:** CONFIRMED",
-    `- **이력:** ${o.date} — 신설`,
-    "",
-    "---",
-    "",
-    "이 문서는 **정본**이다. 내용이 낡으면 새로 만들지 않고 이 문서를 고친다. 이력 절에는",
-    "날짜와 무엇이 바뀌었는지만 한 줄 남기고, 그렇게 정한 경위는 그 슬라이스의 세션 문서가 든다.",
-    "",
-    "## (본문)",
-    "",
-  ].join("\n");
-}
-
-function insertCanonRow(readme, slug, question) {
-  const lines = readme.split("\n");
-  const { sepIdx, rowIdxs } = locateCanonListTable(lines);
-  const marker = `${CANON_ROW_START}${slug}.md\`]`;
-  if (rowIdxs.some((i) => lines[i].startsWith(marker))) return readme;
-  const row = `| [\`${slug}.md\`](${slug}.md) | ${question} |`;
-  const slugOf = (line) => line.slice(CANON_ROW_START.length).split("`")[0];
-  const at = rowIdxs.find((i) => slugOf(lines[i]) > `${slug}.md`);
-  const insertAt = at ?? (rowIdxs.length > 0 ? rowIdxs[rowIdxs.length - 1] + 1 : sepIdx + 1);
-  lines.splice(insertAt, 0, row);
-  return lines.join("\n");
 }
 
 /** 레포 루트 기준 상대 경로 — 항상 슬래시. Windows 구분자가 상태 파일에 들어가면 머신마다 갈린다. */
@@ -222,16 +164,12 @@ function recordCanon(...rels) {
 // 절차가 필요한 순간에 도착하게 하는 것이 이 기구의 전부다.
 //
 // 지켜야 할 성질 셋. ① 배달은 커맨드 함수 안이 아니라 **디스패치 뒤**에 붙는다 — 모든 실패 경로가
-// fail() → process.exit(1)이라 실패한 전이에는 자동으로 배달이 안 간다(특히 pass는 네 검증이 다
-// 통과한 뒤에도 QA 잠정 게이트에서 죽을 수 있어, 커맨드 안에서 배달하면 전이하지도 않은 절차가 샌다).
+// fail() → process.exit(1)이라 실패한 전이에는 자동으로 배달이 안 간다(특히 pass는 판단 검사 두 개를
+// 다 기록한 뒤에도 QA 확정·정본 선언·통합 검사에서 죽을 수 있어, 커맨드 안에서 배달하면 전이하지도
+// 않은 절차가 샌다).
 // ② 절대 throw하지 않고 종료코드를 바꾸지 않는다 — 배달이 실패로 보이면 상태는 이미 전이됐는데
 // 재실행이 requirePhase에 막혀 사람이 갇힌다. ③ 문서가 없어도 전이를 막지 않는다 — 막으면 문서
 // 하나 누락으로 워크플로가 멈추는데 빠져나올 경로가 없다.
-const STEP_DOC_DIR = ["docs", "development", "workflow"];
-const STEP_DOC_INDEX = "README.md";
-// done = 슬라이스가 끝난 상태라 뒤에 밟을 절차가 없다. 면제하지 않으면 pr-done이 없는 done.md를
-// 찾아 매 슬라이스 마지막마다 누락 경고를 헛발화한다.
-const DOC_EXEMPT_PHASES = new Set(["done"]);
 const DELIVERING_COMMANDS = new Set([
   "start",
   "approve-plan",
@@ -354,17 +292,12 @@ function runVitest(extraArgs = [], env = {}) {
   return r.status;
 }
 
-// git 명령 실행 헬퍼. encoding="utf8"로 출력 캡처, 결과 객체 반환.
-function git(args, opts = {}) {
-  return spawnSync("git", args, { cwd: ROOT, encoding: "utf8", ...opts });
-}
-
 // Cocos 규칙: assets/ 아래 모든 파일·디렉터리는 형제 `.meta`(UUID 보관)를 가진다.
 // `.meta`가 추적되지 않으면 클론·타 환경에서 UUID가 재생성돼 씬/프리팹 참조가 깨진다.
 // 추적(git index)되는 에셋 중 `<경로>.meta`가 추적되지 않는 항목 목록을 반환한다.
 // 반환: { error: string|null, missing: string[] }
 function listMissingAssetMeta() {
-  const r = git(["ls-files", "game/assets"]);
+  const r = git(ROOT, ["ls-files", "game/assets"]);
   if (r.status !== 0) {
     return { error: (r.stderr || "git ls-files 실패").trim(), missing: [] };
   }
@@ -422,12 +355,12 @@ function requireAssetMeta() {
 // 자동으로 rebase하지 않는다. 브랜치에 남의 커밋이 얹혀 있을 수 있고, 무엇을 버리고 무엇을 살릴지는
 // 사람의 판단이다. 여기서는 막고 다음에 칠 명령을 알려 주기만 한다.
 function requireCurrentBase(base, branch) {
-  git(["fetch", "origin", "main", "--quiet"]); // 오프라인이면 실패해도 그냥 로컬 기준으로 잰다
-  const originMain = git(["rev-parse", "--verify", "--quiet", "refs/remotes/origin/main"]);
+  git(ROOT, ["fetch", "origin", "main", "--quiet"]); // 오프라인이면 실패해도 그냥 로컬 기준으로 잰다
+  const originMain = git(ROOT, ["rev-parse", "--verify", "--quiet", "refs/remotes/origin/main"]);
   if (originMain.status !== 0) return; // origin이 없는 클론에서는 잴 기준이 없다
-  if (git(["merge-base", "--is-ancestor", "origin/main", base]).status === 0) return;
+  if (git(ROOT, ["merge-base", "--is-ancestor", "origin/main", base]).status === 0) return;
 
-  const behind = git(["rev-list", "--count", `${base}..origin/main`]).stdout.trim();
+  const behind = git(ROOT, ["rev-list", "--count", `${base}..origin/main`]).stdout.trim();
   fail(
     `${base}이(가) origin/main보다 ${behind}커밋 뒤처져 있습니다 — 여기서 시작하면 최근 머지된 ` +
       "인프라·백로그 항목이 없는 트리 위에 슬라이스가 섭니다.\n" +
@@ -442,11 +375,11 @@ function requireCurrentBase(base, branch) {
 function ensureFeatureBranch(feature) {
   const branch = `feat/${feature}`;
   const exists =
-    git(["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]).status === 0;
+    git(ROOT, ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]).status === 0;
   requireCurrentBase(exists ? branch : "main", branch);
   const r = exists
-    ? git(["switch", branch], { stdio: "inherit" })
-    : git(["switch", "-c", branch, "main"], { stdio: "inherit" });
+    ? git(ROOT, ["switch", branch], { stdio: "inherit" })
+    : git(ROOT, ["switch", "-c", branch, "main"], { stdio: "inherit" });
   if (r.status !== 0) {
     fail(
       `브랜치 전환/생성 실패: ${branch}\n` +
@@ -479,8 +412,20 @@ function planDocPath(state) {
 function qaDocPath(state) {
   return path.join(ROOT, "docs", "qa", `${state.feature}-test.md`);
 }
+// 기능 테스트는 tests/ 바로 아래 영역 폴더(logic·workflow·docs …) 어디에나 둘 수 있다 — 영역은
+// 무엇을 검사하나로 나뉘고, 게이트가 보는 것은 파일명뿐이다. 어디에도 없으면 안내용으로
+// tests/logic 경로를 돌려준다(그 경로가 없다는 메시지가 나간다).
 function testFilePath(state) {
-  return path.join(ROOT, "tests", "logic", `${toPascal(state.feature)}.test.ts`);
+  const name = `${toPascal(state.feature)}.test.ts`;
+  const testsDir = path.join(ROOT, "tests");
+  const fallback = path.join(testsDir, "logic", name);
+  if (!fs.existsSync(testsDir)) return fallback;
+  const hit = fs
+    .readdirSync(testsDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => path.join(testsDir, d.name, name))
+    .find((p) => fs.existsSync(p));
+  return hit ?? fallback;
 }
 
 // 현재 슬라이스 QA 문서를 검사한다. 통과하면 true.
@@ -493,29 +438,28 @@ function testFilePath(state) {
 // **판정을 여기 베끼지 않고 vitest를 띄운다.** 로직은 tests/helpers/QaDoc.ts 한 벌이고, 이
 // 커맨드는 문서 경로만 `WF_QA_DOC`으로 건넨다 — 상태 파일을 아는 쪽은 CLI뿐이고 판정을 아는 쪽은
 // 그 헬퍼뿐이라 경로 하나만 넘기면 사본이 안 생긴다. check-links가 세운 형태이고, CLI가 판정을
-// 복사하면 한쪽만 고쳤을 때 나머지가 낡은 채로 초록불을 유지한다(백로그 F78이 그 상태다).
+// 복사하면 한쪽만 고쳤을 때 나머지가 낡은 채로 초록불을 유지한다. 정본·절차 문서 판정은 lib/로 옮겨
+// CLI와 테스트가 함께 import하지만(F78), 이 판정은 .ts 도우미에 있어 Node가 바로 불러올 수 없다.
 //
 // 옛 인라인 판정은 줄 전체에서 태그 문자열만 찾아 **코드 스팬 안팎을 못 갈랐다.** 그래서 "미확정
 // 항목이 없다"고 설명한 문장 자체가 위반으로 잡혀 게이트가 거짓으로 실패했다(2026-08-18, F92).
-const QA_JUDGE_TEST = "tests/logic/DocsHygiene.test.ts";
+const QA_JUDGE_TEST = "tests/workflow/DocsHygiene.test.ts";
 
 function qaDocClean(state) {
   const p = qaDocPath(state);
-  if (!fs.existsSync(p)) return true; // 존재 강제는 ready-impl의 몫이다
-  // 테스트 트리가 통째로 없으면 건너뛴다 — 이 경로를 타는 것은 workflow.mjs 자신을 시험하는 E2E
-  // 샌드박스뿐이다(문서와 상태 파일만 꾸미고 tests/는 안 만든다). 그 샌드박스에는 vitest도 없어서
-  // 띄우면 다른 게이트를 시험하던 테스트가 이 검사 때문에 실패한다.
-  //
-  // **판정 파일 하나만 없는 경우는 건너뛰지 않고 막는다.** 그렇게 하지 않으면 그 파일을 지우는 것만으로
+  // 파일이 없을 때 통과로 보는 것은 `check-qa`를 위한 것이다. `pass`는 QA 문서가 필요하면 이 함수를
+  // 부르기 전에 파일이 있는지부터 본다(lib/transition.mjs의 qaRequired).
+  if (!fs.existsSync(p)) return true;
+  // **판정 파일이 없으면 건너뛰지 않고 막는다.** 그렇게 하지 않으면 그 파일을 지우는 것만으로
   // 게이트가 꺼지는데, 지워도 스위트는 초록을 유지하므로(그 파일이 자기 존재를 단언할 수는 없다)
-  // 아무도 알아채지 못한다. 이 슬라이스가 없애려는 형태 그대로다.
-  if (!fs.existsSync(path.join(ROOT, "tests", "logic"))) return true;
+  // 아무도 알아채지 못한다. 같은 까닭으로 「tests/ 폴더가 없으면 건너뛴다」 예외도 두지 않는다 —
+  // 개발 도구가 없는 임시 폴더는 가짜 pnpm(tests/workflow/fixtures/fake-pnpm.mjs)으로 돌린다.
   if (!fs.existsSync(path.join(ROOT, QA_JUDGE_TEST))) {
     process.stderr.write(`✗ ${QA_JUDGE_TEST}이 없습니다 — QA 문서 게이트의 판정 파일입니다.\n`);
     return false;
   }
   const rel = path.relative(ROOT, p).split(path.sep).join("/");
-  if (runVitest(["tests/logic/DocsHygiene.test.ts"], { WF_QA_DOC: rel }) !== 0) return false;
+  if (runVitest([QA_JUDGE_TEST], { WF_QA_DOC: rel }) !== 0) return false;
 
   // 검증을 다시 시작한 뒤로 문서가 손대지지 않았으면 근거가 낡은 것이다(resetVerification 참조).
   if (state.qa_doc_fingerprint && state.qa_doc_fingerprint === qaDocFingerprint(state)) {
@@ -529,12 +473,97 @@ function qaDocClean(state) {
 }
 
 // QA 문서의 지문. **절이 아니라 파일 전체**를 해싱한다 — 절만 잘라 내려면 판정 로직을 CLI에
-// 복사해야 하고(F78이 그 상태다), 그 대가가 여기서 얻는 정밀도보다 크다. 문서의 다른 곳만
+// 복사해야 하고(F78이 막은 형태다), 그 대가가 여기서 얻는 정밀도보다 크다. 문서의 다른 곳만
 // 고쳐도 지문이 바뀌므로 이 검사는 "손댔는가"까지만 보장하고 "근거를 갱신했는가"는 사람이 진다.
 function qaDocFingerprint(state) {
   const p = qaDocPath(state);
   if (!fs.existsSync(p)) return null;
   return createHash("sha256").update(fs.readFileSync(p)).digest("hex").slice(0, 16);
+}
+
+// 실패 안내 끝에 절차 문서를 찾아갈 한 줄을 붙여 죽는다. 실패한 전이에는 절차 문서가 배달되지 않으므로
+// 이 한 줄이 그 phase를 끝내는 조건을 찾아가는 유일한 안내다.
+function failWithSteps(msg, phase) {
+  fail(`${msg}\n절차: \`pnpm wf steps ${phase}\``);
+}
+
+// 지금 HEAD 커밋. git 저장소가 아니면 null이다.
+function headCommit({ short = false } = {}) {
+  const r = git(ROOT, ["rev-parse", ...(short ? ["--short"] : []), "HEAD"]);
+  return r.status === 0 ? r.stdout.trim() : null;
+}
+
+// 변경 집합과 적용 판정. 구할 수 없으면 모든 검사를 하고, 그 원인과 처방을 한 줄 알린다(quiet가 아니면).
+function changeContext({ quiet = false } = {}) {
+  const cs = collectChangeSet(ROOT);
+  if (!cs.measurable && !quiet) process.stderr.write(`⚠ ${cs.hint}\n`);
+  return { cs, gates: applicableGates(cs) };
+}
+
+// `/cso`의 기준 커밋을 쓸 수 있는지. 해당 없으면 기준 커밋을 확인하지 않는다(git을 띄우지 않는다).
+function csoUsable(s, gates) {
+  return gates.cso.applies ? csoBaseUsable(s.cso_commit, ROOT) : { usable: false, reason: "해당 없음" };
+}
+
+// 다음 `/cso` 안내 한 줄과 안내에 넣을 명령.
+function csoInfo(s, gates) {
+  const usable = csoUsable(s, gates);
+  return { line: csoGuideLine(gates, usable, s.cso_commit), command: csoCommand(usable, s.cso_commit) };
+}
+
+// 적용 판정 출력(lib/transition.mjs의 formatGateLines).
+function printGateLines(s, cs, gates) {
+  for (const line of formatGateLines(gates, cs, s, csoUsable(s, gates))) console.log(line);
+}
+
+function printVerify(result) {
+  for (const line of formatVerifyReport(result)) console.log(line);
+}
+
+// `pass`가 기록한 뒤 user-verification으로 넘길지 판정하고 결과를 적는다. 판정은 lib/transition.mjs의
+// decideTransition이 하고, 이 함수는 그 판정이 「필요하다」고 답한 무거운 일(QA 판정 · 통합 검사)만
+// 실행해서 결과를 넣고 다시 부른다. 그래서 판단 검사가 다 차지 않은 `pass`에서는 vitest가 돌지 않는다.
+//
+// 판단 검사만 남아 막힌 것은 실패가 아니다(`pass cso`를 먼저 친 경우). 그 밖의 단계에서 막히면
+// 판정이 돌려준 값(통과 표시 삭제 포함)을 적고 실패로 끝낸다.
+function tryTransition(s, cs, gates, check) {
+  const cso = csoInfo(s, gates);
+  const base = {
+    state: s,
+    gates,
+    qa: qaRequired(s, cs),
+    qaDocRel: toRel(qaDocPath(s)),
+    canonDeclared: (s.canon_updated ?? []).length > 0 || Boolean(s.canon_skip_reason),
+    csoCommand: cso.command,
+  };
+  let d = decideTransition(base);
+  let qaClean;
+  if (d.needsQa) {
+    qaClean = fs.existsSync(qaDocPath(s)) ? qaDocClean(s) : "missing";
+    d = decideTransition({ ...base, qaClean });
+  }
+  if (d.needsVerify) {
+    // 커밋과 리뷰가 끝난 뒤라 파일을 고치지 않는다.
+    console.log("\n▶ 통합 검사 (biome → typecheck → vitest, 파일은 고치지 않는다)");
+    const verifyResult = runVerify(undefined, { write: false });
+    printVerify(verifyResult);
+    d = decideTransition({ ...base, qaClean, verifyResult, qaFingerprint: qaDocFingerprint(s) });
+  }
+  applyPatch(s, d.patch);
+  save(s);
+
+  if (d.transition) {
+    console.log(
+      `✓ pass ${check} → 전체 통과 → phase=user-verification (HEAD ${headCommit({ short: true }) ?? "알 수 없음"}, 편집 잠금)`
+    );
+    return;
+  }
+  if (d.blockers.every((b) => b.stage === "judgement")) {
+    for (const b of d.blockers) console.log(`  남은 것: ${b.message}`);
+    return;
+  }
+  for (const b of d.blockers) process.stderr.write(`✗ ${b.message}\n`);
+  failWithSteps(`처리한 뒤 \`pnpm wf pass ${check}\`를 다시 친다.`, "verification");
 }
 
 const commands = {
@@ -589,13 +618,14 @@ const commands = {
   "ready-impl"() {
     const s = load();
     requirePhase(s, "qa-setup");
-    const docOk = fs.existsSync(qaDocPath(s));
+    // QA 문서는 필요할 때만 확인한다(`skip-qa`로 생략했고 그 생략이 아직 유효하면 건너뛴다).
+    const qa = qaRequired(s, changeContext({ quiet: true }).cs);
+    if (qa.required && !fs.existsSync(qaDocPath(s))) {
+      failWithSteps(qaMissingMessage(qa, toRel(qaDocPath(s))), "qa-setup");
+    }
     const testOk = s.test_skipped || fs.existsSync(testFilePath(s));
-    if (!docOk) fail(`QA 문서 없음: ${path.relative(ROOT, qaDocPath(s))}`);
     if (!testOk)
-      fail(
-        `테스트 파일 없음(스킵도 아님): ${path.relative(ROOT, testFilePath(s))}`
-      );
+      failWithSteps(`테스트 파일 없음(스킵도 아님): ${toRel(testFilePath(s))}`, "qa-setup");
 
     // RED 게이트: 스킵이 아니면 피처 테스트가 실제로 실패(RED)하는지 검증.
     // 구현이 없어 실패하는 게 정상적인 TDD 시작점이므로, 통과해 버리면 차단한다.
@@ -604,9 +634,10 @@ const commands = {
       console.log(`\n▶ RED 확인: vitest run ${rel}`);
       const status = runVitest([rel]);
       if (status === 0) {
-        fail(
+        failWithSteps(
           "테스트가 RED가 아닙니다 (피처 테스트가 통과함). " +
-            "구현 전 실패하는 테스트를 먼저 작성하세요."
+            "구현 전 실패하는 테스트를 먼저 작성하세요.",
+          "qa-setup"
         );
       }
       console.log("✓ RED 확인됨 (피처 테스트 실패 — 정상)\n");
@@ -614,93 +645,131 @@ const commands = {
 
     s.phase = "implementation";
     save(s);
-    console.log("✓ ready-impl → phase=implementation (스크립트 편집 허용)");
+    console.log("✓ ready-impl → phase=implementation (코드 편집 허용)");
   },
 
   // 구현 종료 → 검증 진입
-  "start-verification"() {
+  "start-verification"(args) {
     const s = load();
     requirePhase(s, "implementation");
 
-    // GREEN 게이트: 전체 스위트가 통과해야 검증에 진입한다.
-    // (test_skipped 여부와 무관 — 다른 로직 테스트는 항상 통과해야 한다.)
-    console.log("\n▶ GREEN 확인: vitest run (전체 스위트)");
-    if (runVitest([]) !== 0) {
-      fail(
-        "테스트 실패 — 전체 스위트가 통과해야 검증에 진입할 수 있습니다. 수정 후 다시 실행하세요."
-      );
+    // 통합 검사 게이트: biome · 타입 검사 · 전체 테스트가 모두 통과해야 검증에 진입한다.
+    // (test_skipped 여부와 무관 — 다른 로직 테스트는 항상 통과해야 한다.) 실패해도 기록용 값은 적는다 —
+    // status가 마지막 통합 검사 결과를 보여 준다.
+    console.log("\n▶ 통합 검사 (biome → typecheck → vitest)");
+    const result = runVerify(undefined, { write: writeModeFor(s.phase, args) });
+    printVerify(result);
+    applyPatch(s, recordPatch(result));
+    if (!result.ok) {
+      save(s);
+      failWithSteps("통합 검사 실패 — 세 검사가 모두 통과해야 verification으로 넘어간다.", "implementation");
     }
-    console.log("✓ GREEN 확인됨 (전체 스위트 통과)\n");
 
     s.phase = "verification";
     resetVerification(s);
     save(s);
     console.log("✓ start-verification → phase=verification");
+    // status와 같은 적용 판정을 함께 보여 status를 따로 칠 필요가 없게 한다(다음 /cso 줄 포함).
+    const { cs, gates } = changeContext({ quiet: true });
+    printGateLines(s, cs, gates);
   },
 
-  // 개별 검증 통과 표시. 4개 모두 통과 시 자동으로 user-verification 진입
+  // 통합 검사만 다시 돌린다. phase는 바뀌지 않고 기록용 값 셋만 적는다 — 기록용 값은 넘어가는 조건이
+  // 아니므로 어느 phase에서 적어도 문제가 없다. `pass`가 넘기기 직전에 스스로 돌리므로, 코드를 고친 뒤
+  // 꼭 먼저 칠 필요는 없다.
+  verify(args) {
+    const s = load();
+    if (!VERIFY_PHASES.has(s.phase)) {
+      fail(
+        `코드를 검사하는 phase가 아니다(phase="${s.phase}") — ` +
+          `verify는 ${[...VERIFY_PHASES].join("·")}에서 친다.`
+      );
+    }
+    const write = writeModeFor(s.phase, args);
+    console.log(`\n▶ 통합 검사 (biome → typecheck → vitest${write ? "" : ", 파일은 고치지 않는다"})`);
+    const result = runVerify(undefined, { write });
+    printVerify(result);
+    applyPatch(s, recordPatch(result));
+    save(s);
+    if (!result.ok) {
+      // user-verification에서는 훅이 게임 스크립트 편집을 막으므로 형식 차이도 구현으로 돌아가 고친다.
+      const back =
+        s.phase === "user-verification" && result.results.biome.status === "format-only"
+          ? "\n`pnpm wf rework` 뒤 `pnpm wf verify`로 고친다."
+          : "";
+      failWithSteps(`통합 검사 실패 — phase는 그대로다.${back}`, "verification");
+    }
+    console.log(`✓ verify: 통과 (phase=${s.phase} 그대로)`);
+  },
+
+  // QA 문서를 쓰지 않는 사유를 적는다(`--clear`로 되돌린다). 생략해도 되는지는 이 순간에 확정하지 않고
+  // 필요할 때마다 다시 판정한다(lib/transition.mjs의 qaRequired) — qa-setup에서는 아직 구현 전이라
+  // 어느 슬라이스든 game/** 변경이 없기 때문이다. 상태 파일을 손으로 고치는 것은 훅이 막으므로 되돌리는
+  // 명령이 따로 있어야 한다.
+  "skip-qa"(args) {
+    const s = load();
+    if (!SKIP_QA_PHASES.has(s.phase)) {
+      fail(`skip-qa는 ${[...SKIP_QA_PHASES].join("·")}에서 친다(phase="${s.phase}").`);
+    }
+    if (args[0] === "--clear") {
+      delete s.qa_skip_reason;
+      save(s);
+      console.log("✓ skip-qa --clear: QA 문서 생략을 되돌렸다");
+      return;
+    }
+    const reason = args.join(" ").trim();
+    if (!reason) fail('사용법: skip-qa "<사유>" | skip-qa --clear');
+
+    const qa = qaRequired({ qa_skip_reason: reason }, changeContext({ quiet: true }).cs);
+    if (qa.required) {
+      failWithSteps(
+        qa.cause === "game-change"
+          ? `QA 문서가 필요하다: ${qa.matches.join(", ")}`
+          : qaMissingMessage(qa, toRel(qaDocPath(s))),
+        s.phase
+      );
+    }
+    s.qa_skip_reason = reason;
+    save(s);
+    console.log(`✓ skip-qa: ${reason}`);
+    console.log("생략은 `game/**` 변경이 없는 동안만 유효하다 — 그 변경이 생기면 `pass`가 QA 문서를 요구한다");
+  },
+
+  // 판단 검사 통과 표시(`/cso`·리뷰). 기록한 뒤 넘길 수 있으면 통합 검사를 돌려 user-verification으로
+  // 넘긴다(tryTransition). QA 확정 게이트와 정본 게이트는 lib/transition.mjs의 decideTransition에 있다.
   pass(args) {
     const s = load();
     requirePhase(s, "verification");
     const check = args[0];
-    if (!CHECKS.includes(check))
-      fail(`사용법: pass <${CHECKS.join("|")}>`);
-
-    // TS 게이트: 다른 검증(cso·lint·review)은 사람/AI의 판단이라 플래그로만 기록하지만,
-    // 타입체크는 기계가 판정할 수 있다. 그러니 실제로 돌린다 — 안 돌리면 `pass ts`는
-    // "돌렸다고 말하는 것"에 지나지 않는다. ready-impl이 vitest로 RED를,
-    // start-verification이 GREEN을 확인하는 것과 같은 패턴이다.
-    if (check === "ts") {
-      const { status, scope } = runTypecheck();
-      if (status !== 0) {
-        // 실패는 이전 통과를 **능동적으로 회수**한다. 그냥 fail()만 하면 디스크의
-        // ts_check_clean=true가 남아, verification 중 코드를 고쳐 타입이 깨져도
-        // 나머지 pass만 채우면 user-verification·approve-pr까지 통과해 버린다
-        // (= 이 슬라이스가 죽이려던 바로 그 명예제도).
-        s.verification.ts_check_clean = false;
-        s.ts_check_scope = null;
-        save(s);
-        fail("타입체크 실패 — 에러를 고친 뒤 다시 실행하세요. (`pnpm typecheck`로 재현)");
-      }
-      s.ts_check_scope = scope;
+    // 타입·린트는 기계가 판정하므로 표시를 받지 않는다 — 통합 검사가 돌리고 결과를 기록한다.
+    if (check === "ts" || check === "lint") {
+      fail("타입·린트 결과는 통합 검사가 기록한다 — 따로 기록할 것이 없다. 결과만 다시 보려면 `pnpm wf verify`");
     }
+    if (!CHECKS.includes(check)) fail(`사용법: pass <${CHECKS.join("|")}>`);
 
-    s.verification[CHECK_FLAG[check]] = true;
-    const allClean = Object.values(s.verification).every(Boolean);
-    if (allClean) {
-      // QA 확정 게이트: user-verification 진입 전, QA 프리팹/에디터 섹션이 코드에 맞춰 확정됐는지
-      // (= 잠정 태그가 제거됐는지) 확인한다. 남아 있으면 전이를 막는다(pass 플래그는 보존 — 확정 후
-      // 같은 `pass`를 다시 실행하면 곧장 전이). stale 프리팹 레시피가 7단계 사용자 테스트로 새는 것을 막는다.
-      if (!qaDocClean(s)) {
-        save(s);
-        fail(
-          "QA 문서가 아직 확정되지 않았습니다 — 위 실패 메시지가 무엇을 고칠지 듭니다. " +
-            `고친 뒤 \`pnpm wf pass ${check}\`를 다시 실행하면 user-verification으로 전이됩니다.`
+    const { cs, gates } = changeContext();
+    s.verification = s.verification ?? {};
+    if (check === "cso") {
+      // cso_commit은 다음 `/cso --diff --base`의 기준이다. 커밋하지 않은 변경이 있어도 경고하지 않는다 —
+      // 절차상 거의 항상 있어서 경고가 매번 뜬다. 그때는 기준이 앞선 커밋이 되어 다음 점검이 더 넓게
+      // 볼 뿐이다.
+      const head = headCommit();
+      if (head) s.cso_commit = head;
+      if (gates.cso.applies) {
+        s.verification.cso_done = true;
+      } else {
+        // 해당 없을 때 통과 표시를 적어 두면, 나중에 /cso 대상 파일을 고쳐 해야 하는 상황으로 바뀌었는데
+        // invalidate를 잊었을 때 그 표시 때문에 판정이 그냥 통과한다. 그래서 기준 커밋만 적는다.
+        console.log(
+          "`/cso` 해당 없음(`CSO_PATHS`에 해당하는 변경 없음 — `pnpm wf status`로 확인) — 기준 커밋만 기록한다"
         );
       }
-      // 정본 게이트: 이번 슬라이스가 바꾼 명세가 정본에 실렸는지를 **선언하게** 한다.
-      // "정본을 고쳤는가"는 기계가 못 보지만 "판단했는가"는 볼 수 있다(skip-test와 같은 형태).
-      // 이 게이트가 없으면 새 규칙이 세션 문서와 ADR에만 쌓이고, 다음 사람이 시점 기록을
-      // 명세로 읽게 된다 — ADR 002·006·007이 그렇게 정본 자리에 섰다.
-      // 이 필드가 없던 시절의 상태 파일에서는 undefined다 — 없으면 "선언 안 함"으로 읽는다.
-      if ((s.canon_updated ?? []).length === 0 && !s.canon_skip_reason) {
-        save(s); // pass 플래그는 보존 — 선언 후 같은 pass를 다시 치면 곧장 전이한다
-        process.stderr.write(
-          "✗ 정본 갱신 여부가 선언되지 않았습니다 — 이번 슬라이스가 바꾼 명세는 정본에 실려야 합니다.\n" +
-            "    새로 만들기:  pnpm wf canon <분류>-<주제> \"<제목>\" \"<답하는 질문>\"\n" +
-            "    기존 것 고침: pnpm wf canon-done <경로...>\n" +
-            "    바꾼 명세 없음: pnpm wf canon-skip \"<사유>\"\n"
-        );
-        fail(`선언한 뒤 \`pnpm wf pass ${check}\`를 다시 실행하면 user-verification으로 전이됩니다.`);
-      }
-
-      s.phase = "user-verification";
-      save(s);
-      console.log(`✓ pass ${check} → 전체 통과 → phase=user-verification (편집 잠금)`);
     } else {
-      save(s);
-      console.log(`✓ pass ${check}`);
+      s.verification[CHECK_FLAG[check]] = true;
     }
+    save(s);
+    console.log(`✓ pass ${check} (HEAD ${headCommit({ short: true }) ?? "알 수 없음"})`);
+    tryTransition(s, cs, gates, check);
   },
 
   // 새 정본 문서를 규칙에 맞게 만들고 인덱스에 등재한다. 만든 것 자체가 정본 갱신이므로
@@ -780,7 +849,7 @@ const commands = {
     const s = recordCanon(...rels);
     // recordCanon은 상태 파일이 없으면 null이다(슬라이스 밖 사용). 그 경우 기록만 건너뛴다.
     console.log(
-      s ? `✓ canon-done: ${s.canon_updated.join(", ")}` : `✓ canon-done: ${rels.join(", ")} (상태 파일이 없어 기록은 생략)`
+      s ? `✓ canon-done: ${s.canon_updated.join(", ")} (HEAD ${headCommit({ short: true }) ?? "알 수 없음"})` : `✓ canon-done: ${rels.join(", ")} (상태 파일이 없어 기록은 생략)`
     );
   },
 
@@ -793,70 +862,68 @@ const commands = {
     s.canon_updated = [];
     s.canon_skip_reason = reason;
     save(s);
-    console.log(`✓ canon-skip: ${reason}`);
+    console.log(`✓ canon-skip: ${reason} (HEAD ${headCommit({ short: true }) ?? "알 수 없음"})`);
   },
 
-  // verification 중 코드 변경 → 모든 검증 무효화 (cso 포함, 비대칭 제거)
+  // verification 중 코드 변경 → 판단 검사 무효화 (cso 포함, 비대칭 제거). 다음 `/cso`는 cso_commit을
+  // 기준으로 쓸 수 있으면 바뀐 부분만 본다.
   invalidate() {
     const s = load();
     requirePhase(s, "verification");
     resetVerification(s);
     save(s);
-    console.log("✓ invalidate: 전체 검증 초기화 — cso부터 다시 실행하세요");
+    console.log("✓ invalidate: 판단 검사 결과(/cso·리뷰)와 정본 갱신 기록을 지웠다");
+    console.log(csoInfo(s, changeContext().gates).line);
   },
 
-  // 사용자 검증 중 버그 발견 → 구현으로 복귀 (편집 재허용)
+  // 사용자 검증 중 버그 발견 → 구현으로 복귀 (코드 편집 재허용)
   rework() {
     const s = load();
     requirePhase(s, "user-verification");
     s.phase = "implementation";
     resetVerification(s);
     save(s);
-    console.log("✓ rework → phase=implementation (스크립트 편집 재허용)");
+    console.log("✓ rework → phase=implementation (코드 편집 재허용)");
   },
 
   // 사람의 PR 승인
   "approve-pr"() {
     const s = load();
     requirePhase(s, "user-verification");
+    // 무엇을 검사하고 무엇을 건너뛰는지를 결과보다 먼저 보인다. 판정은 lib/transition.mjs의
+    // approvePrDecision이 하고, 여기서는 머지 직전의 실측 두 가지(타입 검사 · .meta)만 한다.
+    const { cs, gates } = changeContext({ quiet: true });
+    printGateLines(s, cs, gates);
+
     // 타입 게이트(머지 직전 실측): 기록이 아니라 **지금 코드**를 검사한다.
     //
-    // `pass ts`의 통과 기록만 믿으면 구멍이 남는다 — phase="verification"에서는 스크립트 편집이
-    // 허용되므로 `pass ts` 뒤에 코드를 고치고 invalidate를 잊으면, 나머지 pass만 채워
-    // user-verification까지 올라온 뒤 깨진 타입이 그대로 머지된다. 타 장비에서 편집한 경우도
-    // 같은 구멍의 변형이다. 여기는 사람이 트리거하는 마지막 게이트라 tsc 1회 비용이 무의미하고,
-    // 편집·invalidate 순서와 무관하게 머지될 코드 그 자체를 본다. (F44)
+    // 통합 검사의 기록만 믿으면 구멍이 남는다 — phase="verification"에서는 스크립트 편집이 허용되므로,
+    // 통합 검사 뒤에 코드를 고치면 기록과 머지될 코드가 달라진다. 타 장비에서 편집한 경우도 같은 구멍의
+    // 변형이다. 여기는 사람이 트리거하는 마지막 게이트라 tsc 1회 비용이 무의미하고, 편집 순서와 무관하게
+    // 머지될 코드 그 자체를 본다. (F44)
     console.log("\n▶ 타입체크 (머지 직전 실측)");
     const { status, scope } = runTypecheck();
     // 실측 결과를 상태에 반영한다 — 안 그러면 상태 파일이 낡은 값을 계속 말한다.
     s.ts_check_scope = status === 0 ? scope : null;
     s.verification.ts_check_clean = status === 0;
     save(s);
-    if (status !== 0) {
-      // 복구 경로를 먼저 말한다 — 지금 phase는 user-verification이라 훅이 스크립트 편집을
-      // 막고 있다. "고친 뒤 다시 승인하세요"를 앞세우면 게임 코드 에러일 때 따라갈 수 없는
-      // 안내가 된다(아래 범위 게이트가 피하는 것과 같은 막다른 길).
-      fail(
-        "타입체크 실패 — 머지될 코드에 타입 에러가 있습니다.\n" +
-          "    `pnpm wf rework` → 구현으로 복귀해 고친 뒤 → `pnpm wf start-verification`으로 검증을 다시 돌리세요.\n" +
-          "    (에러 재현: `pnpm typecheck`)"
-      );
+
+    // 메타 게이트: 신규 자산의 .meta가 모두 커밋돼야 PR을 승인할 수 있다(누락 시 머지 후 모든 환경에서
+    // 참조가 깨진다). game/assets/** 변경이 없으면 건너뛴다 — 따로 치는 check-meta는 항상 검사한다.
+    let missingMeta = null;
+    if (gates.meta.applies) {
+      console.log("\n▶ 에셋 .meta 누락 검사");
+      missingMeta = listMissingAssetMeta();
+    } else {
+      console.log("\n▶ 에셋 .meta 누락 검사 — 해당 없음 (game/assets/** 변경 없음)");
     }
-    // 범위 게이트: 게임 코드까지 봤어야 한다. Cocos를 한 번도 안 연 머신에는 game/temp/가 없어
-    // 게임 프로젝트를 검사할 수 없고, 그 상태를 통과시키면 "Cocos 안 깐 머신 = 타입 게이트 프리패스"가 된다.
-    if (scope !== "full") {
-      // 복구 경로는 rework다 — invalidate는 phase="verification"에서만 되는데
-      // approve-pr은 user-verification에서 돌므로 여기서 invalidate를 안내하면 막다른 길이다.
-      fail(
-        `타입체크 범위가 "${scope ?? "미검사"}"입니다 — 게임 코드가 검사되지 않았습니다.\n` +
-          "    Cocos Creator로 프로젝트를 한 번 열어 game/temp/를 생성한 뒤,\n" +
-          "    `pnpm wf rework` → 구현으로 복귀 → `pnpm wf start-verification` → 검증을 다시 돌리세요."
-      );
+
+    const decision = approvePrDecision({ gates, tsScope: scope, tsStatus: status, missingMeta });
+    if (!decision.ok) {
+      for (const r of decision.reasons) process.stderr.write(`✗ ${r}\n`);
+      failWithSteps("PR 승인을 막았다.", "user-verification");
     }
-    // 메타 게이트: 신규 자산의 .meta가 모두 커밋돼야 PR을 승인할 수 있다.
-    // (머지 직전 마지막 안전장치 — 누락 시 머지 후 모든 환경에서 참조가 깨진다.)
-    console.log("\n▶ 에셋 .meta 누락 검사");
-    requireAssetMeta();
+    if (missingMeta) console.log("✓ 에셋 .meta 누락 없음");
     s.phase = "pr-ready";
     save(s);
     console.log("✓ approve-pr → phase=pr-ready");
@@ -878,11 +945,11 @@ const commands = {
   //
   // 판정을 여기 베끼지 않고 vitest를 띄운다. 로직은 tests/helpers/LinkCheck.ts 한 벌뿐이고
   // tests/logic/DocLinks.test.ts가 그것을 부르므로, 이 커맨드는 그 테스트를 실행하기만 한다.
-  // check-docs·insertCanonRow처럼 CLI가 판정을 복사하면 한쪽만 고쳤을 때 나머지가 낡은 채로
-  // 초록불을 유지하는데(백로그 F78이 그 상태다), 새로 만드는 검사에까지 그 함정을 파지 않는다.
+  // CLI가 판정을 복사하면 한쪽만 고쳤을 때 나머지가 낡은 채로 초록불을 유지한다(F78이 있던 상태다.
+  // check-docs·canon의 판정은 lib/로 옮겨 닫았다). 새로 만드는 검사에까지 그 함정을 파지 않는다.
   //
-  // 회귀를 실제로 막는 것은 이 커맨드가 아니라 vitest 스위트다 — start-verification의 GREEN
-  // 게이트가 매 슬라이스 강제로 돌린다. 이 커맨드는 사람이 중간에 확인할 때 쓴다.
+  // 회귀를 실제로 막는 것은 이 커맨드가 아니라 vitest 스위트다 — start-verification과 pass의
+  // 통합 검사가 매 슬라이스 강제로 돌린다. 이 커맨드는 사람이 중간에 확인할 때 쓴다.
   "check-links"() {
     console.log("\n▶ 마크다운 링크·앵커 검사: vitest run tests/logic/DocLinks.test.ts");
     if (runVitest(["tests/logic/DocLinks.test.ts"]) !== 0) {
@@ -917,32 +984,43 @@ const commands = {
   },
 
   // 절차 문서 정합 검사 (단독 실행 — 언제든 확인용). 누락·잉여가 있으면 종료코드 1.
-  // 같은 판정이 tests/helpers/WorkflowSteps.ts에도 있다(그쪽이 fixture로 검증된다).
-  // CLI에서 그 모듈을 import할 수 없어 생긴 복사본이므로, 규칙을 바꾸면 두 곳을 함께 고친다.
+  // 판정은 lib/workflow-steps.mjs의 findStepDocIssues가 하고, ClaudeMdSplit.test.ts가 같은 함수를
+  // fixture로 검증한다.
   "check-docs"() {
     const files = stepDocDirFiles();
     if (files === null) fail(`절차 문서 디렉터리 없음: ${STEP_DOC_DIR.join("/")}/`);
-    const phaseDocs = PHASES.filter((p) => !DOC_EXEMPT_PHASES.has(p)).map((p) => `${p}.md`);
-    const expected = [STEP_DOC_INDEX, ...phaseDocs]; // 인덱스도 있어야 한다 — 통독 경로가 그것뿐이다
-    const markdown = files.filter((f) => f.endsWith(".md"));
-    const missing = expected.filter((n) => !markdown.includes(n));
-    const unexpected = markdown.filter((n) => !expected.includes(n));
-    if (missing.length > 0 || unexpected.length > 0) {
+    const issues = findStepDocIssues(PHASES, files);
+    if (issues.length > 0) {
       process.stderr.write("✗ 절차 문서 정합 실패:\n");
-      for (const n of missing) process.stderr.write(`    - 누락: ${n}\n`);
-      for (const n of unexpected) {
-        process.stderr.write(`    - 잉여: ${n} (배달되지 않는 문서 — 읽히지 않은 채 낡는다)\n`);
+      for (const { type, name } of issues) {
+        process.stderr.write(
+          type === "missing"
+            ? `    - 누락: ${name}\n`
+            : `    - 잉여: ${name} (배달되지 않는 문서 — 읽히지 않은 채 낡는다)\n`
+        );
       }
       process.exit(1);
     }
-    console.log(`✓ 절차 문서 정합 (phase ${phaseDocs.length}개 + ${STEP_DOC_INDEX})`);
+    const phaseDocs = PHASES.filter((p) => !DOC_EXEMPT_PHASES.has(p)).length;
+    console.log(`✓ 절차 문서 정합 (phase ${phaseDocs}개 + ${STEP_DOC_INDEX})`);
   },
 
   status() {
     const s = load();
-    const editable = EDITABLE_PHASES.has(s.phase);
+    // 훅(gate-scripts.mjs)이 막는 범위와 같은 말로 보여 준다. 테스트 코드만 한 phase 먼저 열린다.
+    const editable = EDITABLE_PHASES.has(s.phase)
+      ? "YES"
+      : TEST_EDITABLE_PHASES.has(s.phase)
+        ? "tests only"
+        : "no (locked)";
     console.log(JSON.stringify(s, null, 2));
-    console.log(`\nscripts editable: ${editable ? "YES" : "no (locked)"}`);
+    console.log(`\ncode editable: ${editable}`);
+    // 이번 변경 집합으로 계산한 적용 판정. 상태 파일은 고치지 않는다. git 저장소가 아니어도 멈추지 않고
+    // 원인을 첫 줄에 적는다.
+    console.log("");
+    const { cs, gates } = changeContext({ quiet: true });
+    printGateLines(s, cs, gates);
+    console.log(`\n명령: ${commandList()}`);
     // 경로 한 줄만 — 본문은 안 낸다. status는 "나 어디 있지"의 정본 커맨드라 일상적으로 돌아가고,
     // 그러면 절차 문서의 **존재**로 신호가 온다. 압축 이후 "절차를 모르면 문서를 읽어라"는 지시가
     // 안 듣는 이유가 여기에 있다 — 부재는 스스로를 알리지 않으므로 방아쇠가 될 수 없다.
@@ -950,10 +1028,18 @@ const commands = {
     // 진단 커맨드가 그럴듯한 가짜 경로를 말하지 않게 한다.
     if (PHASES.includes(s.phase) && !DOC_EXEMPT_PHASES.has(s.phase)) {
       console.log(`\n▶ ${s.phase} 절차: ${stepDocRel(s.phase)}`);
-      console.log("   (전문: `pnpm wf steps`)");
+      console.log(`절차: \`pnpm wf steps ${s.phase}\``);
     }
   },
 };
+
+// 명령 목록. phase를 바꾸지 않는 verify에는 그 사실을 붙인다 — 이름만 보면 다른 전이 명령과 구별되지
+// 않아서, 결과만 보려고 친 명령이 다음 단계로 넘길 것처럼 읽힌다.
+function commandList() {
+  return Object.keys(commands)
+    .map((k) => (k === "verify" ? "verify (phase가 바뀌지 않음)" : k))
+    .join(", ");
+}
 
 // 디스패치 직전의 phase. 전이가 실제로 일어났는지 판정하는 기준이라 커맨드 실행 전에 읽는다.
 // 상태 파일이 없을 수 있다(start 최초 실행).
@@ -1005,9 +1091,13 @@ function deliverAfterDispatch(cmd, args, phaseBefore) {
 }
 
 const [, , cmd, ...args] = process.argv;
-if (!cmd || !commands[cmd]) {
-  console.log(`commands: ${Object.keys(commands).join(", ")}`);
-  process.exit(cmd ? 1 : 0);
+if (!cmd) {
+  console.log(`commands: ${commandList()}`);
+  process.exit(0);
+}
+if (!commands[cmd]) {
+  process.stderr.write(`✗ 알 수 없는 명령: ${cmd}\ncommands: ${commandList()}\n`);
+  process.exit(1);
 }
 const phaseBefore = DELIVERING_COMMANDS.has(cmd) ? phaseBeforeDispatch() : null;
 commands[cmd](args);

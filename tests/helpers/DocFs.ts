@@ -35,6 +35,20 @@ export function findTrackedFiles(): Set<string> {
 }
 
 /**
+ * `git ls-files --eol`의 출력 줄 전체. 줄 끝 정책 검사가 인덱스의 줄 끝을 볼 때 쓴다.
+ *
+ * 여기 두는 이유는 테스트 파일에서 프로세스를 띄우지 않기로 했기 때문이다
+ * (`tests/workflow/helpers/WfSandbox.ts` 머리말).
+ * 줄을 해석하는 일은 부르는 쪽(`EolPolicy.test.ts`)이 한다 — 출력 칸이 공백을 품어서 해석 규칙이
+ * 그 검사의 설명과 함께 있어야 읽힌다.
+ */
+export function listIndexEolLines(): string[] {
+  const r = spawnSync('git', ['ls-files', '--eol'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) throw new Error(`git ls-files --eol 실패: ${r.stderr}`);
+  return r.stdout.split('\n').filter(Boolean);
+}
+
+/**
  * 추적되는 마크다운을 **전량** 읽는다. 범위를 좁히면 좁힌 만큼이 사각지대가 된다.
  *
  * @param tracked 이미 구한 추적 목록. 같은 테스트 안에서 여러 검사가 도는 동안 `git ls-files`를
