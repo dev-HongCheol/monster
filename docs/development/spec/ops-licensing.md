@@ -4,7 +4,7 @@
 
 - **최초 작성:** 2026-08-20
 - **상태:** CONFIRMED
-- **이력:** 2026-09-15 VRoid Studio 조건을 약관 · 가이드라인 원문으로 확정하고 생산 판의 VRM 메타 값을 정했다(§2 · §2.2). Blender와 지팡이 · 방패 3D 모델 행을 더했다 · 2026-09-19 VRoid Plus는 프리셋 조건과 무관(§2.2). ChatGPT 웹 조건과 「VRoid 프리셋 텍스처를 생성 입력으로 넣지 않는다」(§2.3). `tools/blender/` 파이썬에 GPL-3.0-or-later(§2) · 2026-09-28 지금 쓰는 도구만 든다 — fal.ai · SDXL + LoRA · rembg · Spine · Quaternius 행을 빼고 §4 · §5 · §7을 지금 기준으로 다시 썼다 · 2026-10-12 Gemini 행을 조사 전 상태로 더했다(§2)
+- **이력:** 2026-09-15 VRoid Studio 조건을 약관 · 가이드라인 원문으로 확정하고 생산 판의 VRM 메타 값을 정했다(§2 · §2.2). Blender와 지팡이 · 방패 3D 모델 행을 더했다 · 2026-09-19 VRoid Plus는 프리셋 조건과 무관(§2.2). ChatGPT 웹 조건과 「VRoid 프리셋 텍스처를 생성 입력으로 넣지 않는다」(§2.3). `tools/blender/` 파이썬에 GPL-3.0-or-later(§2) · 2026-09-28 지금 쓰는 도구만 든다 — fal.ai · SDXL + LoRA · rembg · Spine · Quaternius 행을 빼고 §4 · §5 · §7을 지금 기준으로 다시 썼다
 - **기각:** AI 3D 생성(Meshy · Tripo) · 커미션(2026-09-15)
 
 ---
@@ -36,7 +36,6 @@
 | **Blender** | `.vrm`을 층별 프레임으로 굽기, 지팡이 · 방패 모델링 — `tools/blender/` | 프로그램은 GPL이지만 Blender로 만든 결과물에는 GPL이 붙지 않는다. 라이선스 페이지가 「What you create with Blender is your sole property」라고 적고, 그 대상에 이미지 · 영상과 `.blend` 등 데이터 파일을 넣는다. GPL이 따라붙는 것은 Blender를 배포하거나 Blender 파이썬 API를 쓰는 스크립트를 공개할 때이고, 그런 스크립트는 GPL 호환 라이선스로 공유해야 한다. 공개 레포에 있는 `tools/blender/`의 파이썬 스크립트가 여기에 해당한다. 그래서 그 스크립트들에만 GPL-3.0-or-later를 붙였다. 범위는 루트 `LICENSE` §2가 들고, 같은 폴더의 TypeScript 실행기 · 사양 JSON · 구운 결과물은 거기 들지 않는다 | 2026-09-15 · [라이선스](https://www.blender.org/about/license/) |
 | **지팡이 · 방패 3D 모델** | 기본 무기 층의 원본 | Blender에서 직접 만든다. 외부 모델이나 생성 서비스를 거치지 않으므로 권리가 전부 이 프로젝트에 있고 따라붙는 약관이 없다. 외부 모델을 받게 되면 `.glb` · `.obj`로만 받고, 받기 전에 이 표에 행을 붙인다. `.blend`를 받지 않는 것은 파일에 든 파이썬이 열 때 자동 실행되는 공격 경로가 되기 때문이다 | 2026-09-15 |
 | **VRM Add-on for Blender** | `.vrm`을 Blender로 들여오기 — `tools/blender/` | MIT와 GPL-3.0 가운데 골라 쓰는 이중 라이선스다. Blender 안에서 도구로만 쓰고 게임에 싣지 않으므로 게임 쪽에 붙는 의무가 없다. 판을 고정하는 방법은 `tools/blender/README.md`가 든다 | 2026-09-11 · [확장 페이지](https://extensions.blender.org/add-ons/vrm/) |
-| **Gemini**(Google, Pro 구독) | 배경 · 음악 · 효과음 생성 후보 — 조사 전 | 아직 판정이 없다. 조사할 것: 셋을 각각 어느 모델 · 어느 화면에서 만드는지와 실험 제품 여부, Pro 구독 생성물의 상업 이용 조건, 생성물 신고 의무(Valve 원문을 같은 날 다시 본다, §6), 출력 형식 · 품질 한도, 생성 당시의 플랜 · 약관 버전, 해지 뒤 기존 생성물의 권리, 입력물의 학습 조건. 조사한 날에 이 행을 판정으로 바꾼다 | — (조사 전) |
 | 폰트 · 사운드 | 아직 없다 | `game/assets/` 아래에 폰트 파일도 오디오 파일도 0개다. 고르는 시점에 이 표에 행이 붙는다 | 2026-08-20 |
 
 ### 2.2 VRoid Studio로 만든 캐릭터에 붙는 조건

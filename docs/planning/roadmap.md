@@ -348,6 +348,7 @@ itch.io 출시 후 4주 데이터 수집:
 - `docs/development/backlog.md` · `backlog-implement.md` · `backlog-docs.md` — 슬라이스를 가로지르는 TODO의 정본. §13이 큰 걸음만 적는 대신 실제 목록은 여기 있다
 - `docs/design/spec/art-direction.md` — 아트 방향(무엇을 왜 그렇게 그리는가)의 정본
 - `docs/design/spec/art-asset-spec.md` — 제작 규격(몇 px·어떤 피벗·어떤 파일명)
+- `docs/planning/design-roadmap.md` — 남은 디자인 영역(UI · 이펙트 · 사운드 · 적 · 맵)의 결정 순서 · 게이트 · 진행 상태. 확인된 값은 아트 정본 둘로 올라간다
 - `docs/development/spec/ops-build.md` — 빌드 산출물과 itch.io 배포 경로의 정본. §7 「출시 준비」의 실행판
 - `docs/development/spec/game-combat.md` — 판정 형태와 스킨 독립성
 - `docs/development/spec/docs-glossary.md` — 게임 용어 사전
