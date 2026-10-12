@@ -4,7 +4,7 @@
 
 - **최초 작성:** 2026-05-23 (/office-hours, Builder 모드)
 - **상태:** DRAFT — 방향 전환(마법 · 적 동결, 완성도 우선)은 반영했으나 세부 시퀀싱은 후속 `/office-hours`에서 확정 대기. 다음 갱신 시점은 완성도 영역(맵 · 스토리 · 플로우 · UI) 슬라이스 분해 세션 후
-- **이력:** 2026-05-23 Builder 모드 · 한국형 Hell Maiden · 2단계 출시, 정통 덱 시스템 · v1 17.5주, Walking Skeleton 접근 · 시스템 분리 · 별도 씬 · 타이머 웨이브 · 2026-06-09 마법사 단일로 v1 플로우 완성 우선, 추가 직업과 캐릭터 선택은 post-MVP(§7 · §10) · 2026-07-02 마법 · 적 콘텐츠 동결, 개발 축을 완성도로(방향 전환 절) · 2026-08-20 생성 모델의 상업 이용 조건 확인, 상점 AI 고지 의무(§12) · 2026-09-27 플레이어 아트를 3D 마스터 층별 굽기로(Spine 스켈레탈 반전, §2 · §7)
+- **이력:** 2026-05-23 Builder 모드 · 한국형 Hell Maiden · 2단계 출시, 정통 덱 시스템 · v1 17.5주, Walking Skeleton 접근 · 시스템 분리 · 별도 씬 · 타이머 웨이브 · 2026-06-09 마법사 단일로 v1 플로우 완성 우선, 추가 직업과 캐릭터 선택은 post-MVP(§7 · §10) · 2026-07-02 마법 · 적 콘텐츠 동결, 개발 축을 완성도로(방향 전환 절) · 2026-08-20 생성 모델의 상업 이용 조건 확인, 상점 AI 고지 의무(§12) · 2026-09-27 플레이어 아트를 3D 마스터 층별 굽기로(Spine 스켈레탈 반전, §2 · §7) · 2026-10-12 모바일은 v1 비목표이되 이후 구현 고려(§2 · §7)
 - **기각:** 픽셀아트(2026-07-20) · 로컬 생성 스택 ComfyUI + 스타일 LoRA(2026-08-06) · fal.ai 경유 생성(2026-09-15) · Spine 스켈레탈 리깅(2026-09-27)
 
 ---
@@ -65,7 +65,7 @@
 **장르 클러스터:** Vampire Survivors / Brotato / Hell Maiden / Magic Survival
 **시점:** 탑다운 2D
 **그래픽:** 고해상도 스타일라이즈드 2D — 애니 셀 화풍으로, 적 · 이펙트 · 맵은 사용자가 **ChatGPT 웹**에서 뽑고, 플레이어와 해금 캐릭터는 **3D 마스터(VRoid)를 Blender에서 층별 프레임으로 구워** 움직인다. 화풍·해상도·파이프라인의 정본은 [`docs/design/spec/art-direction.md`](../design/spec/art-direction.md), 제작 규격은 [`docs/design/spec/art-asset-spec.md`](../design/spec/art-asset-spec.md)이다.
-**플랫폼:** v1 = itch.io 웹, v2 = Steam PC. 모바일 비목표.
+**플랫폼:** v1 = itch.io 웹, v2 = Steam PC. 모바일은 v1 비목표이되 이후 구현을 고려한다 — 지금 내리는 UI 결정(최소 클릭 크기 · 화면 비율 범위 · 포커스 이동)이 나중의 터치를 막지 않게 적는다(사양서 §10).
 
 ---
 
@@ -189,7 +189,7 @@
 - 4계절 12절기 콘텐츠
 - 시나리오 컷씬 (인트로 텍스트만)
 - 4개국어 i18n (한/영만)
-- 모바일 빌드
+- 모바일 빌드(이후 구현 고려 — 터치를 막지 않는 조건만 지금 건다)
 - 챕터 시스템
 - 추가 직업(성직자·드루이드) + 캐릭터 선택 화면 → 전체 플로우(마법사 단일) 완성 후 / post-MVP
 
@@ -348,6 +348,7 @@ itch.io 출시 후 4주 데이터 수집:
 - `docs/development/backlog.md` · `backlog-implement.md` · `backlog-docs.md` — 슬라이스를 가로지르는 TODO의 정본. §13이 큰 걸음만 적는 대신 실제 목록은 여기 있다
 - `docs/design/spec/art-direction.md` — 아트 방향(무엇을 왜 그렇게 그리는가)의 정본
 - `docs/design/spec/art-asset-spec.md` — 제작 규격(몇 px·어떤 피벗·어떤 파일명)
+- `docs/planning/design-roadmap.md` — 남은 디자인 영역(UI · 이펙트 · 사운드 · 적 · 맵)의 결정 순서 · 게이트 · 진행 상태. 확인된 값은 아트 정본 둘로 올라간다
 - `docs/development/spec/ops-build.md` — 빌드 산출물과 itch.io 배포 경로의 정본. §7 「출시 준비」의 실행판
 - `docs/development/spec/game-combat.md` — 판정 형태와 스킨 독립성
 - `docs/development/spec/docs-glossary.md` — 게임 용어 사전

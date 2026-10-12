@@ -24,6 +24,8 @@
 | [`art-asset-spec.md`](art-asset-spec.md) | 몇 px·어떤 피벗·어떤 파일명으로 만드나 |
 | [`art-direction.md`](art-direction.md) | 무엇을 왜 그렇게 그리나 |
 
+아트 · UI 작업의 순서 · 게이트 · 진행 상태와 아직 확인되지 않은 계획은 이 폴더가 아니라 [`../../planning/design-roadmap.md`](../../planning/design-roadmap.md)가 든다. 여기 두 정본에는 실측하거나 코드 · 씬에 넣어 확인된 것만 적고, 트랙이 게이트를 지나 확인한 값이 로드맵 §7 표를 따라 올라온다.
+
 ## 확정 목업
 
 `../mockups/`에 HTML 목업과 그 렌더 이미지가 있다. 결정 기록이 아니라 **지금도 쓰는 청사진**이라 — QA 문서 셋이 지금도 레이아웃 기준으로 인용한다 — `docs/decisions/`가 아니라 여기 둔다. 규격 쪽에서 부르는 자리는 [`art-asset-spec.md`](art-asset-spec.md) §10이다.
