@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>배경 띠 실측</title>
+<style>
+  /* UI 줄기 1층 L1-3 — 배경 그림이 띠(휘도 · 채도 범위) 안에 드는지 잰다. 브라우저에서 바로 열면 되고 설치가 없다. */
+  :root { --bg: #111214; --fg: #d6d6da; --muted: #8e8e96; --line: #2a2b30; --accent: #e9ad4f; --over: rgba(255, 70, 70, .75); --under: rgba(70, 140, 255, .75); }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding-block: 20px 48px; padding-inline: 20px; background: var(--bg); color: var(--fg); font: 14px/1.6 "Noto Sans KR", "Malgun Gothic", sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 14px; max-width: 80ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 12px; }
+  label { color: var(--muted); }
+  input[type=number] { width: 80px; background: #1b1c20; color: var(--fg); border: 1px solid var(--line); padding: 4px 6px; font: inherit; }
+  button { background: #23242a; color: var(--fg); border: 1px solid var(--line); padding: 6px 12px; font: inherit; cursor: pointer; }
+  button.on { background: #3a3b44; }
+  .drop { border: 1px dashed var(--line); padding: 10px 14px; color: var(--muted); }
+  .stage { position: relative; display: inline-block; max-width: 100%; border: 1px solid var(--line); }
+  canvas { display: block; max-width: 100%; height: auto; }
+  #overlay, #sel { position: absolute; left: 0; top: 0; pointer-events: none; }
+  #sel { pointer-events: auto; cursor: crosshair; }
+  table { border-collapse: collapse; margin: 14px 0; }
+  td, th { border-bottom: 1px solid var(--line); padding: 6px 12px; text-align: left; font-variant-numeric: tabular-nums; }
+  th { color: var(--muted); font-weight: 500; }
+  .bad { color: #ff8a8a; } .ok { color: #9ad48a; }
+  .hist { display: flex; align-items: flex-end; gap: 1px; height: 80px; width: 480px; border-bottom: 1px solid var(--line); margin: 6px 0 14px; }
+  .hist i { flex: 1; background: #5b6b8a; display: block; }
+  .hist i.band { background: var(--accent); }
+  pre { background: #1b1c20; padding: 10px 12px; border: 1px solid var(--line); overflow-x: auto; }
+</style>
+</head>
+<body>
+  <h1>배경 띠 실측</h1>
+  <p class="lead">배경 그림(PNG · JPG)을 넣으면 화소마다 상대 휘도(WCAG 정의)와 OKLCH 채도를 재서, 띠 안에 드는 면적과 분포를 보여 준다. 그림 위를 끌어 네모를 그리면 그 영역만 잰다. 빨강 덧칠은 휘도 상한을 넘는 화소(액센트 자리), 파랑 덧칠은 하한 아래 화소다.</p>
+  <div class="row">
+    <input type="file" id="file" accept="image/*">
+    <span class="drop" id="drop">여기에 그림을 끌어다 놓아도 된다</span>
+  </div>
+  <div class="row">
+    <label>휘도 하한 <input type="number" id="lo" value="0.004" step="0.001" min="0" max="1"></label>
+    <label>휘도 상한 <input type="number" id="hi" value="0.08" step="0.01" min="0" max="1"></label>
+    <label>채도 상한(OKLCH C) <input type="number" id="chi" value="0.06" step="0.01" min="0" max="0.4"></label>
+    <label>샘플 간격(px) <input type="number" id="step" value="2" step="1" min="1" max="8"></label>
+    <button id="toggleOverlay" class="on" type="button">덧칠 보기</button>
+    <button id="clearSel" type="button">전체 영역</button>
+    <button id="copy" type="button">결과 복사</button>
+  </div>
+  <div class="stage" id="stage">
+    <canvas id="cv" width="16" height="9"></canvas>
+    <canvas id="overlay" width="16" height="9"></canvas>
+    <canvas id="sel" width="16" height="9"></canvas>
+  </div>
+  <div id="out"></div>
+
+<script>
+  const lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const luma = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  function oklch(r, g, b) {
+    const R = lin(r), G = lin(g), B = lin(b);
+    const l = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B);
+    const m = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B);
+    const s = Math.cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B);
+    const a = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+    const bb = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+    return { C: Math.hypot(a, bb), h: (Math.atan2(bb, a) * 180 / Math.PI + 360) % 360 };
+  }
+  const pct = (arr, p) => { if (!arr.length) return 0; const k = Math.round((arr.length - 1) * p); return arr[k]; };
+
+  const cv = document.getElementById('cv'), ov = document.getElementById('overlay'), sl = document.getElementById('sel');
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  const out = document.getElementById('out');
+  let img = null, region = null, fileName = '', lastText = '';
+
+  function load(file) {
+    fileName = file.name;
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => { img = im; [cv, ov, sl].forEach(c => { c.width = im.naturalWidth; c.height = im.naturalHeight; }); ctx.drawImage(im, 0, 0); region = null; measure(); URL.revokeObjectURL(url); };
+    im.src = url;
+  }
+  document.getElementById('file').addEventListener('change', e => e.target.files[0] && load(e.target.files[0]));
+  const drop = document.getElementById('drop');
+  for (const ev of ['dragenter', 'dragover']) document.body.addEventListener(ev, e => e.preventDefault());
+  document.body.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) load(f); });
+  for (const id of ['lo', 'hi', 'chi', 'step']) document.getElementById(id).addEventListener('change', measure);
+  document.getElementById('toggleOverlay').addEventListener('click', e => { e.target.classList.toggle('on'); ov.style.display = e.target.classList.contains('on') ? '' : 'none'; });
+  document.getElementById('clearSel').addEventListener('click', () => { region = null; sl.getContext('2d').clearRect(0, 0, sl.width, sl.height); measure(); });
+  document.getElementById('copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(lastText); } catch { window.getSelection().selectAllChildren(document.getElementById('plain')); }
+  });
+
+  // 영역 끌기 — 캔버스 좌표로 환산한다(표시 크기와 실제 크기가 다를 수 있다)
+  let drag = null;
+  const toCanvas = e => { const r = sl.getBoundingClientRect(); return { x: Math.round((e.clientX - r.left) * sl.width / r.width), y: Math.round((e.clientY - r.top) * sl.height / r.height) }; };
+  sl.addEventListener('pointerdown', e => { drag = toCanvas(e); sl.setPointerCapture(e.pointerId); });
+  sl.addEventListener('pointermove', e => { if (!drag) return; const p = toCanvas(e); drawSel(drag, p); });
+  sl.addEventListener('pointerup', e => { if (!drag) return; const p = toCanvas(e); const x0 = Math.min(drag.x, p.x), y0 = Math.min(drag.y, p.y), x1 = Math.max(drag.x, p.x), y1 = Math.max(drag.y, p.y); drag = null; if (x1 - x0 > 4 && y1 - y0 > 4) { region = { x0, y0, x1, y1 }; drawSel({ x: x0, y: y0 }, { x: x1, y: y1 }); measure(); } });
+  function drawSel(a, b) { const c = sl.getContext('2d'); c.clearRect(0, 0, sl.width, sl.height); c.strokeStyle = '#e9ad4f'; c.lineWidth = Math.max(2, sl.width / 400); c.setLineDash([8, 6]); c.strokeRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y)); }
+
+  function measure() {
+    if (!img) return;
+    const lo = +document.getElementById('lo').value, hi = +document.getElementById('hi').value, chi = +document.getElementById('chi').value, step = Math.max(1, +document.getElementById('step').value | 0);
+    const x0 = region ? region.x0 : 0, y0 = region ? region.y0 : 0, x1 = region ? region.x1 : cv.width, y1 = region ? region.y1 : cv.height;
+    const data = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    const octx = ov.getContext('2d'); octx.clearRect(0, 0, ov.width, ov.height);
+    const ys = [], cs = [], hs = []; let over = 0, under = 0, chroma = 0, n = 0;
+    const bins = new Array(40).fill(0);
+    octx.fillStyle = 'rgba(255,70,70,.75)';
+    const overPts = [], underPts = [];
+    for (let y = y0; y < y1; y += step) for (let x = x0; x < x1; x += step) {
+      const i = (y * cv.width + x) * 4; const r = data[i], g = data[i + 1], b = data[i + 2];
+      const Y = luma(r, g, b); const { C, h } = oklch(r, g, b);
+      ys.push(Y); cs.push(C); if (C > 0.02) hs.push(h); n++;
+      if (Y > hi) { over++; overPts.push(x, y); } else if (Y < lo) { under++; underPts.push(x, y); }
+      if (C > chi) chroma++;
+      bins[Math.min(39, Math.floor(Math.sqrt(Y) * 40))]++;   // 제곱근 눈금 — 어두운 쪽을 넓게 본다
+    }
+    ys.sort((a, b) => a - b); cs.sort((a, b) => a - b); hs.sort((a, b) => a - b);
+    octx.fillStyle = 'rgba(255,70,70,.75)'; for (let i = 0; i < overPts.length; i += 2) octx.fillRect(overPts[i], overPts[i + 1], step, step);
+    octx.fillStyle = 'rgba(70,140,255,.75)'; for (let i = 0; i < underPts.length; i += 2) octx.fillRect(underPts[i], underPts[i + 1], step, step);
+    const p = (v, d = 3) => v.toFixed(d);
+    const overPct = over / n * 100, underPct = under / n * 100, chromaPct = chroma / n * 100;
+    const hueMed = hs.length ? pct(hs, .5) : NaN;
+    const rows = [
+      ['휘도 5 · 50 · 95 백분위', `${p(pct(ys, .05))} · ${p(pct(ys, .5))} · ${p(pct(ys, .95))}`],
+      ['채도 C 50 · 95 백분위', `${p(pct(cs, .5))} · ${p(pct(cs, .95))}`],
+      ['바탕 색상각(채도 0.02 넘는 화소의 중앙값)', isNaN(hueMed) ? '회색(색상 없음)' : `${hueMed.toFixed(0)}°`],
+      ['휘도 상한을 넘는 면적(액센트)', `${overPct.toFixed(1)}%`, overPct <= 10 ? 'ok' : 'bad'],
+      ['바닥 중앙값이 하한 위인가(하한은 화소마다가 아니라 바닥 전체가 순검정이 아닌지를 본다)', pct(ys, .5) >= lo ? `예 (${p(pct(ys, .5))} ≥ ${lo})` : `아니오 (${p(pct(ys, .5))} < ${lo})`, pct(ys, .5) >= lo ? 'ok' : 'bad'],
+      ['휘도 하한 아래 면적(참고 — 그림자 · 실루엣이 여기 든다)', `${underPct.toFixed(1)}%`],
+      ['채도 상한을 넘는 면적', `${chromaPct.toFixed(1)}%`, chromaPct <= 10 ? 'ok' : 'bad'],
+    ];
+    const area = region ? `영역 (${x0},${y0})–(${x1},${y1})` : '전체';
+    let html = `<table><tr><th>${fileName} — ${area}, ${n.toLocaleString()} 화소 표본</th><th>값</th></tr>`;
+    for (const [k, v, cls] of rows) html += `<tr><td>${k}</td><td class="${cls || ''}">${v}</td></tr>`;
+    html += '</table><div class="hist">' + bins.map((c, i) => { const h = Math.round(c / Math.max(...bins) * 80); const Yb = (i / 40) ** 2; return `<i class="${Yb >= lo && Yb <= hi ? 'band' : ''}" style="height:${h}px" title="휘도 ${Yb.toFixed(3)}"></i>`; }).join('') + '</div><div style="color:var(--muted)">휘도 분포(제곱근 눈금). 금색 막대가 띠 안이다.</div>';
+    lastText = `| ${fileName} ${area} | ${p(pct(ys, .5))} | ${p(pct(ys, .95))} | ${p(pct(cs, .5))} | ${isNaN(hueMed) ? '회색' : hueMed.toFixed(0) + '°'} | 상한 초과 ${overPct.toFixed(1)}% · 하한 미달 ${underPct.toFixed(1)}% · 채도 초과 ${chromaPct.toFixed(1)}% |`;
+    html += `<pre id="plain">${lastText}</pre><div style="color:var(--muted)">「결과 복사」는 위 한 줄(열: 대상 | 휘도 중앙값 | 휘도 95% | 채도 중앙값 | 바탕 색상각 | 면적)을 복사한다. 기준: 띠 하한 ${lo} · 상한 ${hi} · 채도 상한 ${chi}.</div>`;
+    out.innerHTML = html;
+  }
+</script>
+</body>
+</html>
