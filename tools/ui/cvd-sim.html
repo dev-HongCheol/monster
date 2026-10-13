@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>색각 시뮬레이션</title>
+<style>
+  /* UI 줄기 1층 L1-8 — 분류색 · 의미색이 1형(적색약) · 2형(녹색약) · 3형(청색약) 색각에서 서로 갈리는지 본다. Machado 2009 행렬(중증도 1.0)을 선형 RGB에 곱한다. */
+  :root { --bg: #111214; --fg: #d6d6da; --muted: #8e8e96; --line: #2a2b30; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding-block: 20px 48px; padding-inline: 20px; background: var(--bg); color: var(--fg); font: 14px/1.6 "Noto Sans KR", "Malgun Gothic", sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 14px; max-width: 80ch; }
+  textarea { width: 420px; height: 150px; background: #1b1c20; color: var(--fg); border: 1px solid var(--line); padding: 8px; font: 13px/1.5 Consolas, monospace; }
+  button { background: #23242a; color: var(--fg); border: 1px solid var(--line); padding: 6px 12px; font: inherit; cursor: pointer; margin-left: 10px; vertical-align: top; }
+  .sims { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; }
+  .sim { border: 1px solid var(--line); padding: 12px 14px; }
+  .sim h2 { font-size: 14px; margin: 0 0 8px; font-weight: 500; }
+  .strip { display: flex; flex-wrap: wrap; gap: 8px 6px; padding: 10px; margin-bottom: 6px; align-items: flex-start; }
+  .sw { width: 58px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .sw i { width: 40px; height: 40px; border-radius: 4px; display: block; }
+  .sw small { font-size: 10px; line-height: 1.15; color: #c9c9d0; text-align: center; white-space: normal; word-break: break-all; }
+  .slots { display: flex; gap: 8px; padding: 8px; margin-top: 18px; }
+  .slot { width: 48px; height: 48px; background: #151210; box-shadow: inset 0 0 0 1px rgba(239,230,210,.4); position: relative; }
+  .slot i { position: absolute; left: 13px; top: 13px; width: 22px; height: 22px; border-radius: 50%; }
+  table { border-collapse: collapse; margin-top: 16px; font-variant-numeric: tabular-nums; }
+  td, th { border-bottom: 1px solid var(--line); padding: 5px 10px; text-align: left; }
+  th { color: var(--muted); font-weight: 500; }
+  .bad { color: #ff8a8a; } .warn { color: #e9ad4f; } .ok { color: #9ad48a; }
+</style>
+</head>
+<body>
+  <h1>색각 시뮬레이션</h1>
+  <p class="lead">한 줄에 「이름 #hex」로 색을 적는다. 각 시뮬레이션은 색을 네이비 패널과 띠 상한 회색 위에 늘어놓고, 마법 슬롯 모양으로도 보여 준다. 아래 표는 OKLab 거리다 — 두 색이 색각 이상에서 얼마나 떨어져 보이는가. 0.10 아래면 색만으로는 갈리지 않는다고 보고 4층 아이콘이 형태로 갈라 준다.</p>
+  <textarea id="colors">화염 #ff5a32
+얼음 #5abeff
+번개 #ffe63c
+HP #d64541
+XP #ffeb3b
+골드(참고) #d7a76d
+아이보리(참고) #f5dda6
+support(미정) #ffffff</textarea>
+  <button id="run" type="button">다시 그리기</button>
+  <div class="sims" id="sims"></div>
+  <div id="table"></div>
+
+<script>
+  const lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const enc = v => { v = Math.max(0, Math.min(1, v)); return Math.round((v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055) * 255); };
+  const M = {
+    '정상': null,
+    '1형 적색약(protan)': [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+    '2형 녹색약(deutan)': [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]],
+    '3형 청색약(tritan)': [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.303900]],
+  };
+  function sim(hex, m) {
+    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+    if (!m) return [r, g, b];
+    const R = lin(r), G = lin(g), B = lin(b);
+    return [enc(m[0][0] * R + m[0][1] * G + m[0][2] * B), enc(m[1][0] * R + m[1][1] * G + m[1][2] * B), enc(m[2][0] * R + m[2][1] * G + m[2][2] * B)];
+  }
+  function oklab(r, g, b) {
+    const R = lin(r), G = lin(g), B = lin(b);
+    const l = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B);
+    const m = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B);
+    const s = Math.cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B);
+    return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s, 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s];
+  }
+  const dE = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const css = ([r, g, b]) => `rgb(${r},${g},${b})`;
+  const bgs = [['#242b3c', '네이비 패널'], ['#505050', '띠 상한 회색']];
+
+  function run() {
+    const list = document.getElementById('colors').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const m = l.match(/^(.*?)\s*(#[0-9a-fA-F]{6})$/); return m ? [m[1], m[2].toLowerCase()] : null; }).filter(Boolean);
+    const sims = document.getElementById('sims'); sims.innerHTML = '';
+    for (const [name, m] of Object.entries(M)) {
+      const d = document.createElement('div'); d.className = 'sim';
+      let h = `<h2>${name}</h2>`;
+      for (const [bg, bgn] of bgs) h += `<div class="strip" style="background:${css(sim(bg, m))}" title="${bgn}">` + list.map(([n, hex]) => `<div class="sw"><i style="background:${css(sim(hex, m))}"></i><small>${n}</small></div>`).join('') + '</div>';
+      const cat = list.slice(0, 3);
+      h += '<div class="slots">' + cat.map(([n, hex]) => `<div class="slot" title="${n}"><i style="background:${css(sim(hex, m))}"></i></div>`).join('') + '</div>';
+      d.innerHTML = h; sims.appendChild(d);
+    }
+    // 쌍마다 OKLab 거리 — 분류색끼리, 골드 ↔ 번개 · XP, HP ↔ 화염
+    const pairs = [];
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) pairs.push([list[i], list[j]]);
+    let t = '<table><tr><th>쌍</th>' + Object.keys(M).map(k => `<th>${k}</th>`).join('') + '</tr>';
+    for (const [[na, ha], [nb, hb]] of pairs) {
+      t += `<tr><td>${na} ↔ ${nb}</td>` + Object.values(M).map(m => { const v = dE(oklab(...sim(ha, m)), oklab(...sim(hb, m))); return `<td class="${v < 0.1 ? 'bad' : v < 0.2 ? 'warn' : 'ok'}">${v.toFixed(2)}</td>`; }).join('') + '</tr>';
+    }
+    document.getElementById('table').innerHTML = t + '</table><div style="color:var(--muted)">빨강 0.10 미만 — 색만으로는 못 가른다. 주황 0.10~0.20 — 밝기 차이가 도와야 한다. 초록 0.20 이상 — 갈린다.</div>';
+  }
+  document.getElementById('run').addEventListener('click', run);
+  run();
+</script>
+</body>
+</html>
