@@ -8,6 +8,8 @@ import type {
   ISpellData,
   IXPData,
 } from '../data/GameTypes';
+import { hasLabParam, type IVfxRecipe, parseLabUrl, textHash } from '../logic/VfxRecipeLogic';
+import { LabRuntime } from './LabRuntime';
 
 const { ccclass } = _decorator;
 
@@ -110,6 +112,8 @@ export class DataManager extends Component {
       this._cards = cards;
       this._xpData = xpData;
       this._mapData = mapData;
+      // 실험실 상태는 onReady 콜백보다 먼저 정한다 — 스포너 · 마법이 첫 프레임부터 같은 값을 읽게
+      await this._resolveLab();
       this._isReady = true;
       for (const cb of this._onReadyCallbacks) cb();
       this._onReadyCallbacks = [];
@@ -125,6 +129,27 @@ export class DataManager extends Component {
         err,
       );
     }
+  }
+
+  /**
+   * URL에 `lab`이 있을 때만 레시피 파일을 읽어 실험실 상태를 정한다. 파일이 없으면(공개 빌드는
+   * 이 파일을 뺀다) 실험실은 꺼진 채로 남고 게임은 보통대로 돈다 — 그래서 읽기 실패는 게임 데이터
+   * 실패와 달리 삼킨다. `lab`이 없으면 파일을 건드리지도 않아 보통 게임의 로딩 경로가 그대로다.
+   */
+  private async _resolveLab(): Promise<void> {
+    const search = typeof location === 'undefined' ? '' : location.search;
+    if (!hasLabParam(search)) return;
+    let recipes: IVfxRecipe[] | null = null;
+    try {
+      recipes = await this._load<IVfxRecipe[]>('data/vfx-lab');
+    } catch {
+      console.warn('[DataManager] data/vfx-lab 없음 — 이펙트 실험실을 켜지 않습니다.');
+    }
+    const { mode, errors } = parseLabUrl(search, recipes);
+    LabRuntime.mode = mode;
+    LabRuntime.errors = errors;
+    LabRuntime.recipes = recipes;
+    LabRuntime.recipeHash = recipes ? textHash(JSON.stringify(recipes)) : '';
   }
 
   /**

@@ -15,12 +15,21 @@ import {
   type SpawnField,
   spawnPerimeterLength,
 } from '../logic/SpawnGeometry';
+import { COMPARE_LIVE_HALF, measureSpawnPoint } from '../logic/VfxRecipeLogic';
 import { DataManager } from './DataManager';
 import { GameManager } from './GameManager';
+import { isCompareMode, isLabStage, LabRuntime } from './LabRuntime';
 import { MapManager } from './MapManager';
 import { WaveManager } from './WaveManager';
 
 const { ccclass, property } = _decorator;
+
+/**
+ * 이펙트 측정 모드에서 한 프레임에 채우는 적 수. 채우는 동안은 재지 않으므로 빠를수록 좋지만,
+ * 새 적은 풀에서 처음 만들어질 때 프리팹을 복제하므로 한 프레임에 수백 마리를 만들면 그 프레임이
+ * 수 초씩 멈춰 측정 화면이 얼어 보인다. 10이면 400마리를 약 40프레임에 채운다.
+ */
+const MEASURE_FILL_PER_FRAME = 10;
 
 /** 아레나 데이터가 없을 때 쓰는 빈 아레나 — 이때 스폰은 뷰 사각 둘레에서만 뽑는다. */
 const NO_ARENA: Arena = { width: 0, height: 0 };
@@ -146,6 +155,12 @@ export class EnemySpawner extends Component {
 
     this._sweepEnemies(gm, viewHalfW, viewHalfH);
 
+    // 실험 판은 스폰 간격 없이 목표 수까지 채운다(비교판은 가운데 더미 적, 측정은 적 수 스윕)
+    if (isLabStage()) {
+      this._fillToTarget(gm, wm.waveNumber, viewHalfW, viewHalfH);
+      return;
+    }
+
     this._spawnTimer -= dt;
     if (this._spawnTimer > 0) return;
 
@@ -161,6 +176,21 @@ export class EnemySpawner extends Component {
     );
     this._spawnTimer = interval;
     this._spawnEnemy(wave, viewHalfW, viewHalfH);
+  }
+
+  /**
+   * 실험 판(측정 · 비교판): 스폰 간격 · 두 상한을 무시하고 살아 있는 적 수를 목표(`LabRuntime.targetAlive`)
+   * 까지 채운다. 목표가 줄어도 남은 적은 지우지 않는다 — 측정은 적 수를 늘리는 쪽으로만 스윕한다.
+   * 자리는 화면 안이다(`measureSpawnPoint`) — 적이 제자리에 서므로 화면 밖에 내면 보이지 않는다.
+   * @param gm 활성 적 목록 소유자
+   * @param wave 지금 웨이브(실험 판은 웨이브를 올리지 않아 늘 같다)
+   * @param viewHalfW 카메라 뷰 가로 절반(px)
+   * @param viewHalfH 카메라 뷰 세로 절반(px)
+   */
+  private _fillToTarget(gm: GameManager, wave: number, viewHalfW: number, viewHalfH: number): void {
+    const missing = LabRuntime.targetAlive - gm.enemies.length;
+    const n = Math.min(MEASURE_FILL_PER_FRAME, missing);
+    for (let i = 0; i < n; i++) this._spawnEnemy(wave, viewHalfW, viewHalfH);
   }
 
   /** 디렉터를 보장한다. 데이터 미로드면 false(스폰 보류). 최초 1회만 생성. */
@@ -251,7 +281,14 @@ export class EnemySpawner extends Component {
     };
     this._warnIfDegenerate(field);
 
-    const spawn = offViewSpawnPoint(field, Math.random());
+    // 실험 판의 적은 죽지 않고 제자리에 서므로 화면 밖이 아니라 화면 안에 흩어 놓는다. 비교판은
+    // 오른쪽 격자를 가리지 않게 캐릭터 둘레의 가운데 자리 안에만 놓는다
+    const live = isCompareMode()
+      ? { center: field.player, viewHalfW: COMPARE_LIVE_HALF, viewHalfH: COMPARE_LIVE_HALF }
+      : { center: field.player, viewHalfW, viewHalfH };
+    const spawn = isLabStage()
+      ? measureSpawnPoint(live, Math.random(), Math.random())
+      : offViewSpawnPoint(field, Math.random());
 
     // 풀에서 적을 꺼낸다(가용분 재사용 또는 신규 instantiate). acquire가 Canvas 부착·active=true까지
     // 보장하므로, 종류별 데이터·연출 상태는 acquire 직후 reset()이 매번 새로 적용한다(잔류 방지).

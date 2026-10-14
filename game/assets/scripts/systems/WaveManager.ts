@@ -1,6 +1,7 @@
 import { _decorator, Component } from 'cc';
 import { GameState } from '../data/GameTypes';
 import { GameManager } from './GameManager';
+import { isLabStage } from './LabRuntime';
 
 const { ccclass, property } = _decorator;
 
@@ -47,6 +48,9 @@ export class WaveManager extends Component {
     const gm = GameManager.instance;
     if (!gm) return;
     if (gm.state !== GameState.Playing) return;
+    // 실험 판은 웨이브를 올리지 않는다 — 웨이브가 오르면 스폰 표의 적 종류가 바뀌어 같은 회차
+    // 안에서도 적 비용이 달라지고, 비교판에는 웨이브 사건이 섞여 이펙트를 가린다
+    if (isLabStage()) return;
     this._waveTimer -= dt;
     if (this._waveTimer <= 0) {
       this._waveNumber++;
