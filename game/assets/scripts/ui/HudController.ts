@@ -12,7 +12,7 @@ import {
 } from 'cc';
 import { SpellCaster } from '../components/SpellCaster';
 import { GameState } from '../data/GameTypes';
-import { barRatio, formatNumber, formatTimer } from '../logic/HudFormatLogic';
+import { barFillStartX, barRatio, formatNumber, formatTimer } from '../logic/HudFormatLogic';
 import { MAX_SLOTS } from '../logic/LoadoutLogic';
 import { buildSpellIconRow, type SpellIconSlot } from '../logic/SpellIconRowLogic';
 import { DataManager } from '../systems/DataManager';
@@ -113,12 +113,24 @@ export class HudController extends Component {
       this.levelLabel.string = this._t('hud.level', { level: em.level });
     }
     // XP 바는 하단 풀폭이라 Widget으로 폭이 늘어난다. ProgressBar.totalLength는
-    // 고정 px 값이라 스트레치를 안 따라가므로, 매 프레임 실제 UITransform 폭으로
-    // 맞춘 뒤 진행도를 세팅한다. (requiredXp가 Infinity면 barRatio가 0을 반환해
-    // 바가 비워진다.)
+    // 고정 px 값이고 채움 노드의 시작 x도 엔진이 처음 한 번만 놓으므로, 둘 다
+    // 스트레치를 안 따라간다. 매 프레임 실제 UITransform 폭으로 길이와 시작 x를
+    // 맞춘 뒤 진행도를 세팅한다 — 시작 x를 안 맞추면 넓은 화면에서 채움이 바
+    // 안쪽에서 시작하고 다 차면 오른쪽 끝을 넘친다. (requiredXp가 Infinity면
+    // barRatio가 0을 반환해 바가 비워진다.)
     if (this.xpBar) {
-      const width = this.xpBar.node.getComponent(UITransform)?.contentSize.width;
-      if (width) this.xpBar.totalLength = width;
+      const trans = this.xpBar.node.getComponent(UITransform);
+      const width = trans?.contentSize.width;
+      if (trans && width) {
+        this.xpBar.totalLength = width;
+        const fill = this.xpBar.barSprite?.node;
+        // 엔진처럼 채움이 바의 직계 자식일 때만 놓고, 값이 같으면 다시 넣지 않는다.
+        if (fill && fill.parent === this.xpBar.node) {
+          const pos = fill.position;
+          const x = barFillStartX(width, trans.anchorX);
+          if (pos.x !== x) fill.setPosition(x, pos.y, pos.z);
+        }
+      }
       this.xpBar.progress = barRatio(em.currentXp, em.requiredXp);
     }
   }
