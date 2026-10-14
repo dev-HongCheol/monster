@@ -39,3 +39,19 @@ export function barRatio(cur: number, max: number): number {
   if (max <= 0) return 0;
   return Math.max(0, Math.min(1, cur / max));
 }
+
+/**
+ * 가로 ProgressBar의 채움 노드가 바 왼쪽 끝에서 시작하도록 놓일 x를 반환한다.
+ * 엔진(3.8.8 `ProgressBar._initBarSprite`)은 바 스프라이트를 연결할 때 한 번만 이 식으로
+ * 채움 노드의 x를 놓고, 매 프레임 갱신에서는 다시 계산하지 않는다. 그래서 Widget이 바를
+ * 늘리면 채움이 바 안쪽에서 시작하므로, 폭이 바뀔 때 이 값으로 다시 놓는다.
+ * 채움 노드가 바의 직계 자식이고 앵커 x가 0이며 reverse가 꺼진 바에만 맞다 — reverse를
+ * 켜면 엔진이 채움 앵커를 1로 바꿔 시작점이 오른쪽 끝이 된다.
+ * @param barWidth 바 노드의 실제 폭(UITransform.contentSize.width)
+ * @param barAnchorX 바 노드의 앵커 x(0~1)
+ * @returns 채움 노드의 로컬 x
+ */
+export function barFillStartX(barWidth: number, barAnchorX: number): number {
+  // -(w × 0)은 -0이 되므로 0에서 빼서 앵커 0일 때 +0을 낸다.
+  return 0 - barWidth * barAnchorX;
+}
