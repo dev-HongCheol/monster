@@ -124,9 +124,11 @@ export class HudController extends Component {
       if (trans && width) {
         this.xpBar.totalLength = width;
         const fill = this.xpBar.barSprite?.node;
-        if (fill) {
+        // 엔진처럼 채움이 바의 직계 자식일 때만 놓고, 값이 같으면 다시 넣지 않는다.
+        if (fill && fill.parent === this.xpBar.node) {
           const pos = fill.position;
-          fill.setPosition(barFillStartX(width, trans.anchorX), pos.y, pos.z);
+          const x = barFillStartX(width, trans.anchorX);
+          if (pos.x !== x) fill.setPosition(x, pos.y, pos.z);
         }
       }
       this.xpBar.progress = barRatio(em.currentXp, em.requiredXp);
