@@ -28,7 +28,7 @@ def main() -> None:
     root = sys.argv[1]
     port = int(sys.argv[2]) if len(sys.argv) > 2 else 8080
     handler = functools.partial(NoCacheHandler, directory=root)
-    print(f"http://localhost:{port}/ 에서 {root} 폴더를 연다")
+    print(f"http://127.0.0.1:{port}/ 에서 {root} 폴더를 연다")
     # 내 PC에서만 받는다. 빈 주소("")로 열면 같은 네트워크의 다른 기기도 폴더 목록과 파일을
     # 읽을 수 있어, 빌드 폴더 대신 레포를 잘못 넘기면 그대로 드러난다
     http.server.ThreadingHTTPServer(("127.0.0.1", port), handler).serve_forever()

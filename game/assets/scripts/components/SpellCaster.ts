@@ -226,8 +226,9 @@ export class SpellCaster extends Component {
   /**
    * 실험 판(측정 켬 블록 · 비교판 가운데)의 이펙트를 준비한다 — 그림 공장을 만들고, 폭발 · 노바 ·
    * 오브 · 발사체 자리를 `LabVfxSink`에, 적 상태 표시를 `StatusVfxOverlay`에 맡긴다. 오브는 풀 자리를
-   * 바꿔 끼워서 궤도 계산 · 반납 흐름은 지금 그대로 쓴다. `only`로 빠진 방식은 아무 그림도 띄우지
-   * 않는다. 비교판은 그 방식의 고른 후보 하나만 넣고, 고른 칸이 바뀌면 `VfxLab`이 갈아 끼운다.
+   * 바꿔 끼워서 궤도 계산 · 반납 흐름은 지금 그대로 쓴다(`_orbPool`). `only`로 빠진 방식은 아무 그림도
+   * 띄우지 않는다. 비교판은 그 방식의 고른 후보 하나만 넣고, 고른 칸이 바뀌면 `VfxLab`이 갈아 끼운다.
+   * 상태 표시는 후보가 없어도 붙여 둔다 — 비교판에서 「고름」이 없는 방식도 나중에 고른 칸을 받는다.
    */
   private _setupLabVfx(): void {
     if (!this.bulletParent) return;
@@ -241,10 +242,8 @@ export class SpellCaster extends Component {
     for (const nodes of this._orbNodes.values())
       for (const n of nodes) this._orbVfxPool?.release(n);
     this._orbNodes.clear();
-    this._orbVfxPool = sink.orbPool;
     const canvas = this.bulletParent.parent;
-    if (recipes.ba && canvas)
-      this.node.addComponent(StatusVfxOverlay).setup(factory, recipes.ba, canvas);
+    if (canvas) this.node.addComponent(StatusVfxOverlay).setup(factory, recipes.ba ?? null, canvas);
     LabRuntime.liveCounts = () => factory.liveCounts();
   }
 
@@ -489,7 +488,8 @@ export class SpellCaster extends Component {
    * @param orbSize 오브 크기 (스케일 기준)
    */
   private _reconcileOrbVfx(spellId: string, count: number, orbSize: number): void {
-    if (!this._orbVfxPool) return;
+    const pool = this._orbPool();
+    if (!pool) return;
     // 이펙트 측정의 끔 블록은 오브 그림을 띄우지 않는다(오브 타격은 그대로 돈다)
     if (LabRuntime.vfxOff) {
       this._releaseAllOrbVfx(spellId);
@@ -500,10 +500,10 @@ export class SpellCaster extends Component {
       nodes = [];
       this._orbNodes.set(spellId, nodes);
     }
-    while (nodes.length < count) nodes.push(this._orbVfxPool.acquire());
+    while (nodes.length < count) nodes.push(pool.acquire());
     while (nodes.length > count) {
       const extra = nodes.pop();
-      if (extra) this._orbVfxPool.release(extra);
+      if (extra) pool.release(extra);
     }
     const s = orbSize / ORB_VFX_BASE_RADIUS;
     for (const node of nodes) node.setScale(s, s, 1);
@@ -513,10 +513,19 @@ export class SpellCaster extends Component {
   private _releaseAllOrbVfx(spellId: string): void {
     const nodes = this._orbNodes.get(spellId);
     if (!nodes) return;
-    if (this._orbVfxPool) {
-      for (const node of nodes) this._orbVfxPool.release(node);
+    const pool = this._orbPool();
+    if (pool) {
+      for (const node of nodes) pool.release(node);
     }
     this._orbNodes.delete(spellId);
+  }
+
+  /**
+   * 오브 그림을 꺼낼 풀. 실험 판이면 `LabVfxSink`의 풀을 **매번** 읽는다 — 비교판에서 나 후보가 처음엔
+   * 없다가 나중에 골라지면 sink가 그때 풀을 만들므로, 시작할 때 한 번 복사해 두면 null에 묶인다.
+   */
+  private _orbPool(): { acquire(): Node; release(node: Node): void } | null {
+    return this._labSink ? this._labSink.orbPool : this._orbVfxPool;
   }
 
   /**

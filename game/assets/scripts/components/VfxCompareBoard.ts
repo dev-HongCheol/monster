@@ -27,7 +27,7 @@ import {
   ringPose,
   VFX_SHAPE_PX,
 } from '../logic/VfxRecipeLogic';
-import { setRingFrame } from './LabVfxSink';
+import { setRingFrame, setSpriteAlpha } from './LabVfxSink';
 import { GUIDE_RING_RATIO, type VfxFactory } from './VfxFactory';
 
 const { ccclass } = _decorator;
@@ -309,6 +309,8 @@ export class VfxCompareBoard extends Component {
 
   /** 공유 주기를 다시 잡고 재생 시계를 처음으로 돌린다 — 모든 칸이 같은 순간에 다시 터진다. */
   replay(): void {
+    // 후보도 「현재」 프리팹도 없는 방식이면 그릴 것이 없다 — 빈 배열의 Math.max가 주기를 음수로 만든다
+    if (this._rows.length === 0) return;
     const lives = this._rows.map((row) => (row.base ? this._effective(row).life : CURRENT_VFX_SEC));
     this._cycle = Math.max(...lives) + REPLAY_GAP;
     this._captureAt = Math.min(...lives) / 2;
@@ -586,7 +588,6 @@ function ringCopy(
   const d = factory.ringNodeSize(r, radius);
   sprite.node.getComponent(UITransform)?.setContentSize(d, d);
   sprite.node.setPosition(x, y, 0);
-  const base = sprite.color.clone();
   const show = (local: number) => {
     const visible = local < r.life;
     sprite.node.active = visible;
@@ -595,7 +596,7 @@ function ringCopy(
     sprite.node.setScale(p.scale, p.scale, 1);
     sprite.node.angle = p.angle;
     setRingFrame(factory, sprite, r, d * p.scale, local);
-    sprite.color = new Color(base.r, base.g, base.b, Math.round(255 * p.alpha));
+    setSpriteAlpha(sprite, p.alpha);
   };
   show(0);
   return {

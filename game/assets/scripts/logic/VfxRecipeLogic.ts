@@ -108,10 +108,6 @@ export interface ILabMode {
   sizeScale: Partial<Record<MethodKey, number>>;
   countScale: Partial<Record<MethodKey, number>>;
   blockSec: number;
-  /** 적 · 플레이어가 받는 피해의 배율. 측정 · 비교판은 0(적이 죽지 않고 제자리에 선다) */
-  damageScale: number;
-  /** 플레이어 자동 발사가 도나. 실험실 두 모드 모두 쏜다(비교판은 그 방식의 마법만) */
-  autoFire: boolean;
   /** 오류가 있어 실험실을 시작하지 않는다(오류 상자만 띄운다) */
   startBlocked: boolean;
 }
@@ -758,8 +754,11 @@ function parseKeyed(
   return out;
 }
 
-/** 실험실이 꺼진 상태 — 지금 게임 그대로. */
-function offMode(): ILabMode {
+/**
+ * 실험실이 꺼진 상태 — 지금 게임 그대로. URL을 해석하지 않고 만들므로 `LabRuntime`이 모듈을 불러올
+ * 때 초기값으로 쓴다(`URLSearchParams`가 없는 런타임에서도 게임이 import 단계에서 깨지지 않는다).
+ */
+export function labOffMode(): ILabMode {
   return {
     enabled: false,
     kind: null,
@@ -772,8 +771,6 @@ function offMode(): ILabMode {
     sizeScale: {},
     countScale: {},
     blockSec: DEFAULT_BLOCK_SEC,
-    damageScale: 1,
-    autoFire: true,
     startBlocked: false,
   };
 }
@@ -797,7 +794,7 @@ export function parseLabUrl(
   query: string,
   recipes: readonly IVfxRecipe[] | null,
 ): { mode: ILabMode; errors: ILabError[] } {
-  const mode = offMode();
+  const mode = labOffMode();
   const errors: ILabError[] = [];
   const params = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query);
   const lab = params.get('lab');
@@ -890,12 +887,16 @@ export function parseLabUrl(
   const counts = params.get('counts');
   if (counts !== null) {
     const list = counts.split(',').map(Number);
-    if (list.length > 0 && list.every((n) => Number.isInteger(n) && n > 0)) mode.counts = list;
+    // 스포너는 적을 지우지 않고 채우기만 해서, 줄어드는 단계는 앞 단계의 적 위에서 재면서도 결과
+    // 파일에는 목표 수로 적힌다 — 그래서 커지는 순서만 받는다
+    const ascending = list.every((n, i) => i === 0 || n > list[i - 1]);
+    if (list.length > 0 && list.every((n) => Number.isInteger(n) && n > 0) && ascending)
+      mode.counts = list;
     else
       errors.push(
         labError(
           `counts=${counts}를 읽을 수 없다`,
-          'counts는 양의 정수를 쉼표로 이은 것이다',
+          'counts는 양의 정수를 커지는 순서로 쉼표로 이은 것이다(측정 중 적을 지우지 않는다)',
           'counts=63,200,400처럼 고친다',
         ),
       );
@@ -943,9 +944,6 @@ export function parseLabUrl(
       );
   }
 
-  // 비교판도 가운데서 더미 적에게 실제로 쏘므로, 측정과 같이 피해를 0으로 둬 더미가 죽지 않게 한다
-  mode.damageScale = mode.kind === null ? 1 : 0;
-  mode.autoFire = true;
   mode.startBlocked = errors.length > 0;
   return { mode, errors };
 }

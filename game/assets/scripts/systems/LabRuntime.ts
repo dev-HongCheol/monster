@@ -1,4 +1,4 @@
-import { type ILabError, type IVfxRecipe, parseLabUrl } from '../logic/VfxRecipeLogic';
+import { type ILabError, type IVfxRecipe, labOffMode } from '../logic/VfxRecipeLogic';
 
 /**
  * 이펙트 실험실의 실행 중 상태 하나(계획 2026-10-12-magic-effect-gate-plan.md §4). cc를 import하지
@@ -14,7 +14,7 @@ import { type ILabError, type IVfxRecipe, parseLabUrl } from '../logic/VfxRecipe
  */
 export const LabRuntime = {
   /** 실험실 상태. 정해지기 전과 실험실이 꺼진 게임에서는 꺼진 기본값이다 */
-  mode: parseLabUrl('', null).mode,
+  mode: labOffMode(),
   /** URL · 레시피 오류. 하나라도 있으면 `mode.startBlocked` */
   errors: [] as ILabError[],
   /** 레시피 파일 내용. 실험실이 꺼져 있으면 null */

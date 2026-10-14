@@ -144,10 +144,6 @@ export class VfxFactory {
   }
 
   /**
-   * 가는 흰 고리 그림(비교판의 판정 원). 이펙트용 고리 그림(64px)을 판정 원 크기로 키우면 선이
-   * 10px 넘게 두꺼워져 이펙트 끝이 선 안쪽인지 바깥인지 가릴 수 없다.
-   */
-  /**
    * 고리 노드의 지름 — 선 가운데(서리 띠는 가장 밝은 마루)가 `radius`에 오는 크기. 그림마다 선이
    * 그림 가장자리보다 안쪽에 있는 비율이 달라서(이펙트 고리 · 두께 고정 고리 · 서리 띠) 레시피를 보고
    * 고른다.
@@ -176,6 +172,10 @@ export class VfxFactory {
     return this._fixedRings[pickFixedRingLine(FIXED_RING_LINE_UNITS / Math.max(1, displaySize))];
   }
 
+  /**
+   * 가는 흰 고리 그림(비교판의 판정 원). 이펙트용 고리 그림(64px)을 판정 원 크기로 키우면 선이
+   * 10px 넘게 두꺼워져 이펙트 끝이 선 안쪽인지 바깥인지 가릴 수 없다.
+   */
   guideRingFrame(): SpriteFrame {
     this._guideRing ??= canvasFrame(GUIDE_RING_PX, (ctx) => {
       const c = GUIDE_RING_PX / 2;
@@ -194,11 +194,17 @@ export class VfxFactory {
     const c = this._counts;
     c.emitters = 0;
     c.particles = 0;
+    // 지워진 방출기는 이 자리에서 목록에서 뺀다. 비교판은 키 하나마다 모든 칸을 새로 만들고 옛
+    // 방출기를 지우므로, 남겨 두면 다듬을수록 매 프레임 도는 목록이 끝없이 길어진다
+    let keep = 0;
     for (const ps of this._emitters) {
-      if (!ps.isValid || !ps.node.activeInHierarchy) continue;
+      if (!ps.isValid) continue;
+      this._emitters[keep++] = ps;
+      if (!ps.node.activeInHierarchy) continue;
       c.emitters++;
       c.particles += ps.particleCount;
     }
+    this._emitters.length = keep;
     return c;
   }
 

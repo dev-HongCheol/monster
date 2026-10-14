@@ -326,7 +326,10 @@ export class VfxLab extends Component {
     a.href = URL.createObjectURL(blob);
     a.download = this._resultName;
     a.click();
-    URL.revokeObjectURL(a.href);
+    // 다운로드가 시작되기 전에 주소를 거두면 Firefox · Safari는 받기를 취소한다 — 결과 파일은 다시
+    // 얻으려면 회차를 처음부터 돌려야 하므로 한 박자 늦게 거둔다
+    const href = a.href;
+    setTimeout(() => URL.revokeObjectURL(href), 1000);
   }
 
   /** 블록 기록을 적 수별 켬 · 끔 통계와 판정으로 묶는다. */

@@ -32,6 +32,7 @@ import {
   formatTune,
   hasLabParam,
   type IVfxRecipe,
+  labOffMode,
   MEASURE_SPAWN_CLEAR_RADIUS,
   maxLoadSeed,
   measureSpawnPoint,
@@ -444,9 +445,12 @@ describe('VfxRecipeLogic — parseLabUrl 안전 전제', () => {
   it('빈 쿼리면 실험실이 꺼져 있고 오류도 없다', () => {
     const { mode, errors } = parseLabUrl('', RECIPES);
     expect(mode.enabled).toBe(false);
-    expect(mode.damageScale).toBe(1);
-    expect(mode.autoFire).toBe(true);
     expect(errors).toEqual([]);
+  });
+
+  it('꺼진 실험실 상태(labOffMode)는 URL을 해석하지 않고 바로 만든다 — 빈 쿼리 해석 결과와 같다', () => {
+    expect(labOffMode()).toEqual(parseLabUrl('', null).mode);
+    expect(labOffMode().enabled).toBe(false);
   });
 
   it('lab 없이 다른 파라미터만 있으면 무시한다', () => {
@@ -463,7 +467,7 @@ describe('VfxRecipeLogic — parseLabUrl 안전 전제', () => {
 });
 
 describe('VfxRecipeLogic — parseLabUrl 값', () => {
-  it('측정 모드 기본값: load=max · counts=63,200,400 · block=10 · 피해 0 · 고름 후보', () => {
+  it('측정 모드 기본값: load=max · counts=63,200,400 · block=10 · 고름 후보', () => {
     const { mode, errors } = parseLabUrl('?lab=measure', RECIPES);
     expect(errors).toEqual([]);
     expect(mode.enabled).toBe(true);
@@ -471,17 +475,22 @@ describe('VfxRecipeLogic — parseLabUrl 값', () => {
     expect(mode.load).toBe('max');
     expect(mode.counts).toEqual([63, 200, 400]);
     expect(mode.blockSec).toBe(10);
-    expect(mode.damageScale).toBe(0);
     expect(mode.picks.ga).toBe('ga1');
     expect(mode.only).toBeNull();
   });
 
-  it('비교판은 method 하나를 보여 주고, 가운데서 마법을 실제로 쏘되 피해는 0이다(더미 적이 죽지 않게)', () => {
+  it('비교판은 method 하나를 보여 준다', () => {
     const { mode } = parseLabUrl('?lab=compare&method=da', RECIPES);
     expect(mode.kind).toBe('compare');
     expect(mode.method).toBe('da');
-    expect(mode.autoFire).toBe(true);
-    expect(mode.damageScale).toBe(0);
+  });
+
+  it('counts는 커지는 순서여야 한다 — 스포너는 적을 지우지 않아 줄어드는 단계는 앞 단계의 적 위에서 잰다', () => {
+    expect(parseLabUrl('?lab=measure&counts=63,200', RECIPES).errors).toEqual([]);
+    const { mode, errors } = parseLabUrl('?lab=measure&counts=400,200', RECIPES);
+    expect(errors).toHaveLength(1);
+    expect(mode.startBlocked).toBe(true);
+    expect(parseLabUrl('?lab=measure&counts=200,200', RECIPES).errors).toHaveLength(1);
   });
 
   it('비교판 가운데서 쏘는 마법은 그 방식을 쓰는 v1 대표 마법이다(마는 게임 코드가 없어 비어 있다)', () => {

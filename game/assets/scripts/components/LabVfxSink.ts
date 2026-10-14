@@ -103,8 +103,9 @@ export class LabVfxSink extends Component {
 
   /**
    * 한 방식의 후보를 바꾼다(비교판에서 `Tab` · 숫자 키로 고른 칸이 바뀔 때). 이미 풀에 있는 노드는
-   * 버리지 않고, 다음에 꺼낼 때 새 후보 모습으로 고친다 — `SpellCaster`가 오브 풀을 들고 있어서
-   * 풀을 새로 만들면 오브만 옛 모습으로 남는다.
+   * 버리지 않고, 다음에 꺼낼 때 새 후보 모습으로 고친다 — 풀을 새로 만들면 `SpellCaster`가 옛 풀에서
+   * 꺼낸 오브를 새 풀에 반납하게 된다. 그래서 지금 화면에 떠 있는 오브는 인페르노가 끝나 반납됐다가
+   * 다음 시전에 다시 나올 때 새 모습이 된다(그 사이 몇 초는 옛 모습이다).
    * @param r 새 후보(덮어쓰기 적용 값). null이면 그 방식의 이펙트를 띄우지 않는다
    */
   setRecipe(method: MethodKey, r: IVfxRecipe | null): void {
@@ -300,8 +301,21 @@ function poseRing(factory: VfxFactory, g: IRing): void {
   g.sprite.node.setScale(p.scale, p.scale, 1);
   g.sprite.node.angle = p.angle;
   setRingFrame(factory, g.sprite, g.recipe, g.size * p.scale, g.t);
-  const c = g.sprite.color;
-  g.sprite.color = new Color(c.r, c.g, c.b, Math.round(255 * p.alpha));
+  setSpriteAlpha(g.sprite, p.alpha);
+}
+
+/** 색 대입용 칸 하나 — 고리마다 매 프레임 새 `Color`를 만들면 측정 켬 블록에 쓰레기가 쌓인다 */
+const _tint = new Color();
+
+/**
+ * 스프라이트의 색은 그대로 두고 불투명도만 바꾼다. `sprite.color`는 대입해야 렌더 데이터가 갱신되므로
+ * 같은 칸에 값을 넣어 대입한다(엔진이 값을 복사한다).
+ * @param alpha 0~1
+ */
+export function setSpriteAlpha(sprite: Sprite, alpha: number): void {
+  const c = sprite.color;
+  _tint.set(c.r, c.g, c.b, Math.round(255 * alpha));
+  sprite.color = _tint;
 }
 
 /**

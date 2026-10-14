@@ -37,17 +37,17 @@ export class StatusVfxOverlay extends Component {
   private readonly _attached = new Map<EnemyController, IAttached>();
 
   /**
-   * 층과 풀을 만든다. 측정 모드에서 마법 데이터가 준비된 뒤 한 번 부른다.
+   * 층과 풀을 만든다. 실험 판(측정 · 비교판)에서 마법 데이터가 준비된 뒤 한 번 부른다.
    * @param factory 그림 · 노드 공장
-   * @param recipe 방식 바의 고른 후보(덮어쓰기 적용 값)
+   * @param recipe 방식 바의 고른 후보(덮어쓰기 적용 값). null이면 `setRecipe`를 받을 때까지 아무것도 붙이지 않는다
    * @param canvas 적이 붙는 Canvas 노드
    */
-  setup(factory: VfxFactory, recipe: IVfxRecipe, canvas: Node): void {
+  setup(factory: VfxFactory, recipe: IVfxRecipe | null, canvas: Node): void {
     const layer = new Node('StatusLayer');
     canvas.addChild(layer);
     this._layer = layer;
     this._factory = factory;
-    this._pool = this._makePool(factory, recipe, layer);
+    this._pool = recipe ? this._makePool(factory, recipe, layer) : null;
   }
 
   /**
@@ -116,11 +116,6 @@ export class StatusVfxOverlay extends Component {
       pool.release(a.node);
       this._attached.delete(enemy);
     }
-  }
-
-  /** 붙어 있는 표시 수 — HUD용 */
-  get attachedCount(): number {
-    return this._attached.size;
   }
 
   private _releaseAll(pool: NodeFactoryPool<Node>): void {
