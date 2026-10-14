@@ -1,6 +1,6 @@
 {
   "feature": "magic-effect-gate",
-  "phase": "user-verification",
+  "phase": "pr-ready",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": "full",
@@ -20,7 +20,7 @@
     "code_review_clean": true
   },
   "docs_delivered": [
-    "user-verification"
+    "pr-ready"
   ],
   "cso_commit": "57f0d7bd3c71be3d988727ce698f8b4c0aa391e1"
 }

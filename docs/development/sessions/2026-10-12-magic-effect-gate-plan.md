@@ -1,7 +1,7 @@
 # 마법 이펙트 제작 방식 게이트 — 여섯 방식을 실험실에서 확인한다
 
 - **작성:** 2026-10-12(설계) · 2026-10-13(/autoplan 리뷰 셋과 사용자 최종 판단을 반영해 계획으로 닫음)
-- **상태:** 계획. 사용자 `계획 승인` 전이다. 설계는 /office-hours(2026-10-12)에서 사용자와 묻고 답하며 정했고, 명세 검토 3회 · CEO · DX · Eng 리뷰를 거쳤다. 리뷰어는 모두 Claude 서브에이전트다(바깥 모델 Codex는 이 장비에 없다). 사용자 최종 판단 다섯은 §3에 있다
+- **상태:** 완료(PR #98, 2026-10-14). 설계는 /office-hours(2026-10-12)에서 사용자와 묻고 답하며 정했고, 명세 검토 3회 · CEO · DX · Eng 리뷰를 거쳤다. 리뷰어는 모두 Claude 서브에이전트다(바깥 모델 Codex는 이 장비에 없다). 사용자 최종 판단 다섯은 §3에 있다
 - **정본:** [`design/spec/art-direction.md`](../../design/spec/art-direction.md) §3.1 · [`design/spec/art-asset-spec.md`](../../design/spec/art-asset-spec.md) §7.2 · §8.1 · §8.4(신설) · [`spec/docs-glossary.md`](../spec/docs-glossary.md) · [`spec/ops-build.md`](../spec/ops-build.md) §6(Windows 명령줄 빌드가 되면) · [`planning/design-roadmap.md`](../../planning/design-roadmap.md) §4.1 · §9 · 실험실 사용법은 `game/assets/scripts/logic/VfxRecipeLogic.ts`의 URL 해석 함수 JSDoc(구현 때 생긴다). 정본은 측정이 끝난 뒤 이 슬라이스의 검증 단계에서 고친다
 - **읽는 사람:** 구현하는 AI(§4~§7 · §10) · 실험실을 돌리는 사용자(§5 · §8 · §9) · GPT(2차 검증. §6의 측정 묶음을 로드맵 §8.2의 틀로 넘긴다)
 - **자리:** 설계 초안과 리뷰 원문은 `docs/temp/` 폴더(git 밖)에 두었다. 리뷰에서 받은 항목은 모두 이 문서 본문에 녹였고, 받지 않은 것은 §15에 있다
