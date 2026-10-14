@@ -37,6 +37,7 @@ import {
 import { DataManager } from '../systems/DataManager';
 import { ExperienceManager } from '../systems/ExperienceManager';
 import { GameManager } from '../systems/GameManager';
+import { isLabStage } from '../systems/LabRuntime';
 import { MapManager } from '../systems/MapManager';
 
 const { ccclass, property } = _decorator;
@@ -230,6 +231,15 @@ export class EnemyController extends Component {
     this._playerHurtboxHalfH = pd?.hurtboxHalfHeight ?? 0;
   }
 
+  /**
+   * 지금 걸린 제어 강도(읽기 전용). 이펙트 실험실의 상태 표시(`StatusVfxOverlay`)가 매 프레임 읽는다.
+   * 사망 연출 중이거나 풀에 반납된 적은 표시를 붙이지 않도록 None으로 답한다.
+   */
+  get controlStrength(): ControlStrength {
+    if (this._dead || this._despawned) return ControlStrength.None;
+    return appliedStrength(this._control);
+  }
+
   // 데이터 준비 시 update 분기: 사망 연출 중이면 그것만, 아니면 플래시 갱신 + (Playing일 때) 추적·접촉
   update(dt: number) {
     if (!this._data) return;
@@ -264,6 +274,9 @@ export class EnemyController extends Component {
    */
   takeDamage(amount: number): void {
     if (this._dead || this._despawned) return;
+    // 실험 판(측정 · 비교판)은 적 수를 고정해야 하므로 피해만 0으로 한다. 플래시는 그대로 둔다 — 피격
+    // 색 바꾸기도 보통 게임이 매 명중마다 치르는 비용이라, 빼면 끔 블록이 실제보다 가벼워진다.
+    if (isLabStage()) amount = 0;
     this._hp -= amount;
     if (this._hp <= 0) {
       this._startDeath();
@@ -400,6 +413,8 @@ export class EnemyController extends Component {
    */
   private _move(dt: number, applied: ControlStrength): void {
     if (!this._data) return;
+    // 실험 판의 적은 죽지 않아 걸어오면 모두 플레이어 한 점에 쌓인다 — 스폰 자리에 세워 둔다
+    if (isLabStage()) return;
     // 근접 휘두르기 적은 윈드업·가격 중엔 멈춰 서서 친다(추격 정지). Aim·Cooldown 중엔 정상 추격하되,
     // 이미 사거리 안이면 멈춰 대기한다(플레이어에 파고들어 겹치는 것 방지 — 아래 _holdAtMeleeRange).
     if (this._isMeleeStriking()) return;
@@ -758,6 +773,9 @@ export class EnemyController extends Component {
     const proj = atk.projectile;
     const fire = this._fireProjectileFn;
     if (!proj || !fire) return;
+    // 실험 판은 적 탄을 쏘지 않는다 — 플레이어 피해가 0이라 쏠 이유가 없고, 탄 수가 원거리 적
+    // 비율에 따라 회차마다 달라져 켬 · 끔 블록 비교를 흔든다.
+    if (isLabStage()) return;
     const lock = this._attackLockDir;
     // 확산은 사방 링(기본 360°), 부채꼴·단발은 전방 호. 단발은 count=1이라 호가 1발을 돌려준다.
     const dirs =

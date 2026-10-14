@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 1,
+  "url": "http://localhost:8080/?lab=measure&load=base&counts=200&only=ga,na,da,ra",
+  "userAgent": "Mozilla/5.0 (Linux; Android 16; Pixel 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+  "devicePixelRatio": 1,
+  "canvasPx": {
+    "width": 1920,
+    "height": 1080
+  },
+  "dynamicAtlas": true,
+  "vrr": "사용자가 QA 문서에 적는다(브라우저가 알려 주지 않는다)",
+  "recipeHash": "1aecdde5",
+  "recipes": [
+    {
+      "id": "ga1",
+      "method": "ga",
+      "shape": "glow",
+      "count": 48,
+      "life": 0.4,
+      "size": 0.5,
+      "color": "#ff6a2a",
+      "blend": "add",
+      "emitShape": "point",
+      "picked": true
+    },
+    {
+      "id": "na1",
+      "method": "na",
+      "shape": "glow",
+      "count": 40,
+      "life": 0.5,
+      "size": 0.35,
+      "color": "#ff6a2a",
+      "blend": "add",
+      "emitShape": "point",
+      "picked": true,
+      "worldSpace": true,
+      "rate": 30,
+      "speed": 20
+    },
+    {
+      "id": "da3",
+      "method": "da",
+      "shape": "frost",
+      "count": 1,
+      "life": 0.55,
+      "size": 1,
+      "color": "#bfe9ff",
+      "blend": "alpha",
+      "emitShape": "point",
+      "picked": true,
+      "fixedThickness": false,
+      "endSize": 1,
+      "fade": true,
+      "easeOut": true,
+      "fadeFrom": 0.55,
+      "spin": 12
+    },
+    {
+      "id": "ra1",
+      "method": "ra",
+      "shape": "shard",
+      "count": 1,
+      "life": 0.3,
+      "size": 0.4,
+      "color": "#7fd6ff",
+      "blend": "alpha",
+      "emitShape": "point",
+      "picked": true,
+      "tailLength": 24,
+      "tailRate": 30
+    }
+  ],
+  "mode": {
+    "enabled": true,
+    "kind": "measure",
+    "method": null,
+    "load": "base",
+    "picks": {
+      "ga": "ga1",
+      "na": "na1",
+      "da": "da3",
+      "ra": "ra1",
+      "ma": "ma2",
+      "ba": "ba1"
+    },
+    "only": ["ga", "na", "da", "ra"],
+    "counts": [200],
+    "tune": {},
+    "sizeScale": {},
+    "countScale": {},
+    "blockSec": 10,
+    "damageScale": 0,
+    "autoFire": true,
+    "startBlocked": false
+  },
+  "startedAt": "2026-10-14T08:16:06.000Z",
+  "finishedAt": "2026-10-14T08:17:06.387Z",
+  "aborted": false,
+  "devShortBlock": false,
+  "invalidBlocks": 1,
+  "frameMs": 18.199999999254942,
+  "interpretation": "바쁜 시간 = CPU 제출 비용, GPU 비용은 간격(건너뜀) 쪽에 나타난다",
+  "perCount": [
+    {
+      "count": 200,
+      "judged": true,
+      "thresholds": {
+        "busyMeanMs": 3,
+        "busyLowMs": 6,
+        "skipRate": 0.01
+      },
+      "on": {
+        "busy": {
+          "mean": 0.4654747225371742,
+          "median": 0.4000000022351742,
+          "low1": 1.0937500002328306,
+          "max": 1.300000000745058,
+          "count": 1622
+        },
+        "interval": {
+          "mean": 16.66146732429008,
+          "median": 18.199999999254942,
+          "low1": 19.53125000023283,
+          "max": 22.400000002235174,
+          "count": 1622
+        },
+        "skipRate": 0,
+        "validBlocks": 3
+      },
+      "off": {
+        "busy": {
+          "mean": 0.37750000008899304,
+          "median": 0.30000000074505806,
+          "low1": 0.8300000011920929,
+          "max": 0.9000000022351742,
+          "count": 1080
+        },
+        "interval": {
+          "mean": 16.670555555554866,
+          "median": 18.199999999254942,
+          "low1": 19.419999999925494,
+          "max": 20.100000001490116,
+          "count": 1080
+        },
+        "skipRate": 0,
+        "validBlocks": 2
+      },
+      "judge": {
+        "pass": true,
+        "failed": [],
+        "skipValid": true,
+        "busyMeanDelta": 0.08797472244818116,
+        "busyLowDelta": 0.2637499990407377,
+        "skipDelta": 0
+      },
+      "nearThreshold": false
+    }
+  ],
+  "blocks": [
+    {
+      "count": 200,
+      "kind": "off",
+      "index": 0,
+      "filledCount": 200,
+      "invalidReasons": ["blur"],
+      "frames": 540,
+      "drawCallsMax": 23,
+      "drawCallsMean": 23,
+      "particlesMax": 0,
+      "particlesMean": 0,
+      "emittersMax": 0
+    },
+    {
+      "count": 200,
+      "kind": "on",
+      "index": 1,
+      "filledCount": 200,
+      "invalidReasons": [],
+      "frames": 541,
+      "drawCallsMax": 33,
+      "drawCallsMean": 28.25138632162662,
+      "particlesMax": 83,
+      "particlesMean": 54.818853974122,
+      "emittersMax": 6
+    },
+    {
+      "count": 200,
+      "kind": "off",
+      "index": 2,
+      "filledCount": 200,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 23,
+      "drawCallsMean": 23,
+      "particlesMax": 0,
+      "particlesMean": 0,
+      "emittersMax": 0
+    },
+    {
+      "count": 200,
+      "kind": "on",
+      "index": 3,
+      "filledCount": 200,
+      "invalidReasons": [],
+      "frames": 541,
+      "drawCallsMax": 33,
+      "drawCallsMean": 28.243992606284657,
+      "particlesMax": 82,
+      "particlesMean": 54.78373382624769,
+      "emittersMax": 6
+    },
+    {
+      "count": 200,
+      "kind": "off",
+      "index": 4,
+      "filledCount": 200,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 23,
+      "drawCallsMean": 23,
+      "particlesMax": 0,
+      "particlesMean": 0,
+      "emittersMax": 0
+    },
+    {
+      "count": 200,
+      "kind": "on",
+      "index": 5,
+      "filledCount": 200,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 33,
+      "drawCallsMean": 28.212962962962962,
+      "particlesMax": 83,
+      "particlesMean": 55.24444444444445,
+      "emittersMax": 6
+    }
+  ]
+}

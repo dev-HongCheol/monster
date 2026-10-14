@@ -1,0 +1,504 @@
+{
+  "schemaVersion": 1,
+  "url": "http://localhost:8080/?lab=measure&load=max&only=ga,na,da,ra",
+  "userAgent": "Mozilla/5.0 (Linux; Android 16; Pixel 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+  "devicePixelRatio": 1,
+  "canvasPx": {
+    "width": 960,
+    "height": 540
+  },
+  "dynamicAtlas": true,
+  "vrr": "사용자가 QA 문서에 적는다(브라우저가 알려 주지 않는다)",
+  "recipeHash": "1aecdde5",
+  "recipes": [
+    {
+      "id": "ga1",
+      "method": "ga",
+      "shape": "glow",
+      "count": 48,
+      "life": 0.4,
+      "size": 0.5,
+      "color": "#ff6a2a",
+      "blend": "add",
+      "emitShape": "point",
+      "picked": true
+    },
+    {
+      "id": "na1",
+      "method": "na",
+      "shape": "glow",
+      "count": 40,
+      "life": 0.5,
+      "size": 0.35,
+      "color": "#ff6a2a",
+      "blend": "add",
+      "emitShape": "point",
+      "picked": true,
+      "worldSpace": true,
+      "rate": 30,
+      "speed": 20
+    },
+    {
+      "id": "da3",
+      "method": "da",
+      "shape": "frost",
+      "count": 1,
+      "life": 0.55,
+      "size": 1,
+      "color": "#bfe9ff",
+      "blend": "alpha",
+      "emitShape": "point",
+      "picked": true,
+      "fixedThickness": false,
+      "endSize": 1,
+      "fade": true,
+      "easeOut": true,
+      "fadeFrom": 0.55,
+      "spin": 12
+    },
+    {
+      "id": "ra1",
+      "method": "ra",
+      "shape": "shard",
+      "count": 1,
+      "life": 0.3,
+      "size": 0.4,
+      "color": "#7fd6ff",
+      "blend": "alpha",
+      "emitShape": "point",
+      "picked": true,
+      "tailLength": 24,
+      "tailRate": 30
+    }
+  ],
+  "mode": {
+    "enabled": true,
+    "kind": "measure",
+    "method": null,
+    "load": "max",
+    "picks": {
+      "ga": "ga1",
+      "na": "na1",
+      "da": "da3",
+      "ra": "ra1",
+      "ma": "ma2",
+      "ba": "ba1"
+    },
+    "only": ["ga", "na", "da", "ra"],
+    "counts": [63, 200, 400],
+    "tune": {},
+    "sizeScale": {},
+    "countScale": {},
+    "blockSec": 10,
+    "damageScale": 0,
+    "autoFire": true,
+    "startBlocked": false
+  },
+  "startedAt": "2026-10-14T08:10:19.754Z",
+  "finishedAt": "2026-10-14T08:13:20.620Z",
+  "aborted": false,
+  "devShortBlock": false,
+  "invalidBlocks": 0,
+  "frameMs": 18.100000001490116,
+  "interpretation": "바쁜 시간 = CPU 제출 비용, GPU 비용은 간격(건너뜀) 쪽에 나타난다",
+  "perCount": [
+    {
+      "count": 63,
+      "judged": false,
+      "thresholds": {
+        "busyMeanMs": 3,
+        "busyLowMs": 6,
+        "skipRate": 0.01
+      },
+      "on": {
+        "busy": {
+          "mean": 0.6983353884341758,
+          "median": 0.6999999992549419,
+          "low1": 1.3937500000465661,
+          "max": 1.699999999254942,
+          "count": 1622
+        },
+        "interval": {
+          "mean": 16.66510480887839,
+          "median": 18.199999999254942,
+          "low1": 18.950000000186265,
+          "max": 20,
+          "count": 1622
+        },
+        "skipRate": 0,
+        "validBlocks": 3
+      },
+      "off": {
+        "busy": {
+          "mean": 0.40314814812607236,
+          "median": 0.3999999985098839,
+          "low1": 0.8312500000465661,
+          "max": 1.0999999977648258,
+          "count": 1620
+        },
+        "interval": {
+          "mean": 16.666913580245993,
+          "median": 18.199999999254942,
+          "low1": 18.86875000060536,
+          "max": 19.399999998509884,
+          "count": 1620
+        },
+        "skipRate": 0,
+        "validBlocks": 3
+      },
+      "judge": {
+        "pass": true,
+        "failed": [],
+        "skipValid": true,
+        "busyMeanDelta": 0.2951872403081034,
+        "busyLowDelta": 0.5625,
+        "skipDelta": 0
+      },
+      "nearThreshold": false
+    },
+    {
+      "count": 200,
+      "judged": true,
+      "thresholds": {
+        "busyMeanMs": 3,
+        "busyLowMs": 6,
+        "skipRate": 0.01
+      },
+      "on": {
+        "busy": {
+          "mean": 0.6775308642352437,
+          "median": 0.6000000014901161,
+          "low1": 1.3749999995343387,
+          "max": 1.7999999970197678,
+          "count": 1620
+        },
+        "interval": {
+          "mean": 16.670555555558316,
+          "median": 18.199999999254942,
+          "low1": 19.237499999813735,
+          "max": 20,
+          "count": 1620
+        },
+        "skipRate": 0,
+        "validBlocks": 3
+      },
+      "off": {
+        "busy": {
+          "mean": 0.3821318546334168,
+          "median": 0.3999999985098839,
+          "low1": 0.8250000001862645,
+          "max": 0.9000000022351742,
+          "count": 1623
+        },
+        "interval": {
+          "mean": 16.66223043746195,
+          "median": 18.199999999254942,
+          "low1": 19.306249999906868,
+          "max": 21.900000002235174,
+          "count": 1623
+        },
+        "skipRate": 0,
+        "validBlocks": 3
+      },
+      "judge": {
+        "pass": true,
+        "failed": [],
+        "skipValid": true,
+        "busyMeanDelta": 0.29539900960182686,
+        "busyLowDelta": 0.5499999993480742,
+        "skipDelta": 0
+      },
+      "nearThreshold": false
+    },
+    {
+      "count": 400,
+      "judged": false,
+      "thresholds": {
+        "busyMeanMs": 6,
+        "busyLowMs": 12,
+        "skipRate": 0.02
+      },
+      "on": {
+        "busy": {
+          "mean": 0.7455274521808136,
+          "median": 0.6999999992549419,
+          "low1": 1.6562500004656613,
+          "max": 2.099999997764826,
+          "count": 1621
+        },
+        "interval": {
+          "mean": 16.664157927206347,
+          "median": 18.199999999254942,
+          "low1": 19.1312499998603,
+          "max": 20.100000001490116,
+          "count": 1621
+        },
+        "skipRate": 0,
+        "validBlocks": 3
+      },
+      "off": {
+        "busy": {
+          "mean": 0.4530209617990123,
+          "median": 0.4000000022351742,
+          "low1": 1.0437499999534339,
+          "max": 1.199999999254942,
+          "count": 1622
+        },
+        "interval": {
+          "mean": 16.66504315659863,
+          "median": 18.199999999254942,
+          "low1": 19.3375000001397,
+          "max": 20,
+          "count": 1622
+        },
+        "skipRate": 0,
+        "validBlocks": 3
+      },
+      "judge": {
+        "pass": true,
+        "failed": [],
+        "skipValid": true,
+        "busyMeanDelta": 0.2925064903818013,
+        "busyLowDelta": 0.6125000005122274,
+        "skipDelta": 0
+      },
+      "nearThreshold": false
+    }
+  ],
+  "blocks": [
+    {
+      "count": 63,
+      "kind": "off",
+      "index": 0,
+      "filledCount": 63,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 23,
+      "drawCallsMean": 23,
+      "particlesMax": 0,
+      "particlesMean": 0,
+      "emittersMax": 0
+    },
+    {
+      "count": 63,
+      "kind": "on",
+      "index": 1,
+      "filledCount": 63,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 97,
+      "drawCallsMean": 61.574074074074076,
+      "particlesMax": 618,
+      "particlesMean": 413.06666666666666,
+      "emittersMax": 46
+    },
+    {
+      "count": 63,
+      "kind": "off",
+      "index": 2,
+      "filledCount": 63,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 23,
+      "drawCallsMean": 23,
+      "particlesMax": 0,
+      "particlesMean": 0,
+      "emittersMax": 0
+    },
+    {
+      "count": 63,
+      "kind": "on",
+      "index": 3,
+      "filledCount": 63,
+      "invalidReasons": [],
+      "frames": 541,
+      "drawCallsMax": 97,
+      "drawCallsMean": 61.73012939001848,
+      "particlesMax": 609,
+      "particlesMean": 408.818853974122,
+      "emittersMax": 46
+    },
+    {
+      "count": 63,
+      "kind": "off",
+      "index": 4,
+      "filledCount": 63,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 23,
+      "drawCallsMean": 23,
+      "particlesMax": 0,
+      "particlesMean": 0,
+      "emittersMax": 0
+    },
+    {
+      "count": 63,
+      "kind": "on",
+      "index": 5,
+      "filledCount": 63,
+      "invalidReasons": [],
+      "frames": 541,
+      "drawCallsMax": 97,
+      "drawCallsMean": 61.654343807763404,
+      "particlesMax": 618,
+      "particlesMean": 407.8872458410351,
+      "emittersMax": 46
+    },
+    {
+      "count": 200,
+      "kind": "off",
+      "index": 0,
+      "filledCount": 200,
+      "invalidReasons": [],
+      "frames": 541,
+      "drawCallsMax": 23,
+      "drawCallsMean": 23,
+      "particlesMax": 0,
+      "particlesMean": 0,
+      "emittersMax": 0
+    },
+    {
+      "count": 200,
+      "kind": "on",
+      "index": 1,
+      "filledCount": 200,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 96,
+      "drawCallsMean": 60.96851851851852,
+      "particlesMax": 620,
+      "particlesMean": 412.34444444444443,
+      "emittersMax": 46
+    },
+    {
+      "count": 200,
+      "kind": "off",
+      "index": 2,
+      "filledCount": 200,
+      "invalidReasons": [],
+      "frames": 541,
+      "drawCallsMax": 23,
+      "drawCallsMean": 23,
+      "particlesMax": 0,
+      "particlesMean": 0,
+      "emittersMax": 0
+    },
+    {
+      "count": 200,
+      "kind": "on",
+      "index": 3,
+      "filledCount": 200,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 96,
+      "drawCallsMean": 61.21666666666667,
+      "particlesMax": 616,
+      "particlesMean": 411.7074074074074,
+      "emittersMax": 46
+    },
+    {
+      "count": 200,
+      "kind": "off",
+      "index": 4,
+      "filledCount": 200,
+      "invalidReasons": [],
+      "frames": 541,
+      "drawCallsMax": 23,
+      "drawCallsMean": 23,
+      "particlesMax": 0,
+      "particlesMean": 0,
+      "emittersMax": 0
+    },
+    {
+      "count": 200,
+      "kind": "on",
+      "index": 5,
+      "filledCount": 200,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 96,
+      "drawCallsMean": 61.6,
+      "particlesMax": 617,
+      "particlesMean": 409.05185185185184,
+      "emittersMax": 46
+    },
+    {
+      "count": 400,
+      "kind": "off",
+      "index": 0,
+      "filledCount": 400,
+      "invalidReasons": [],
+      "frames": 541,
+      "drawCallsMax": 23,
+      "drawCallsMean": 23,
+      "particlesMax": 0,
+      "particlesMean": 0,
+      "emittersMax": 0
+    },
+    {
+      "count": 400,
+      "kind": "on",
+      "index": 1,
+      "filledCount": 400,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 97,
+      "drawCallsMean": 61.3,
+      "particlesMax": 622,
+      "particlesMean": 412.8703703703704,
+      "emittersMax": 46
+    },
+    {
+      "count": 400,
+      "kind": "off",
+      "index": 2,
+      "filledCount": 400,
+      "invalidReasons": [],
+      "frames": 541,
+      "drawCallsMax": 23,
+      "drawCallsMean": 23,
+      "particlesMax": 0,
+      "particlesMean": 0,
+      "emittersMax": 0
+    },
+    {
+      "count": 400,
+      "kind": "on",
+      "index": 3,
+      "filledCount": 400,
+      "invalidReasons": [],
+      "frames": 541,
+      "drawCallsMax": 97,
+      "drawCallsMean": 61.125693160813306,
+      "particlesMax": 623,
+      "particlesMean": 412.271719038817,
+      "emittersMax": 46
+    },
+    {
+      "count": 400,
+      "kind": "off",
+      "index": 4,
+      "filledCount": 400,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 23,
+      "drawCallsMean": 23,
+      "particlesMax": 0,
+      "particlesMean": 0,
+      "emittersMax": 0
+    },
+    {
+      "count": 400,
+      "kind": "on",
+      "index": 5,
+      "filledCount": 400,
+      "invalidReasons": [],
+      "frames": 540,
+      "drawCallsMax": 96,
+      "drawCallsMean": 61.27962962962963,
+      "particlesMax": 618,
+      "particlesMean": 407.8462962962963,
+      "emittersMax": 46
+    }
+  ]
+}

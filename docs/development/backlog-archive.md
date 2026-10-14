@@ -8,6 +8,8 @@
 
 ---
 
+- **F134** 프레임 시트 후보를 이펙트 비교판에 넣기 → **닫힘**(`feat/magic-effect-gate`, PR #98, 2026-10-14). 마법 이펙트 게이트에서 파티클 · 모양 그림 · 고체 그림 방식이 표현을 통과했고, 떨어진 방식 바(적에 붙는 표시)는 움직임이 아니라 「상태로 읽히는가」의 문제라 프레임 시트로 풀 것이 아니었다. 바의 다른 방법은 F140이 든다. → [`sessions/2026-10-12-magic-effect-gate-plan.md`](sessions/2026-10-12-magic-effect-gate-plan.md)
+- **F135** Effekseer 조사 → **닫힘**(`feat/magic-effect-gate`, PR #98, 2026-10-14). 프레임 시트로도 안 되는 방식이 있을 때만 여는 둘째 대체 경로였는데, 첫째 대체 경로(F134)부터 열 조건이 생기지 않았다. → [`sessions/2026-10-12-magic-effect-gate-plan.md`](sessions/2026-10-12-magic-effect-gate-plan.md)
 - **F105** 플레이어 아트를 3D 경로로 옮기는 후속(정본 개정 · 생산 프레임 · VRM 메타 · 툰) → **완료**(`feat/blender-3d-gate`, PR #92, 2026-09-30). 3D 마스터 → Blender 층별 굽기 → Cocos 재생이 게임에 들어갔고 정본이 3D 기준으로 바뀌었다. ADR 009 · 010은 정본에 접었다. → [`sessions/2026-09-11-blender-3d-gate-plan.md`](sessions/2026-09-11-blender-3d-gate-plan.md)
 - **F106** 플레이어 걷기 모션 → **완료**(`feat/blender-3d-gate`, PR #92, 2026-09-30). 모션 파일 대신 다리를 앞뒤로만 흔드는 스크립트 키프레임(후보 ①)으로, 사용자가 나란히 재생해 「차분한 걷기」(8장 · 10fps)를 골랐다. → [`sessions/2026-09-15-blender-3d-gate-round2-g3-motion.md`](sessions/2026-09-15-blender-3d-gate-round2-g3-motion.md)
 - **F67** 지팡이를 별도 레이어로 분리 + 배선 → **소멸**(`feat/blender-3d-gate`, PR #92, 2026-09-30). 3D 층 굽기로 지팡이 · 방패가 몸과 다른 층이 되어 2D에서 걷어 배선하는 절차가 필요 없어졌다. → [`sessions/2026-09-15-blender-3d-gate-round2-g4-bake.md`](sessions/2026-09-15-blender-3d-gate-round2-g4-bake.md)

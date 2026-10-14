@@ -9,6 +9,7 @@ import { DeathSequence } from '../ui/DeathSequence';
 import { DataManager } from './DataManager';
 import { DeckManager } from './DeckManager';
 import { ExperienceManager } from './ExperienceManager';
+import { isLabStage } from './LabRuntime';
 import { WaveManager } from './WaveManager';
 
 const { ccclass, property } = _decorator;
@@ -236,6 +237,7 @@ export class GameManager extends Component {
    */
   damagePlayer(amount: number): void {
     if (this._state !== GameState.Playing) return;
+    if (isLabStage()) return; // 실험 판은 플레이어가 죽지 않아야 회차 · 비교가 끝까지 돈다
     this._pendingDamageMax = accumulateDamage(this._pendingDamageMax, amount);
   }
 
@@ -247,6 +249,7 @@ export class GameManager extends Component {
    */
   damagePlayerContact(contactDamagePerSec: number): void {
     if (this._state !== GameState.Playing) return;
+    if (isLabStage()) return; // damagePlayer와 같은 이유
     this._pendingDamageMax = accumulateDamage(
       this._pendingDamageMax,
       contactDamagePerTick(contactDamagePerSec, PLAYER_HIT_TICK_SEC),

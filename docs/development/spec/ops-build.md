@@ -4,7 +4,7 @@
 
 - **최초 작성:** 2026-08-01
 - **상태:** v1 경로 확인됨 / v2 경로 선택지만 확인됨(결정 없음)
-- **이력:** 2026-08-01 itch.io에는 `web-mobile` 빌드(§2.1), 파일 개수 한도는 현실적 제약이 아니다(§6.2) · 2026-09-27 층별 아틀라스가 들어온 뒤 재측정과 디버그 빌드의 `DEV` 값(§6.4)
+- **이력:** 2026-08-01 itch.io에는 `web-mobile` 빌드(§2.1), 파일 개수 한도는 현실적 제약이 아니다(§6.2) · 2026-09-27 층별 아틀라스가 들어온 뒤 재측정과 디버그 빌드의 `DEV` 값(§6.4) · 2026-10-14 Windows 명령줄 빌드(끝 코드 36)와 로컬 확인용 캐시 금지 서버(§6)
 - **플랫폼 계획의 정본은 여기가 아니다** — [`../../planning/roadmap.md`](../../planning/roadmap.md) §2다. 이 문서는 그 계획을 실행할 때 마주치는 기술적 사실을 모은다.
 
 ---
@@ -152,7 +152,25 @@ jsb.onKeyUp = this._handleKeyboardUp;
   --project "<repo>/game" --build "platform=web-mobile;debug=false"
 ```
 
-산출물은 `game/build/web-mobile/`에 떨어진다(`game/build/`는 `.gitignore` 대상이라 커밋되지 않는다).
+Windows에서는 실행 파일 경로만 다르고 인자는 같다.
+
+```bash
+"C:/ProgramData/cocos/editors/Creator/3.8.8/CocosCreator.exe" \
+  --project "<repo>\game" --build "platform=web-mobile;debug=false"
+```
+
+산출물은 `game/build/web-mobile/`에 떨어진다(`game/build/`는 `.gitignore` 대상이라 커밋되지 않는다). 두 OS 모두 `--build` 값 끝에 `;outputName=<폴더 이름>`을 붙이면 `game/build/<폴더 이름>/`에 떨어진다. 이미 띄워 둔 빌드를 덮지 않고 옆에 새로 만들 때 쓴다(예: `outputName=web-lab2`).
+
+**성공 여부는 끝 코드가 아니라 빌드 폴더로 확인한다.** Windows 명령줄 빌드는 성공해도 끝 코드가 0이 아니라 36이라, 0만 성공으로 보는 스크립트에 넣으면 성공한 빌드를 실패로 읽는다. macOS의 끝 코드는 아직 재지 않았다. 그래서 어느 OS든 빌드 폴더에 새 `index.html`이 생겼는지로 확인한다.
+
+**로컬에서 열어 보려면 웹 서버가 필요하다.** `index.html`을 `file://`로 열면 스크립트를 불러오지 못해 돌지 않는다. 레포 루트에서 아래 명령으로 빌드 폴더를 띄우고 `http://127.0.0.1:8080/`을 연다(마지막 숫자가 포트, 빼면 8080).
+
+```bash
+python3 tools/web/serve_nocache.py game/build/web-mobile 8080   # macOS
+py -3 tools/web/serve_nocache.py game/build/web-mobile 8080     # Windows
+```
+
+Windows에서 `py -3`를 쓰는 이유는 `python` 명령이 Microsoft Store 설치 안내로 연결된 장비가 있어서다. 파이썬 기본 서버(`python3 -m http.server`)를 쓰지 않는 이유는 Chrome이 이전 빌드의 js를 캐시해, 새로 빌드해도 고친 내용이 화면에 나오지 않기 때문이다. 이 서버는 응답마다 캐시 금지를 붙이고, 이 PC(`127.0.0.1`)에서 오는 접속만 받는다.
 
 ### 6.1 실제 구조
 

@@ -1,21 +1,18 @@
 {
-  "feature": "workflow-diet",
-  "phase": "user-verification",
+  "feature": "magic-effect-gate",
+  "phase": "pr-ready",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": "full",
   "canon_updated": [
-    "CLAUDE.md",
-    "docs/development/spec/ops-skill-routing.md",
-    "docs/development/workflow/README.md",
-    "docs/development/workflow/implementation.md",
-    "docs/development/workflow/planning.md",
-    "docs/development/workflow/qa-setup.md",
-    "docs/development/workflow/user-verification.md",
-    "docs/development/workflow/verification.md"
+    "docs/design/spec/art-asset-spec.md",
+    "docs/design/spec/art-direction.md",
+    "docs/development/spec/docs-glossary.md",
+    "docs/development/spec/ops-build.md",
+    "docs/planning/design-roadmap.md"
   ],
   "canon_skip_reason": null,
-  "qa_doc_fingerprint": "3764cc8adfbf2415",
+  "qa_doc_fingerprint": "71408efebeb5129b",
   "verification": {
     "cso_done": true,
     "ts_check_clean": true,
@@ -23,7 +20,7 @@
     "code_review_clean": true
   },
   "docs_delivered": [
-    "user-verification"
+    "pr-ready"
   ],
-  "cso_commit": "cba973e14e3cfe714c65946160002fbff05d1b64"
+  "cso_commit": "57f0d7bd3c71be3d988727ce698f8b4c0aa391e1"
 }

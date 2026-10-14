@@ -7,11 +7,17 @@ import { OrbitLogic } from '../logic/OrbitLogic';
 import { buildFirePlan, type ShotSpec } from '../logic/SpellPatternLogic';
 import { spellCategoryColor } from '../logic/SpellVisual';
 import { ControlStrength } from '../logic/StatusEffectLogic';
+import { compareSpellIds, maxLoadSeed, pickedRecipeMap } from '../logic/VfxRecipeLogic';
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
+import { isCompareMode, isLabStage, isMeasureMode, LabRuntime } from '../systems/LabRuntime';
+import { LabVfxSink } from './LabVfxSink';
 import { PoolManager } from './PoolManager';
 import { Projectile, type ProjectileExplosion, type ProjectileStatus } from './Projectile';
+import { StatusVfxOverlay } from './StatusVfxOverlay';
+import { VfxFactory } from './VfxFactory';
+import { VfxLab } from './VfxLab';
 
 const { ccclass, property } = _decorator;
 
@@ -25,6 +31,12 @@ const NOVA_VFX_DURATION = 0.25;
 const NOVA_VFX_BASE_RADIUS = 120;
 /** 오브 VFX 기준 반경 — 이 반경에서 스케일 1. 유효 오브 크기에 비례해 스케일(범위 강화 시 커짐). inferno 기본 오브 크기와 동일. */
 const ORB_VFX_BASE_RADIUS = 14;
+
+/**
+ * 이펙트 측정 모드의 로드아웃 — v1 마법 다섯(계획 2026-10-12-magic-effect-gate-plan.md §7.1).
+ * 인스펙터의 `startingSpellIds`는 고치지 않고 실행 중에만 바꾼다.
+ */
+const MEASURE_SPELL_IDS = ['fireball', 'ice_missile', 'lightning_bolt', 'frost_nova', 'inferno'];
 
 /** spells.json `onHitStatus.kind` 문자열 → CC 강도(`ControlStrength`) 매핑. */
 const STATUS_KIND_STRENGTH: Record<'stun' | 'slow' | 'freeze', ControlStrength> = {
@@ -82,7 +94,12 @@ export class SpellCaster extends Component {
   /** 노바 VFX 재사용 풀 (onLoad에서 prefab/parent로 생성). prefab 미연결이면 null(VFX 생략). */
   private _novaVfxPool: PoolManager | null = null;
   /** 오브 VFX 재사용 풀 (onLoad에서 prefab/parent로 생성). prefab 미연결이면 null(VFX 생략). */
-  private _orbVfxPool: PoolManager | null = null;
+  private _orbVfxPool: { acquire(): Node; release(node: Node): void } | null = null;
+  /**
+   * 이펙트 측정 모드의 이펙트 자리. 붙어 있으면 폭발 · 노바 · 오브 · 발사체 그림을 프리팹 대신 이것이
+   * 맡는다. 보통 게임에서는 늘 null이라 지금 프리팹 경로가 그대로 돈다.
+   */
+  private _labSink: LabVfxSink | null = null;
   /** 궤도 회전·활성 수명·재타격 락아웃 순수 로직. */
   private readonly _orbitLogic = new OrbitLogic();
   /** spellId → 현재 띄운 오브 VFX 노드들. 오브 수에 맞춰 늘리고 줄이며, 수명이 끝나면 전부 반환한다. */
@@ -93,7 +110,11 @@ export class SpellCaster extends Component {
   };
   /** 폭발 VFX를 명중 지점에 띄우는 콜백 — 발사체에 1회 바인딩해 재사용. prefab 미연결이면 no-op. */
   private readonly _spawnExplosionVfx = (x: number, y: number, radius: number): void => {
-    if (!this._vfxPool) return;
+    if (this._labSink) {
+      this._labSink.explosion(x, y, radius);
+      return;
+    }
+    if (!this._vfxPool || LabRuntime.vfxOff) return;
     const vfx = this._vfxPool.acquire();
     vfx.setPosition(x, y, 0);
     const s = radius / EXPLOSION_VFX_BASE_RADIUS;
@@ -102,7 +123,11 @@ export class SpellCaster extends Component {
   };
   /** 노바 VFX를 플레이어 위치에 띄우는 콜백 — 유효 반경에 비례해 스케일. prefab 미연결이면 no-op. */
   private readonly _spawnNovaVfx = (x: number, y: number, radius: number): void => {
-    if (!this._novaVfxPool) return;
+    if (this._labSink) {
+      this._labSink.nova(x, y, radius);
+      return;
+    }
+    if (!this._novaVfxPool || LabRuntime.vfxOff) return;
     const vfx = this._novaVfxPool.acquire();
     vfx.setPosition(x, y, 0);
     const s = radius / NOVA_VFX_BASE_RADIUS;
@@ -168,9 +193,58 @@ export class SpellCaster extends Component {
     // 콜백은 씬을 넘어 살아남을 수 있으므로(로딩 중 재시작) 발화 시점에 자신이 유효한지 확인한다.
     dm.onReady(() => {
       if (!this.isValid) return;
-      for (const id of this.startingSpellIds) this._loadout.addSpell(id);
+      // 비교판은 그 방식을 쓰는 마법만 쏜다 — 다른 마법의 이펙트가 섞이면 후보 모습을 가린다
+      const ids = isMeasureMode()
+        ? MEASURE_SPELL_IDS
+        : isCompareMode()
+          ? compareSpellIds(LabRuntime.mode.method ?? 'ga')
+          : this.startingSpellIds;
+      for (const id of ids) this._loadout.addSpell(id);
+      if (isLabStage() && LabRuntime.mode.load === 'max') {
+        const owned = ids
+          .map((id) => dm.getSpell(id))
+          .filter((sp): sp is ISpellData => sp !== null);
+        deck.applyDebugSeed(maxLoadSeed(owned));
+      }
+      // 실험실은 URL에 lab이 있고 레시피 파일이 있을 때만 붙는다(오류가 있으면 오류 상자만 띄운다).
+      // 비교판의 「현재」 칸은 지금 게임의 프리팹을 그대로 띄워야 비교가 되므로 이 컴포넌트의 연결을 넘긴다
+      if (LabRuntime.mode.enabled) {
+        this.node.addComponent(VfxLab).compareHost = {
+          prefabs: {
+            explosion: this.explosionVfxPrefab,
+            nova: this.novaVfxPrefab,
+            orb: this.orbVfxPrefab,
+          },
+          worldParent: this.bulletParent?.parent ?? null,
+        };
+      }
+      if (isLabStage()) this._setupLabVfx();
       this._dataReady = true;
     });
+  }
+
+  /**
+   * 실험 판(측정 켬 블록 · 비교판 가운데)의 이펙트를 준비한다 — 그림 공장을 만들고, 폭발 · 노바 ·
+   * 오브 · 발사체 자리를 `LabVfxSink`에, 적 상태 표시를 `StatusVfxOverlay`에 맡긴다. 오브는 풀 자리를
+   * 바꿔 끼워서 궤도 계산 · 반납 흐름은 지금 그대로 쓴다(`_orbPool`). `only`로 빠진 방식은 아무 그림도
+   * 띄우지 않는다. 비교판은 그 방식의 고른 후보 하나만 넣고, 고른 칸이 바뀌면 `VfxLab`이 갈아 끼운다.
+   * 상태 표시는 후보가 없어도 붙여 둔다 — 비교판에서 「고름」이 없는 방식도 나중에 고른 칸을 받는다.
+   */
+  private _setupLabVfx(): void {
+    if (!this.bulletParent) return;
+    const factory = new VfxFactory();
+    const picked = pickedRecipeMap(LabRuntime.mode, LabRuntime.recipes ?? []);
+    const method = LabRuntime.mode.method;
+    const recipes = isCompareMode() && method ? { [method]: picked[method] } : picked;
+    const sink = this.node.addComponent(LabVfxSink);
+    sink.setup(factory, recipes, this.bulletParent);
+    this._labSink = sink;
+    for (const nodes of this._orbNodes.values())
+      for (const n of nodes) this._orbVfxPool?.release(n);
+    this._orbNodes.clear();
+    const canvas = this.bulletParent.parent;
+    if (canvas) this.node.addComponent(StatusVfxOverlay).setup(factory, recipes.ba ?? null, canvas);
+    LabRuntime.liveCounts = () => factory.liveCounts();
   }
 
   // 스케줄러 tick → 자기중심(Nova)은 적 무관 발동, 발사체 마법은 최근접 적 조준 시에만 발동
@@ -414,16 +488,22 @@ export class SpellCaster extends Component {
    * @param orbSize 오브 크기 (스케일 기준)
    */
   private _reconcileOrbVfx(spellId: string, count: number, orbSize: number): void {
-    if (!this._orbVfxPool) return;
+    const pool = this._orbPool();
+    if (!pool) return;
+    // 이펙트 측정의 끔 블록은 오브 그림을 띄우지 않는다(오브 타격은 그대로 돈다)
+    if (LabRuntime.vfxOff) {
+      this._releaseAllOrbVfx(spellId);
+      return;
+    }
     let nodes = this._orbNodes.get(spellId);
     if (!nodes) {
       nodes = [];
       this._orbNodes.set(spellId, nodes);
     }
-    while (nodes.length < count) nodes.push(this._orbVfxPool.acquire());
+    while (nodes.length < count) nodes.push(pool.acquire());
     while (nodes.length > count) {
       const extra = nodes.pop();
-      if (extra) this._orbVfxPool.release(extra);
+      if (extra) pool.release(extra);
     }
     const s = orbSize / ORB_VFX_BASE_RADIUS;
     for (const node of nodes) node.setScale(s, s, 1);
@@ -433,10 +513,19 @@ export class SpellCaster extends Component {
   private _releaseAllOrbVfx(spellId: string): void {
     const nodes = this._orbNodes.get(spellId);
     if (!nodes) return;
-    if (this._orbVfxPool) {
-      for (const node of nodes) this._orbVfxPool.release(node);
+    const pool = this._orbPool();
+    if (pool) {
+      for (const node of nodes) pool.release(node);
     }
     this._orbNodes.delete(spellId);
+  }
+
+  /**
+   * 오브 그림을 꺼낼 풀. 실험 판이면 `LabVfxSink`의 풀을 **매번** 읽는다 — 비교판에서 나 후보가 처음엔
+   * 없다가 나중에 골라지면 sink가 그때 풀을 만들므로, 시작할 때 한 번 복사해 두면 null에 묶인다.
+   */
+  private _orbPool(): { acquire(): Node; release(node: Node): void } | null {
+    return this._labSink ? this._labSink.orbPool : this._orbVfxPool;
   }
 
   /**
@@ -487,9 +576,13 @@ export class SpellCaster extends Component {
     // 마법별 전용 스프라이트가 없는 동안 분류 색으로 발사체를 구분한다.
     const sprite = bullet.getComponent(Sprite);
     if (sprite) {
+      // 이펙트 측정의 끔 블록은 발사체를 그리지 않는다. 노드는 명중 판정을 실어야 해서 만든다.
+      // 보통 게임에서는 vfxOff가 늘 false라 재사용 노드도 항상 다시 켜진다.
+      sprite.enabled = !LabRuntime.vfxOff;
       const [r, g, b] = spellCategoryColor(category);
       sprite.color = new Color(r, g, b);
     }
+    this._labSink?.projectile(bullet, shot.speed);
 
     const projectile = bullet.getComponent(Projectile);
     if (!projectile) return;
