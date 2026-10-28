@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>의미색 비교판</title>
 <style>
-  /* UI 줄기 2층 의미색 표 — 레벨업 카드 장면에 의미색 27행을 칠하고, 같은 화면에 함께 뜨는 두 색의 색각 거리와 대비를 잰다(2층 계획 결정 9A · 11A).
+  /* UI 줄기 2층 의미색 표 — 레벨업 카드 장면에 의미색 28행을 칠하고, 같은 화면에 함께 뜨는 두 색의 색각 거리와 대비를 잰다(2층 계획 결정 9A · 11A).
      색각 행렬과 OKLab 거리 계산은 1층 tools/ui/cvd-sim.html과 같다(Machado 2009 중증도 1.0, L1-8). 배치와 모양은 3층이 정하므로 장면은 색을 보려고 놓은 자리 표시다. */
   :root { --bg: #111214; --fg: #d6d6da; --muted: #8e8e96; --line: #2a2b30; --accent: #e9ad4f; }
   * { box-sizing: border-box; }
@@ -71,7 +71,8 @@
   .scene .panel { position: absolute; left: 100px; top: 56px; width: 760px; height: 420px; background: var(--PANEL_BG); box-shadow: inset 0 0 0 1px var(--DECOR), inset 0 0 0 6px var(--PANEL_BG), inset 0 0 0 7px var(--DECOR); padding: 26px 36px; }
   .scene .title { text-align: center; font-size: 28px; font-weight: 700; color: var(--TEXT_PRIMARY); margin-bottom: 18px; }
   .scene .cards { display: flex; gap: 24px; justify-content: center; }
-  .scene .card { position: relative; width: 212px; height: 240px; padding: 16px; box-shadow: inset 0 0 0 1px var(--DECOR); }
+  /* 카드 칸 선은 모달 테두리보다 흐리게 둔다 — 같은 장식색을 다 밝히면 포커스 · 선택 테두리와 겹쳐 보여서다 */
+  .scene .card { position: relative; width: 212px; height: 240px; padding: 16px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--DECOR) 45%, transparent); }
   .scene .card.focus { outline: 3px solid var(--FOCUS); outline-offset: 3px; }
   .scene .card.sel { box-shadow: inset 0 0 0 2px var(--SELECTED); }
   .scene .marks { display: flex; gap: 8px; align-items: center; min-height: 22px; font-size: 14px; }
@@ -80,14 +81,14 @@
   .scene .new { background: var(--NEW); color: var(--PANEL_BG); font: 700 11px/1 sans-serif; padding: 4px 6px; border-radius: 9px; }
   .scene .name { font-size: 20px; font-weight: 700; color: var(--TEXT_PRIMARY); margin: 40px 0 8px; }
   .scene .desc { font-size: 16px; color: var(--TEXT_SECONDARY); line-height: 1.45; }
-  .scene .btn { width: 160px; margin: 24px auto 0; padding: 9px 0; text-align: center; background: var(--ACCENT); color: var(--PANEL_BG); font-size: 16px; font-weight: 700; }
+  .scene .btn { width: 160px; margin: 24px auto 0; padding: 9px 0; text-align: center; background: var(--ACCENT); color: var(--ON_ACCENT); font-size: 16px; font-weight: 700; }
   .quad { display: grid; grid-template-columns: repeat(2, 480px); gap: 12px; }
   .quad .box { width: 480px; height: 270px; overflow: hidden; } .quad .box .scene { transform: scale(.5); transform-origin: 0 0; }
 </style>
 </head>
 <body>
   <h1>의미색 비교판</h1>
-  <p class="lead">2층 의미색 표의 행 27개를 레벨업 카드 장면에 칠한다. 레벨업 카드는 분류색 넷 · 티어 셋 · 강조색 · 포커스가 한 장에 겹치는 가장 나쁜 화면이다(결정 3A). 아래 표에서 값을 바꾸면 장면 · 대비 · 충돌 판정이 함께 다시 계산된다. 바꾼 값은 이 브라우저에만 저장된다. 카드 배치 · 표식 모양 · 고정 표식은 3층이 정할 일이라, 장면은 색을 보려고 그린 자리 표시다. 「레벨 업」 제목과 「선택」 버튼도 카탈로그에 없는 자리 표시이고, 버튼은 강조색이 이 화면에 함께 뜨는지 보려고 두었다. 분류색의 이펙트도 평평한 색으로 그렸다 — 최종 판정은 실제 가산 블렌딩 이펙트 위에서 한다(결정 8A).</p>
+  <p class="lead">2층 의미색 표의 행 28개를 레벨업 카드 장면에 칠한다. 레벨업 카드는 분류색 넷 · 티어 셋 · 강조색 · 포커스가 한 장에 겹치는 가장 나쁜 화면이다(결정 3A). 아래 표에서 값을 바꾸면 장면 · 대비 · 충돌 판정이 함께 다시 계산된다. 바꾼 값은 이 브라우저에만 저장된다. 카드 배치 · 표식 모양 · 고정 표식은 3층이 정할 일이라, 장면은 색을 보려고 그린 자리 표시다. 「레벨 업」 제목과 「선택」 버튼도 카탈로그에 없는 자리 표시이고, 버튼은 강조색이 이 화면에 함께 뜨는지 보려고 두었다. 분류색의 이펙트도 평평한 색으로 그렸다 — 최종 판정은 실제 가산 블렌딩 이펙트 위에서 한다(결정 8A).</p>
   <div class="row">
     <label>시야 <select id="view"><option value="0">정상</option><option value="1">1형 적색약</option><option value="2">2형 녹색약</option><option value="3">3형 청색약</option><option value="all">넷 나란히</option></select></label>
     <label>카드 묶음 <select id="set"><option value="0">가 — 화염 · 얼음 · 번개, 새 항목 · 개별 · 분류</option><option value="1">나 — 전역 · support · 화염</option></select></label>
@@ -164,8 +165,10 @@
     { id: 'TEXT_PRIMARY', group: '글자', name: '기본 글자', use: '이름 · 제목 · 숫자', form: '글자', screens: 'HLPRM', need: 'text', cands: [['제안 아이보리', '#f3ecdc'], ['지금 코드', '#f0f0f5']] },
     { id: 'TEXT_SECONDARY', group: '글자', name: '보조 글자', use: '설명 · 타이머', form: '글자', screens: 'HLPRM', need: 'text', cands: [['제안 밝게', '#d0c9b9'], ['조금 밝게', '#c9c2b2'], ['처음 값', '#b3ad9e'], ['지금 코드', '#aaaab4']] },
     { id: 'TEXT_DISABLED', group: '글자', name: '비활성 글자', use: '아직 못 쓰는 메뉴 항목', form: '글자', screens: 'M', need: 'none', cands: [['제안', '#6e6b64']] },
+    // 밝은 채움 위 글자는 어두운 색이 표준이다 — 대비는 패널이 아니라 강조색 위에서 잰다
+    { id: 'ON_ACCENT', group: '글자', name: '강조 위 글자', use: '주 행동 버튼의 글자 — 대비는 강조색 위에서 잰다', form: '글자', screens: 'LPRM', need: 'text', on: 'ACCENT', cands: [['짙은 네이비', '#161d2e'], ['짙은 갈색', '#2a1d0e'], ['아이보리(참고 — 안 읽힌다)', '#f3ecdc']] },
     { id: 'ACCENT', group: '강조 · 장식', name: '강조(샴페인 골드)', use: '주 행동 버튼 채움 — 여기에만 쓴다', form: '채움', screens: 'LPRM', need: 'ui', cands: [['제안 맑게', '#ebc874'], ['맑고 깊게', '#e2b866'], ['처음 값', '#dcbc7e'], ['1층 골드(참고)', '#d7a76d']] },
-    { id: 'DECOR', group: '강조 · 장식', name: '장식(빛바랜 골드)', use: '테두리 · 문양 선, 누른다는 뜻이 없다', form: '테두리', screens: 'LPRM', need: 'none', cands: [['제안 밝게', '#b39b70'], ['더 밝게', '#c2a878'], ['처음 값', '#8a7752']] },
+    { id: 'DECOR', group: '강조 · 장식', name: '장식(채도 낮은 골드)', use: '모달 테두리 · 문양 선, 누른다는 뜻이 없다. 강조색과는 채도와 모양(선 대 채움)으로 갈린다', form: '테두리', screens: 'LPRM', need: 'none', cands: [['제안 밝은 샴페인', '#e6d3a3'], ['조금 덜 밝게', '#dcc797'], ['가장 밝게', '#eedcb0'], ['2판 값', '#b39b70'], ['처음 값', '#8a7752']] },
     { id: 'FOCUS', group: '상태', name: '키보드 포커스', use: '포커스 고리', form: '테두리', screens: 'LPRM', need: 'ui', cands: [['제안', '#fff6e0']] },
     { id: 'SELECTED', group: '상태', name: '선택된 카드', use: '고른 카드의 테두리', form: '테두리', screens: 'L', need: 'ui', cands: [['제안', '#7cc8ff']] },
     { id: 'DANGER', group: '상태', name: 'HP 위험', use: '위험 구간의 HP 바', form: '바', screens: 'H', need: 'ui', cands: [['제안', '#ff3048']] },
@@ -199,9 +202,10 @@
   let saved = {}; try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { saved = {}; }
   const st = { hex: {}, form: {}, screens: {}, judge: {}, memo: '', ...saved };
   for (const r of ROWS) { st.hex[r.id] ??= r.cands[0][1]; st.form[r.id] ??= r.form; st.screens[r.id] ??= r.screens; }
-  // 2판(2026-10-29 사용자 판정 — 테두리가 어둡고 버튼이 탁하고 설명 글자가 비활성처럼 보인다)에서 기본값을 바꾼 행. 저장값이 처음 값 그대로면 새 기본값으로 옮긴다
-  const REV = 2, OLD = { DECOR: '#8a7752', ACCENT: '#dcbc7e', TEXT_SECONDARY: '#b3ad9e' };
-  if ((st.rev ?? 1) < REV) { for (const [id, h] of Object.entries(OLD)) if (st.hex[id] === h) st.hex[id] = ROW[id].cands[0][1]; st.rev = REV; }
+  // 판마다 기본값을 바꾼 행(2026-10-29 사용자 판정 — 2판: 테두리가 어둡고 버튼이 탁하고 설명 글자가 비활성처럼 보인다, 3판: 모달 테두리를 훨씬 밝게).
+  // 저장값이 앞 판의 기본값 그대로면 사용자가 고른 값이 아니므로 새 기본값으로 옮긴다
+  const REV = 3, OLD = { DECOR: ['#8a7752', '#b39b70'], ACCENT: ['#dcbc7e'], TEXT_SECONDARY: ['#b3ad9e'] };
+  if ((st.rev ?? 1) < REV) { for (const [id, hs] of Object.entries(OLD)) if (hs.includes(st.hex[id])) st.hex[id] = ROW[id].cands[0][1]; st.rev = REV; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch { /* 저장이 막힌 창 */ } };
   const rgbOf = id => parse(st.hex[id]).rgb;
   const css = c => `rgb(${c.join(',')})`;
@@ -211,6 +215,7 @@
     const ids = [p.a.id, p.b.id], has = x => ids.includes(x), any = list => ids.some(i => list.includes(i));
     if (has('DANGER') && has('HP_FILL')) return ['모양', 'HP 위험 구간에는 깜빡이지 않는 고정 표식(바 무늬 · 아이콘)을 3층에서 반드시 둔다 — 2층 계획 HP 위험 결정'];
     if (has('XP_FILL') && (has('HP_FILL') || has('DANGER'))) return ['위치', 'HP 바는 왼쪽 위, XP 바는 화면 맨 아래 전폭이다'];
+    if (has('DECOR') && any(['FOCUS', 'SELECTED'])) return ['위치', '장식 테두리는 모달 가장자리에, 포커스 · 선택 테두리는 카드 · 버튼 둘레에 있다. 포커스 고리는 두께도 다르게 한다는 조건 — 3층에 넘긴다'];
     const tierText = any(TIERS) && ids.every(i => TIERS.includes(i) || ROW[i].group === '글자');
     if (tierText && p.s === 'L') return ['글자', '카드의 티어 표시에 「전역 · 분류 · 개별」 글자를 함께 둔다는 조건 — 3층에 넘긴다'];
     if (tierText && p.s === 'R') return ['위치', '결과 강화 줄은 「전역 + 분류 + 개별」 순서가 늘 같다(ResultController의 강화 한 줄)'];
@@ -314,7 +319,7 @@
       if (r.group === '바탕') {
         if (r.id !== 'DIM') { const fill = over(c.rgb, c.a, BAND_TOP), v = ratio(fill, BAND_TOP); f = `<td class="dim">${v.toFixed(2)}</td>`; }
       } else if (c.a === 1) {
-        p = cell(ratio(c.rgb, panel), r.need, /[LPRM]/.test(scr));
+        p = r.on ? cell(ratio(c.rgb, rgbOf(r.on)), r.need, true).replace('</td>', '<small>강조 위</small></td>') : cell(ratio(c.rgb, panel), r.need, /[LPRM]/.test(scr));
         q = cell(ratio(c.rgb, plate), r.need, scr.includes('H'));
       }
       h += `<tr><td>${r.group}</td><td>${r.name}<small>${r.use}</small></td><td><code>${r.id}</code></td><td>${cand}</td>
