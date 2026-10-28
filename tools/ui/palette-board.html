@@ -98,7 +98,7 @@
   <div class="wrap" id="stage"></div>
 
   <h2 class="sec">1. 분류색 후보 — 눈으로 고른다</h2>
-  <p class="lead">후보 가 · 나는 네 색이 색각 이상에서도 서로 충분히 떨어지는 조합이다(아래 2절의 수치). 수치는 「서로 헷갈리지 않는다」만 보장하고, 불처럼 · 얼음처럼 · 번개처럼 보이는지는 눈으로 본다. 위 장면과 같은 바닥 위에 후보마다 큰 조각, 이펙트 두 개를 겹친 모습(가산 블렌딩 — 겹친 곳이 밝아진다), HUD 슬롯, 카드의 분류 표식을 늘어놓는다. 볼 것: 화염이 너무 주황이 아닌가, 얼음이 너무 밝고 순하지 않은가, 번개가 겹쳤을 때 눈부시지 않고 번개다운가, support가 셋과 따로 보이는가. 위의 「시야」를 바꾸면 이 칸도 바뀌고, 「넷 나란히」면 시야마다 한 줄씩 나온다. 고르면 그 후보가 표 전체에 들어간다. 평평한 색이라 최종 판정은 실제 이펙트 위에서 다시 한다.</p>
+  <p class="lead">후보 가 · 나는 네 색이 색각 이상에서도 서로 충분히 떨어지는 조합이다(아래 2절의 수치). 수치는 「서로 헷갈리지 않는다」만 보장하고, 불처럼 · 얼음처럼 · 번개처럼 보이는지는 눈으로 본다. 위 장면과 같은 바닥 위에 후보마다 큰 조각, 이펙트 두 개를 겹친 모습(가산 블렌딩 — 겹친 곳이 밝아진다), HUD 슬롯, 카드의 분류 표식을 늘어놓는다. 볼 것: 화염이 너무 주황이 아닌가, 얼음이 너무 밝고 순하지 않은가, 번개가 겹쳤을 때 눈부시지 않고 번개다운가. support는 적에게 날아가지 않고 마법마다 모양 · 색이 다른 오라로 보이므로 이펙트 줄에서 뺐고, 슬롯 · 카드 표식에서만 본다. 위의 「시야」를 바꾸면 이 칸도 바뀌고, 「넷 나란히」면 시야마다 한 줄씩 나온다. 고르면 그 후보가 표 전체에 들어간다. 평평한 색이라 최종 판정은 실제 이펙트 위에서 다시 한다.</p>
   <div class="wrap" id="catBoard"></div>
 
   <h2 class="sec">2. 의미색 표</h2>
@@ -107,8 +107,8 @@
   <div id="bgNote"></div>
   <div class="wrap" id="tbl"></div>
 
-  <h2 class="sec">3. 분류색 넷끼리 — 0.22 이상</h2>
-  <p class="lead">1층 L1-8의 기준이다. 정상과 색각 세 가지 중 가장 가까운 값을 적는다. 넷은 전투 중 같은 모양(슬롯 아이콘 · 이펙트)으로 뜨므로 모양으로 가를 수 없다.</p>
+  <h2 class="sec">3. 분류색 셋끼리 — 0.22 이상</h2>
+  <p class="lead">1층 L1-8의 기준이다. 정상과 색각 세 가지 중 가장 가까운 값을 적는다. 화염 · 얼음 · 번개는 전투 중 같은 모양(발사체 · 폭발)으로 뜨므로 모양으로 가를 수 없다. support는 오라로 따로 보여 기준 밖이고, 값은 참고로만 흐리게 적는다.</p>
   <div id="cats"></div>
 
   <h2 class="sec">4. 충돌 판정 — 같은 화면에 뜨는 두 색</h2>
@@ -162,10 +162,10 @@
     { id: 'PANEL_BG', group: '바탕', name: '패널', use: '카드 · 일시정지 · 결과 · 메뉴 패널', form: '-', screens: 'LPRM', need: 'none', cands: [['제안 네이비', '#161d2e'], ['지금 코드', '#14141ae6']] },
     { id: 'HUD_PLATE', group: '바탕', name: 'HUD 글자 바탕', use: '바 배경 · 슬롯 · 묶음 판', form: '-', screens: 'H', need: 'none', cands: [['제안', '#0a0e18d9'], ['지금 코드 BAR_BG', '#1e1e24c8']] },
     { id: 'TEXT_PRIMARY', group: '글자', name: '기본 글자', use: '이름 · 제목 · 숫자', form: '글자', screens: 'HLPRM', need: 'text', cands: [['제안 아이보리', '#f3ecdc'], ['지금 코드', '#f0f0f5']] },
-    { id: 'TEXT_SECONDARY', group: '글자', name: '보조 글자', use: '설명 · 타이머', form: '글자', screens: 'HLPRM', need: 'text', cands: [['제안', '#b3ad9e'], ['지금 코드', '#aaaab4']] },
+    { id: 'TEXT_SECONDARY', group: '글자', name: '보조 글자', use: '설명 · 타이머', form: '글자', screens: 'HLPRM', need: 'text', cands: [['제안 밝게', '#d0c9b9'], ['조금 밝게', '#c9c2b2'], ['처음 값', '#b3ad9e'], ['지금 코드', '#aaaab4']] },
     { id: 'TEXT_DISABLED', group: '글자', name: '비활성 글자', use: '아직 못 쓰는 메뉴 항목', form: '글자', screens: 'M', need: 'none', cands: [['제안', '#6e6b64']] },
-    { id: 'ACCENT', group: '강조 · 장식', name: '강조(샴페인 골드)', use: '주 행동 버튼 채움 — 여기에만 쓴다', form: '채움', screens: 'LPRM', need: 'ui', cands: [['제안', '#dcbc7e'], ['1층 골드(참고)', '#d7a76d']] },
-    { id: 'DECOR', group: '강조 · 장식', name: '장식(빛바랜 골드)', use: '테두리 · 문양 선, 누른다는 뜻이 없다', form: '테두리', screens: 'LPRM', need: 'none', cands: [['제안', '#8a7752']] },
+    { id: 'ACCENT', group: '강조 · 장식', name: '강조(샴페인 골드)', use: '주 행동 버튼 채움 — 여기에만 쓴다', form: '채움', screens: 'LPRM', need: 'ui', cands: [['제안 맑게', '#ebc874'], ['맑고 깊게', '#e2b866'], ['처음 값', '#dcbc7e'], ['1층 골드(참고)', '#d7a76d']] },
+    { id: 'DECOR', group: '강조 · 장식', name: '장식(빛바랜 골드)', use: '테두리 · 문양 선, 누른다는 뜻이 없다', form: '테두리', screens: 'LPRM', need: 'none', cands: [['제안 밝게', '#b39b70'], ['더 밝게', '#c2a878'], ['처음 값', '#8a7752']] },
     { id: 'FOCUS', group: '상태', name: '키보드 포커스', use: '포커스 고리', form: '테두리', screens: 'LPRM', need: 'ui', cands: [['제안', '#fff6e0']] },
     { id: 'SELECTED', group: '상태', name: '선택된 카드', use: '고른 카드의 테두리', form: '테두리', screens: 'L', need: 'ui', cands: [['제안', '#7cc8ff']] },
     { id: 'DANGER', group: '상태', name: 'HP 위험', use: '위험 구간의 HP 바', form: '바', screens: 'H', need: 'ui', cands: [['제안', '#ff3048']] },
@@ -184,11 +184,13 @@
     { id: 'CAT_FIRE', group: '분류색', name: '화염', use: '슬롯 아이콘 · 이펙트 · 카드 분류 표식', form: '표식', screens: 'HLR', need: 'ui', cands: catCands('CAT_FIRE') },
     { id: 'CAT_ICE', group: '분류색', name: '얼음', use: '슬롯 아이콘 · 이펙트 · 카드 분류 표식', form: '표식', screens: 'HLR', need: 'ui', cands: catCands('CAT_ICE') },
     { id: 'CAT_LIGHTNING', group: '분류색', name: '번개', use: '슬롯 아이콘 · 이펙트 · 카드 분류 표식', form: '표식', screens: 'HLR', need: 'ui', cands: catCands('CAT_LIGHTNING') },
-    { id: 'CAT_SUPPORT', group: '분류색', name: 'support(보조)', use: '슬롯 아이콘 · 이펙트 · 카드 분류 표식', form: '표식', screens: 'HLR', need: 'ui', cands: catCands('CAT_SUPPORT') },
+    { id: 'CAT_SUPPORT', group: '분류색', name: 'support(보조)', use: '슬롯 아이콘 · 카드 분류 표식 — 전투 중 효과는 마법마다 모양 · 색이 다른 오라', form: '표식', screens: 'HLR', need: 'ui', cands: catCands('CAT_SUPPORT') },
   ];
   const ROW = Object.fromEntries(ROWS.map(r => [r.id, r]));
   const TIERS = ['TIER_GLOBAL', 'TIER_CATEGORY', 'TIER_INDIVIDUAL'];
   const CATS = ['CAT_FIRE', 'CAT_ICE', 'CAT_LIGHTNING', 'CAT_SUPPORT'];
+  // 적에게 날아가는 분류 셋 — support는 플레이어 주변 오라라 전투 중 이펙트와 0.22 기준에서 빠진다(2026-10-29 사용자 방향)
+  const FLY = CATS.slice(0, 3);
   const NEVER = new Set(['VICTORY|DEFEAT']);
   const JUDGE = [['', '미판정'], ['위치', '나 · 위치가 다르다'], ['모양', '나 · 모양이 다르다'], ['글자', '나 · 글자가 다르다(L1-8)'], ['바꿈', '다 · UI 색을 바꾼다']];
 
@@ -197,6 +199,9 @@
   let saved = {}; try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { saved = {}; }
   const st = { hex: {}, form: {}, screens: {}, judge: {}, memo: '', ...saved };
   for (const r of ROWS) { st.hex[r.id] ??= r.cands[0][1]; st.form[r.id] ??= r.form; st.screens[r.id] ??= r.screens; }
+  // 2판(2026-10-29 사용자 판정 — 테두리가 어둡고 버튼이 탁하고 설명 글자가 비활성처럼 보인다)에서 기본값을 바꾼 행. 저장값이 처음 값 그대로면 새 기본값으로 옮긴다
+  const REV = 2, OLD = { DECOR: '#8a7752', ACCENT: '#dcbc7e', TEXT_SECONDARY: '#b3ad9e' };
+  if ((st.rev ?? 1) < REV) { for (const [id, h] of Object.entries(OLD)) if (st.hex[id] === h) st.hex[id] = ROW[id].cands[0][1]; st.rev = REV; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch { /* 저장이 막힌 창 */ } };
   const rgbOf = id => parse(st.hex[id]).rgb;
   const css = c => `rgb(${c.join(',')})`;
@@ -250,7 +255,7 @@
     return v.join(';');
   }
   function scene(m) {
-    const fx = [['CAT_FIRE', 300, 360, 26], ['CAT_ICE', 640, 400, 20], ['CAT_LIGHTNING', 720, 280, 30], ['CAT_SUPPORT', 200, 230, 22], ['CAT_FIRE', 330, 380, 14], ['CAT_LIGHTNING', 700, 300, 16]]
+    const fx = [['CAT_FIRE', 300, 360, 26], ['CAT_ICE', 640, 400, 20], ['CAT_LIGHTNING', 720, 280, 30], ['CAT_ICE', 220, 230, 18], ['CAT_FIRE', 330, 380, 14], ['CAT_LIGHTNING', 700, 300, 16]]
       .map(([id, x, y, r]) => `<i class="fx" style="left:${x - r}px;top:${y - r}px;width:${2 * r}px;height:${2 * r}px;background:radial-gradient(circle, var(--${id}) 0 35%, transparent 70%)"></i>`).join('');
     const danger = $('danger').classList.contains('on');
     const slots = CATS.map((id, i) => `<div class="slot${i === 2 ? ' ready' : ''}"><i style="background:var(--${id})"></i>${i === 1 ? '<span class="cd"></span>' : ''}</div>`).join('');
@@ -278,7 +283,7 @@
   function catTile(set, m) {
     const c = id => css(sim(parse(set[id]).rgb, m)), bg = id => css(sim(rgbOf(id), m));
     const sws = CATS.map(id => `<div><i style="background:${c(id)}"></i><small>${ROW[id].name}<br>${set[id]}</small></div>`).join('');
-    const fxs = CATS.map((id, i) => [0, 18].map(dx => `<i style="left:${i * 64 + dx}px;top:${dx ? 30 : 14}px;width:52px;height:52px;background:radial-gradient(circle, ${c(id)} 0 30%, transparent 70%)"></i>`).join('')).join('');
+    const fxs = FLY.map((id, i) => [0, 18].map(dx => `<i style="left:${i * 64 + dx}px;top:${dx ? 30 : 14}px;width:52px;height:52px;background:radial-gradient(circle, ${c(id)} 0 30%, transparent 70%)"></i>`).join('')).join('');
     const slots = CATS.map(id => `<span style="background:${bg('HUD_PLATE')}"><i style="background:${c(id)}"></i></span>`).join('');
     const names = { CAT_FIRE: '화염', CAT_ICE: '얼음', CAT_LIGHTNING: '번개', CAT_SUPPORT: '보조' };
     const chips = CATS.map(id => `<span style="color:${bg('TEXT_SECONDARY')}"><b style="color:${c(id)}">●</b> ${names[id]}</span>`).join('');
@@ -325,7 +330,9 @@
     let h = '<table><tr><th>쌍</th>' + VISIONS.map(([n]) => `<th>${n}</th>`).join('') + '<th>가장 가까운 값</th></tr>';
     for (let i = 0; i < CATS.length; i++) for (let j = i + 1; j < CATS.length; j++) {
       const ds = VISIONS.map(([, m]) => dE(oklab(sim(rgbOf(CATS[i]), m)), oklab(sim(rgbOf(CATS[j]), m)))), min = Math.min(...ds);
-      h += `<tr><td>${ROW[CATS[i]].name} ↔ ${ROW[CATS[j]].name}</td>${ds.map(d => `<td class="${d >= 0.22 ? 'ok' : 'bad'}">${d.toFixed(2)}</td>`).join('')}<td class="${min >= 0.22 ? 'ok' : 'bad'}">${min.toFixed(2)}</td></tr>`;
+      // support가 낀 쌍은 기준 밖이라 값만 흐리게 적는다
+      const k = d => (CATS[j] === 'CAT_SUPPORT' ? 'dim' : d >= 0.22 ? 'ok' : 'bad');
+      h += `<tr><td>${ROW[CATS[i]].name} ↔ ${ROW[CATS[j]].name}${CATS[j] === 'CAT_SUPPORT' ? '<small>참고 — 기준 밖</small>' : ''}</td>${ds.map(d => `<td class="${k(d)}">${d.toFixed(2)}</td>`).join('')}<td class="${k(min)}">${min.toFixed(2)}</td></tr>`;
     }
     $('cats').innerHTML = h + '</table>';
   }
@@ -354,10 +361,10 @@
     const ps = allPairs();
     const rows = ROWS.map(r => `| ${r.group} | ${r.name} | ${r.id} | ${st.hex[r.id]} | ${r.group === '바탕' ? '–' : st.form[r.id]} | ${st.screens[r.id]} |`).join('\n');
     const cats = [];
-    for (let i = 0; i < CATS.length; i++) for (let j = i + 1; j < CATS.length; j++) cats.push(`${ROW[CATS[i]].name}↔${ROW[CATS[j]].name} ${Math.min(...VISIONS.map(([, m]) => dE(oklab(sim(rgbOf(CATS[i]), m)), oklab(sim(rgbOf(CATS[j]), m))))).toFixed(2)}`);
+    for (let i = 0; i < FLY.length; i++) for (let j = i + 1; j < FLY.length; j++) cats.push(`${ROW[CATS[i]].name}↔${ROW[CATS[j]].name} ${Math.min(...VISIONS.map(([, m]) => dE(oklab(sim(rgbOf(CATS[i]), m)), oklab(sim(rgbOf(CATS[j]), m))))).toFixed(2)}`);
     const judged = ps.filter(p => p.kind === 'judge').map(p => `| ${SCREENS[p.s]} | ${p.a.name} ↔ ${p.b.name} | ${p.min.toFixed(2)} (${p.worst}) | ${JUDGE.find(([v]) => v === p.pick)[1]}${p.fromAI ? ' (AI 제안)' : ''} | ${p.note} |`).join('\n');
     const sum = Object.keys(SCREENS).map(s => { const x = ps.filter(p => p.s === s); return `${SCREENS[s]} 통과 ${x.filter(p => p.kind === 'pass').length} · 모양 자동 ${x.filter(p => p.kind === 'auto').length} · 판정 ${x.filter(p => p.kind === 'judge').length}`; }).join(' / ');
-    const t = `의미색 판정 (${new Date().toLocaleDateString('sv-SE')}, tools/ui/palette-board.html)\n분류색 후보: ${st.catPick || '고르지 않음'}\n메모: ${st.memo || '-'}\n\n| 묶음 | 이름 | 토큰 | 값 | 모양 | 화면 |\n|---|---|---|---|---|---|\n${rows}\n\n분류색 넷 최소 거리(0.22 기준): ${cats.join(', ')}\n\n충돌 요약: ${sum}\n\n| 화면 | 쌍 | 최소 거리(시야) | 판정 | 무엇으로 갈리나 |\n|---|---|---|---|---|\n${judged}`;
+    const t = `의미색 판정 (${new Date().toLocaleDateString('sv-SE')}, tools/ui/palette-board.html)\n분류색 후보: ${st.catPick || '고르지 않음'}\n메모: ${st.memo || '-'}\n\n| 묶음 | 이름 | 토큰 | 값 | 모양 | 화면 |\n|---|---|---|---|---|---|\n${rows}\n\n분류색 셋 최소 거리(0.22 기준): ${cats.join(', ')}\n\n충돌 요약: ${sum}\n\n| 화면 | 쌍 | 최소 거리(시야) | 판정 | 무엇으로 갈리나 |\n|---|---|---|---|---|\n${judged}`;
     $('plain').textContent = t; return t;
   }
 
