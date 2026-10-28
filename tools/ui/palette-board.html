@@ -312,18 +312,18 @@
       const boxes = `<span class="scr">${Object.keys(SCREENS).map(s => `<label title="${SCREENS[s]}"><input type="checkbox" data-k="scr" data-id="${r.id}" value="${s}"${scr.includes(s) ? ' checked' : ''}>${s}</label>`).join('')}</span>`;
       let p = '<td class="dim">–</td>', q = '<td class="dim">–</td>', f = '<td class="dim">–</td>';
       if (r.group === '바탕') {
-        if (r.id !== 'DIM') { const fill = over(c.rgb, c.a, BAND_TOP), v = ratio(fill, BAND_TOP); f = `<td class="${v >= 3 ? 'ok' : 'bad'}">${v.toFixed(2)}</td>`; }
+        if (r.id !== 'DIM') { const fill = over(c.rgb, c.a, BAND_TOP), v = ratio(fill, BAND_TOP); f = `<td class="dim">${v.toFixed(2)}</td>`; }
       } else if (c.a === 1) {
         p = cell(ratio(c.rgb, panel), r.need, /[LPRM]/.test(scr));
         q = cell(ratio(c.rgb, plate), r.need, scr.includes('H'));
       }
       h += `<tr><td>${r.group}</td><td>${r.name}<small>${r.use}</small></td><td><code>${r.id}</code></td><td>${cand}</td>
         <td><input type="color" data-k="pick" data-id="${r.id}" value="${hex.slice(0, 7)}"> <input type="text" class="hex" data-k="hex" data-id="${r.id}" value="${hex}"></td>
-        <td>${form}</td><td>${boxes}</td>${p}${q}${f}<td class="dim">${r.group === '바탕' ? (r.id === 'DIM' ? '없음' : '띠 상한 3') : NEED[r.need][1]}</td></tr>`;
+        <td>${form}</td><td>${boxes}</td>${p}${q}${f}<td class="dim">${r.group === '바탕' ? (r.id === 'DIM' ? '없음' : '없음 — 테두리가 맡는다') : NEED[r.need][1]}</td></tr>`;
     }
     $('tbl').innerHTML = h + '</table>';
     const pv = ratio(over(rgbOf('PANEL_BG'), parse(st.hex.PANEL_BG).a, BAND_TOP), BAND_TOP), hv = ratio(over(rgbOf('HUD_PLATE'), parse(st.hex.HUD_PLATE).a, BAND_TOP), BAND_TOP);
-    $('bgNote').innerHTML = `<div class="callout">바탕색의 「띠 상한 위 3:1」(L1-8)은 어두운 바탕으로는 지킬 수 없다. 바닥 휘도가 0.08이면 순검정 바탕도 (0.08 + 0.05) / (0 + 0.05) = 2.6:1이 최대다. 지금 패널은 ${pv.toFixed(2)}:1, HUD 판은 ${hv.toFixed(2)}:1이다. 글자 대비(보조 글자 4.5:1)를 지키려면 바탕이 어두워야 하므로, 바탕과 바닥을 가르는 일은 바탕색이 아니라 테두리 같은 다른 수단이 맡아야 한다 — 정할 일로 남긴다.</div>`;
+    $('bgNote').innerHTML = `<div class="callout">바탕색은 「띠 상한 위 3:1」(L1-8)에서 뺐다(2026-10-29 사용자 결정). 어두운 바탕으로는 지킬 수 없어서다 — 바닥 휘도가 0.08이면 순검정 바탕도 (0.08 + 0.05) / (0 + 0.05) = 2.6:1이 최대다. 바탕과 바닥은 테두리선 · 그림자 같은 다른 수단이 가르고, 그 모양 · 두께는 3층이 정한다. 「바닥 위」 칸은 참고 값이다 — 지금 패널 ${pv.toFixed(2)}:1, HUD 판 ${hv.toFixed(2)}:1.</div>`;
   }
 
   function renderCats() {
