@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>폰트 비교판</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=Noto+Serif+KR:wght@600;700&family=Nanum+Gothic:wght@400;700;800&family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-jp.min.css" rel="stylesheet">
+<link href="https://hangeul.pstatic.net/hangeul_static/css/maru-buri.css" rel="stylesheet">
+<style>
+  /* UI 줄기 2층 폰트 체계 — 본문 후보 셋을 둘로, 제목 후보 셋(세리프 둘 + 본문 굵게)을 하나로 줄이는 첫 판정판이다.
+     출하 렌더는 Cocos라 굵기 · 힌팅이 이 HTML과 다를 수 있어, 여기서 남긴 둘은 Cocos Label에서 다시 판정한다. */
+  :root { --bg: #111214; --fg: #d6d6da; --muted: #8e8e96; --line: #2a2b30; --accent: #e9ad4f; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding-block: 20px 48px; padding-inline: 20px; background: var(--bg); color: var(--fg); font: 14px/1.6 "Noto Sans KR", "Malgun Gothic", sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2.sec { font-size: 15px; margin: 26px 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 14px; max-width: 86ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 10px; }
+  label { color: var(--muted); }
+  select, input[type=text], input[type=number] { background: #1b1c20; color: var(--fg); border: 1px solid var(--line); padding: 4px 6px; font: inherit; }
+  input[type=number] { width: 80px; } input[type=text] { width: 200px; }
+  button { background: #23242a; color: var(--fg); border: 1px solid var(--line); padding: 6px 12px; font: inherit; cursor: pointer; }
+  button.on { background: #3a3b44; }
+  .ruler { height: 10px; width: 100px; background: repeating-linear-gradient(90deg, var(--accent) 0 10px, transparent 10px 20px); border-bottom: 1px solid var(--accent); }
+  .scaled { transform-origin: 0 0; }
+  .board { padding: 16px 20px; border: 1px solid var(--line); margin-bottom: 14px; }
+  .board h3 { font: 400 13px "Noto Sans KR", sans-serif; margin: 0 0 8px; opacity: .7; }
+  .line { display: grid; grid-template-columns: 64px 1fr; align-items: baseline; gap: 14px; margin: 6px 0; }
+  .line .sz { font: 12px "Noto Sans KR", sans-serif; opacity: .6; }
+  .sample { white-space: nowrap; overflow-x: auto; }
+  .sample span { margin-right: 1.4em; }
+  .outline .sample { paint-order: stroke fill; -webkit-text-stroke: 2px #0a0908; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+  table { border-collapse: collapse; margin: 8px 0 14px; }
+  td, th { border-bottom: 1px solid var(--line); padding: 6px 12px; text-align: left; vertical-align: baseline; }
+  th { color: var(--muted); font-weight: 500; }
+  .digits { font-size: 28px; white-space: pre; }
+  .ok { color: #8fd18f; } .no { color: #e38a7a; }
+  .pair { position: relative; font-size: 30px; white-space: nowrap; padding-block: 6px; }
+  .pair .base { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--accent); opacity: .6; }
+  pre { background: #1b1c20; padding: 10px 12px; border: 1px solid var(--line); overflow-x: auto; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+  <h1>폰트 비교판</h1>
+  <p class="lead">실제 카탈로그 문구를 후보 폰트마다 같은 크기 · 같은 바탕에 늘어놓는다. 배율 1.0이 최소 지원 높이 720에서의 실제 크기다(L1-2). <b>브라우저 확대를 100%로 두고</b> 평소 거리에서 본다. 번역 라벨의 최소는 16px이고 14px는 숫자 전용이다(결정 1A). 바탕은 1층 띠 위의 세 경우, 외곽선은 HUD 글자의 자체 바탕이다(L1-8). 금색 눈금은 100 CSS px다.</p>
+  <div class="row">
+    <label>바탕 <select id="bg">
+      <option value="#242b3c|#f3efe6">네이비 패널 #242b3c (참고 그림)</option>
+      <option value="#505050|#f3efe6">띠 상한 회색 #505050 (휘도 0.08)</option>
+      <option value="#0d0d0d|#f3efe6">거의 검정 #0d0d0d (띠 하한)</option>
+    </select></label>
+    <label>본문 굵기 <select id="weight"><option value="400">400</option><option value="500" selected>500</option><option value="700">700</option></select></label>
+    <label>배율 <select id="scale"><option value="1">1.0 (높이 720)</option><option value="1.5">1.5 (높이 1080)</option></select></label>
+    <button id="outline" class="on" type="button">외곽선(자체 바탕)</button>
+    <span class="ruler" title="100 CSS px"></span>
+  </div>
+
+  <h2 class="sec">1. 본문 후보 — 셋 중 둘을 고른다</h2>
+  <p class="lead">16px는 카드 설명 · 일시정지 버튼처럼 가장 작은 번역 라벨, 20px는 카드 이름, 28px는 결과 화면 핵심 숫자 줄, 14px는 숫자만 나오는 HUD 라벨이다. 가짜 언어 줄은 길이 확장(L1-5) 대표 문자열이다.</p>
+  <div class="scaled" id="body"></div>
+
+  <h2 class="sec">2. 제목 후보 — 세리프 둘과 본문 굵게 중 하나</h2>
+  <p class="lead">메뉴 타이틀 · 결과 헤더 · 일시정지 제목 자리다. 「본문 굵게」는 아래에서 고른 본문 폰트의 가장 굵은 굵기라, 본문 폰트를 바꾸면 함께 바뀐다. 세리프가 무드(우아한 판타지)를 뚜렷하게 더하지 않으면 한 가족으로 간다.</p>
+  <div class="row"><label>「본문 굵게」에 쓸 본문 폰트 <select id="boldOf"></select></label></div>
+  <div class="scaled" id="title"></div>
+
+  <h2 class="sec">3. 숫자 폭 — 타이머가 흔들리지 않는가</h2>
+  <p class="lead">타이머 <code>mm:ss</code>는 고정 폭 숫자여야 한다(L1-6). 웹의 Cocos TTF 라벨은 글자를 캔버스에 그려서 폰트의 <code>tnum</code> 기능을 켤 수 없을 가능성이 크다 — 그래서 <b>기본 숫자 폭</b>이 같은지가 판정 기준이고, <code>tnum</code> 열은 참고다(Cocos에서 확인할 것). 아래 폭은 브라우저가 잰 값(px)이다.</p>
+  <div id="digits"></div>
+
+  <h2 class="sec">4. 짝 폰트 — 나중 일본어 · 중국어를 같은 모양으로 늘릴 수 있는가</h2>
+  <p class="lead">한글 부분은 후보 폰트, 일본어 부분은 그 짝 폰트로 한 줄에 놓는다. 점선이 한글 폰트의 기준선이다. 글자 높이 · 기준선 · 굵기 느낌 · 한자 크기가 어긋나는지 본다. 짝이 없는 폰트는 브라우저 기본 일본어 폰트로 대신 그려지므로, 어긋남이 그대로 보인다.</p>
+  <div id="pairs"></div>
+
+  <h2 class="sec">판정 기록</h2>
+  <div class="row" id="pickBody"><span style="color:var(--muted)">본문 남길 둘:</span></div>
+  <div class="row"><label>제목 <select id="pickTitle"></select></label></div>
+  <div class="row">
+    <label>모니터 <input type="text" id="monitor" placeholder="32인치 2560×1440"></label>
+    <label>거리(cm) <input type="number" id="dist" value="60" min="20" max="200"></label>
+    <label>메모 <input type="text" id="note" placeholder="예: 나눔고딕 16px 받침이 흐림"></label>
+    <button id="copy" type="button">결과 복사</button>
+  </div>
+  <pre id="plain"></pre>
+
+<script>
+  // 후보는 2층 계획 결정 6A. 본문은 bold 칸에 「본문 굵게」 제목 후보로 쓸 가장 굵은 굵기를 둔다.
+  const bodies = [
+    { name: 'Pretendard', family: '"Pretendard", sans-serif', bold: 800, pair: '"Pretendard JP", sans-serif', pairName: 'Pretendard JP' },
+    { name: 'Noto Sans KR', family: '"Noto Sans KR", sans-serif', bold: 800, pair: '"Noto Sans JP", sans-serif', pairName: 'Noto Sans JP' },
+    { name: 'Nanum Gothic', family: '"Nanum Gothic", sans-serif', bold: 800, pair: 'sans-serif', pairName: '없음(브라우저 기본으로 대신)' },
+  ];
+  // 마루 부리는 굵기마다 family 이름이 따로라(네이버 배포 CSS) 굵기 대신 이름으로 고른다
+  const serifs = [
+    { name: 'Noto Serif KR 700', family: '"Noto Serif KR", serif', weight: 700, pair: '"Noto Serif JP", serif', pairName: 'Noto Serif JP' },
+    { name: '마루 부리 Bold', family: '"MaruBuriBold", serif', weight: 400, pair: 'serif', pairName: '없음(브라우저 기본으로 대신)' },
+  ];
+  // 문구는 ko.json · en.json의 실제 message 값이다(2026-10-27 기준). 기호는 카탈로그 message 값의 기호 + 코드가 붙이는 : , /
+  const bodyLines = [
+    [16, '<span>모든 마법 쿨다운 -5%</span><span>경험치 획득 범위 +30%</span><span>신규 마법 추가 (화염 · 2등급)</span>'],
+    [16, '<span>XP pickup range +30%</span><span>New spell (Fire · Tier 2)</span><span>계속하기 · 재시작 · 메인 메뉴</span><span>Resume · Restart · Main Menu</span>'],
+    [16, '<span>[Ŗéšũɱé ŵåṽé ţĥŕéé ōńē]</span><span>Fortsetzen · Hauptmenü</span><span>! . ( · ) + % - : , /</span>'],
+    [20, '<span>생명력 강화</span><span>속사</span><span>파이어볼 · 아이스 미사일 · 라이트닝 볼트</span><span>Vitality · Rapid Fire</span>'],
+    [28, '<span>생존 시간 12:48</span><span>도달 레벨 14</span><span>처치 1,205</span>'],
+    [14, '<span>1,205</span><span>487</span><span>Lv.14</span><span>Wave 7</span><span>12:48</span><span>(숫자 전용)</span>'],
+  ];
+  const titleLines = [
+    [56, '<span>MONSTER</span>'],
+    [40, '<span>승리! 7웨이브 도달</span><span>GAME OVER</span>'],
+    [28, '<span>Victory! Reached wave 7</span><span>일시정지</span><span>Paused</span>'],
+  ];
+  const $ = id => document.getElementById(id);
+
+  function board(title, family, weight, lines, colors) {
+    const [bg, fg] = colors;
+    const div = document.createElement('div');
+    div.className = 'board'; div.style.background = bg; div.style.color = fg;
+    div.innerHTML = `<h3>${title}</h3>` + lines.map(([s, html]) => `<div class="line"><span class="sz">${s}px</span><div class="sample" data-size="${s}">${html}</div></div>`).join('');
+    // 글꼴 이름에 따옴표가 들어 있어 style 속성 문자열로 넣으면 속성이 끊긴다 — 글꼴 · 크기는 JS로 직접 넣는다
+    for (const el of div.querySelectorAll('.sample')) { el.style.fontFamily = family; el.style.fontWeight = weight; el.style.fontSize = el.dataset.size + 'px'; el.style.lineHeight = '1.35'; }
+    return div;
+  }
+
+  function render() {
+    const colors = $('bg').value.split('|'), w = $('weight').value, sc = +$('scale').value;
+    const body = $('body'), title = $('title');
+    body.replaceChildren(...bodies.map(b => board(`${b.name} · ${w}`, b.family, w, bodyLines, colors)));
+    const bo = bodies[+$('boldOf').value];
+    const titles = [...serifs.map(s => ({ name: s.name, family: s.family, weight: s.weight })), { name: `본문 굵게 — ${bo.name} ${bo.bold}`, family: bo.family, weight: bo.bold }];
+    title.replaceChildren(...titles.map(t => board(t.name, t.family, t.weight, titleLines, colors)));
+    for (const el of [body, title]) { el.style.transform = `scale(${sc})`; el.style.width = sc === 1 ? '' : `${100 / sc}%`; el.classList.toggle('outline', $('outline').classList.contains('on')); }
+    plain();
+  }
+
+  // 숫자 폭은 화면에 그린 뒤 잰다 — 폰트가 다 내려오기 전에 재면 대체 폰트의 폭이 잡힌다
+  function measure() {
+    const all = [...bodies.map(b => ({ name: b.name, family: b.family, weight: 500 })), ...serifs.map(s => ({ name: s.name, family: s.family, weight: s.weight }))];
+    const strs = ['00:00', '11:11', '88:88'];
+    const probe = document.createElement('span');
+    probe.style.cssText = 'position:absolute;visibility:hidden;font-size:28px;white-space:pre';
+    document.body.append(probe);
+    const width = (f, wt, s, tnum) => { probe.style.fontFamily = f; probe.style.fontWeight = wt; probe.style.fontVariantNumeric = tnum ? 'tabular-nums' : 'normal'; probe.textContent = s; return probe.getBoundingClientRect().width; };
+    const rows = all.map(f => {
+      const plainW = strs.map(s => width(f.family, f.weight, s, false)), tnumW = strs.map(s => width(f.family, f.weight, s, true));
+      const same = a => Math.max(...a) - Math.min(...a) < 0.5;
+      return `<tr><td>${f.name}</td><td class="digits" style='font-family:${f.family.replace(/"/g, '&quot;')};font-weight:${f.weight}'>00:00\n11:11\n88:88</td>` +
+        `<td>${plainW.map(x => x.toFixed(1)).join(' / ')}<br><b class="${same(plainW) ? 'ok' : 'no'}">${same(plainW) ? '고정 폭' : '폭이 다르다'}</b></td>` +
+        `<td>${tnumW.map(x => x.toFixed(1)).join(' / ')}<br><span class="${same(tnumW) ? 'ok' : 'no'}">${same(tnumW) ? '고정 폭' : '폭이 다르다'}</span></td></tr>`;
+    }).join('');
+    probe.remove();
+    $('digits').innerHTML = `<table><tr><th>폰트</th><th>모양</th><th>기본 숫자 폭 — 판정 기준</th><th>tnum 켰을 때 — 참고</th></tr>${rows}</table>`;
+  }
+  // 웹 폰트는 쓰이는 글자가 나올 때 받기 시작하므로, 재기 전에 숫자 · 콜론이 든 조각을 폰트마다 직접 요청해 둔다
+  function loadDigits() {
+    const all = [...bodies.map(b => `500 28px ${b.family}`), ...serifs.map(s => `${s.weight} 28px ${s.family}`)];
+    return Promise.all(all.map(f => document.fonts.load(f, '0123456789:').catch(() => null)));
+  }
+
+  function pairs() {
+    const all = [...bodies.map(b => ({ name: b.name, family: b.family, weight: 500, pair: b.pair, pairName: b.pairName })), ...serifs];
+    $('pairs').innerHTML = all.map(f => `<div class="board" style="background:#242b3c;color:#f3efe6"><h3>${f.name} ↔ ${f.pairName}</h3><div class="pair"><span class="base"></span>` +
+      `<span class="ko">파이어볼 발사</span> <span class="jp">ファイアボール発射 魔法</span> <span class="ko">12:48 Wave 7</span></div></div>`).join('');
+    [...$('pairs').querySelectorAll('.board')].forEach((el, i) => {
+      const f = all[i];
+      for (const s of el.querySelectorAll('.ko')) { s.style.fontFamily = f.family; s.style.fontWeight = f.weight; }
+      for (const s of el.querySelectorAll('.jp')) { s.style.fontFamily = f.pair; s.style.fontWeight = f.weight; }
+      // 기준선 점선은 한글 글자의 실제 기준선에 맞춘다 — 0 높이 inline-block의 아래끝이 기준선에 놓이는 성질을 쓴다
+      const mark = document.createElement('span'); mark.style.cssText = 'display:inline-block;height:0;width:0';
+      el.querySelector('.ko').append(mark);
+      const pairBox = el.querySelector('.pair').getBoundingClientRect();
+      el.querySelector('.base').style.top = (mark.getBoundingClientRect().top - pairBox.top) + 'px';
+    });
+  }
+
+  function plain() {
+    const picked = [...document.querySelectorAll('#pickBody input:checked')].map(i => i.value);
+    const t = `| 폰트 1차 판정 | 본문: ${picked.join(' · ') || '?'} | 제목: ${$('pickTitle').value} | 바탕 ${$('bg').selectedOptions[0].text} · 본문 굵기 ${$('weight').value} · 배율 ${$('scale').value} · 외곽선 ${$('outline').classList.contains('on') ? '있음' : '없음'} | 모니터 ${$('monitor').value || '?'} · 거리 ${$('dist').value}cm | ${$('note').value} |`;
+    $('plain').textContent = t; return t;
+  }
+
+  // 판정 칸 만들기
+  bodies.forEach((b, i) => {
+    $('boldOf').append(new Option(b.name, i));
+    const l = document.createElement('label'); l.innerHTML = `<input type="checkbox" value="${b.name}"> ${b.name}`; $('pickBody').append(l);
+  });
+  for (const n of [...serifs.map(s => s.name), '본문 굵게']) $('pickTitle').append(new Option(n, n));
+  for (const id of ['bg', 'weight', 'scale', 'boldOf']) $(id).addEventListener('change', render);
+  for (const id of ['monitor', 'dist', 'note', 'pickTitle']) $(id).addEventListener('input', plain);
+  $('pickBody').addEventListener('change', plain);
+  $('outline').addEventListener('click', e => { e.target.classList.toggle('on'); render(); });
+  $('copy').addEventListener('click', async () => { const t = plain(); try { await navigator.clipboard.writeText(t); } catch { window.getSelection().selectAllChildren($('plain')); } });
+  render(); pairs();
+  loadDigits().then(() => document.fonts.ready).then(() => { measure(); pairs(); });
+</script>
+</body>
+</html>
