@@ -1,0 +1,180 @@
+{
+  "_설명": [
+    "적 그림 보드(enemy-board.html)가 읽는 그림 · 움직임 값이다. 게임 값(크기 · 속도 · 공격)은 game/assets/resources/data/enemies.json이 주인이고, 이 파일은 그림을 어떻게 붙이고 움직이는지만 든다.",
+    "키는 enemies.json의 id다. name은 바꾼 로스터의 이름이고, 데이터 이름과 다르면 보드가 둘을 함께 보인다.",
+    "imageBase는 이 파일 기준 상대 경로다. 배경 제거를 마친 그림(사양서 §6.5)을 둔다.",
+    "facing은 받은 그림이 보는 쪽(front · right · left)이다. 게임은 오른쪽을 기본으로 두고 왼쪽으로 갈 때 뒤집으므로, left로 받은 그림은 뒤집은 판이 기본 그림이 된다.",
+    "parts.attach는 부위 조각이 부위 그림에서 놓인 자리를 0으로 둔 옮김이고, parts.pivot은 부위 조각 왼쪽 위에서 본 돌리는 중심이다. 둘 다 절반 크기 그림의 픽셀이다.",
+    "parts.fit은 tools 밖 fit.js가 구한 값으로 부위 그림의 원래 픽셀이고 뒤집기 전이다. head는 몸 조각 상자 왼쪽 위에서 본 머리 조각 상자 왼쪽 위, pivot은 머리 조각 상자 왼쪽 위에서 본 목 자리다.",
+    "움직임의 각은 시계 방향이 +(앞을 볼 때 앞으로 숙임)이고, 거리는 게임 단위, 시간은 초다."
+  ],
+  "imageBase": "../../cloud-storage/art/evidence/enemies/2026-10-27-bg-removal/isnet-despill/",
+  "common": {
+    "telegraphTint": "예고 동안 그림 색에 (255, 64, 64)를 곱한다 — 지금 게임 코드",
+    "hitFlash": { "times": [0, 0.5], "dur": 0.12 },
+    "death": { "dur": 0.25, "scale": 0.5 }
+  },
+  "enemies": {
+    "cheonyeo": {
+      "name": "처녀귀신",
+      "image": "cheonyeo.png",
+      "facing": "front",
+      "walk": null,
+      "attack": null,
+      "walkNote": "정하지 않음",
+      "attackNote": "없음 — 몸으로 부딪힌다",
+      "mark": "얼굴을 가린 긴 검은 머리",
+      "markConfirmed": true
+    },
+    "dalgyal": {
+      "name": "달걀귀신",
+      "image": null,
+      "facing": null,
+      "walkNote": "정하지 않음",
+      "attackNote": "없음 — 몸으로 부딪힌다",
+      "mark": "이목구비 없는 달걀 얼굴",
+      "markConfirmed": false
+    },
+    "dokkaebi": {
+      "name": "도깨비",
+      "image": null,
+      "facing": null,
+      "walkNote": "정하지 않음",
+      "attackNote": "없음 — 몸으로 부딪힌다",
+      "mark": "둥근 패랭이 모자",
+      "markConfirmed": false,
+      "note": "몸이 쑥색이라 배경을 초록이 아닌 색(예: 자홍)으로 받는다. 남은 여덟 가운데 일찍 받는다"
+    },
+    "jangsanbeom": {
+      "name": "무두귀",
+      "image": null,
+      "facing": null,
+      "walkNote": "정하지 않음",
+      "attackNote": "없음 — 몸으로 부딪힌다",
+      "mark": "머리 없이 평평하게 끊긴 어깨선",
+      "markConfirmed": false
+    },
+    "eodukshini": {
+      "name": "적색일괴",
+      "image": null,
+      "facing": null,
+      "walkNote": "정하지 않음",
+      "attackNote": "없음 — 몸으로 부딪힌다",
+      "mark": "뒤집은 그릇 모양의 붉은 비단 우산 몸",
+      "markConfirmed": false
+    },
+    "bulgasari": {
+      "name": "불가사리",
+      "image": "bulgasari.png",
+      "facing": "left",
+      "walk": null,
+      "attack": {
+        "kind": "shakeLunge",
+        "shake": 2.5,
+        "hz": 22,
+        "tiltDeg": 2,
+        "squash": 0.04,
+        "lunge": { "dx": 2, "tiltDeg": 5, "sx": 1.05, "sy": 0.96 },
+        "recover": 0.15
+      },
+      "walkNote": "정하지 않음",
+      "attackNote": "돌진 준비 동안 제자리에서 좌우로 점점 세게 떨다가, 돌진하며 앞으로 숙인다",
+      "mark": "돌출된 엄니",
+      "markConfirmed": true
+    },
+    "kumiho": {
+      "name": "구미호",
+      "image": null,
+      "facing": null,
+      "walkNote": "정하지 않음",
+      "attackNote": "발사체가 맡는다",
+      "mark": "부채꼴로 펼친 아홉 꼬리",
+      "markConfirmed": false
+    },
+    "imugi": {
+      "name": "강철",
+      "image": null,
+      "facing": null,
+      "walkNote": "정하지 않음",
+      "attackNote": "발사체가 맡는다",
+      "mark": "갈라진 진흙 같은 비늘과 뭉툭한 뿔",
+      "markConfirmed": false
+    },
+    "mulgwisin": {
+      "name": "물귀신",
+      "image": null,
+      "facing": null,
+      "walkNote": "정하지 않음",
+      "attackNote": "발사체가 맡는다",
+      "mark": "발밑 물웅덩이와 온몸을 덮은 젖은 머리카락",
+      "markConfirmed": false
+    },
+    "dueokshini": {
+      "name": "두억시니",
+      "image": null,
+      "facing": null,
+      "partsNote": "휘두르는 부위 — 받기 전에 정한다",
+      "walkNote": "정하지 않음",
+      "attackNote": "정하지 않음",
+      "mark": "손에 꽉 쥔 몸집만 한 가시 쇠몽둥이",
+      "markConfirmed": false,
+      "note": "몽둥이가 한쪽 손에 있어 뒤집으면 반대 손으로 옮겨 간다. 받을 때 뒤집은 모습도 함께 본다"
+    },
+    "yacha": {
+      "name": "출목축비",
+      "image": "chulmokchukbi-parts.png",
+      "reference": "chulmokchukbi.png",
+      "facing": "left",
+      "parts": {
+        "label": "머리",
+        "fit": { "head": { "x": -52, "y": 118 }, "pivot": { "x": 343, "y": 194 } },
+        "offset": { "dx": 0, "dy": 0 },
+        "rest": 0
+      },
+      "walk": null,
+      "attack": {
+        "kind": "bite",
+        "windDeg": -6,
+        "back": 5,
+        "hitDeg": 4,
+        "fwd": 10,
+        "push": 6,
+        "leanDeg": 2,
+        "tHit": 0.09,
+        "tHold": 0.08,
+        "tBack": 0.3
+      },
+      "walkNote": "정하지 않음",
+      "attackNote": "예고 동안 머리를 젖히며 뒤로 뺐다가, 치는 순간 머리를 내밀고 그림 전체도 앞으로 쏠리며 문다",
+      "mark": "튀어나온 두 눈과 귀까지 찢어진 입",
+      "markConfirmed": true
+    },
+    "geuseundae": {
+      "name": "재차의",
+      "image": "jaechaui-parts.png",
+      "reference": "jaechaui.png",
+      "facing": "right",
+      "parts": {
+        "label": "뻗은 팔",
+        "attach": { "dx": -55, "dy": 4 },
+        "pivot": { "x": 20, "y": 95 },
+        "rest": 0,
+        "footX": 0.53
+      },
+      "walk": { "kind": "stepTilt", "tiltDeg": 6, "step": 0.4, "turn": 0.09, "lurch": 8 },
+      "attack": {
+        "kind": "swing",
+        "windDeg": -32,
+        "hitDeg": 28,
+        "tHit": 0.09,
+        "tHold": 0.07,
+        "tBack": 0.26,
+        "leanDeg": 3
+      },
+      "walkNote": "0.4초마다 반대쪽으로 뚝 꺾으며 끌려가듯 걷는다",
+      "attackNote": "예고 동안 팔을 들었다가, 내려 할퀴며 몸도 살짝 기울인다",
+      "mark": "어둡게 물든 손발 끝과 갑자기 뻗은 한 팔",
+      "markConfirmed": true
+    }
+  }
+}

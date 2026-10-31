@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>적 그림 보드</title>
+<style>
+  /* 적 12종을 한 화면에서 보는 보드. 게임 값은 enemies.json, 그림 · 움직임 값은 enemy-art.json에서 읽고,
+     두 파일을 2초마다 다시 읽어 바뀌면 다시 그린다. 움직임 계산은 미리보기 화면(레포 밖 preview-tool)과 같다. */
+  :root { --bg: #14161d; --panel: #1d2029; --line: #2c3040; --fg: #e8e6e0; --muted: #a0a2b0; --floor: #2a2e38; --warn: #e9ad4f; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.55 "Noto Sans KR", "Malgun Gothic", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: rgba(20,22,29,0.96); border-bottom: 1px solid var(--line); padding: 10px 20px; }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
+  .bar label { color: var(--muted); }
+  .bar .grp { display: flex; gap: 4px; align-items: center; }
+  button { background: #262a35; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 9px; font: inherit; cursor: pointer; }
+  button.on { background: #3a4152; border-color: #59627a; }
+  #status { color: var(--muted); font-size: 13px; }
+  #warn { color: var(--warn); font-size: 13px; }
+  main { padding: 14px 20px 40px; }
+  .lead { color: var(--muted); max-width: 110ch; margin: 0 0 6px; }
+  .common { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px 12px; }
+  .card .head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
+  .card .num { color: var(--muted); }
+  .card .name { font-size: 16px; font-weight: 700; }
+  .card .sub { color: var(--muted); font-size: 12px; }
+  .badge { font-size: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 0 7px; color: var(--muted); }
+  .top { display: flex; gap: 10px; align-items: flex-start; }
+  .views { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .views .cap { font-size: 11px; color: var(--muted); }
+  canvas { display: block; background: var(--floor); border-radius: 4px; }
+  table { border-collapse: collapse; font-size: 13px; flex: 1; }
+  th { color: var(--muted); font-weight: 400; text-align: left; padding: 2px 8px 2px 0; white-space: nowrap; vertical-align: top; }
+  td { padding: 2px 0; vertical-align: top; }
+  .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; border: 1px solid #0006; }
+  .dim { color: var(--muted); }
+  .note { color: var(--warn); }
+  .game { margin-top: 8px; width: 100%; }
+  .phase { font-size: 12px; color: var(--muted); margin-top: 3px; height: 18px; }
+  .err { background: #3a2222; border: 1px solid #6a3434; border-radius: 6px; padding: 10px 14px; margin: 0 0 14px; }
+  .err code { background: #0005; padding: 1px 5px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>적 그림 보드 <span id="status"></span></h1>
+  <div class="bar">
+    <span class="grp"><label>게임 크기 배율</label><span id="zoomBtns"></span></span>
+    <span class="grp"><label>보기</label><span id="modeBtns"></span></span>
+    <span class="grp"><label>방향</label><span id="dirBtns"></span></span>
+    <span class="grp"><label>속도</label><span id="rateBtns"></span></span>
+    <button type="button" id="reload">그림까지 다시 읽기</button>
+    <span id="warn"></span>
+  </div>
+</header>
+<main>
+  <div id="err"></div>
+  <p class="lead">게임 값은 <code>game/assets/resources/data/enemies.json</code>, 그림 · 움직임 값은 <code>tools/art/enemy-art.json</code>에서 읽는다. 두 파일은 2초마다 다시 읽어서, 고치면 이 화면이 저절로 바뀐다. 그림 파일을 바꿨을 때는 「그림까지 다시 읽기」를 누른다. 왼쪽 칸은 크게 본 것이고, 아래 칸은 게임 크기로 바닥을 걸어 다니는 것이다. 그림이 아직 없는 귀신은 데이터의 색과 크기로 자리만 그린다.</p>
+  <p class="common" id="common"></p>
+  <div class="grid" id="grid"></div>
+</main>
+<script>
+const SRC = { enemies: '../../game/assets/resources/data/enemies.json', art: './enemy-art.json' };
+const ROLE = { tank: '탱크', standard: '표준', swarmer: '스워머' };
+const MOVE = { chase: '쫓아옴', zigzag: '지그재그로 쫓아옴', lunge: '쫓아오다 돌진', kite: '거리를 지킴' };
+const FACING = { front: '정면', right: '오른쪽', left: '왼쪽 — 뒤집은 그림이 기본' };
+const WALK_T = 1.8, GAP_T = 0.4, HIT_T = 1.0, GONE_T = 0.5, IDLE_T = 0.5, SHOT_T = 0.6;
+const GAME_H = 210; // 게임 크기 칸의 높이(게임 단위)
+const BIG = 220;    // 크게 보는 칸의 한 변(CSS 픽셀)
+
+let ZOOM = 1, MODE = 'all', DIR = 'alt', RATE = 1;
+let cards = [], artCfg = null, lastText = { enemies: '', art: '' }, building = false;
+
+// ---------- 읽기 ----------
+async function fetchText(url) {
+  const r = await fetch(`${url + (url.includes('?') ? '&' : '?')}t=${Date.now()}`, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`${url} — ${r.status}`);
+  return r.text();
+}
+function loadImg(url) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = () => rej(new Error(url));
+    im.src = `${url}?t=${Date.now()}`;
+  });
+}
+function pixels(im) {
+  const c = document.createElement('canvas');
+  c.width = im.naturalWidth; c.height = im.naturalHeight;
+  const x = c.getContext('2d');
+  x.drawImage(im, 0, 0);
+  return { w: c.width, h: c.height, d: x.getImageData(0, 0, c.width, c.height).data, x: 0, y: 0 };
+}
+
+// ---------- 그림 다듬기 — 미리보기의 cutout.js와 같은 계산 ----------
+function components(img) {
+  const { w, h, d } = img, lab = new Int32Array(w * h).fill(-1), comps = [], stack = [];
+  for (let s = 0; s < w * h; s++) {
+    if (lab[s] !== -1 || d[s * 4 + 3] === 0) continue;
+    const c = { id: comps.length, n: 0, x0: w, y0: h, x1: 0, y1: 0 };
+    lab[s] = c.id; stack.push(s);
+    while (stack.length) {
+      const p = stack.pop(), x = p % w, y = (p / w) | 0;
+      c.n++; if (x < c.x0) c.x0 = x; if (x > c.x1) c.x1 = x; if (y < c.y0) c.y0 = y; if (y > c.y1) c.y1 = y;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const q = ny * w + nx;
+        if (lab[q] === -1 && d[q * 4 + 3] > 0) { lab[q] = c.id; stack.push(q); }
+      }
+    }
+    comps.push(c);
+  }
+  return { lab, comps };
+}
+// 큰 조각 k개를 고르고, 작은 부스러기는 가장 가까운 큰 조각에 붙인다. 큰 조각부터 돌려준다
+function groups(img, k) {
+  const { lab, comps } = components(img);
+  const big = [...comps].sort((a, b) => b.n - a.n).slice(0, k);
+  const owner = new Int32Array(comps.length);
+  for (const c of comps) {
+    const cx = (c.x0 + c.x1) / 2, cy = (c.y0 + c.y1) / 2;
+    let best = 0, bd = Infinity;
+    big.forEach((g, gi) => {
+      const dx = Math.max(g.x0 - cx, 0, cx - g.x1), dy = Math.max(g.y0 - cy, 0, cy - g.y1);
+      if (dx * dx + dy * dy < bd) { bd = dx * dx + dy * dy; best = gi; }
+    });
+    owner[c.id] = best;
+  }
+  return big.map((_g, gi) => {
+    let x0 = img.w, y0 = img.h, x1 = 0, y1 = 0;
+    for (let p = 0; p < img.w * img.h; p++) {
+      if (lab[p] === -1 || owner[lab[p]] !== gi) continue;
+      const x = p % img.w, y = (p / img.w) | 0;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    const out = { w: x1 - x0 + 1, h: y1 - y0 + 1, x: x0, y: y0 };
+    out.d = new Uint8ClampedArray(out.w * out.h * 4);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const p = y * img.w + x;
+      if (lab[p] === -1 || owner[lab[p]] !== gi) continue;
+      out.d.set(img.d.subarray(p * 4, p * 4 + 4), ((y - y0) * out.w + (x - x0)) * 4);
+    }
+    return out;
+  });
+}
+// 2×2 상자 평균(알파 곱한 값으로 평균해 가장자리 색이 어두워지지 않게)
+function half(img) {
+  const w = Math.ceil(img.w / 2), h = Math.ceil(img.h / 2), d = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let r = 0, g = 0, b = 0, a = 0, n = 0;
+    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+      const sx = x * 2 + dx, sy = y * 2 + dy;
+      if (sx >= img.w || sy >= img.h) continue;
+      const i = (sy * img.w + sx) * 4, al = img.d[i + 3];
+      r += img.d[i] * al; g += img.d[i + 1] * al; b += img.d[i + 2] * al; a += al; n++;
+    }
+    const o = (y * w + x) * 4;
+    if (a > 0) { d[o] = r / a; d[o + 1] = g / a; d[o + 2] = b / a; }
+    d[o + 3] = a / n;
+  }
+  return { w, h, d, x: (img.x || 0) / 2, y: (img.y || 0) / 2 };
+}
+function mirror(img) {
+  const d = new Uint8ClampedArray(img.w * img.h * 4);
+  for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) {
+    const s = (y * img.w + (img.w - 1 - x)) * 4;
+    d.set(img.d.subarray(s, s + 4), (y * img.w + x) * 4);
+  }
+  return { ...img, d };
+}
+function toCanvas(img) {
+  const c = document.createElement('canvas');
+  c.width = img.w; c.height = img.h;
+  c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(img.d), img.w, img.h), 0, 0);
+  return c;
+}
+// 한 번에 크게 줄이면 계단이 지므로 절반씩 줄인 뒤 마지막에 맞춘다. k는 줄인 뒤 1픽셀이 원래 몇 픽셀인지의 역수
+function shrink(src, k) {
+  let cur = src;
+  const tw = Math.max(1, Math.ceil(src.width * k)), th = Math.max(1, Math.ceil(src.height * k));
+  while (cur.width / 2 >= tw * 2) {
+    const c = document.createElement('canvas');
+    c.width = Math.ceil(cur.width / 2); c.height = Math.ceil(cur.height / 2);
+    const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(cur, 0, 0, c.width, c.height);
+    cur = c;
+  }
+  const c = document.createElement('canvas');
+  c.width = tw; c.height = th;
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(cur, 0, 0, tw, th);
+  return c;
+}
+
+// ---------- 그림 한 벌(몸 + 부위) ----------
+// 값은 모두 절반 크기 그림의 픽셀이다. box는 쉬는 자세에서 몸과 부위를 합친 상자(몸 왼쪽 위가 0), foot는 발밑 점
+async function buildRig(base, art, data) {
+  if (!art?.image) return placeholderRig(data);
+  const raw = pixels(await loadImg(base + art.image));
+  const flipSrc = art.facing === 'left';
+  let rig;
+  if (!art.parts) {
+    let m = half(groups(raw, 1)[0]);
+    if (flipSrc) m = mirror(m);
+    rig = { body: toCanvas(m), bw: m.w, bh: m.h, part: null };
+  } else {
+    // 그림 전체를 먼저 뒤집은 뒤 조각을 나눠, 두 조각이 놓인 자리도 함께 뒤집히게 한다
+    const [bodyF, partF] = groups(flipSrc ? mirror(raw) : raw, 2);
+    const body = half(bodyF), part = half(partF), P = art.parts;
+    let x, y, px, py;
+    if (P.fit) {
+      // fit.js 값은 뒤집기 전 원래 픽셀이라, 뒤집었으면 가로 값을 뒤집은 그림 기준으로 바꾼 뒤 절반으로 줄인다
+      x = flipSrc ? (bodyF.w - (P.fit.head.x + partF.w)) / 2 : P.fit.head.x / 2;
+      y = P.fit.head.y / 2;
+      px = flipSrc ? (partF.w - 1 - P.fit.pivot.x) / 2 : P.fit.pivot.x / 2;
+      py = P.fit.pivot.y / 2;
+      x += (P.offset?.dx) || 0; y += (P.offset?.dy) || 0;
+    } else {
+      x = part.x - body.x + ((P.attach?.dx) || 0);
+      y = part.y - body.y + ((P.attach?.dy) || 0);
+      px = P.pivot.x; py = P.pivot.y;
+    }
+    rig = { body: toCanvas(body), bw: body.w, bh: body.h, part: { cv: toCanvas(part), w: part.w, h: part.h, x, y, px, py, rest: P.rest || 0 } };
+  }
+  if (art.reference) {
+    let r = half(groups(pixels(await loadImg(base + art.reference)), 1)[0]);
+    if (flipSrc) r = mirror(r);
+    rig.ref = toCanvas(r);
+  }
+  return finishRig(rig, art);
+}
+// 그림이 없는 귀신 — 데이터의 색으로 칠한 둥근 자리
+function placeholderRig(data) {
+  const S = 120, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const x = c.getContext('2d');
+  x.fillStyle = data.tint || '#888';
+  x.strokeStyle = '#111'; x.lineWidth = 5;
+  x.beginPath(); x.ellipse(S / 2, S / 2, S / 2 - 4, S / 2 - 4, 0, 0, Math.PI * 2); x.fill(); x.stroke();
+  x.fillStyle = 'rgba(0,0,0,0.55)'; x.font = 'bold 34px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText('?', S / 2, S / 2 + 2);
+  return finishRig({ body: c, bw: S, bh: S, part: null, placeholder: true }, null);
+}
+function finishRig(rig, art) {
+  const p = rig.part;
+  const x0 = Math.min(0, p ? p.x : 0), y0 = Math.min(0, p ? p.y : 0);
+  const x1 = Math.max(rig.bw, p ? p.x + p.w : 0), y1 = Math.max(rig.bh, p ? p.y + p.h : 0);
+  rig.box = { x0, y0, w: x1 - x0, h: y1 - y0 };
+  const footX = art && art.parts && art.parts.footX != null ? rig.bw * art.parts.footX : x0 + rig.box.w / 2;
+  rig.foot = { x: footX, y: y1 };
+  return rig;
+}
+
+// ---------- 그리기 ----------
+// k는 절반 크기 그림 1픽셀을 기기 픽셀 몇 개로 그릴지. 크기마다 미리 줄여 둔 판을 만든다
+function makeView(rig, k) {
+  const pad = Math.max(rig.box.w, rig.box.h) * 0.6;
+  const cv = document.createElement('canvas'), tmp = document.createElement('canvas');
+  cv.width = tmp.width = Math.ceil((rig.box.w + 2 * pad) * k);
+  cv.height = tmp.height = Math.ceil((rig.box.h + 2 * pad) * k);
+  return { k, pad, cv, tmp, body: shrink(rig.body, k), part: rig.part ? shrink(rig.part.cv, k) : null };
+}
+// 몸 위에 부위를 얹어 한 장으로 맞추고, 예고 색과 맞을 때 흰색을 입힌다
+function renderView(rig, v, st) {
+  const c = v.cv.getContext('2d'), k = v.k;
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+  c.clearRect(0, 0, v.cv.width, v.cv.height);
+  const ox = (v.pad - rig.box.x0) * k, oy = (v.pad - rig.box.y0) * k;
+  c.drawImage(v.body, ox, oy, rig.bw * k, rig.bh * k);
+  const p = rig.part;
+  if (p) {
+    c.save();
+    c.translate(ox + (p.x + p.px + (st.partX || 0)) * k, oy + (p.y + p.py) * k);
+    c.rotate((((st.partRot || 0) + p.rest) * Math.PI) / 180);
+    c.drawImage(v.part, -p.px * k, -p.py * k, p.w * k, p.h * k);
+    c.restore();
+  }
+  if (st.tint > 0) {
+    // 지금 게임 코드처럼 그림 색에 (255, 64, 64)를 곱한다
+    const t = v.tmp.getContext('2d'), g = Math.round(255 + (64 - 255) * st.tint);
+    t.globalCompositeOperation = 'copy'; t.drawImage(v.cv, 0, 0);
+    t.globalCompositeOperation = 'multiply'; t.fillStyle = `rgb(255,${g},${g})`; t.fillRect(0, 0, v.tmp.width, v.tmp.height);
+    t.globalCompositeOperation = 'destination-in'; t.drawImage(v.cv, 0, 0);
+    c.globalCompositeOperation = 'copy'; c.drawImage(v.tmp, 0, 0);
+    c.globalCompositeOperation = 'source-over';
+  }
+  if (st.flash > 0) {
+    c.globalCompositeOperation = 'source-atop'; c.globalAlpha = st.flash;
+    c.fillStyle = '#fff'; c.fillRect(0, 0, v.cv.width, v.cv.height);
+    c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+  }
+}
+// 발밑 점(fx, fy, CSS 픽셀)에 그린다. s는 절반 크기 그림 1픽셀을 CSS 몇 픽셀로 그릴지.
+// 뒤집은 뒤에 옮기기 · 기울이기를 걸어서 앞쪽이 늘 보는 쪽이고, 죽을 때 줄어드는 것은 그림 상자 가운데가 중심이다
+function drawView(ctx, card, v, fx, fy, s, st) {
+  if (st.hidden) return;
+  const rig = card.rig, gu = s / card.gs;
+  ctx.save();
+  ctx.translate(fx, fy);
+  if (st.flip) ctx.scale(-1, 1);
+  ctx.translate(((st.dx || 0) + (st.shake || 0) + (st.push || 0) + (st.shift || 0)) * gu, 0);
+  ctx.rotate(((st.tilt || 0) * Math.PI) / 180);
+  ctx.scale(st.sx || 1, st.sy || 1);
+  const pop = st.pop == null ? 1 : st.pop;
+  if (pop !== 1) {
+    const cx = (rig.box.x0 + rig.box.w / 2 - rig.foot.x) * s, cy = (rig.box.y0 + rig.box.h / 2 - rig.foot.y) * s;
+    ctx.translate(cx, cy); ctx.scale(pop, pop); ctx.translate(-cx, -cy);
+  }
+  ctx.globalAlpha = st.alpha == null ? 1 : st.alpha;
+  ctx.drawImage(v.cv, -(v.pad - rig.box.x0 + rig.foot.x) * s, -(v.pad - rig.box.y0 + rig.foot.y) * s, (v.cv.width * s) / v.k, (v.cv.height * s) / v.k);
+  ctx.restore();
+}
+// 바닥 표시(공격 범위 · 돌진 막대 · 발사체). 중심은 그림 상자 가운데(게임 노드의 자리)
+function drawFloor(ctx, card, fx, fy, s, st, phase) {
+  const rig = card.rig, gu = s / card.gs, d = card.data, dir = st.flip ? -1 : 1;
+  const nx = fx + (rig.box.x0 + rig.box.w / 2 - rig.foot.x) * s * dir, ny = fy + (rig.box.y0 + rig.box.h / 2 - rig.foot.y) * s;
+  const at = d.attack;
+  if (phase.name === 'tele' && at && at.melee) {
+    const r = at.melee.range * gu, half = ((at.melee.coneAngleDeg / 2) * Math.PI) / 180, a0 = dir < 0 ? Math.PI : 0;
+    ctx.fillStyle = 'rgba(255,64,64,0.43)';
+    ctx.beginPath(); ctx.moveTo(nx, ny); ctx.arc(nx, ny, r, a0 - half, a0 + half); ctx.closePath(); ctx.fill();
+  }
+  if (phase.name === 'tele' && d.movement === 'lunge') {
+    const mp = d.moveParams, len = mp.lungeSpeed * mp.lungeDuration * gu, th = 8 * (d.threatScale || 1) * gu;
+    ctx.fillStyle = 'rgba(255,64,64,0.63)';
+    ctx.fillRect(dir > 0 ? nx : nx - len, ny - th / 2, len, th);
+  }
+  if (phase.name === 'attack' && at && at.projectile) {
+    const pr = at.projectile, n = pr.count || 1, spread = ((pr.spreadAngleDeg || 0) * Math.PI) / 180, a0 = dir < 0 ? Math.PI : 0;
+    const dist = pr.speed * phase.t * gu, rad = Math.max(1.5, (pr.radius || 10) * gu);
+    ctx.fillStyle = d.tint || '#fff'; ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1;
+    for (let i = 0; i < n; i++) {
+      const a = spread >= Math.PI * 2 - 1e-6 ? a0 + (i * Math.PI * 2) / n : n > 1 ? a0 - spread / 2 + (i * spread) / (n - 1) : a0;
+      ctx.beginPath(); ctx.arc(nx + Math.cos(a) * dist, ny + Math.sin(a) * dist, rad, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+  }
+}
+
+// ---------- 움직임 — 미리보기에서 정한 계산 ----------
+const smooth = (p) => p * p * (3 - 2 * p);
+const lerp = (a, b, p) => a + (b - a) * p;
+const easeOut = (p) => 1 - (1 - p) * (1 - p);
+const easeInOut = (p) => (p < 0.5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2);
+// stepTilt: step초마다 반대쪽으로 turn초 동안 짧게 꺾고 멈춘다(-1 ~ 1)
+function stepTilt(w, t) {
+  const u = t / w.step, k = Math.floor(u), f = (u - k) * w.step, target = k % 2 ? 1 : -1;
+  return -target + 2 * target * smooth(Math.min(1, f / w.turn));
+}
+// 꺾는 동안 뒤(-1)에서 앞(+1)으로 빠르게, 멈춘 동안 앞에서 뒤로 천천히. 평균은 0이라 그림이 실제 자리를 따라간다
+function lurch(w, t) {
+  const f = t % w.step;
+  if (f < w.turn) return -1 + 2 * smooth(f / w.turn);
+  return 1 - (2 * (f - w.turn)) / (w.step - w.turn);
+}
+function attackLen(card) {
+  const a = card.art?.attack, d = card.data;
+  if (a && a.kind === 'swing') return a.tHit + a.tHold + a.tBack;
+  if (a && a.kind === 'bite') return a.tHit + a.tHold + a.tBack;
+  if (d.movement === 'lunge') return d.moveParams.lungeDuration + ((a?.recover) || 0.15);
+  if (d.attack?.projectile) return SHOT_T;
+  if (d.attack?.melee) return 0.4;
+  return 0;
+}
+function teleLen(card) {
+  const d = card.data;
+  if (d.attack) return d.attack.telegraphTime;
+  if (d.movement === 'lunge') return d.moveParams.lungeWindup;
+  return 0;
+}
+function timeline(card) {
+  const tele = teleLen(card), atk = attackLen(card), fx = artCfg.common || {};
+  const death = (fx.death?.dur) || 0.25;
+  const seg = [];
+  if (MODE === 'all' || MODE === 'walk') seg.push(['walk', WALK_T]);
+  if (MODE === 'attack') seg.push(['idle', IDLE_T]);
+  if ((MODE === 'all' || MODE === 'attack') && tele + atk > 0) { if (tele) seg.push(['tele', tele]); if (atk) seg.push(['attack', atk]); seg.push(['gap', GAP_T]); }
+  if (MODE === 'all' || MODE === 'fx') seg.push(['hit', HIT_T], ['death', death], ['gone', GONE_T]);
+  return seg;
+}
+function phaseAt(card, t) {
+  const seg = card.seg, T = seg.reduce((s, x) => s + x[1], 0);
+  let u = t % T, cyc = Math.floor(t / T);
+  for (const [name, len] of seg) { if (u < len) return { name, t: u, len, cyc }; u -= len; }
+  return { name: seg[seg.length - 1][0], t: 0, len: 1, cyc };
+}
+function poseAt(card, ph) {
+  const st = {}, a = card.art?.attack, w = card.art?.walk, gpx = 1 / card.gs;
+  const fx = artCfg.common || {};
+  if (ph.name === 'walk' && w && w.kind === 'stepTilt') { st.tilt = w.tiltDeg * stepTilt(w, ph.t); st.shift = w.lurch * lurch(w, ph.t); }
+  if (ph.name === 'tele') {
+    const p = ph.t / ph.len, e = easeInOut(p);
+    st.tint = p;
+    if (a && a.kind === 'swing') st.partRot = a.windDeg * e;
+    if (a && a.kind === 'bite') { st.partRot = a.windDeg * e; st.partX = -a.back * e * gpx; }
+    if (a && a.kind === 'shakeLunge') {
+      st.shake = a.shake * p * Math.sin(2 * Math.PI * a.hz * p * ph.len); st.tilt = a.tiltDeg * p; st.sy = 1 - a.squash * p;
+    }
+  }
+  if (ph.name === 'attack' && a) {
+    const s = ph.t;
+    if (a.kind === 'swing' || a.kind === 'bite') {
+      let rot = 0, x = 0, push = 0, lean = 0;
+      const wind = a.windDeg, hit = a.hitDeg, back = a.kind === 'bite' ? -a.back : 0, fwd = a.kind === 'bite' ? a.fwd : 0, pu = a.push || 0;
+      if (s < a.tHit) { const p = easeOut(s / a.tHit); rot = lerp(wind, hit, p); x = lerp(back, fwd, p); push = pu * p; lean = p; }
+      else if (s < a.tHit + a.tHold) { rot = hit; x = fwd; push = pu; lean = 1; }
+      else { const p = easeInOut(Math.min(1, (s - a.tHit - a.tHold) / a.tBack)); rot = lerp(hit, 0, p); x = lerp(fwd, 0, p); push = lerp(pu, 0, p); lean = 1 - p; }
+      st.partRot = rot; st.partX = x * gpx; st.push = push; st.tilt = a.leanDeg * lean;
+    }
+    if (a.kind === 'shakeLunge') {
+      const dur = card.data.moveParams.lungeDuration, L = a.lunge;
+      const end = { dx: 0, tilt: a.tiltDeg, sx: 1, sy: 1 - a.squash }, N = { dx: 0, tilt: 0, sx: 1, sy: 1 };
+      let o;
+      if (s < dur) { const q = easeOut(Math.min(1, s / dur / 0.25)); o = { dx: lerp(end.dx, L.dx, q), tilt: lerp(end.tilt, L.tiltDeg, q), sx: lerp(end.sx, L.sx, q), sy: lerp(end.sy, L.sy, q) }; }
+      else { const q = easeInOut(Math.min(1, (s - dur) / a.recover)); o = { dx: lerp(L.dx, N.dx, q), tilt: lerp(L.tiltDeg, N.tilt, q), sx: lerp(L.sx, N.sx, q), sy: lerp(L.sy, N.sy, q) }; }
+      Object.assign(st, o);
+    }
+  }
+  if (ph.name === 'hit') {
+    const hf = fx.hitFlash || { times: [0, 0.5], dur: 0.12 };
+    for (const h of hf.times) if (ph.t >= h && ph.t < h + hf.dur) st.flash = 1 - (ph.t - h) / hf.dur;
+  }
+  if (ph.name === 'death') { const e = ph.t / ph.len, sc = (fx.death?.scale) || 0.5; st.pop = 1 - (1 - sc) * e; st.alpha = 1 - e; }
+  if (ph.name === 'gone') st.hidden = true;
+  return st;
+}
+const PHASE_KO = { walk: '이동', idle: '쉼', tele: '공격 예고', attack: '공격', gap: '쉼', hit: '맞을 때', death: '죽을 때', gone: '' };
+
+// ---------- 카드 ----------
+function _fmt(n) { return Math.round(n * 100) / 100; }
+function attackText(d) {
+  const a = d.attack;
+  if (!a) return d.movement === 'lunge'
+    ? `돌진 — 거리 ${d.moveParams.lungeRange} 안에서 ${d.moveParams.lungeWindup}초 준비, ${d.moveParams.lungeDuration}초 동안 초당 ${d.moveParams.lungeSpeed}, 다시 돌진까지 ${d.moveParams.lungeCooldown}초 · 몸 피해 초당 ${d.contactDamagePerSec}`
+    : `몸으로 부딪힘 — 초당 ${d.contactDamagePerSec}`;
+  if (a.melee) return `휘두르기 ${a.melee.coneAngleDeg}°, 범위 ${a.melee.range}, 예고 ${a.telegraphTime}초, 다시 ${a.cooldown}초, 피해 ${a.damage}`;
+  const p = a.projectile, kind = { projectile_single: '한 발', projectile_fan: `부채꼴 ${p.count}발 ${p.spreadAngleDeg}°`, projectile_spread: `사방 ${p.count}발` }[a.type] || a.type;
+  return `${kind} — 사거리 ${a.range}, 탄속 ${p.speed}, 예고 ${a.telegraphTime}초, 다시 ${a.cooldown}초, 피해 ${a.damage}`;
+}
+function moveText(d) {
+  let s = `${MOVE[d.movement] || d.movement} · 초당 ${d.speed}`;
+  if (d.movement === 'kite') s += ` · 거리 ${d.moveParams.preferredRange} 유지`;
+  if (d.movement === 'zigzag') s += ` · 폭 ${d.moveParams.zigzagAmplitude}, 주기 ${d.moveParams.zigzagPeriod}초`;
+  return s;
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function cardHtml(i, d, art) {
+  const S = Math.round(50 * (d.threatScale || 1));
+  const name = (art?.name) || d.name;
+  const status = !art?.image ? '아직' : art.parts ? `기준 한 장 + 부위(${esc(art.parts.label)})` : '기준 한 장';
+  const parts = art?.parts ? esc(art.parts.label) : art?.partsNote ? esc(art.partsNote) : '없음';
+  const rows = [
+    ['그리는 크기', `${S} <span class="dim">(threatScale ${d.threatScale} × 50, 긴 변 기준) · 판정 반지름 ${d.collisionRadius}</span>`],
+    ['체력', d.maxHp],
+    ['이동', esc(moveText(d))],
+    ['공격', esc(attackText(d))],
+    ['주조색', `<span class="sw" style="background:${esc(d.tint)}"></span>${esc(d.tint)}`],
+    ['받은 그림', status + (art?.facing ? ` · ${FACING[art.facing] || art.facing}` : '')],
+    ['나누는 부위', parts],
+    ['이동 움직임', esc((art?.walkNote) || '정하지 않음')],
+    ['공격 움직임', esc((art?.attackNote) || '정하지 않음')],
+    ['식별 포인트', art?.mark ? esc(art.mark) + (art.markConfirmed ? ' <span class="dim">(확인함)</span>' : ' <span class="dim">(초안)</span>') : '—'],
+  ];
+  if (art?.note) rows.push(['메모', `<span class="note">${esc(art.note)}</span>`]);
+  const sub = `${esc(d.id)}${name !== d.name ? ` · 데이터 이름 「${esc(d.name)}」` : ''}`;
+  return `<div class="card">
+    <div class="head"><span class="num">${i + 1}</span><span class="name">${esc(name)}</span><span class="sub">${sub}</span><span class="badge">${ROLE[d.role] || d.role}</span></div>
+    <div class="top">
+      <div class="views"><canvas class="big"></canvas><div class="cap">크게 · 움직임</div><div class="phase"></div>${art?.reference ? '<canvas class="ref"></canvas><div class="cap">받은 전신 그림(기준)</div>' : ''}</div>
+      <table>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>
+    </div>
+    <canvas class="game"></canvas>
+    <div class="cap dim" style="font-size:11px">게임 크기 · 바닥을 걷다가 공격하고, 맞고, 죽는다</div>
+  </div>`;
+}
+function dpr() { return window.devicePixelRatio || 1; }
+function sizeCanvas(cv, w, h) {
+  cv.style.width = `${w}px`; cv.style.height = `${h}px`;
+  cv.width = Math.round(w * dpr()); cv.height = Math.round(h * dpr());
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr(), 0, 0, dpr(), 0, 0); ctx.imageSmoothingQuality = 'high';
+  return ctx;
+}
+// 크게 보는 칸은 그림과 공격 범위가 다 들어오게 맞춘다(게임 단위 1을 CSS 몇 픽셀로)
+function bigUnit(card) {
+  const S = card.S, a = card.data.attack, R = a?.melee ? a.melee.range : 0;
+  return (BIG * 0.8) / Math.max(S * 1.15, R * 2);
+}
+function buildViews(card) {
+  card.bigU = bigUnit(card);
+  card.vBig = makeView(card.rig, card.gs * card.bigU * dpr());
+  card.vGame = makeView(card.rig, card.gs * ZOOM * dpr());
+  const g = card.el.querySelector('canvas.game');
+  card.gameW = g.parentElement.clientWidth - 24;
+  card.gctx = sizeCanvas(g, card.gameW, GAME_H * ZOOM);
+  card.bctx = sizeCanvas(card.el.querySelector('canvas.big'), BIG, BIG);
+  const refCv = card.el.querySelector('canvas.ref');
+  if (refCv && card.rig.ref) {
+    const ctx = sizeCanvas(refCv, 110, 110), r = card.rig.ref, k = Math.min(100 / r.width, 100 / r.height);
+    ctx.drawImage(shrink(r, k * dpr()), 55 - (r.width * k) / 2, 55 - (r.height * k) / 2, r.width * k, r.height * k);
+  }
+}
+
+async function build(enemies, art) {
+  building = true;
+  artCfg = art;
+  const base = new URL(art.imageBase || './', new URL(SRC.art, location.href)).href;
+  const grid = document.getElementById('grid');
+  grid.innerHTML = enemies.map((d, i) => cardHtml(i, d, art.enemies[d.id])).join('');
+  const next = [];
+  const missing = [];
+  for (let i = 0; i < enemies.length; i++) {
+    const d = enemies[i], a = art.enemies[d.id];
+    if (!a) missing.push(d.id);
+    let rig;
+    try { rig = await buildRig(base, a, d); }
+    catch (e) { rig = placeholderRig(d); missing.push(`그림을 못 읽음: ${e.message}`); }
+    const card = { data: d, art: a || null, rig, el: grid.children[i], S: Math.round(50 * (d.threatScale || 1)), x: null, dir: 1 };
+    card.gs = card.S / Math.max(rig.box.w, rig.box.h);
+    card.seg = timeline(card);
+    buildViews(card);
+    next.push(card);
+  }
+  const extra = Object.keys(art.enemies).filter((id) => !enemies.some((d) => d.id === id));
+  cards = next;
+  const warn = [];
+  if (extra.length) warn.push(`enemy-art.json에만 있는 id: ${extra.join(', ')}`);
+  if (missing.length) warn.push(missing.join(' · '));
+  document.getElementById('warn').textContent = warn.join(' · ');
+  const c = art.common || {};
+  document.getElementById('common').textContent =
+    `모든 귀신 공통 — 공격 예고: ${c.telegraphTint || ''} · 맞을 때: 흰색으로 ${(c.hitFlash?.dur) || 0.12}초씩 두 번 번쩍임 · 죽을 때: ${(c.death?.dur) || 0.25}초 동안 ${(c.death?.scale) || 0.5}배로 줄며 사라짐 · 왼쪽으로 갈 때 같은 그림을 좌우로 뒤집음. 움직임은 그림만 움직이고 실제 자리와 판정은 바꾸지 않는다.`;
+  building = false;
+}
+
+async function refresh(force) {
+  try {
+    const [e, a] = await Promise.all([fetchText(SRC.enemies), fetchText(SRC.art)]);
+    document.getElementById('err').innerHTML = '';
+    if (!force && e === lastText.enemies && a === lastText.art) return;
+    lastText = { enemies: e, art: a };
+    await build(JSON.parse(e), JSON.parse(a));
+    document.getElementById('status').textContent = `— ${new Date().toLocaleTimeString()}에 읽음 · ${cards.length}종`;
+  } catch (err) {
+    document.getElementById('err').innerHTML = `<div class="err">파일을 읽지 못했다: ${esc(err.message)}<br>
+      이 화면은 로컬 서버로 열어야 한다(파일을 더블클릭해 열면 브라우저가 JSON을 읽지 못하게 막는다). 레포 루트에서
+      <code>py -3 tools/web/serve_nocache.py . 8091</code>을 돌리고 <code>http://127.0.0.1:8091/tools/art/enemy-board.html</code>을 연다.</div>`;
+  }
+}
+
+// ---------- 그리는 고리 ----------
+let clock = 0, last = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - (last || now)) / 1000);
+  last = now;
+  clock += dt * RATE;
+  if (!building) for (const card of cards) drawCard(card, dt * RATE);
+  requestAnimationFrame(frame);
+}
+function drawCard(card, dt) {
+  const ph = phaseAt(card, clock), st = poseAt(card, ph), d = card.data;
+  // 게임 칸: 걷는 동안 실제 속도로 움직이고 벽에서 돌아선다. 돌진 앞에는 앞쪽 자리가 모자라면 돌아선다
+  const gw = card.gameW / ZOOM, m = card.S * 0.6 + 6;
+  if (card.x == null) { card.x = gw / 2; card.dir = DIR === 'left' ? -1 : 1; }
+  if (ph.name === 'walk') {
+    card.x += card.dir * d.speed * dt;
+    if (DIR === 'alt') {
+      if (card.x > gw - m) { card.x = gw - m; card.dir = -1; }
+      if (card.x < m) { card.x = m; card.dir = 1; }
+    } else {
+      card.dir = DIR === 'left' ? -1 : 1;
+      if (card.x > gw - m) card.x = m;
+      if (card.x < m) card.x = gw - m;
+    }
+  }
+  if (d.movement === 'lunge') {
+    const len = d.moveParams.lungeSpeed * d.moveParams.lungeDuration;
+    if (ph.name === 'tele' && card.prev !== 'tele') {
+      const room = card.dir > 0 ? gw - m - card.x : card.x - m;
+      if (room < len) { if (DIR === 'alt') card.dir = -card.dir; else card.x = card.dir > 0 ? m : gw - m; }
+    }
+    if (ph.name === 'attack' && ph.t < d.moveParams.lungeDuration) card.x += card.dir * d.moveParams.lungeSpeed * dt;
+  }
+  card.prev = ph.name;
+  st.flip = card.dir < 0;
+
+  renderView(card.rig, card.vBig, st);
+  let ctx = card.bctx;
+  ctx.clearRect(0, 0, BIG, BIG);
+  const sb = card.gs * card.bigU, fyB = BIG / 2 + (card.rig.foot.y - (card.rig.box.y0 + card.rig.box.h / 2)) * sb;
+  const stBig = { ...st, flip: DIR === 'left' };
+  drawFloor(ctx, card, BIG / 2, fyB, sb, stBig, ph);
+  drawView(ctx, card, card.vBig, BIG / 2, fyB, sb, stBig);
+
+  renderView(card.rig, card.vGame, st);
+  ctx = card.gctx;
+  const H = GAME_H * ZOOM, sg = card.gs * ZOOM;
+  ctx.clearRect(0, 0, card.gameW, H);
+  const fyG = H / 2 + (card.rig.foot.y - (card.rig.box.y0 + card.rig.box.h / 2)) * sg;
+  drawFloor(ctx, card, card.x * ZOOM, fyG, sg, st, ph);
+  drawView(ctx, card, card.vGame, card.x * ZOOM, fyG, sg, st);
+  card.el.querySelector('.phase').textContent = PHASE_KO[ph.name] || '';
+}
+
+// ---------- 단추 ----------
+function buttons(id, items, init, on) {
+  const el = document.getElementById(id);
+  const bs = items.map(([v, label]) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    if (v === init) b.classList.add('on');
+    b.onclick = () => {
+      for (const x of bs) x.classList.remove('on');
+      b.classList.add('on');
+      on(v);
+    };
+    el.appendChild(b);
+    return b;
+  });
+}
+function rebuildViews() { for (const c of cards) { c.x = null; buildViews(c); } }
+const screenZoom = () => Math.round((screen.height / 720) * 100) / 100;
+// 주소 뒤에 ?mode=attack&rate=0.25처럼 붙이면 그 설정으로 연다
+const Q = new URLSearchParams(location.search);
+if (Q.has('mode')) MODE = Q.get('mode');
+if (Q.has('dir')) DIR = Q.get('dir');
+if (Q.has('rate')) RATE = +Q.get('rate');
+if (Q.has('zoom')) ZOOM = +Q.get('zoom');
+// ?t=0.7&freeze=1은 그 시각에 멈춘 장면을 연다 — 한 장면을 캡처해 확인할 때 쓴다
+if (Q.has('t')) clock = +Q.get('t');
+if (Q.get('freeze') === '1') RATE = 0;
+buttons('zoomBtns', [[1, '1배'], [1.5, '1.5배'], [2, '2배'], ['screen', `내 모니터 전체 화면(${screenZoom()}배)`]], ZOOM, (v) => { ZOOM = v === 'screen' ? screenZoom() : v; rebuildViews(); });
+buttons('modeBtns', [['all', '전체 순환'], ['walk', '이동'], ['attack', '공격'], ['fx', '맞을 때 · 죽을 때']], MODE, (v) => { MODE = v; for (const c of cards) { c.seg = timeline(c); c.x = null; } clock = 0; });
+buttons('dirBtns', [['alt', '오가며'], ['right', '오른쪽'], ['left', '왼쪽']], DIR, (v) => { DIR = v; for (const c of cards) c.x = null; });
+buttons('rateBtns', [[1, '보통'], [0.25, '느리게']], RATE, (v) => { RATE = v; });
+document.getElementById('reload').onclick = () => refresh(true);
+window.addEventListener('resize', () => { if (!building) rebuildViews(); });
+
+refresh(true).then(() => requestAnimationFrame(frame));
+setInterval(() => { if (!building) refresh(false); }, 2000);
+</script>
+</body>
+</html>

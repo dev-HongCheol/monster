@@ -4,7 +4,7 @@
 
 - **최초 작성:** 2026-08-20
 - **상태:** CONFIRMED
-- **이력:** 2026-09-15 VRoid Studio 조건을 약관 · 가이드라인 원문으로 확정하고 생산 판의 VRM 메타 값을 정했다(§2 · §2.2). Blender와 지팡이 · 방패 3D 모델 행을 더했다 · 2026-09-19 VRoid Plus는 프리셋 조건과 무관(§2.2). ChatGPT 웹 조건과 「VRoid 프리셋 텍스처를 생성 입력으로 넣지 않는다」(§2.3). `tools/blender/` 파이썬에 GPL-3.0-or-later(§2) · 2026-09-28 지금 쓰는 도구만 든다 — fal.ai · SDXL + LoRA · rembg · Spine · Quaternius 행을 빼고 §4 · §5 · §7을 지금 기준으로 다시 썼다
+- **이력:** 2026-09-15 VRoid Studio 조건을 약관 · 가이드라인 원문으로 확정하고 생산 판의 VRM 메타 값을 정했다(§2 · §2.2). Blender와 지팡이 · 방패 3D 모델 행을 더했다 · 2026-09-19 VRoid Plus는 프리셋 조건과 무관(§2.2). ChatGPT 웹 조건과 「VRoid 프리셋 텍스처를 생성 입력으로 넣지 않는다」(§2.3). `tools/blender/` 파이썬에 GPL-3.0-or-later(§2) · 2026-09-28 지금 쓰는 도구만 든다 — fal.ai · SDXL + LoRA · rembg · Spine · Quaternius 행을 빼고 §4 · §5 · §7을 지금 기준으로 다시 썼다 · 2026-10-30 적 그림의 배경 제거에 다시 쓰게 되어 rembg + isnet-anime 행을 더했다(모델은 늘 지정한다)
 - **기각:** AI 3D 생성(Meshy · Tripo) · 커미션(2026-09-15)
 
 ---
@@ -31,6 +31,7 @@
 | 도구·모델 | 무엇에 쓰나 | 조건 | 확인 |
 |---|---|---|---|
 | **ChatGPT 웹** (OpenAI 개인용 서비스) | 2D 이미지 생성 — 적 · 이펙트 · 맵. 사용자가 웹에서 직접 만든다 | 이용약관이 출력의 권리를 이용자에게 양도하고, 상업 이용을 막는 조항은 없다. 다만 출력이 독창적이지 않을 수 있다고 적고, 넣는 입력의 권리는 이용자가 보증해야 한다. 조항 인용과 이 프로젝트가 지킬 것은 §2.3에 있다 | 2026-09-19 · [이용약관](https://openai.com/policies/terms-of-use/) |
+| **rembg + isnet-anime** | 적 그림의 배경 제거 — 그림을 바깥 서버로 보내지 않고 이 장비에서 돌린다([`art-asset-spec.md`](../../design/spec/art-asset-spec.md) §6.5) | `rembg`는 MIT, 그 안에서 고르는 `isnet-anime` 모델은 Apache-2.0(SkyTNT)이다. 둘 다 상업 이용을 막지 않고, 도구로만 쓰고 게임에 싣지 않으므로 게임 쪽에 붙는 의무가 없다. **모델은 늘 이름으로 지정한다** — 지정하지 않으면 `rembg`가 BRIA RMBG-2.0을 고르는데, 이 모델은 상업적으로 쓰려면 유료 계약이 필요하다(§7) | 2026-10-25 |
 | **Cocos Creator** | 엔진 | 게임 개발 목적의 사용이 무료이고 로열티가 없다. 사용자 서비스 약관이 유료화 시 사전 공지를 약속한다. 스플래시·크레딧 표기 의무 조항은 없고 상표 사용 제한만 있다 | 2026-08-20 · [약관](https://download.cocos.com/CocosUdc/agreement/Cocos_User_Service_Agreement_en_20220901.html) |
 | **VRoid Studio** | 플레이어 3D 마스터(`.vrm`) | 만든 캐릭터의 렌더를 게임에 싣고 그 게임을 팔아도 된다. 다만 pixiv가 제공하는 기본 모델 · 의상 · 프리셋은 CC0가 아니다. pixiv가 권리를 가진 채 이용을 허락하는 것이고, 특별 조항이 표시된 항목은 그 조항을 따른다. 제공 콘텐츠로 아바타를 만들어 내는 앱에는 별도 라이선스가 필요하고, 다른 제작자의 에셋은 그 에셋의 조건을 따른다. 원문 인용, 생산 판의 VRM 메타 값, 원본을 공개하지 않는 이유는 §2.2에 있다 | 2026-09-15 · [이용약관](https://policies.pixiv.net/en.html#vroidstudio) · [가이드라인](https://vroid.com/en/studio/guidelines) |
 | **Blender** | `.vrm`을 층별 프레임으로 굽기, 지팡이 · 방패 모델링 — `tools/blender/` | 프로그램은 GPL이지만 Blender로 만든 결과물에는 GPL이 붙지 않는다. 라이선스 페이지가 「What you create with Blender is your sole property」라고 적고, 그 대상에 이미지 · 영상과 `.blend` 등 데이터 파일을 넣는다. GPL이 따라붙는 것은 Blender를 배포하거나 Blender 파이썬 API를 쓰는 스크립트를 공개할 때이고, 그런 스크립트는 GPL 호환 라이선스로 공유해야 한다. 공개 레포에 있는 `tools/blender/`의 파이썬 스크립트가 여기에 해당한다. 그래서 그 스크립트들에만 GPL-3.0-or-later를 붙였다. 범위는 루트 `LICENSE` §2가 들고, 같은 폴더의 TypeScript 실행기 · 사양 JSON · 구운 결과물은 거기 들지 않는다 | 2026-09-15 · [라이선스](https://www.blender.org/about/license/) |
