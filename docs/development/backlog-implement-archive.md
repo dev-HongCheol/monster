@@ -10,6 +10,10 @@
 
 ---
 
+### 적 로스터 변별 게이트 (2026-11-01)
+
+- **F108** 귀신 생성 요구사항을 정본으로 승격 → **완료**(`docs/enemy-roster`, PR #101, 2026-11-01). 승인 시트 프롬프트의 「공통 화풍」 절 원문을 [`../design/spec/art-asset-spec.md`](../design/spec/art-asset-spec.md) §6.3에 올렸고, 확인된 네 종의 도상은 같은 문서 §11, 나머지 여덟 종의 생김새 원본은 [`../planning/enemy-roster-art.md`](../planning/enemy-roster-art.md)가 든다. 톤은 「종마다 특색을 지키되 살짝 귀엽고 무겁지 않게」로 썼다. 출처: [`sessions/2026-10-16-enemy-roster-plan.md`](sessions/2026-10-16-enemy-roster-plan.md) §3 나 · [`sessions/2026-10-30-enemy-roster-gate.md`](sessions/2026-10-30-enemy-roster-gate.md)
+
 ### 워크플로우 다이어트 1단계 (2026-10-11)
 
 - **F78** `insertCanonRow`가 두 벌이다 → **완료**(`feat/workflow-diet` W4, 2026-10-11). `tsconfig.tests.json`에 `allowJs`를 켜고 판정 코드를 `.claude/lib/*.mjs`(`canon.mjs` · `workflow-steps.mjs` · `phases.mjs`) 한 곳에 두어 도구와 테스트가 같은 코드를 import한다. 테스트용 사본(`tests/helpers/CanonDoc.ts` · `WorkflowSteps.ts`)은 지웠다. 출처: [`sessions/2026-08-13-canon-spec-move-plan.md`](sessions/2026-08-13-canon-spec-move-plan.md) E4 · [`sessions/2026-10-06-workflow-diet-w4-single-source.md`](sessions/2026-10-06-workflow-diet-w4-single-source.md)
