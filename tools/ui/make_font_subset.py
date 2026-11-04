@@ -1,7 +1,5 @@
 """UI 폰트 서브셋 도구 — 판정 화면 후보와 출시 폰트를 만든다.
 
-계획: docs/development/sessions/2026-11-01-ui-font-probe-plan.md §3.1
-
 실행 환경(이 판으로 만든 파일만 판정 결과와 같다고 본다):
   인터프리터  py — Python 3.12
   fonttools   4.67.0
@@ -24,7 +22,8 @@
 사용:
   후보 만들기   py tools/ui/make_font_subset.py --src cloud-storage/fonts/source --out game/assets/resources/fonts
                 두 후보에 A · B를 무작위로 붙여 UiSansA-<굵기>.ttf · UiSansB-<굵기>.ttf 여섯 파일을 만든다.
-                대응표는 cloud-storage/fonts/probe-map.json(저장소 밖)에 두고, 이미 있으면 그 배정을 다시 쓴다.
+                A · B가 어느 폰트인지 적은 대응표는 cloud-storage/fonts/probe-map.json(저장소 밖)에 두고,
+                이미 있으면 그 배정을 다시 쓴다.
                 터미널에는 「검사 통과」만 찍는다 — 파일 크기와 예약 이름 목록은 원본 폰트를 드러낸다.
   최종 이름     ... --final A --weights 500,800 --name UiSans
                 이긴 후보 하나만 UiSans-<굵기>.ttf로 다시 만들고, 판정한 후보 파일과 글리프 표가 바이트 단위로

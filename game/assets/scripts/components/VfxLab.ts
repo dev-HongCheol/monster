@@ -84,7 +84,7 @@ const FRAMES_PER_SEC_CAP = 300;
 const JUDGE_W = 1920;
 const JUDGE_H = 1080;
 
-/** 문자열 바꾸기 장치가 쓰는 HUD 라벨 넷. */
+/** 문자열 바꾸기가 글자를 쓰는 HUD 라벨 넷. */
 const DRIVE_LABELS = ['hp', 'wave', 'timer', 'level'] as const;
 
 /** 측정 화면 키 안내 한 줄. */
@@ -151,9 +151,13 @@ interface ISideStats {
  * 측정 시계는 엔진 이벤트 둘이다. `EVENT_BEFORE_UPDATE`에서 바쁜 시간을 켜고 `EVENT_AFTER_DRAW`에서
  * 끈다. 간격은 연속한 `EVENT_BEFORE_UPDATE` 사이다(3.8.8 `director.tick()` 순서).
  *
- * `off=ui`이면 같은 시간표로 이펙트 대신 HUD 노드 전체를 켜고 끄는 UI 몫 측정을 한다(계획
- * 2026-11-01-ui-font-probe-plan.md §3.4). 이펙트는 두 블록 모두 끄고, HUD 라벨 문자열은 문자열 바꾸기
- * 장치만 쓰며, 첫 블록 앞에 폰트를 입혀 첫 표시를 잰다.
+ * `off=ui`이면 같은 시간표로 이펙트 대신 HUD 노드 전체를 켜고 끄며, HUD가 프레임 시간을 얼마나 쓰는지
+ * (UI 몫)를 잰다. 이펙트는 두 블록 모두 끈다. 첫 블록 앞에는 HUD에 폰트를 입혀, 폰트가 처음 그려질 때
+ * 한 번 드는 비용(첫 표시)을 따로 잰다.
+ *
+ * UI 몫 측정 중에는 HUD 라벨의 글자를 `HudController` 대신 이 컴포넌트가 `drive` 조건대로 바꿔 쓴다. 이
+ * 파일과 `LabRuntime` · `UiFontProbeLogic`에서 「문자열 바꾸기」는 이 일을 가리킨다. 글자가 바뀌어야 라벨을
+ * 다시 그리는 비용이 측정에 들어가고, 누가 언제 바꾸는지를 한 곳에 고정해야 회차마다 조건이 같다.
  */
 @ccclass('VfxLab')
 export class VfxLab extends Component {
@@ -194,14 +198,17 @@ export class VfxLab extends Component {
   /** UI 몫 측정(`off=ui`)에서 HUD에 입힐 폰트 */
   private _fontLoader: LabFontLoader | null = null;
   private _fontReady = false;
-  /** 폰트 첫 표시 기록(계획 2026-11-01-ui-font-probe-plan.md §3.4) */
+  /**
+   * 폰트 첫 표시 기록 — 폰트를 불러온 시간과, HUD에 폰트를 입힌 프레임 · 그 뒤 1초의 바쁜 시간이다.
+   * 폰트가 처음 그려질 때 한 번만 드는 비용이라 켬 · 끔 블록에 섞지 않고 첫 블록 앞에서 따로 잰다
+   */
   private readonly _firstShow: IFirstShow = {
     loadMs: null,
     applyBusyMs: null,
     applyFrame: null,
     maxBusyAfterMs: null,
   };
-  /** 측정을 시작한 뒤 센 프레임 번호 — 문자열 바꾸기 장치의 값과 폰트를 입힌 프레임 번호에 쓴다 */
+  /** 측정을 시작한 뒤 센 프레임 번호 — 문자열 바꾸기의 값과 폰트를 입힌 프레임 번호에 쓴다 */
   private _frameNo = 0;
   /** 이번 프레임에 폰트를 입혔다 · 폰트 입힘 단계의 나머지 프레임이다 — AFTER_DRAW에서 바쁜 시간을 첫 표시로 적는다 */
   private _applyFrameThis = false;
@@ -426,7 +433,8 @@ export class VfxLab extends Component {
 
   /**
    * 폰트가 시간 초과하거나 거부됐다 — 블록을 시작하지 않고 작은 결과 JSON을 내려받은 뒤 오류 상자를 띄운다.
-   * 느린 4G 회차가 보려는 장면이 이 경로라, 여기서 기록이 남지 않으면 그 회차의 첫 표시를 얻을 수 없다.
+   * 브라우저 네트워크를 느린 4G로 늦춰 재는 회차는 폰트가 늦게 올 때를 보려는 것이라 이 경로를 탈 수 있다.
+   * 여기서 기록이 남지 않으면 그 회차의 첫 표시를 얻을 수 없다.
    */
   private _abortFont(reason: string): void {
     this._finished = true;
@@ -451,7 +459,10 @@ export class VfxLab extends Component {
     ]);
   }
 
-  /** 측정을 시작하는 순간 UI 몫 회차를 준비한다 — 문자열 주인을 장치로 넘기고 Cache Mode를 정한다. */
+  /**
+   * 측정을 시작하는 순간 UI 몫 측정을 준비한다 — HUD 라벨 글자를 쓰는 쪽을 `HudController`에서 이 컴포넌트의
+   * 문자열 바꾸기로 넘기고(`LabRuntime.hudDriven`), Cache Mode를 정한다.
+   */
   private _prepareUiRun(): void {
     LabRuntime.hudDriven = true;
     LabRuntime.vfxOff = true;
@@ -468,7 +479,7 @@ export class VfxLab extends Component {
     }
   }
 
-  /** HUD 라벨 넷과 마법 슬롯 라벨 — `HudController`가 맡긴 손잡이에서 꺼낸다. */
+  /** HUD 라벨 넷과 마법 슬롯 라벨 — `HudController`가 `LabRuntime.hudControl`에 넘겨 둔 것에서 꺼낸다. */
   private _hudLabels(): {
     hp: Label | null;
     wave: Label | null;

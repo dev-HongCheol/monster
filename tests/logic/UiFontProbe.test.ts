@@ -45,10 +45,10 @@ import {
 } from '../../game/assets/scripts/systems/LabRuntime';
 
 /**
- * UI 폰트 실행 탐침(계획 sessions/2026-11-01-ui-font-probe-plan.md §4)의 순수 로직.
- * - UiFontProbeLogic: 글자 단계 · 판정 화면 높이 · 유효 판정 · 폰트 상태 · 결과 JSON(계획 §3.2)
- * - FrameStatsLogic: 상위 5% · 20ms 초과 수 · UI 몫 판정(계획 §3.3)
- * - VfxRecipeLogic.parseLabUrl · MeasureSchedule · LabRuntime: 측정 모드 확장과 판정 화면 분기(계획 §3.4)
+ * UI 폰트 실행 탐침(폰트 판정 화면 `?lab=font`과 UI 몫 측정 `?lab=measure&off=ui`)의 순수 로직.
+ * - UiFontProbeLogic: 글자 단계 · 판정 화면 높이 · 유효 판정 · 폰트 상태 · 결과 JSON
+ * - FrameStatsLogic: 상위 5% · 20ms 초과 수 · UI 몫 판정
+ * - VfxRecipeLogic.parseLabUrl · MeasureSchedule · LabRuntime: 측정 모드 확장과 판정 화면 분기
  *
  * 폰트 이름은 중립 이름(FontX · FontY)을 쓴다. 판정용 후보 이름이 테스트 고정값으로 저장소에 남으면
  * 판정이 끝난 뒤에도 후보 이름을 지울 수 없기 때문이다.
@@ -147,7 +147,7 @@ describe('UiFontProbeLogic — typeScale · lineHeightPx', () => {
 // ===========================================================================
 
 describe('UiFontProbeLogic — stackHeight (첫 화면에 넣을 줄 고르기)', () => {
-  /** 가장 큰 조합(기준 18 · 비율 1.333 · 줄 높이 1.5)을 어림한 줄 높이 — 계획 §3.5 「높이」 */
+  /** 판정 화면이 가장 길어지는 조합(기준 18 · 비율 1.333 · 줄 높이 1.5)에서 어림한 줄 높이 */
   const WORST = [
     { id: '1-가', height: 65 },
     { id: '1-나', height: 48 },
@@ -367,7 +367,7 @@ describe('UiFontProbeLogic — commonBodyWeights (두 열에 함께 넣을 수 �
   });
 });
 
-describe('UiFontProbeLogic — nextBodyWeight (G 키)', () => {
+describe('UiFontProbeLogic — nextBodyWeight (판정 화면의 본문 굵기 바꾸기)', () => {
   it('본문 굵기 목록 안에서만 돌린다', () => {
     expect(nextBodyWeight([400, 500], 400)).toBe(500);
     expect(nextBodyWeight([400, 500], 500)).toBe(400);
@@ -559,7 +559,7 @@ describe('UiFontProbeLogic — columnLabels (열 이름은 자리가 아니라 �
   });
 });
 
-describe('UiFontProbeLogic — buildVerdictRecord (K 키가 내려받는 판정값)', () => {
+describe('UiFontProbeLogic — buildVerdictRecord (판정을 마치고 내려받는 판정값)', () => {
   const files = matchFontTiming(
     [timing(`${ORIGIN}${URL_X}`, 600)],
     [
@@ -640,7 +640,7 @@ describe('UiFontProbeLogic — buildVerdictRecord (K 키가 내려받는 판정�
     expect(r.chosenStem).toBe('FontY');
   });
 
-  it('F 상태면 고른 열은 화면 전체를 그린 폰트의 열이다 — 왼쪽 열이 아니다', () => {
+  it('전체 보기 중이면 고른 열은 화면 전체를 그린 폰트의 열이다 — 왼쪽 열이 아니다', () => {
     const r = buildVerdictRecord({
       ...state,
       order: 'BA',
@@ -734,7 +734,7 @@ describe('UiFontProbeLogic — buildFontAbortRecord (폰트 때문에 측정을 
   });
 });
 
-describe('UiFontProbeLogic — captureFileToken (P 키 캡처 파일 이름 조각)', () => {
+describe('UiFontProbeLogic — captureFileToken (화면 캡처 파일 이름 조각)', () => {
   const STAMP = '2026-11-04T01:02:03.000Z';
 
   it('열 순서를 소문자로 적는다 — sanitizeFileToken이 소문자로 바꾼다', () => {

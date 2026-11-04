@@ -33,7 +33,7 @@ export interface ILabFont extends ILabFontRequest {
 const TIMING_BUFFER_SIZE = 2000;
 
 /**
- * 판정 화면 · UI 몫 측정이 함께 쓰는 폰트 로더(계획 2026-11-01-ui-font-probe-plan.md §3.2 · §3.4).
+ * 판정 화면 · UI 몫 측정이 함께 쓰는 폰트 로더.
  * 폰트 파일을 `resources.load`로 부르고, 시작 · 완료 시각과 `document.fonts` 상태 · 시간 초과를 적고,
  * 결과 JSON에 넣을 다운로드 기록 재료를 만든다. 판정 규칙(시간 초과 · 기록 찾기)은 `UiFontProbeLogic`이
  * 들고, 이 클래스는 브라우저 · 엔진에서 값을 모으기만 한다.

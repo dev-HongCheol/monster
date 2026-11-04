@@ -9,7 +9,10 @@ import { sanitizeFileToken } from './VfxRecipeLogic';
 export interface IFontProbeFont {
   /** 파일 이름의 굵기 앞부분. ASCII 영문 · 숫자만 쓴다 */
   stem: string;
-  /** 본문 굵기 후보(G 키가 이 안에서만 돌린다) */
+  /**
+   * 이 폰트에 있는 본문 굵기. 판정 화면은 두 열을 같은 굵기로 그려야 폰트만 비교되므로, 모든 폰트에
+   * 공통인 굵기(`commonBodyWeights`) 안에서만 굵기를 바꾼다
+   */
   body: number[];
   /** 제목 굵기 — 언제나 같은 가족의 굵은 굵기 하나다 */
   title: number;
@@ -33,10 +36,12 @@ const STEM_PATTERN = /^[A-Za-z0-9]+$/;
 const MAX_PROBE_FONTS = 2;
 
 /**
- * 설정 파일 내용을 검사한다. 폰트는 하나(판정 뒤 main) 또는 둘(후보 빌드)이다.
+ * 설정 파일 내용을 검사한다. 폰트는 하나(판정을 마치고 고른 폰트만 남긴 빌드) 또는 둘(후보 폰트 둘을
+ * 넣은 판정용 빌드)이다.
  *
- * stem이 겹치면 오류다. 두 열이 같은 폰트를 그리면 판정이 무의미한데, 그 상태를 화면이 아니라 여기서
- * 막아야 `F` 키로 화면 전체를 한 폰트로 바꾼 정상 상태를 유효로 둘 수 있다.
+ * stem이 겹치면 오류다. 두 열이 같은 폰트를 그리면 판정이 무의미하다. 그런데 이 상태를 판정 화면에서
+ * 「두 열이 같은 폰트면 무효」로 막으면, 사용자가 일부러 두 열을 한 폰트로 그리는 전체 보기까지 무효가
+ * 된다. 그래서 화면이 아니라 설정 파일을 읽는 여기서 막는다.
  *
  * 폰트가 둘이면 두 body 목록에 함께 있는 굵기가 하나 이상이어야 한다. 두 열은 언제나 같은 굵기로
  * 그리는데, 공통 굵기가 없으면 한쪽 열은 없는 파일을 찾아 조용히 시스템 글꼴로 그려지고 화면은 그래도
@@ -73,7 +78,9 @@ export function parseFontProbeConfig(json: unknown): IFontProbeParse {
 }
 
 /**
- * 모든 폰트의 body에 함께 있는 본문 굵기(첫 폰트의 차례). G 키는 두 열에 같은 굵기를 넣으므로 이 안에서만 돈다.
+ * 모든 폰트의 body에 함께 있는 본문 굵기(첫 폰트의 차례). 판정 화면은 두 열을 언제나 같은 굵기로 그리므로
+ * 본문 굵기를 바꿀 때 이 목록 안에서만 고른다 — 한쪽 폰트에만 있는 굵기를 고르면 다른 쪽 열은 없는 파일을
+ * 찾아 시스템 글꼴로 그려진다.
  * @param fonts 설정 파일의 폰트 목록
  */
 export function commonBodyWeights(fonts: readonly IFontProbeFont[]): number[] {
@@ -88,7 +95,8 @@ function isWeight(v: unknown): v is number {
 }
 
 /**
- * 본문 굵기 목록 안에서 다음 굵기로 돌린다(G 키). 제목 굵기는 목록에 없으므로 돌지 않는다 — 제목은
+ * 판정 화면에서 본문 굵기를 바꿀 때 목록의 다음 굵기를 낸다(마지막 다음은 처음). 제목 굵기는 목록에
+ * 없으므로 바뀌지 않는다 — 제목은
  * 언제나 같은 가족의 800이고, 굵기 판정은 본문만 한다.
  * @param list 본문 굵기 목록
  * @param current 지금 굵기. 목록에 없으면 목록의 첫 값으로 간다. 목록이 비었으면 그대로 둔다 — 돌릴 값이
@@ -129,8 +137,16 @@ export function lineHeightPx(size: number, ratio: number): number {
 // ===========================================================================
 
 /**
- * 판정 화면의 줄 이름(계획 2026-11-01-ui-font-probe-plan.md §3.5 표). `4-en`은 4번 줄의 영어 문장이다 —
- * 같은 4번 줄이어도 영어 문장은 첫 화면이 모자랄 때 둘째 화면으로 보낼 수 있어서 따로 셈한다.
+ * 판정 화면의 줄 이름. 줄마다 폰트가 실제 게임 화면에서 맞닥뜨릴 경우 하나를 그린다(`FontProbe`가 그린다).
+ * - `1-가` ~ `1-라` 결과 화면 글자 — 승리 제목 · 통계 줄 · 버튼 · 처치 목록 줄
+ * - `1-마` 1-가 ~ 1-라의 영어판
+ * - `2` HUD 숫자 — 흐르는 타이머와 숫자 폭 표본
+ * - `3` 레벨업 카드 설명 — 지금 카드 설명 상자 크기 안에서 두 줄 이상 되는 문구
+ * - `4` 숫자가 든 한국어 문장, `4-en` 같은 뜻의 영어 문장
+ * - `5` 외곽선 비교 — 없음 · 1단계 · 후보 폭을 나란히
+ * - `6` 폰트에 없을 수 있는 글자(똠 · 햏 · 한자 · é · € · 이모지)
+ *
+ * `4-en`을 4번 줄과 따로 세는 이유: 첫 화면이 모자랄 때 영어 문장만 둘째 화면으로 보낼 수 있어야 한다.
  */
 export type ProbeRowId =
   | '1-가'
@@ -157,7 +173,7 @@ export interface IStackResult {
   height: number;
   /** 첫 화면에 남긴 줄(받은 차례 그대로) */
   first: ProbeRowId[];
-  /** 둘째 화면(N 키)으로 보낸 줄(보낸 차례) */
+  /** 첫 화면에 들어가지 않아 둘째 화면으로 보낸 줄(보낸 차례) */
   second: ProbeRowId[];
   /** 한국어 1~4번 줄만으로도 화면을 넘친다 — 판정 화면이 무효로 띄운다 */
   firstScreenOverflow: boolean;
@@ -204,8 +220,8 @@ export function stackHeight(rows: readonly IProbeRow[], screenH = 720): IStackRe
 }
 
 /**
- * 첫 화면 밖의 줄(결과 화면 묶음과 첫 화면에서 넘긴 줄)을 화면 단위로 나눈다. N 키가 이 화면들을 차례로
- * 돈다. 받은 차례를 지키며 화면 높이가 넘치기 직전까지 채우고, 한 줄이 화면보다 높으면 그 줄 혼자 한
+ * 첫 화면 밖의 줄(결과 화면 묶음과 첫 화면에서 넘긴 줄)을 화면 단위로 나눈다. 사용자는 판정 화면에서 이
+ * 화면들을 차례로 넘겨 본다. 받은 차례를 지키며 화면 높이가 넘치기 직전까지 채우고, 한 줄이 화면보다 높으면 그 줄 혼자 한
  * 화면이다 — 줄을 쪼개면 그 줄의 줄바꿈 · 줄 높이를 한눈에 볼 수 없다.
  * @param rows 줄과 잰 높이(놓을 차례)
  * @param screenH 화면 높이(px)
@@ -481,11 +497,11 @@ export interface IProbeColumn {
   stem: string;
 }
 
-/** 열 순서. `Tab`이 맞바꾼다. */
+/** 열 순서 — AB는 설정 파일의 첫 폰트가 왼쪽이다. 사용자는 고른 열을 왼쪽에 두려고 좌우를 맞바꾼다. */
 export type ColumnOrder = 'AB' | 'BA';
 
 /**
- * 왼쪽부터 놓을 열과 그 이름. 설정 파일의 첫 폰트가 A, 둘째가 B다. `Tab`으로 좌우를 바꿔도 같은
+ * 왼쪽부터 놓을 열과 그 이름. 설정 파일의 첫 폰트가 A, 둘째가 B다. 좌우를 맞바꿔도 같은
  * 폰트의 열은 같은 이름을 지킨다 — 이름이 자리를 따라가면 사용자가 「A가 낫다」고 한 말이 어느
  * 폰트인지 바뀐다. 폰트가 하나면 순서와 상관없이 A 하나다.
  * @param order 지금 열 순서
@@ -498,7 +514,10 @@ export function columnLabels(order: ColumnOrder, stems: readonly string[]): IPro
   return order === 'BA' && cols.length === 2 ? [cols[1], cols[0]] : cols;
 }
 
-/** 외곽선 상태(O 키). 5번 줄은 이 값과 상관없이 없음 · 1단계 · 후보 폭을 모두 보인다. */
+/**
+ * 판정 화면의 줄에 입힐 외곽선 — 없음 또는 1단계. 외곽선을 비교하는 5번 줄만은 이 값과 상관없이 없음 ·
+ * 1단계 · 후보 폭을 나란히 보인다.
+ */
 export type OutlineMode = 'none' | 'step1';
 
 /** 판정값 JSON을 만드는 재료. */
@@ -506,7 +525,7 @@ export interface IVerdictState {
   /** 왼쪽부터 놓인 열 */
   columns: readonly IProbeColumn[];
   order: ColumnOrder;
-  /** F 상태에서 화면 전체를 그린 폰트의 열. 아니면 null */
+  /** 전체 보기(두 열을 한 폰트로 그리기) 중이면 그 폰트의 열. 아니면 null */
   fullScreenFont: ColumnLabel | null;
   baseSize: number;
   scaleRatio: number;
@@ -526,12 +545,13 @@ export interface IVerdictState {
 export const RESULT_STEPS = 4;
 
 /**
- * `K` 키가 내려받는 판정값 JSON. 판정과 판정 화면 쪽 기록을 이 파일 하나가 모두 든다.
+ * 판정을 마친 사용자가 내려받는 판정값 JSON. 판정과 판정 화면 쪽 기록을 이 파일 하나가 모두 든다.
  *
- * 고른 열은 저장 순간 왼쪽 열이다 — 사용자는 고른 열을 `Tab`으로 왼쪽에 둔 뒤 저장한다. `F` 상태면
+ * 고른 열은 저장 순간 왼쪽 열이다 — 사용자는 고른 열을 왼쪽으로 옮긴 뒤 저장한다. 전체 보기 중이면
  * 화면 전체를 그린 폰트의 열이다. 열 이름과 파일 이름의 짝(`columns`)을 함께 적어 두면, 설정 파일을
- * 고친 뒤에도 이 기록만으로 어느 파일을 골랐는지 알 수 있다. stem은 가려진 이름이라 폰트를 드러내지
- * 않는다. 무효 상태여도 내려받는다 — 느린 4G 회차도 이 파일로 기록한다.
+ * 고친 뒤에도 이 기록만으로 어느 파일을 골랐는지 알 수 있다. stem은 `UiSansA`처럼 실제 폰트 이름을
+ * 숨긴 이름이라 폰트를 드러내지 않는다. 무효 상태여도 내려받는다 — 네트워크를 느린 4G로 늦춘 회차는
+ * 폰트가 늦어 무효로 뜰 수 있는데, 그 기록도 이 파일로 남긴다.
  * @param s 저장 순간의 화면 상태
  */
 export function buildVerdictRecord(s: IVerdictState) {
@@ -573,8 +593,8 @@ export interface IFirstShow {
 
 /**
  * 측정 모드에서 폰트가 시간 초과하거나 거부돼 블록을 시작하지 못했을 때 내려받는 작은 결과 JSON.
- * 느린 4G 회차가 보려는 장면이 바로 이 경로라, 여기서 기록이 남지 않으면 그 회차의 첫 표시를 얻을
- * 수 없다.
+ * 브라우저 네트워크를 느린 4G로 늦춰 재는 회차는 폰트가 늦게 올 때를 보려는 것이라 이 경로를 탈 수
+ * 있다. 여기서 기록이 남지 않으면 그 회차의 첫 표시를 얻을 수 없다.
  * @param a 첫 표시 · 폰트 파일 재료 · 멈춘 사유
  */
 export function buildFontAbortRecord(a: {
@@ -595,7 +615,7 @@ export function buildFontAbortRecord(a: {
  * 거친다 — Windows 파일 이름에 쓸 수 없는 글자(`|` · `:` 등)가 들어가지 않게 하려는 것이다. 그 함수가
  * 소문자로 바꾸므로 결과는 `ab-split-…`처럼 소문자다.
  * @param order 열 순서
- * @param fullScreenFont F 상태의 열(아니면 null)
+ * @param fullScreenFont 전체 보기 중인 폰트의 열(아니면 null)
  * @param stamp 시각(ISO 문자열)
  */
 export function captureFileToken(
@@ -612,11 +632,11 @@ export function captureFileToken(
 // 측정 모드(off=ui)
 // ===========================================================================
 
-/** 문자열 바꾸기 장치가 쓰는 HUD 라벨. */
+/** UI 몫 측정의 문자열 바꾸기(`VfxLab`)가 글자를 쓰는 HUD 라벨. */
 export type HudDriveLabel = 'hp' | 'wave' | 'timer' | 'level';
 
 /**
- * 문자열 바꾸기 장치가 그 프레임에 쓸 값. 프레임 번호에서 만들어 재현할 수 있고, 연속한 두 프레임은
+ * UI 몫 측정의 문자열 바꾸기(`VfxLab`)가 그 프레임에 쓸 값. 프레임 번호에서 만들어 재현할 수 있고, 연속한 두 프레임은
  * 언제나 다른 값이라 매 프레임 라벨을 다시 그리게 된다. 라벨마다 실제 HUD 형식(`ko.json`의
  * `hud.hp` · `hud.wave` · `hud.timer` · `hud.level`)을 따른다 — 실제 글자 조합이어야 그리기 비용이
  * 실제 플레이와 같다.
@@ -639,8 +659,8 @@ export function driverValue(frame: number, label: HudDriveLabel): string {
 
 /**
  * 타이머 글자 `mm:ss`. 6,000초(100분)에서 처음으로 돌아가 늘 다섯 글자다 — 자릿수가 바뀌면 그 순간만
- * 라벨 폭이 달라져, 측정에서는 비용이 흔들리고 판정 화면에서는 숫자 폭 비교가 어긋난다. 측정 장치와
- * 판정 화면 2번 줄이 함께 쓴다.
+ * 라벨 폭이 달라져, 측정에서는 비용이 흔들리고 판정 화면에서는 숫자 폭 비교가 어긋난다. UI 몫
+ * 측정의 문자열 바꾸기와 판정 화면 2번 줄이 함께 쓴다.
  * @param sec 초(소수는 버린다)
  */
 export function timerText(sec: number): string {

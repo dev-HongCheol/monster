@@ -49,7 +49,7 @@ import { downloadBlob } from './VfxLab';
 const { ccclass } = _decorator;
 
 // ---------------------------------------------------------------------------
-// 화면 값(계획 2026-11-01-ui-font-probe-plan.md §3.5)
+// 판정 화면의 크기 · 배치 값 — 1280×720 캔버스 기준
 // ---------------------------------------------------------------------------
 
 /** 열 폭 — 1280에서 바깥 여백 32 × 2와 열 사이 32를 빼고 둘로 나눈 값 */
@@ -78,7 +78,10 @@ const BASE_SIZES = [16, 17, 18] as const;
 const NOTICE_SEC = 2;
 /** 유효 조건(캔버스 · 배율)을 다시 보는 간격(초) — 창 크기는 판정 중에 바뀔 수 있다 */
 const RECHECK_SEC = 0.5;
-/** 폰트 첫 다운로드 상한(바이트) — 로드맵 L2-1. 개발자 도구의 kB(1,000바이트)와 같은 단위로 적는다 */
+/**
+ * 폰트 첫 다운로드 상한(바이트) — 캐시를 비운 첫 로드에서 본문 · 제목 두 파일의 전송 크기 합. 상한과 그
+ * 근거는 디자인 정본 `art-asset-spec.md` §8.5가 든다. 개발자 도구의 kB(1,000바이트)와 같은 단위로 적는다
+ */
 const FONT_BUDGET_BYTES = 1_500_000;
 
 const COLOR_PANEL = new Color(0x16, 0x1d, 0x2e, 255);
@@ -93,15 +96,18 @@ const COLOR_PENDING = new Color(0x40, 0x40, 0x40, 230);
 const COLOR_BAND_TEXT = new Color(0xf2, 0xf2, 0xf2, 255);
 
 /**
- * 외곽선 단계. 「1단계」는 1층 HTML 판정판(`-webkit-text-stroke: 2px` + 그림자 `0 1px 2px`)과 바깥에 보이는
+ * 외곽선 단계. 「1단계」는 앞서 외곽선을 정한 HTML 비교 화면(`-webkit-text-stroke: 2px` + 그림자 `0 1px 2px`)과 바깥에 보이는
  * 두께가 같다. 엔진은 캔버스 선 두께를 `outlineWidth × 2`로 긋고 그 위에 채우기를 덮으므로(엔진
  * `assembler/label/text-processing.ts:536-543 · :664`) 글자 바깥에 `outlineWidth`px가 보이고, CSS 2px
- * 외곽선은 바깥에 약 1px가 보인다. 「후보 폭」은 1단계보다 1px 두껍다.
+ * 외곽선은 바깥에 약 1px가 보인다. 「후보 폭」은 1단계보다 1px 두꺼운 비교용 후보다.
  */
 type OutlineStep = 'none' | 'step1' | 'wide';
 const OUTLINE_WIDTH: Readonly<Record<OutlineStep, number>> = { none: 0, step1: 1, wide: 2 };
 
-/** 판정 화면이 문자열 바꾸기로 다시 그리는 타이머 라벨 — CHAR 판은 캐시가 글자 단위다 */
+/**
+ * 판정 화면 2번 줄에서 흐르는 타이머 라벨. 같은 타이머를 Cache Mode NONE(라벨 전체를 그림 한 장으로)과
+ * CHAR(글자마다 공유 캐시에)로 하나씩 그려, 숫자가 바뀔 때 두 방식의 모양을 나란히 본다
+ */
 interface ITimerLabel {
   label: Label;
 }
@@ -118,14 +124,17 @@ interface IBuiltRow {
 /** 열 하나의 줄 묶음. */
 interface IBuiltColumn {
   column: IProbeColumn;
-  /** 이 열을 그린 폰트 — F 상태면 화면 전체를 그린 폰트다 */
+  /** 이 열을 그린 폰트 — 전체 보기 중이면 화면 전체를 그린 폰트다 */
   stem: string;
   rows: Map<string, IBuiltRow>;
   digitWidths: number[];
   cardOverflow: boolean;
 }
 
-/** 판정값 저장 뒤 채팅으로 답할 질문(계획 §5.3). */
+/**
+ * 판정값을 저장한 뒤 화면에 띄우는 질문. 최소 글자가 두 조건(화면 크기 · 거리)에서 읽혔는지는 화면이 알
+ * 수 없어서, 사용자가 채팅으로 답하고 AI가 판정값 파일과 함께 세션 문서에 적는다.
+ */
 const CHAT_QUESTIONS = [
   '채팅으로 답해 주세요:',
   '1. 두 조건(2K 60cm · 노트북 60cm)에서 한글 16px가 읽히나',
@@ -136,13 +145,15 @@ const CHAT_QUESTIONS = [
 ].join('\n');
 
 /**
- * 폰트 판정 화면(`?lab=font`, 계획 2026-11-01-ui-font-probe-plan.md §3.5). 설정 파일의 폰트를 이름을 가린
- * 열로 나란히 그리고, 사용자가 키로 단계 비율 · 줄 높이 · 기준 크기 · 굵기 · 외곽선을 바꿔 가며 고른다.
+ * 폰트 판정 화면(`?lab=font`). 설정 파일의 폰트를 이름을 가린 열로 나란히 그리고, 사용자가 키로 단계
+ * 비율 · 줄 높이 · 기준 크기 · 굵기 · 외곽선을 바꿔 가며 고른다. 키 목록은 `_handleKey`에 있다.
  * 열 · 줄은 Cocos의 실제 Label로 그린다 — HTML 비교판과 Cocos는 글자를 그리는 과정이 달라서, 게임 안에서
  * 보이는 모양으로 골라야 판정이 출시 화면과 같다.
  *
- * 위 · 아래 띠와 숫자판은 엔진 기본 글꼴로 그린다(후보 폰트를 쓰지 않는다). 띠의 글자까지 후보 폰트로
- * 그리면 띠 모양으로 폰트를 짐작하게 된다.
+ * 화면 위아래에는 판정을 돕는 띠가 있다. 위 띠에는 화면이 판정에 유효한지, 숫자판(캔버스 크기 · 배율 ·
+ * 숫자 폭 · 폰트 준비 · 용량 같은 확인 값), 열 이름표가 뜨고, 아래 띠에는 키 안내와 알림이 뜬다. 띠와
+ * 숫자판은 엔진 기본 글꼴로 그린다(후보 폰트를 쓰지 않는다). 띠의 글자까지 후보 폰트로 그리면 띠 모양으로
+ * 폰트를 짐작하게 된다.
  *
  * `SpellCaster`가 `lab=font`이고 오류가 없을 때 플레이어 노드에 붙인다. 노드는 `UICanvas` 아래 HUD 바로
  * 다음 형제로 만든다 — 일시정지 화면이 이 위에 그려져야 하기 때문이다.
@@ -550,7 +561,7 @@ export class FontProbe extends Component {
     return [...this._passiveLines(t), ...this._enemyNames.map((name) => `${name}  999`)];
   }
 
-  /** HUD 숫자 줄 — `00:00` · `11:11` · `88:88` 실측 폭, NONE · CHAR 판 타이머(10배속), 14px 「100」. */
+  /** HUD 숫자 줄 — `00:00` · `11:11` · `88:88` 실측 폭, Cache Mode NONE · CHAR로 하나씩 그린 타이머(10배속), 14px 「100」. */
   private _buildDigitsRow(
     n: Node,
     font: TTFFont | null,
@@ -737,7 +748,7 @@ export class FontProbe extends Component {
       tag.node.active = col !== undefined;
       if (!col) return;
       const late = this._loader?.fonts.some((f) => f.stem === col.stem && f.timedOut) ?? false;
-      // F 상태에서는 두 열이 같은 폰트를 그리므로 이름표도 그 폰트의 열 이름 하나다
+      // 전체 보기 중에는 두 열이 같은 폰트를 그리므로 이름표도 그 폰트의 열 이름 하나다
       tag.string = `${this._full ? `${this._full} (전체)` : col.column.label}${late ? ' · 대체 글꼴일 수 있음' : ''}`;
       tag.updateRenderData(true);
       const w = tag.node.getComponent(UITransform)?.width ?? 0;
@@ -754,8 +765,8 @@ export class FontProbe extends Component {
     const latest = Math.max(0, ...fonts.map((f) => (f.loadDoneMs ?? 0) - f.loadStartMs));
     const digitsOk =
       this._built.length > 0 && this._built.every((c) => digitWidthsEqual(c.digitWidths));
-    // 후보 빌드의 파일 여섯을 더한 합계는 상한과 비교할 의미가 없고, 열마다 크기를 보이면 파일 크기로
-    // 폰트가 드러난다 — 용량은 폰트가 하나인 최종 빌드에서만 보인다
+    // 후보 빌드(판정용으로 후보 폰트 둘의 파일 여섯을 넣은 빌드)의 합계는 상한과 비교할 의미가 없고, 열마다
+    // 크기를 보이면 파일 크기로 폰트가 드러난다 — 용량은 고른 폰트 하나만 넣은 최종 빌드에서만 보인다
     let capacity = '후보 빌드 — 용량 판정은 최종 빌드에서';
     if (this._fonts.length === 1) {
       const total = this._loader?.transferTotal() ?? null;
@@ -827,7 +838,24 @@ export class FontProbe extends Component {
   // ---------------------------------------------------------------------------
 
   /**
-   * 키 입력. `e.code`로 판정한다 — 한글 입력기가 켜져 있으면 `e.key`가 `Process`로 들어온다. `Tab`은
+   * 키 입력. 사용자는 아래 키로 화면의 값을 바꿔 가며 두 후보 폰트를 비교한다. 판정 화면 뒤에서도 게임이
+   * 계속 돌고 게임 조작 키(WASD · 방향키 · Esc · T)는 게임이 받으므로, 그 키들과 겹치지 않게 골랐다. 지금
+   * 값과 키는 아래 띠 첫 줄(`_keyLine`)에 늘 보인다.
+   *
+   * - `Tab` 열 바꾸기 — 두 열의 좌우를 맞바꾼다. 열 이름(A · B)은 자리가 아니라 폰트를 따라간다
+   * - `F` 전체 보기 — 두 열을 모두 한 폰트로 그린다. 끔 → 왼쪽 열 폰트 → 오른쪽 열 폰트 → 끔 차례로 돈다
+   * - `1` `2` `3` 단계 비율 — 결과 화면 글자 단계 사이의 크기 비율(1.2 · 1.25 · 1.333)을 고른다
+   * - `L` 줄 높이 — 글자 크기에 곱하는 줄 높이 비율(1.2 → 1.35 → 1.5)
+   * - `B` 기준 크기 — 본문 글자 크기(16 → 17 → 18px)
+   * - `G` 본문 굵기 — 두 폰트에 모두 있는 굵기 안에서 다음 굵기로 바꾼다. 두 열에 같은 굵기를 넣는다
+   * - `O` 외곽선 — 외곽선을 비교하는 5번 줄을 뺀 모든 줄의 외곽선을 없음 ↔ 1단계로 바꾼다
+   * - `N` 다음 화면 — 첫 화면에 들어가지 않은 줄을 담은 둘째 화면 이후로 넘긴다. 마지막 다음은 첫 화면이다
+   * - `P` 캡처 — 지금 화면을 PNG로 내려받는다
+   * - `K` 저장 — 처음 누르면 고른 값을 보이고, 한 번 더 누르면 판정값 JSON을 내려받는다
+   *
+   * 폰트가 하나면(판정 뒤 main) `Tab` · `F`는 아무것도 하지 않는다.
+   *
+   * `e.code`로 판정한다 — 한글 입력기가 켜져 있으면 `e.key`가 `Process`로 들어온다. `Tab`은
    * 초점 이동을 막는다. 키를 누르고 있어 생기는 자동 반복은 무시한다 — K를 반 초쯤 누르고 있으면 반복
    * 입력이 두 번째 누르기가 되어 확인 없이 저장되고, B · L · 1~3은 반복될 때마다 열 전체를 다시 만든다.
    * K가 아닌 키를 누르면 K 확인 대기를 푼다.

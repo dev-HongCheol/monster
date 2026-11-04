@@ -96,7 +96,7 @@ export interface ILabError {
 export interface ILabMode {
   /** `lab` 파라미터가 있고 레시피 파일도 있다 */
   enabled: boolean;
-  /** 비교판 · 측정 · 폰트 판정 화면(계획 2026-11-01-ui-font-probe-plan.md §3.5) */
+  /** 실험 모드 — 비교판 · 측정 · 폰트 판정 화면. 모드마다 하는 일은 `parseLabUrl` 주석에 있다 */
   kind: 'compare' | 'measure' | 'font' | null;
   /** 비교판이 보여 줄 방식 */
   method: MethodKey | null;
@@ -822,22 +822,58 @@ export function labOffMode(): ILabMode {
 }
 
 /**
- * URL 쿼리를 실험실 상태로 해석한다. **실험실 사용법의 정본이다**(계획 · QA 문서는 거울).
+ * URL 쿼리를 읽어 이번 판에서 어떤 실험을 할지(`ILabMode`) 정하고, 틀린 값은 오류 목록에 담는다.
+ * **실험실 사용법의 정본이다**(계획 · QA 문서는 거울). 아래 목록이 URL에 쓸 수 있는 값 전부다.
  *
- * 파라미터: `lab=compare|measure|font` · `method=ga|na|da|ra|ma|ba` · `load=base|max`(기본 max,
- * font는 base) · `pick=ga:id,na:id` · `only=ga,na` · `counts=63,200,400` ·
- * `tune=ga:count=96;size=1.2|na:rate=40` · `sizeScale=ga:0.7` · `countScale=ga:0.5` · `block=<초>`(기본 10).
+ * **모드 — `lab`** (없으면 실험실이 꺼지고 보통 게임이 돈다)
+ * - `compare` 비교판 — 한 방식의 이펙트 후보 여럿을 나란히 띄워 사용자가 눈으로 고른다. 고른 후보와
+ *   다듬은 값은 비교판의 `J` 키가 측정 URL로 만들어 준다
+ * - `measure` 측정 — 적 수를 단계별로 고정하고, 대상(이펙트 또는 HUD)을 켠 블록과 끈 블록을 번갈아
+ *   돌며 프레임 시간을 잰다. 끝나면 결과 JSON을 내려받는다
+ * - `font` 폰트 판정 화면 — 설정 파일(`font-probe.json`)의 후보 폰트를 열로 나란히 그려 사용자가 고른다
  *
- * UI 몫 측정(계획 2026-11-01-ui-font-probe-plan.md §3.4): `off=vfx|ui`(기본 vfx, measure에서만) ·
- * `font=<설정 파일의 stem>`(off=ui에서는 반드시, 그 밖에는 오류) · `weight=<그 폰트의 body 또는 title>`
- * (font가 있으면 반드시) · `cache=none|char`(기본 none) · `drive=worst|real`(기본 worst) — cache · drive는
- * off=ui에서만 쓴다.
+ * **세 모드 공통**
+ * - `load=base|max` — 마법 강화 상태. base는 강화 없음, max는 가진 마법을 모두 최대로 강화한 상태다.
+ *   기본 max(font는 base)
  *
- * 폰트 판정 화면(`lab=font`): 위 UI 몫 파라미터와 이펙트용 파라미터(method · only · pick · counts · tune ·
- * sizeScale · countScale · block)를 쓰면 오류다. 판정 화면은 설정 파일의 폰트를 모두 보이고 적 수는
- * 200으로 고정이다. `load`는 쓸 수 있다.
+ * **이펙트 실험 — compare · measure에서 쓴다**
  *
- * 안전 규칙: `lab`이 없으면 다른 파라미터와 설정 파일 오류는 모두 무시하고 꺼진 상태를 낸다. 레시피
+ * 방식 코드는 이펙트를 만드는 방식 여섯이다. ga 터짐 · na 계속 뿜기 · da 모양 그림 커지기 · ra 고체 모양
+ * 발사체 · ma 두 점을 잇는 선 · ba 적에게 붙는 상태 표시(`METHOD_NAMES`). 방식마다 레시피 파일
+ * (`vfx-lab.json`)에 후보가 여럿 있고, 후보마다 id가 있다.
+ * - `method=<방식 코드>` — 비교판이 띄울 방식. compare에서 없으면 ga
+ * - `pick=<방식>:<후보 id>,…` — 방식별로 쓸 후보. 없으면 레시피 파일에서 `picked`로 표시한 후보
+ * - `only=<방식>,…` — 측정에서 이펙트를 켤 방식. 없으면 여섯 모두다. 방식 하나의 비용만 잴 때 쓴다
+ * - `counts=<적 수>,…` — 측정의 적 수 단계. 커지는 순서만 받는다. 기본 63,200,400
+ * - `tune=<방식>:<필드>=<값>;<필드>=<값>|<방식>:…` — 후보 레시피의 값을 덮어쓴다. 필드는 count(알갱이 수) ·
+ *   size(크기 배율) · life(수명, 초) · speed(속도) · rate(초당 방출 수)
+ * - `sizeScale=<방식>:<배율>,…` · `countScale=<방식>:<배율>,…` — 후보의 크기 · 알갱이 수에 곱하는 배율.
+ *   tune을 적용한 뒤에 곱한다
+ * - `block=<초>` — 측정의 켬 · 끔 블록 하나의 길이. 기본 10
+ *
+ * pick · tune · sizeScale · countScale은 손으로 쓰기보다 비교판의 `J` 출력을 그대로 붙이는 값이다.
+ *
+ * **UI 몫 측정 — measure에서 `off=ui`일 때 쓴다**
+ * - `off=vfx|ui` — 켜고 끄는 대상. vfx는 이펙트, ui는 HUD 노드 전체다. 기본 vfx이고 measure에서만 쓴다
+ * - `font=<stem>` — HUD에 입힐 폰트. 설정 파일에 있는 stem이어야 한다. off=ui면 반드시 쓰고, 그 밖에는 오류다
+ * - `weight=<굵기>` — 그 폰트의 굵기. 설정 파일의 body 또는 title 값이어야 한다. font를 쓰면 반드시 쓴다
+ * - `cache=none|char` — 라벨을 텍스처로 만드는 방식(Cache Mode). none은 모든 라벨을 NONE으로, char는
+ *   숫자 라벨(hp · timer)만 CHAR로 둔다. 기본 none
+ * - `drive=worst|real` — 측정 중에 HUD 글자를 바꾸는 빈도. worst는 HUD 라벨 넷을 매 프레임 바꾸고, real은
+ *   실제 게임처럼 타이머만 1초에 한 번 바꾼다. 기본 worst
+ *
+ * **폰트 판정 화면 — `lab=font`**
+ *
+ * `load`만 쓸 수 있고, 위의 이펙트 실험 · UI 몫 측정 파라미터를 쓰면 오류다. 판정 화면은 설정 파일의
+ * 폰트를 모두 보이고 적 수를 200으로 고정하므로, 그 값들을 받아도 무시되는데 사용자는 바꿨다고 믿게 된다.
+ *
+ * **예**
+ * - `?lab=compare&method=na` — 계속 뿜기 방식의 후보를 비교한다
+ * - `?lab=measure&only=ga&counts=200` — 적 200마리에서 터짐 방식의 비용만 잰다
+ * - `?lab=measure&off=ui&font=UiSans&weight=500` — HUD에 UiSans 500을 입혀 HUD의 비용을 잰다
+ * - `?lab=font` — 폰트 판정 화면을 연다
+ *
+ * **안전 규칙:** `lab`이 없으면 다른 파라미터와 설정 파일 오류는 모두 무시하고 꺼진 상태를 낸다. 레시피
  * 파일이 없으면(`recipes === null`) `lab`이 있어도 꺼진 상태다 — 공개 빌드는 그 파일을 빼서 실험실을
  * 막는다(`lab=font`도 같다). `lab`이 있으면 오류를 무시하지 않는다. 조용히 기본값으로 돌면 사용자는
  * 자기가 고른 후보를 잰 줄 알고 다른 후보의 숫자를 받기 때문이다. 오류가 하나라도 있으면
@@ -1292,9 +1328,9 @@ export function resultFileName(
 }
 
 /**
- * UI 몫 측정(`off=ui`)의 결과 파일 이름 `ui-<창>-<cache>-<drive>-<UTC 시각>.json`. 이펙트 측정과 같은
- * 이름을 쓰면 판정 회차와 기록 회차(`drive` · `cache`만 다르다)를 파일 이름으로 가를 수 없고, 이름의
- * `load`는 UI 몫과 상관없는 값이라 오해를 부른다.
+ * UI 몫 측정(`off=ui`)의 결과 파일 이름 `ui-<창>-<cache>-<drive>-<UTC 시각>.json`. 통과 · 실패를 가르는
+ * 회차와 참고로만 남기는 회차는 `drive` · `cache`만 다른데, 이펙트 측정과 같은 이름을 쓰면 파일 이름으로
+ * 둘을 가를 수 없다. 또 그 이름에 든 `load`는 UI 몫과 상관없는 값이라 오해를 부른다.
  * @param cache 숫자 라벨의 Cache Mode(`none` · `char`)
  * @param drive 문자열 바꾸기 조건(`worst` · `real`)
  * @param at 측정이 끝난 시각

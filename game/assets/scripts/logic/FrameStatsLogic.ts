@@ -157,9 +157,9 @@ export function isNearThreshold(d: IShareDeltas, th: IShareThresholds): boolean 
 }
 
 /**
- * UI 몫의 상한(ms) — HUD 노드 전체를 켠 블록과 끈 블록의 바쁜 시간 중앙값 차이(계획
- * 2026-11-01-ui-font-probe-plan.md §5.2). 이펙트 문턱(`PASS_THRESHOLDS`)과 따로 둔다 — 재는 대상과
- * 블록 구성이 달라 한 표에 섞으면 어느 문턱이 어느 회차의 것인지 흐려진다.
+ * UI 몫의 상한(ms) — HUD 노드 전체를 켠 블록과 끈 블록의 바쁜 시간 중앙값 차이가 이 값 이하면 통과다.
+ * 상한과 그 근거는 디자인 정본 `art-asset-spec.md` §8.5가 든다. 이펙트 문턱(`PASS_THRESHOLDS`)과 따로
+ * 둔다 — 재는 대상과 블록 구성이 달라 한 표에 섞으면 어느 문턱이 어느 회차의 것인지 흐려진다.
  */
 export const UI_THRESHOLD_MS = 1;
 
