@@ -1,0 +1,27 @@
+{
+  "aborted": "font",
+  "firstShow": {
+    "loadMs": 3599.89999999851,
+    "applyBusyMs": null,
+    "applyFrame": null,
+    "maxBusyAfterMs": null
+  },
+  "fontFiles": [
+    {
+      "stem": "UiSans",
+      "weight": 500,
+      "status": "loading",
+      "transferSize": null,
+      "encodedBodySize": null,
+      "decodedBodySize": null,
+      "sizeSource": null,
+      "initiatorType": null,
+      "duration": null,
+      "loadStartMs": 66466.10000000149,
+      "loadDoneMs": 70066,
+      "timedOut": true,
+      "timingReason": "항목 없음"
+    }
+  ],
+  "reason": "시간 초과"
+}

@@ -1,0 +1,59 @@
+{
+  "chosenColumn": "A",
+  "chosenStem": "UiSans",
+  "columns": [
+    {
+      "label": "A",
+      "stem": "UiSans"
+    }
+  ],
+  "order": "AB",
+  "fullScreenFont": null,
+  "bodyWeight": 500,
+  "baseSize": 16,
+  "scaleRatio": 1.25,
+  "lineRatio": 1.35,
+  "outline": "step1",
+  "typeScalePx": [16, 20, 25, 31],
+  "canvas": {
+    "w": 1280,
+    "h": 720
+  },
+  "dpr": 1,
+  "valid": false,
+  "invalidReasons": ["시간 초과"],
+  "fontFiles": [
+    {
+      "stem": "UiSans",
+      "weight": 500,
+      "status": "loading",
+      "transferSize": 437180,
+      "encodedBodySize": 436880,
+      "decodedBodySize": 436880,
+      "sizeSource": "network",
+      "initiatorType": "css",
+      "duration": 5424.60000000149,
+      "loadStartMs": 66281.79999999702,
+      "loadDoneMs": 69894,
+      "timedOut": true,
+      "timingReason": null
+    },
+    {
+      "stem": "UiSans",
+      "weight": 800,
+      "status": "loading",
+      "transferSize": 437040,
+      "encodedBodySize": 436740,
+      "decodedBodySize": 436740,
+      "sizeSource": "network",
+      "initiatorType": "css",
+      "duration": 5443.29999999702,
+      "loadStartMs": 66282.39999999851,
+      "loadDoneMs": 69894.29999999702,
+      "timedOut": true,
+      "timingReason": null
+    }
+  ],
+  "timingBufferFull": false,
+  "savedAt": "2026-11-03T22:04:59.288Z"
+}
