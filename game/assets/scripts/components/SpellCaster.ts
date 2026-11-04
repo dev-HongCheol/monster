@@ -11,7 +11,15 @@ import { compareSpellIds, maxLoadSeed, pickedRecipeMap } from '../logic/VfxRecip
 import { DataManager } from '../systems/DataManager';
 import { DeckManager } from '../systems/DeckManager';
 import { GameManager } from '../systems/GameManager';
-import { isCompareMode, isLabStage, isMeasureMode, LabRuntime } from '../systems/LabRuntime';
+import {
+  isCompareMode,
+  isFontProbeMode,
+  isLabStage,
+  isMeasureMode,
+  LabRuntime,
+  labVfxEnabled,
+} from '../systems/LabRuntime';
+import { FontProbe } from './FontProbe';
 import { LabVfxSink } from './LabVfxSink';
 import { PoolManager } from './PoolManager';
 import { Projectile, type ProjectileExplosion, type ProjectileStatus } from './Projectile';
@@ -193,12 +201,14 @@ export class SpellCaster extends Component {
     // 콜백은 씬을 넘어 살아남을 수 있으므로(로딩 중 재시작) 발화 시점에 자신이 유효한지 확인한다.
     dm.onReady(() => {
       if (!this.isValid) return;
-      // 비교판은 그 방식을 쓰는 마법만 쏜다 — 다른 마법의 이펙트가 섞이면 후보 모습을 가린다
-      const ids = isMeasureMode()
-        ? MEASURE_SPELL_IDS
-        : isCompareMode()
-          ? compareSpellIds(LabRuntime.mode.method ?? 'ga')
-          : this.startingSpellIds;
+      // 비교판은 그 방식을 쓰는 마법만 쏜다 — 다른 마법의 이펙트가 섞이면 후보 모습을 가린다.
+      // 폰트 판정 화면은 측정과 같은 목록을 쏜다 — 시작 마법 하나만 쏘면 바쁜 전투 배경이 되지 않는다
+      const ids =
+        isMeasureMode() || isFontProbeMode()
+          ? MEASURE_SPELL_IDS
+          : isCompareMode()
+            ? compareSpellIds(LabRuntime.mode.method ?? 'ga')
+            : this.startingSpellIds;
       for (const id of ids) this._loadout.addSpell(id);
       if (isLabStage() && LabRuntime.mode.load === 'max') {
         const owned = ids
@@ -206,9 +216,12 @@ export class SpellCaster extends Component {
           .filter((sp): sp is ISpellData => sp !== null);
         deck.applyDebugSeed(maxLoadSeed(owned));
       }
-      // 실험실은 URL에 lab이 있고 레시피 파일이 있을 때만 붙는다(오류가 있으면 오류 상자만 띄운다).
+      // 실험실은 URL에 lab이 있고 레시피 파일이 있을 때만 붙는다(오류가 있으면 어느 모드든 VfxLab이
+      // 오류 상자만 띄운다). 폰트 판정 화면은 오류가 없을 때만 FontProbe를 붙인다.
       // 비교판의 「현재」 칸은 지금 게임의 프리팹을 그대로 띄워야 비교가 되므로 이 컴포넌트의 연결을 넘긴다
-      if (LabRuntime.mode.enabled) {
+      if (isFontProbeMode()) {
+        this.node.addComponent(FontProbe);
+      } else if (LabRuntime.mode.enabled) {
         this.node.addComponent(VfxLab).compareHost = {
           prefabs: {
             explosion: this.explosionVfxPrefab,
@@ -218,7 +231,8 @@ export class SpellCaster extends Component {
           worldParent: this.bulletParent?.parent ?? null,
         };
       }
-      if (isLabStage()) this._setupLabVfx();
+      // 레시피 후보 이펙트는 측정 · 비교판만 — 폰트 판정 화면의 배경은 지금 게임의 이펙트 그대로다
+      if (labVfxEnabled()) this._setupLabVfx();
       this._dataReady = true;
     });
   }

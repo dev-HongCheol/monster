@@ -124,7 +124,15 @@ describe('FrameStatsLogic — summarize', () => {
   });
 
   it('빈 배열이면 모두 0', () => {
-    expect(summarize([])).toEqual({ mean: 0, median: 0, low1: 0, max: 0, count: 0 });
+    expect(summarize([])).toEqual({
+      mean: 0,
+      median: 0,
+      low1: 0,
+      p95: 0,
+      max: 0,
+      count: 0,
+      over20: 0,
+    });
   });
 });
 

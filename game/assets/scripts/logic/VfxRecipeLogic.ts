@@ -1,6 +1,7 @@
 import { type ISpellData, UpgradeOption } from '../data/GameTypes';
 import type { IDebugEnhancementSeed } from './DebugEnhancementSeed';
 import { UPGRADE_CAP } from './EnhancementLogic';
+import type { IFontProbeFont, IFontProbeParse } from './UiFontProbeLogic';
 
 /**
  * 이펙트 방식 키 여섯(계획 2026-10-12-magic-effect-gate-plan.md §8.1).
@@ -95,7 +96,8 @@ export interface ILabError {
 export interface ILabMode {
   /** `lab` 파라미터가 있고 레시피 파일도 있다 */
   enabled: boolean;
-  kind: 'compare' | 'measure' | null;
+  /** 비교판 · 측정 · 폰트 판정 화면(계획 2026-11-01-ui-font-probe-plan.md §3.5) */
+  kind: 'compare' | 'measure' | 'font' | null;
   /** 비교판이 보여 줄 방식 */
   method: MethodKey | null;
   load: 'base' | 'max';
@@ -108,6 +110,16 @@ export interface ILabMode {
   sizeScale: Partial<Record<MethodKey, number>>;
   countScale: Partial<Record<MethodKey, number>>;
   blockSec: number;
+  /** 측정에서 켜고 끄는 대상 — 이펙트(기본) 또는 HUD 노드 전체(UI 몫 측정) */
+  off: 'vfx' | 'ui';
+  /** UI 몫 측정에서 HUD에 입힐 폰트의 stem. 아니면 null */
+  font: string | null;
+  /** 그 폰트의 굵기. 아니면 null */
+  weight: number | null;
+  /** UI 몫 측정의 Cache Mode — none은 모든 라벨 NONE, char는 hp · timer 라벨만 CHAR */
+  cache: 'none' | 'char';
+  /** UI 몫 측정의 문자열 바꾸기 — worst는 HUD 라벨 넷을 매 프레임, real은 타이머만 1초에 한 번 */
+  drive: 'worst' | 'real';
   /** 오류가 있어 실험실을 시작하지 않는다(오류 상자만 띄운다) */
   startBlocked: boolean;
 }
@@ -127,6 +139,32 @@ export const METHOD_NAMES: Readonly<Record<MethodKey, string>> = {
 
 /** 오류 상자의 「참고」 — 사용자가 고칠 URL을 찾는 곳. */
 const LAB_REF = 'docs/qa/magic-effect-gate-test.md §5(URL과 회차 표)';
+
+/** 폰트 쪽 오류(판정 화면 · UI 몫 측정 · 설정 파일)의 「참고」. */
+const FONT_LAB_REF = 'docs/qa/ui-font-probe-test.md §5(판정 · 측정 회차)';
+
+/** 판정 화면이 유지하는 적 수 — 바쁜 전투 배경의 조건을 한 가지로 고정한다. */
+const FONT_PROBE_COUNT = 200;
+
+/**
+ * `lab=font`에 쓸 수 없는 파라미터. 판정 화면은 설정 파일의 폰트를 모두 보이고 적 수는 200으로
+ * 고정이라, 이 값들을 받으면 사용자가 바꿨다고 믿는 조건이 실제로는 무시된다.
+ */
+const FONT_LAB_FORBIDDEN = [
+  'method',
+  'only',
+  'pick',
+  'counts',
+  'tune',
+  'sizeScale',
+  'countScale',
+  'block',
+  'off',
+  'font',
+  'weight',
+  'cache',
+  'drive',
+] as const;
 
 const DEFAULT_COUNTS = [63, 200, 400];
 const DEFAULT_BLOCK_SEC = 10;
@@ -157,9 +195,12 @@ function isMethod(v: string): v is MethodKey {
   return (METHOD_KEYS as readonly string[]).includes(v);
 }
 
-/** 오류 객체를 만든다(참고는 늘 QA 문서의 URL 절). */
-function labError(problem: string, cause: string, fix: string): ILabError {
-  return { problem, cause, fix, ref: LAB_REF };
+/**
+ * 오류 객체를 만든다.
+ * @param ref 참고할 QA 문서 절. 기본은 이펙트 실험실의 URL 절이고, 폰트 쪽 오류는 `FONT_LAB_REF`를 준다
+ */
+function labError(problem: string, cause: string, fix: string, ref: string = LAB_REF): ILabError {
+  return { problem, cause, fix, ref };
 }
 
 /**
@@ -771,6 +812,11 @@ export function labOffMode(): ILabMode {
     sizeScale: {},
     countScale: {},
     blockSec: DEFAULT_BLOCK_SEC,
+    off: 'vfx',
+    font: null,
+    weight: null,
+    cache: 'none',
+    drive: 'worst',
     startBlocked: false,
   };
 }
@@ -778,21 +824,34 @@ export function labOffMode(): ILabMode {
 /**
  * URL 쿼리를 실험실 상태로 해석한다. **실험실 사용법의 정본이다**(계획 · QA 문서는 거울).
  *
- * 파라미터: `lab=compare|measure` · `method=ga|na|da|ra|ma|ba` · `load=base|max`(기본 max) ·
- * `pick=ga:id,na:id` · `only=ga,na` · `counts=63,200,400` · `tune=ga:count=96;size=1.2|na:rate=40` ·
- * `sizeScale=ga:0.7` · `countScale=ga:0.5` · `block=<초>`(기본 10).
+ * 파라미터: `lab=compare|measure|font` · `method=ga|na|da|ra|ma|ba` · `load=base|max`(기본 max,
+ * font는 base) · `pick=ga:id,na:id` · `only=ga,na` · `counts=63,200,400` ·
+ * `tune=ga:count=96;size=1.2|na:rate=40` · `sizeScale=ga:0.7` · `countScale=ga:0.5` · `block=<초>`(기본 10).
  *
- * 안전 규칙: `lab`이 없으면 다른 파라미터는 모두 무시하고 꺼진 상태를 낸다. 레시피 파일이 없으면
- * (`recipes === null`) `lab`이 있어도 꺼진 상태다 — 공개 빌드는 그 파일을 빼서 실험실을 막는다.
- * `lab`이 있으면 오류를 무시하지 않는다. 조용히 기본값으로 돌면 사용자는 자기가 고른 후보를 잰 줄
- * 알고 다른 후보의 숫자를 받기 때문이다. 오류가 하나라도 있으면 `startBlocked`가 켜진다.
+ * UI 몫 측정(계획 2026-11-01-ui-font-probe-plan.md §3.4): `off=vfx|ui`(기본 vfx, measure에서만) ·
+ * `font=<설정 파일의 stem>`(off=ui에서는 반드시, 그 밖에는 오류) · `weight=<그 폰트의 body 또는 title>`
+ * (font가 있으면 반드시) · `cache=none|char`(기본 none) · `drive=worst|real`(기본 worst) — cache · drive는
+ * off=ui에서만 쓴다.
+ *
+ * 폰트 판정 화면(`lab=font`): 위 UI 몫 파라미터와 이펙트용 파라미터(method · only · pick · counts · tune ·
+ * sizeScale · countScale · block)를 쓰면 오류다. 판정 화면은 설정 파일의 폰트를 모두 보이고 적 수는
+ * 200으로 고정이다. `load`는 쓸 수 있다.
+ *
+ * 안전 규칙: `lab`이 없으면 다른 파라미터와 설정 파일 오류는 모두 무시하고 꺼진 상태를 낸다. 레시피
+ * 파일이 없으면(`recipes === null`) `lab`이 있어도 꺼진 상태다 — 공개 빌드는 그 파일을 빼서 실험실을
+ * 막는다(`lab=font`도 같다). `lab`이 있으면 오류를 무시하지 않는다. 조용히 기본값으로 돌면 사용자는
+ * 자기가 고른 후보를 잰 줄 알고 다른 후보의 숫자를 받기 때문이다. 오류가 하나라도 있으면
+ * `startBlocked`가 켜진다. 다만 레시피 내용의 검사 오류로는 `lab=font`를 막지 않는다 — 판정 화면은
+ * 레시피 이펙트를 쓰지 않으므로, 이펙트 실험 중에 생긴 레시피 오류가 폰트 판정까지 막을 이유가 없다.
  *
  * @param query `location.search`(앞의 `?`는 있어도 없어도 된다)
  * @param recipes 레시피 파일 내용. 파일이 없으면 null
+ * @param fontProbe 폰트 설정 파일 검사 결과(`parseFontProbeConfig`). 파일이 없으면 null이나 `config: null`
  */
 export function parseLabUrl(
   query: string,
   recipes: readonly IVfxRecipe[] | null,
+  fontProbe: IFontProbeParse | null = null,
 ): { mode: ILabMode; errors: ILabError[] } {
   const mode = labOffMode();
   const errors: ILabError[] = [];
@@ -801,16 +860,22 @@ export function parseLabUrl(
   if (lab === null || recipes === null) return { mode, errors };
 
   mode.enabled = true;
-  if (lab === 'compare' || lab === 'measure') {
+  if (lab === 'compare' || lab === 'measure' || lab === 'font') {
     mode.kind = lab;
   } else {
     errors.push(
       labError(
         `lab=${lab}을 모른다`,
-        '실험실 모드는 compare(비교판) · measure(측정) 둘뿐이다',
-        'URL을 ?lab=compare&method=ga 또는 ?lab=measure로 고친다',
+        '실험실 모드는 compare(비교판) · measure(측정) · font(폰트 판정 화면) 셋뿐이다',
+        'URL을 ?lab=compare&method=ga · ?lab=measure · ?lab=font 중 하나로 고친다',
       ),
     );
+  }
+
+  if (mode.kind === 'font') {
+    parseFontLab(params, mode, errors, fontProbe);
+    mode.startBlocked = errors.length > 0;
+    return { mode, errors };
   }
 
   for (const r of recipes) errors.push(...validateRecipe(r));
@@ -835,18 +900,7 @@ export function parseLabUrl(
     mode.method = 'ga';
   }
 
-  const load = params.get('load');
-  if (load !== null) {
-    if (load === 'base' || load === 'max') mode.load = load;
-    else
-      errors.push(
-        labError(
-          `load=${load}을 모른다`,
-          '부하는 base(기본) · max(최대 강화) 둘뿐이다',
-          'load=max로 고친다',
-        ),
-      );
-  }
+  parseLoad(params, mode, errors);
 
   const pick = params.get('pick');
   if (pick !== null) {
@@ -944,8 +998,217 @@ export function parseLabUrl(
       );
   }
 
+  parseUiParams(params, mode, errors, fontProbe);
+
   mode.startBlocked = errors.length > 0;
   return { mode, errors };
+}
+
+/** `load` 파라미터를 읽는다(비교판 · 측정 · 판정 화면 공통). */
+function parseLoad(params: URLSearchParams, mode: ILabMode, errors: ILabError[]): void {
+  const load = params.get('load');
+  if (load === null) return;
+  if (load === 'base' || load === 'max') mode.load = load;
+  else
+    errors.push(
+      labError(
+        `load=${load}을 모른다`,
+        '부하는 base(기본) · max(최대 강화) 둘뿐이다',
+        'load=max로 고친다',
+      ),
+    );
+}
+
+/**
+ * 폰트 설정 파일이 쓸 수 있는 상태인지 보고, 아니면 오류를 더한다. 형식 오류 사유는 오류 상자에 그대로
+ * 옮긴다 — 사용자가 설정 파일의 어느 줄을 고칠지 바로 알아야 한다.
+ * @returns 쓸 수 있으면 설정의 폰트 목록, 아니면 null
+ */
+function usableFontConfig(
+  fontProbe: IFontProbeParse | null,
+  errors: ILabError[],
+): IFontProbeFont[] | null {
+  if (fontProbe === null || (fontProbe.config === null && fontProbe.errors.length === 0)) {
+    errors.push(
+      labError(
+        'font-probe.json이 없다',
+        '판정 화면과 UI 몫 측정은 설정 파일의 폰트 목록으로 그릴 폰트를 정한다',
+        'game/assets/resources/data/font-probe.json을 두고 다시 빌드한다',
+        FONT_LAB_REF,
+      ),
+    );
+    return null;
+  }
+  if (fontProbe.errors.length > 0 || fontProbe.config === null) {
+    for (const reason of fontProbe.errors)
+      errors.push(
+        labError(
+          `font-probe.json 형식 오류: ${reason}`,
+          '설정 파일이 틀리면 어느 폰트를 그렸는지 결과 기록과 화면이 어긋난다',
+          'font-probe.json의 그 줄을 고치고 다시 빌드한다',
+          FONT_LAB_REF,
+        ),
+      );
+    return null;
+  }
+  return fontProbe.config.fonts;
+}
+
+/**
+ * `lab=font`의 파라미터를 읽는다. 금지 파라미터를 쓰면 오류이고, 설정 파일이 없거나 틀리면 오류다.
+ * 레시피 검사는 하지 않는다(판정 화면은 레시피 이펙트를 쓰지 않는다).
+ */
+function parseFontLab(
+  params: URLSearchParams,
+  mode: ILabMode,
+  errors: ILabError[],
+  fontProbe: IFontProbeParse | null,
+): void {
+  mode.load = 'base';
+  mode.counts = [FONT_PROBE_COUNT];
+  for (const key of FONT_LAB_FORBIDDEN) {
+    if (!params.has(key)) continue;
+    errors.push(
+      labError(
+        `lab=font에 ${key}를 쓸 수 없다`,
+        '판정 화면은 설정 파일의 폰트를 모두 보이고 적 수는 200으로 고정이라 이 값은 무시된다',
+        `URL에서 ${key}를 지운다`,
+        FONT_LAB_REF,
+      ),
+    );
+  }
+  parseLoad(params, mode, errors);
+  usableFontConfig(fontProbe, errors);
+}
+
+/** 측정 · 비교판 URL의 UI 몫 파라미터(off · font · weight · cache · drive)를 읽는다. */
+function parseUiParams(
+  params: URLSearchParams,
+  mode: ILabMode,
+  errors: ILabError[],
+  fontProbe: IFontProbeParse | null,
+): void {
+  const off = params.get('off');
+  if (off !== null) {
+    if (off !== 'vfx' && off !== 'ui')
+      errors.push(
+        labError(
+          `off=${off}을 모른다`,
+          'off는 vfx(이펙트) · ui(HUD 전체) 둘뿐이다',
+          'off=ui로 고친다',
+          FONT_LAB_REF,
+        ),
+      );
+    else if (mode.kind !== 'measure')
+      errors.push(
+        labError(
+          `lab=${mode.kind}에 off를 쓸 수 없다`,
+          '켬 · 끔 블록은 측정 모드에만 있다',
+          'lab=measure로 바꾸거나 off를 지운다',
+          FONT_LAB_REF,
+        ),
+      );
+    else mode.off = off;
+  }
+  const ui = mode.off === 'ui';
+
+  const font = params.get('font');
+  let chosen: IFontProbeFont | null = null;
+  if (font !== null) {
+    if (!ui)
+      errors.push(
+        labError(
+          `off=ui가 아닌데 font=${font}를 썼다`,
+          'font는 HUD에 폰트를 입혀 UI 몫을 잴 때만 쓴다',
+          'off=ui를 더하거나 font를 지운다',
+          FONT_LAB_REF,
+        ),
+      );
+    else {
+      const fonts = usableFontConfig(fontProbe, errors);
+      chosen = fonts?.find((f) => f.stem === font) ?? null;
+      if (fonts && !chosen)
+        errors.push(
+          labError(
+            `font=${font}는 설정 파일에 없다`,
+            'font는 font-probe.json의 stem 가운데 하나여야 그 파일을 불러올 수 있다',
+            `font를 ${fonts.map((f) => f.stem).join(' · ')} 중 하나로 고친다`,
+            FONT_LAB_REF,
+          ),
+        );
+      if (chosen) mode.font = chosen.stem;
+    }
+  } else if (ui) {
+    errors.push(
+      labError(
+        'off=ui인데 font가 없다',
+        'UI 몫은 어느 폰트를 HUD에 입혔는지가 조건이라, 폰트 없이 잰 값은 판정에 쓸 수 없다',
+        'font=<설정 파일의 stem>&weight=<굵기>를 더한다',
+        FONT_LAB_REF,
+      ),
+    );
+  }
+
+  const weight = params.get('weight');
+  if (chosen) {
+    const w = weight === null ? Number.NaN : Number(weight);
+    if (weight === null)
+      errors.push(
+        labError(
+          `font=${chosen.stem}에 weight가 없다`,
+          '굵기마다 파일이 따로라 굵기가 없으면 불러올 파일을 정할 수 없다',
+          `weight를 ${[...chosen.body, chosen.title].join(' · ')} 중 하나로 더한다`,
+          FONT_LAB_REF,
+        ),
+      );
+    else if (!chosen.body.includes(w) && w !== chosen.title)
+      errors.push(
+        labError(
+          `weight=${weight}는 ${chosen.stem}에 없다`,
+          '굵기는 설정 파일의 body 또는 title 값이어야 그 파일이 있다',
+          `weight를 ${[...chosen.body, chosen.title].join(' · ')} 중 하나로 고친다`,
+          FONT_LAB_REF,
+        ),
+      );
+    else mode.weight = w;
+  } else if (weight !== null && font === null) {
+    errors.push(
+      labError(
+        'font 없이 weight를 썼다',
+        'weight는 font가 가리키는 폰트의 굵기다',
+        'font를 더하거나 weight를 지운다',
+        FONT_LAB_REF,
+      ),
+    );
+  }
+
+  for (const [key, values] of [
+    ['cache', ['none', 'char']],
+    ['drive', ['worst', 'real']],
+  ] as const) {
+    const raw = params.get(key);
+    if (raw === null) continue;
+    if (!ui)
+      errors.push(
+        labError(
+          `off=ui가 아닌데 ${key}=${raw}를 썼다`,
+          `${key}는 UI 몫 측정의 조건이라 이펙트 측정에서는 무시된다`,
+          `off=ui를 더하거나 ${key}를 지운다`,
+          FONT_LAB_REF,
+        ),
+      );
+    else if (!(values as readonly string[]).includes(raw))
+      errors.push(
+        labError(
+          `${key}=${raw}을 모른다`,
+          `${key}는 ${values.join(' · ')} 둘뿐이다`,
+          `${key}=${values[0]}로 고치거나 지운다`,
+          FONT_LAB_REF,
+        ),
+      );
+    else if (key === 'cache') mode.cache = raw as ILabMode['cache'];
+    else mode.drive = raw as ILabMode['drive'];
+  }
 }
 
 /**

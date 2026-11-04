@@ -9,7 +9,7 @@ import { DeathSequence } from '../ui/DeathSequence';
 import { DataManager } from './DataManager';
 import { DeckManager } from './DeckManager';
 import { ExperienceManager } from './ExperienceManager';
-import { isLabStage } from './LabRuntime';
+import { isLabStage, pausesGameTimer } from './LabRuntime';
 import { WaveManager } from './WaveManager';
 
 const { ccclass, property } = _decorator;
@@ -95,7 +95,7 @@ export class GameManager extends Component {
     });
   }
 
-  // 프레임 토큰 증가(그리드 지연 재구축 키) → 전체 게임 타이머를 감소시키고, 0이 되면 승리로 전환해 result 씬으로 보낸다
+  // 프레임 토큰 증가(그리드 지연 재구축 키) → 전체 게임 타이머를 감소시키고(폰트 판정 화면에서는 멈춘다), 0이 되면 승리로 전환해 result 씬으로 보낸다
   update(dt: number) {
     // 가드보다 먼저 증가시켜 프레임당 정확히 한 번 그리드가 재구축되게 한다.
     this._frameToken++;
@@ -104,6 +104,8 @@ export class GameManager extends Component {
     // 피격 틱: 이번 틱의 누적 max 피해를 1회 적용한다(무적 창 = 틱 길이).
     this._tickPlayerDamage(dt);
     if (this._state !== GameState.Playing) return; // 피해로 GameOver 전이 시 이후 로직 중단
+    // 폰트 판정 화면은 15분을 넘기기 쉬운데, 시계가 흐르면 승리로 바뀌어 판정 화면이 사라진다
+    if (pausesGameTimer()) return;
     this._gameTimer -= dt;
     if (this._gameTimer <= 0) {
       this._gameTimer = 0;
