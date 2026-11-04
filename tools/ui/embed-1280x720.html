@@ -36,9 +36,16 @@
     params.delete('build');
     let base = new URL('index.html', location.href);
     if (raw !== null) {
-      const asked = new URL(raw, location.href);
-      const webScheme = asked.protocol === 'http:' || asked.protocol === 'https:';
-      const localHost = asked.hostname === 'localhost' || asked.hostname === '127.0.0.1';
+      // 해석할 수 없는 주소(build=http:// 등)는 new URL이 예외를 던져 스크립트가 멈추고 틀이 빈 채로 남는다 —
+      // 받지 않는 주소와 같이 경고하고 같은 폴더의 빌드를 띄운다
+      let asked = null;
+      try {
+        asked = new URL(raw, location.href);
+      } catch {
+        asked = null;
+      }
+      const webScheme = asked !== null && (asked.protocol === 'http:' || asked.protocol === 'https:');
+      const localHost = asked !== null && (asked.hostname === 'localhost' || asked.hostname === '127.0.0.1');
       if (webScheme && localHost) base = asked;
       else document.getElementById('note').innerHTML = '<span class="warn">build는 http · https의 localhost · 127.0.0.1만 받는다 — 같은 폴더의 index.html을 띄웠다</span>';
     }

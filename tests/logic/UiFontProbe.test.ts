@@ -11,6 +11,7 @@ import {
   buildVerdictRecord,
   captureFileToken,
   columnLabels,
+  commonBodyWeights,
   digitWidthsEqual,
   driverValue,
   fontFaceStatus,
@@ -24,6 +25,7 @@ import {
   pageRows,
   parseFontProbeConfig,
   stackHeight,
+  timerText,
   typeScale,
   uiBlockFlags,
 } from '../../game/assets/scripts/logic/UiFontProbeLogic';
@@ -31,6 +33,8 @@ import {
   type IVfxRecipe,
   labOffMode,
   parseLabUrl,
+  resultFileName,
+  uiResultFileName,
 } from '../../game/assets/scripts/logic/VfxRecipeLogic';
 import {
   isFontProbeMode,
@@ -321,10 +325,45 @@ describe('UiFontProbeLogic — parseFontProbeConfig', () => {
       },
     ],
     ['폰트 없음', { fonts: [] }],
+    [
+      '두 폰트에 공통 본문 굵기 없음',
+      {
+        fonts: [
+          { stem: 'FontX', body: [400], title: 800 },
+          { stem: 'FontY', body: [500], title: 800 },
+        ],
+      },
+    ],
   ])('%s → 오류이고 설정은 null', (_label, json) => {
     const r = parseFontProbeConfig(json);
     expect(r.errors.length).toBeGreaterThan(0);
     expect(r.config).toBeNull();
+  });
+
+  it('두 폰트가 굵기 하나라도 함께 가지면 통과한다', () => {
+    const r = parseFontProbeConfig({
+      fonts: [
+        { stem: 'FontX', body: [400, 500], title: 800 },
+        { stem: 'FontY', body: [500], title: 800 },
+      ],
+    });
+    expect(r.errors).toEqual([]);
+  });
+});
+
+describe('UiFontProbeLogic — commonBodyWeights (두 열에 함께 넣을 수 있는 굵기)', () => {
+  it('모든 폰트에 있는 굵기만 첫 폰트의 차례로 남긴다', () => {
+    expect(
+      commonBodyWeights([
+        { stem: 'FontX', body: [500, 400], title: 800 },
+        { stem: 'FontY', body: [400, 500, 600], title: 800 },
+      ]),
+    ).toEqual([500, 400]);
+  });
+
+  it('폰트가 하나면 그 목록 그대로, 없으면 빈 목록이다', () => {
+    expect(commonBodyWeights([{ stem: 'FontX', body: [500], title: 800 }])).toEqual([500]);
+    expect(commonBodyWeights([])).toEqual([]);
   });
 });
 
@@ -336,6 +375,10 @@ describe('UiFontProbeLogic — nextBodyWeight (G 키)', () => {
 
   it('목록이 하나면 그대로다', () => {
     expect(nextBodyWeight([500], 500)).toBe(500);
+  });
+
+  it('목록이 비었으면 지금 굵기를 그대로 둔다 — undefined를 돌려주지 않는다', () => {
+    expect(nextBodyWeight([], 400)).toBe(400);
   });
 });
 
@@ -737,6 +780,44 @@ describe('UiFontProbeLogic — driverValue (측정 모드의 문자열 바꾸기
       expect(driverValue(frame, 'timer')).toMatch(/^\d{2}:[0-5]\d$/);
       expect(driverValue(frame, 'level')).toMatch(/^Lv\.\d+$/);
     }
+  });
+});
+
+describe('UiFontProbeLogic — timerText (측정 장치와 판정 화면 2번 줄의 mm:ss)', () => {
+  it.each([
+    [0, '00:00'],
+    [61.9, '01:01'],
+    [5999, '99:59'],
+    [6000, '00:00'],
+  ])('%s초 → %s', (sec, text) => {
+    expect(timerText(sec)).toBe(text);
+  });
+
+  it('언제나 다섯 글자다 — 자릿수가 바뀌는 순간 라벨 폭이 흔들리지 않는다', () => {
+    for (const sec of [0, 9, 59, 600, 5999, 6001, 123456]) expect(timerText(sec)).toHaveLength(5);
+  });
+
+  it('측정 장치의 timer 값과 같은 형식이다', () => {
+    expect(driverValue(125, 'timer')).toBe(timerText(125));
+  });
+});
+
+describe('VfxRecipeLogic — uiResultFileName (UI 몫 결과 파일 이름)', () => {
+  const at = new Date(Date.UTC(2026, 10, 3, 21, 54, 57));
+
+  it('창 · Cache Mode · 문자열 조건 · UTC 시각이 이름에 들어간다', () => {
+    expect(uiResultFileName(1920, 1080, 'none', 'worst', at)).toBe(
+      'ui-1920x1080-none-worst-20261103t215457.json',
+    );
+    expect(uiResultFileName(1920, 1080, 'char', 'real', at)).toBe(
+      'ui-1920x1080-char-real-20261103t215457.json',
+    );
+  });
+
+  it('이펙트 측정 결과(gate-)와 이름이 겹치지 않는다', () => {
+    expect(uiResultFileName(1920, 1080, 'none', 'worst', at)).not.toBe(
+      resultFileName(1920, 1080, 'max', null, at),
+    );
   });
 });
 

@@ -143,8 +143,8 @@ const LAB_REF = 'docs/qa/magic-effect-gate-test.md §5(URL과 회차 표)';
 /** 폰트 쪽 오류(판정 화면 · UI 몫 측정 · 설정 파일)의 「참고」. */
 const FONT_LAB_REF = 'docs/qa/ui-font-probe-test.md §5(판정 · 측정 회차)';
 
-/** 판정 화면이 유지하는 적 수 — 바쁜 전투 배경의 조건을 한 가지로 고정한다. */
-const FONT_PROBE_COUNT = 200;
+/** 판정 화면이 유지하는 적 수 — 바쁜 전투 배경의 조건을 한 가지로 고정한다. 판정 화면(`FontProbe`)도 이 값을 쓴다. */
+export const FONT_PROBE_COUNT = 200;
 
 /**
  * `lab=font`에 쓸 수 없는 파라미터. 판정 화면은 설정 파일의 폰트를 모두 보이고 적 수는 200으로
@@ -1284,13 +1284,38 @@ export function resultFileName(
   only: readonly string[] | null,
   at: Date,
 ): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  const stamp = `${at.getUTCFullYear()}${p(at.getUTCMonth() + 1)}${p(at.getUTCDate())}t${p(at.getUTCHours())}${p(at.getUTCMinutes())}${p(at.getUTCSeconds())}`;
   const scope = only && only.length > 0 ? only.join(',') : 'all';
-  const tokens = [`${Math.round(width)}x${Math.round(height)}`, load, scope, stamp].map(
+  const tokens = [`${Math.round(width)}x${Math.round(height)}`, load, scope, utcStamp(at)].map(
     sanitizeFileToken,
   );
   return `gate-${tokens.join('-')}.json`;
+}
+
+/**
+ * UI 몫 측정(`off=ui`)의 결과 파일 이름 `ui-<창>-<cache>-<drive>-<UTC 시각>.json`. 이펙트 측정과 같은
+ * 이름을 쓰면 판정 회차와 기록 회차(`drive` · `cache`만 다르다)를 파일 이름으로 가를 수 없고, 이름의
+ * `load`는 UI 몫과 상관없는 값이라 오해를 부른다.
+ * @param cache 숫자 라벨의 Cache Mode(`none` · `char`)
+ * @param drive 문자열 바꾸기 조건(`worst` · `real`)
+ * @param at 측정이 끝난 시각
+ */
+export function uiResultFileName(
+  width: number,
+  height: number,
+  cache: string,
+  drive: string,
+  at: Date,
+): string {
+  const tokens = [`${Math.round(width)}x${Math.round(height)}`, cache, drive, utcStamp(at)].map(
+    sanitizeFileToken,
+  );
+  return `ui-${tokens.join('-')}.json`;
+}
+
+/** 파일 이름에 넣는 UTC 시각 `yyyymmddthhmmss`. */
+function utcStamp(at: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${at.getUTCFullYear()}${p(at.getUTCMonth() + 1)}${p(at.getUTCDate())}t${p(at.getUTCHours())}${p(at.getUTCMinutes())}${p(at.getUTCSeconds())}`;
 }
 
 /**

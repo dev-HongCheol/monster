@@ -37,6 +37,10 @@ const MAX_PROBE_FONTS = 2;
  *
  * stem이 겹치면 오류다. 두 열이 같은 폰트를 그리면 판정이 무의미한데, 그 상태를 화면이 아니라 여기서
  * 막아야 `F` 키로 화면 전체를 한 폰트로 바꾼 정상 상태를 유효로 둘 수 있다.
+ *
+ * 폰트가 둘이면 두 body 목록에 함께 있는 굵기가 하나 이상이어야 한다. 두 열은 언제나 같은 굵기로
+ * 그리는데, 공통 굵기가 없으면 한쪽 열은 없는 파일을 찾아 조용히 시스템 글꼴로 그려지고 화면은 그래도
+ * 「유효」로 뜬다 — 사용자는 폰트가 아니라 시스템 글꼴을 보고 고르게 된다.
  * @param json `font-probe.json`을 읽은 값(형식을 모르는 상태)
  */
 export function parseFontProbeConfig(json: unknown): IFontProbeParse {
@@ -62,7 +66,20 @@ export function parseFontProbeConfig(json: unknown): IFontProbeParse {
     if (!isWeight(raw?.title)) errors.push(`${stem}의 title(제목 굵기)이 없다`);
     fonts.push({ stem, body, title: raw?.title as number });
   }
+  if (fonts.length === MAX_PROBE_FONTS && commonBodyWeights(fonts).length === 0) {
+    errors.push('두 폰트의 body에 함께 있는 굵기가 없다 — 두 열은 같은 굵기로 그린다');
+  }
   return errors.length > 0 ? { config: null, errors } : { config: { fonts }, errors: [] };
+}
+
+/**
+ * 모든 폰트의 body에 함께 있는 본문 굵기(첫 폰트의 차례). G 키는 두 열에 같은 굵기를 넣으므로 이 안에서만 돈다.
+ * @param fonts 설정 파일의 폰트 목록
+ */
+export function commonBodyWeights(fonts: readonly IFontProbeFont[]): number[] {
+  const [first, ...rest] = fonts;
+  if (!first) return [];
+  return first.body.filter((w) => rest.every((f) => f.body.includes(w)));
 }
 
 /** 굵기 값인가(양의 정수). */
@@ -74,9 +91,11 @@ function isWeight(v: unknown): v is number {
  * 본문 굵기 목록 안에서 다음 굵기로 돌린다(G 키). 제목 굵기는 목록에 없으므로 돌지 않는다 — 제목은
  * 언제나 같은 가족의 800이고, 굵기 판정은 본문만 한다.
  * @param list 본문 굵기 목록
- * @param current 지금 굵기. 목록에 없으면 목록의 첫 값으로 간다
+ * @param current 지금 굵기. 목록에 없으면 목록의 첫 값으로 간다. 목록이 비었으면 그대로 둔다 — 돌릴 값이
+ *   없는데 `undefined`를 돌려주면 라벨이 굵기 없는 파일을 찾는다
  */
 export function nextBodyWeight(list: readonly number[], current: number): number {
+  if (list.length === 0) return current;
   const i = list.indexOf(current);
   return list[(i + 1) % list.length];
 }
@@ -503,8 +522,8 @@ export interface IVerdictState {
   savedAt: string;
 }
 
-/** 결과 화면 글자 단계 수 — 목록 · 버튼 · 통계 · 제목. */
-const RESULT_STEPS = 4;
+/** 결과 화면 글자 단계 수 — 0 목록 · 1 버튼 · 2 통계 · 3 제목. 판정 화면과 판정값 JSON이 함께 쓴다. */
+export const RESULT_STEPS = 4;
 
 /**
  * `K` 키가 내려받는 판정값 JSON. 판정과 판정 화면 쪽 기록을 이 파일 하나가 모두 든다.
@@ -611,15 +630,22 @@ export function driverValue(frame: number, label: HudDriveLabel): string {
       return String(100 + (frame % 900));
     case 'wave':
       return `Wave ${1 + (frame % 99)}`;
-    case 'timer': {
-      const n = frame % 6000;
-      const mm = String(Math.floor(n / 60)).padStart(2, '0');
-      const ss = String(n % 60).padStart(2, '0');
-      return `${mm}:${ss}`;
-    }
+    case 'timer':
+      return timerText(frame);
     case 'level':
       return `Lv.${1 + (frame % 99)}`;
   }
+}
+
+/**
+ * 타이머 글자 `mm:ss`. 6,000초(100분)에서 처음으로 돌아가 늘 다섯 글자다 — 자릿수가 바뀌면 그 순간만
+ * 라벨 폭이 달라져, 측정에서는 비용이 흔들리고 판정 화면에서는 숫자 폭 비교가 어긋난다. 측정 장치와
+ * 판정 화면 2번 줄이 함께 쓴다.
+ * @param sec 초(소수는 버린다)
+ */
+export function timerText(sec: number): string {
+  const n = Math.floor(sec) % 6000;
+  return `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
 }
 
 /**

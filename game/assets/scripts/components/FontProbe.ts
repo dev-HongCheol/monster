@@ -22,6 +22,7 @@ import {
   type ColumnOrder,
   captureFileToken,
   columnLabels,
+  commonBodyWeights,
   digitWidthsEqual,
   type IFontProbeFont,
   type IProbeColumn,
@@ -35,11 +36,15 @@ import {
   PROBE_ROW_GAP_PX,
   type ProbeRowId,
   pageRows,
+  RESULT_STEPS,
   stackHeight,
+  timerText,
   typeScale,
 } from '../logic/UiFontProbeLogic';
+import { FONT_PROBE_COUNT } from '../logic/VfxRecipeLogic';
 import { LabRuntime } from '../systems/LabRuntime';
 import { type ILabFontRequest, LabFontLoader } from './LabFontLoader';
+import { downloadBlob } from './VfxLab';
 
 const { ccclass } = _decorator;
 
@@ -47,8 +52,6 @@ const { ccclass } = _decorator;
 // 화면 값(계획 2026-11-01-ui-font-probe-plan.md §3.5)
 // ---------------------------------------------------------------------------
 
-/** 판정 화면이 유지하는 적 수 — 바쁜 전투 배경의 조건을 한 가지로 고정한다. */
-const PROBE_ENEMIES = 200;
 /** 열 폭 — 1280에서 바깥 여백 32 × 2와 열 사이 32를 빼고 둘로 나눈 값 */
 const COLUMN_W = 592;
 /** 두 열일 때 열 중심의 x(UICanvas 기준) */
@@ -71,8 +74,6 @@ const TIMER_SPEED = 10;
 const SCALE_RATIOS = [1.2, 1.25, 1.333] as const;
 const LINE_RATIOS = [1.2, 1.35, 1.5] as const;
 const BASE_SIZES = [16, 17, 18] as const;
-/** 결과 화면 글자 단계 수 — 0 목록 · 1 버튼 · 2 통계 · 3 제목 */
-const RESULT_STEPS = 4;
 /** 「저장함」 같은 알림을 띄워 두는 시간(초) */
 const NOTICE_SEC = 2;
 /** 유효 조건(캔버스 · 배율)을 다시 보는 간격(초) — 창 크기는 판정 중에 바뀔 수 있다 */
@@ -199,8 +200,8 @@ export class FontProbe extends Component {
   onLoad() {
     if (typeof document === 'undefined') return; // 브라우저가 아니면 화면을 만들 곳이 없다
     this._fonts = LabRuntime.fontProbe?.fonts ?? [];
-    this._weight = this._commonBody()[0] ?? 400;
-    LabRuntime.targetAlive = PROBE_ENEMIES;
+    this._weight = commonBodyWeights(this._fonts)[0] ?? 400;
+    LabRuntime.targetAlive = FONT_PROBE_COUNT;
     // 게임 HUD는 위 띠 · 열과 겹치고, 판정 화면은 HUD 숫자를 2번 줄에서 따로 그린다
     LabRuntime.hudControl?.setActive(false);
     this._buildRoot();
@@ -233,8 +234,7 @@ export class FontProbe extends Component {
       return;
     }
     this._timerSec += dt * TIMER_SPEED;
-    const t = Math.floor(this._timerSec) % 6000;
-    const text = `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+    const text = timerText(this._timerSec);
     for (const timer of this._timers) if (timer.label.string !== text) timer.label.string = text;
     if (this._noticeLeft > 0) {
       this._noticeLeft -= dt;
@@ -252,13 +252,6 @@ export class FontProbe extends Component {
   // ---------------------------------------------------------------------------
   // 준비
   // ---------------------------------------------------------------------------
-
-  /** 설정 파일 폰트들이 함께 가진 본문 굵기 — G 키는 두 열에 같은 굵기를 넣으므로 둘 다 가진 값만 돈다. */
-  private _commonBody(): number[] {
-    const [first, ...rest] = this._fonts;
-    if (!first) return [];
-    return first.body.filter((w) => rest.every((f) => f.body.includes(w)));
-  }
 
   /** `UICanvas` 아래 HUD 바로 다음에 판정 화면 뿌리 노드와 위 · 아래 띠를 만든다. */
   private _buildRoot(): void {
@@ -835,15 +828,26 @@ export class FontProbe extends Component {
 
   /**
    * 키 입력. `e.code`로 판정한다 — 한글 입력기가 켜져 있으면 `e.key`가 `Process`로 들어온다. `Tab`은
-   * 초점 이동을 막는다. K가 아닌 키를 누르면 K 확인 대기를 푼다.
+   * 초점 이동을 막는다. 키를 누르고 있어 생기는 자동 반복은 무시한다 — K를 반 초쯤 누르고 있으면 반복
+   * 입력이 두 번째 누르기가 되어 확인 없이 저장되고, B · L · 1~3은 반복될 때마다 열 전체를 다시 만든다.
+   * K가 아닌 키를 누르면 K 확인 대기를 푼다.
    */
   private _handleKey(e: KeyboardEvent): void {
     if (!this._fontsReady || !this._catalogReady) return;
+    if (e.repeat) {
+      if (e.code === 'Tab') e.preventDefault();
+      return;
+    }
     if (this._questionsOpen) {
       this._questionsOpen = false;
       if (this._overlayRoot) this._overlayRoot.active = false;
     }
-    if (e.code !== 'KeyK') this._confirmK = false;
+    if (e.code !== 'KeyK' && this._confirmK) {
+      this._confirmK = false;
+      // 아래에서 처리하지 않는 키(WASD 등)로 빠져나가도 띠의 「K를 한 번 더 누르면 저장」이 남지 않게 바로
+      // 다시 그린다 — 남기면 화면은 저장 대기인데 다음 K는 확인부터 다시 한다
+      this._renderBands();
+    }
     const two = this._built.length === 2;
     let relayout = true;
     switch (e.code) {
@@ -876,7 +880,7 @@ export class FontProbe extends Component {
         this._base = cycle(BASE_SIZES, this._base);
         break;
       case 'KeyG':
-        this._weight = nextBodyWeight(this._commonBody(), this._weight);
+        this._weight = nextBodyWeight(commonBodyWeights(this._fonts), this._weight);
         break;
       case 'KeyO':
         this._outline = this._outline === 'step1' ? 'none' : 'step1';
@@ -911,6 +915,8 @@ export class FontProbe extends Component {
       return;
     }
     this._confirmK = false;
+    // 유효 판정은 0.5초마다 다시 보므로, 저장 직전에 창 크기 · 배율이 바뀌었으면 낡은 값이 기록된다
+    this._judge();
     const canvas = game.canvas;
     const savedAt = new Date().toISOString();
     const record = buildVerdictRecord({
@@ -930,7 +936,7 @@ export class FontProbe extends Component {
       savedAt,
     });
     const name = `font-verdict-${captureFileToken(this._order, this._full, savedAt)}.json`;
-    download(new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' }), name);
+    downloadBlob(new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' }), name);
     this._say(`저장함: ${name}`);
     if (this._overlay && this._overlayRoot) {
       this._overlay.string = CHAT_QUESTIONS;
@@ -957,7 +963,7 @@ export class FontProbe extends Component {
     const name = `font-probe-${captureFileToken(this._order, this._full, new Date().toISOString())}.png`;
     out.toBlob((blob) => {
       if (!blob) return;
-      download(blob, name);
+      downloadBlob(blob, name);
       this._say(`저장함: ${name}`);
     }, 'image/png');
   }
@@ -1141,14 +1147,4 @@ function pairs<A, B>(as: readonly A[], bs: readonly B[]): [A, B][] {
 /** 목록에서 지금 값의 다음 값(끝이면 처음). */
 function cycle<T>(list: readonly T[], current: T): T {
   return list[(list.indexOf(current) + 1) % list.length];
-}
-
-/** 브라우저 내려받기 — 주소는 한 박자 늦게 거둔다(먼저 거두면 Firefox · Safari가 받기를 취소한다). */
-function download(blob: Blob, name: string): void {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  const href = a.href;
-  setTimeout(() => URL.revokeObjectURL(href), 1000);
 }

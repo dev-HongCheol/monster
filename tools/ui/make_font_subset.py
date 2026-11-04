@@ -26,13 +26,20 @@
                 두 후보에 A · B를 무작위로 붙여 UiSansA-<굵기>.ttf · UiSansB-<굵기>.ttf 여섯 파일을 만든다.
                 대응표는 cloud-storage/fonts/probe-map.json(저장소 밖)에 두고, 이미 있으면 그 배정을 다시 쓴다.
                 터미널에는 「검사 통과」만 찍는다 — 파일 크기와 예약 이름 목록은 원본 폰트를 드러낸다.
-  최종 이름     ... --final A --weights 400,800 --name UiSans
+  최종 이름     ... --final A --weights 500,800 --name UiSans
                 이긴 후보 하나만 UiSans-<굵기>.ttf로 다시 만들고, 판정한 후보 파일과 글리프 표가 바이트 단위로
                 같은지 검사한다(자체 검사 7). 기록은 tools/ui/font-subset-report.json, 고지는 licenses/OFL.txt ·
-                NOTICE.txt다.
-  숫자 전용     ... --final A --weights 400 --name UiSansDigits --digits-only
+                NOTICE.txt다. 후보 파일이 있어야 돌므로 판정 직후 한 번만 쓴다.
+  다시 만들기   ... --rebuild notosanskr --weights 500,800 --name UiSans
+                판정이 끝나 후보 파일과 대응표 없이 최종 파일을 다시 만든다(글자 목록을 바꿀 때 등). 판정 뒤에는
+                후보 파일을 지웠으므로 --final은 검사 7에서 멈춘다. 그렇다고 후보 만들기를 다시 돌리면 후보
+                이름의 TTF 여섯과 고지 넷이 resources/fonts와 licenses 폴더에 다시 생기는데, git은 그것을 막지
+                않는다 — 후보 파일은 어느 커밋에도 넣지 않기로 했다. 그래서 이 경로는 이긴 원본을 이름(SOURCES의
+                키)으로 받고, 검사 7은 건너뛴 사유를 보고 파일에 남긴다. 글자 목록이 바뀌면 글리프 표가 달라져
+                검사 7은 원리상 통과할 수 없고, 이 경로의 근거는 나머지 검사와 판정 기록이다.
+  숫자 전용     ... --final A --weights 500 --name UiSansDigits --digits-only
                 숫자와 기호만 담고 고정 폭 숫자를 기본 숫자에 배정한 작은 파일. 문장 속 고정 폭 숫자를 받아들일
-                수 없다고 판정했을 때만 쓰고, 그때 본문 최종 파일은 --no-bake로 굽지 않는다.
+                수 없다고 판정했을 때만 쓰고, 그때 본문 최종 파일은 --no-bake로 굽지 않는다. --rebuild와도 쓴다.
 
 자체 검사(하나라도 어긋나면 실패 코드로 멈춘다):
   1. 숫자 0~9의 advance 폭이 모두 같고, GPOS kern(옛 kern 표 포함)에 숫자 · 콜론끼리의 간격 조정이 없다.
@@ -45,6 +52,7 @@
   6. 다른 표(STAT · fvar · GSUB/GPOS 기능 매개변수)가 가리키는 이름 칸이 모두 남아 있다. 가리키는 이름이 끊긴
      폰트는 Chrome의 OTS가 표를 버리거나 폰트를 거부할 수 있고, 거부되면 조용히 대체 글꼴로 그려진다.
   7. (--final) 글리프 관련 표(glyf · loca · hmtx · cmap · GSUB · GPOS · OS/2)가 판정한 후보 파일과 같다.
+     --rebuild에서는 비교할 후보가 없어 건너뛰고, 사유를 보고 파일에 적는다.
   8. OTS가 폰트를 받아들인다.
   가변 폰트에서 뽑은 굵기는 겹친 윤곽 플래그가 남아 있는지도 본다 — 빠지면 Android 브라우저(FreeType)에서
   겹친 획이 하얗게 비어 보일 수 있다.
@@ -491,7 +499,10 @@ def modifications(s: Source, weights: list[int], baked: bool, no_hinting: bool, 
         mods.append("Tabular figures assigned to the default digits")
     if no_hinting:
         mods.append("Hinting removed")
-    mods.append(f'Renamed to "{family}" as required by the Reserved Font Name clause')
+    # 예약 이름 조항이 이름을 바꾸게 하는 것은 원본 이름에 예약 이름이 든 경우뿐이다(Noto Sans KR의 예약 이름
+    # 「Source」는 원래 이름에 없다). 이 도구는 이름을 가린 판정 뒤 중립 이름 하나로 내보내려고 언제나
+    # 바꾸므로, 조항이 요구했다고 적지 않는다 — 적으면 다음 사람이 「이 폰트는 이름을 꼭 바꿔야 한다」로 읽는다
+    mods.append(f'Renamed to "{family}"')
     return mods
 
 
@@ -557,10 +568,15 @@ def run_candidates(args) -> None:
 
 
 def run_final(args) -> None:
-    mapping = load_or_assign_map(args.map)
-    if args.final not in mapping:
-        raise Stop("--final은 A 또는 B다")
-    s = SOURCES[mapping[args.final]]
+    """최종 이름으로 만든다. --final은 판정 직후(후보 파일과 대응표로), --rebuild는 판정 뒤(원본 키로) 쓴다."""
+    if args.rebuild:
+        s = SOURCES[args.rebuild]
+    else:
+        # --final만 대응표를 읽는다 — 대응표가 없으면 load_or_assign_map이 새로 섞어 엉뚱한 원본을 고를 수 있다
+        mapping = load_or_assign_map(args.map)
+        if args.final not in mapping:
+            raise Stop("--final은 A 또는 B다")
+        s = SOURCES[mapping[args.final]]
     no_hinting = decide_hinting(args.src)
     weights = [int(w) for w in args.weights.split(",")]
     codepoints = [ord(c) for c in DIGITS_ONLY_CHARS] if args.digits_only else body_codepoints()
@@ -577,6 +593,9 @@ def run_final(args) -> None:
         if args.digits_only or args.no_bake:
             # 판정한 후보와 글자 목록 · 숫자 배정이 달라 글리프 표가 같을 수 없다 — 이 경로의 근거는 4번 줄 판정이다
             info["check7"] = "skipped: digits-only or no-bake"
+        elif args.rebuild:
+            # 판정 뒤라 비교할 후보 파일이 없고, 글자 목록을 바꿨다면 글리프 표도 달라진다 — 근거는 나머지 검사와 판정 기록이다
+            info["check7"] = "skipped: rebuild after judgment (candidate files deleted)"
         else:
             check_same_glyph_tables(out, args.out / f"UiSans{args.final}-{w}.ttf")
             info["check7"] = "passed"
@@ -626,10 +645,11 @@ def main() -> int:
     p = argparse.ArgumentParser(description="UI 폰트 서브셋 도구")
     p.add_argument("--src", type=Path, required=True, help="원본 폴더(cloud-storage/fonts/source)")
     p.add_argument("--out", type=Path, required=True, help="출력 폴더(game/assets/resources/fonts)")
-    p.add_argument("--final", choices=["A", "B"], help="이긴 후보를 최종 이름으로 다시 만든다")
-    p.add_argument("--weights", default="400,800", help="--final의 굵기(쉼표)")
-    p.add_argument("--name", default="UiSans", help="--final의 가족 이름")
-    p.add_argument("--digits-only", action="store_true", help="숫자 전용 파일을 만든다(--final과 함께)")
+    p.add_argument("--final", choices=["A", "B"], help="이긴 후보를 최종 이름으로 다시 만든다(판정 직후)")
+    p.add_argument("--rebuild", choices=sorted(SOURCES), help="판정 뒤 이긴 원본으로 최종 파일을 다시 만든다(검사 7 건너뜀)")
+    p.add_argument("--weights", default="500,800", help="--final · --rebuild의 굵기(쉼표) — 기본은 판정한 본문 500 · 제목 800")
+    p.add_argument("--name", default="UiSans", help="--final · --rebuild의 가족 이름")
+    p.add_argument("--digits-only", action="store_true", help="숫자 전용 파일을 만든다(--final · --rebuild와 함께)")
     p.add_argument("--no-bake", action="store_true", help="본문 최종 파일에 고정 폭 숫자를 굽지 않는다")
     p.add_argument("--map", type=Path, default=DEFAULT_MAP)
     p.add_argument("--licenses", type=Path, default=DEFAULT_LICENSES)
@@ -638,9 +658,11 @@ def main() -> int:
     args = p.parse_args()
     try:
         verify_sources(args.src, list(SOURCES.values()))
-        if args.digits_only and not args.final:
-            raise Stop("--digits-only는 --final과 함께 쓴다")
-        if args.final:
+        if args.final and args.rebuild:
+            raise Stop("--final과 --rebuild는 함께 쓰지 않는다")
+        if args.digits_only and not (args.final or args.rebuild):
+            raise Stop("--digits-only는 --final이나 --rebuild와 함께 쓴다")
+        if args.final or args.rebuild:
             run_final(args)
         else:
             run_candidates(args)

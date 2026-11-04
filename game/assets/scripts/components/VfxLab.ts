@@ -53,6 +53,7 @@ import {
   stepTune,
   type TuneMap,
   tuneKeyAction,
+  uiResultFileName,
 } from '../logic/VfxRecipeLogic';
 import { DataManager } from '../systems/DataManager';
 import { GameManager } from '../systems/GameManager';
@@ -140,7 +141,8 @@ interface ISideStats {
 
 /**
  * 이펙트 실험실(계획 2026-10-12-magic-effect-gate-plan.md §4 · §5 · §6). `LabRuntime.mode.enabled`일
- * 때만 `SpellCaster`가 플레이어 노드에 붙인다.
+ * 때 `SpellCaster`가 플레이어 노드에 붙인다. 다만 `lab=font`이고 시작을 막는 오류가 없으면 이 컴포넌트
+ * 대신 폰트 판정 화면(`FontProbe`)을 붙인다 — 오류가 있으면 어떤 모드든 이 컴포넌트가 오류 상자를 띄운다.
  *
  * 화면 글자(HUD · 오류 상자)는 브라우저 DOM에 `textContent`로만 쓴다. Cocos `Label`로 그리면 그
  * 글자의 드로우콜이 측정하는 숫자에 섞이고, URL 값을 HTML로 넣으면 남이 만든 링크 하나로 스크립트가
@@ -382,13 +384,17 @@ export class VfxLab extends Component {
     this._restoreHud();
     const result = this._buildResult();
     const canvas = game.canvas;
-    this._resultName = resultFileName(
-      canvas?.width ?? 0,
-      canvas?.height ?? 0,
-      LabRuntime.mode.load,
-      LabRuntime.mode.only,
-      new Date(),
-    );
+    const mode = LabRuntime.mode;
+    this._resultName =
+      mode.off === 'ui'
+        ? uiResultFileName(
+            canvas?.width ?? 0,
+            canvas?.height ?? 0,
+            mode.cache,
+            mode.drive,
+            new Date(),
+          )
+        : resultFileName(canvas?.width ?? 0, canvas?.height ?? 0, mode.load, mode.only, new Date());
     downloadJson(result, this._resultName);
   }
 
@@ -406,8 +412,14 @@ export class VfxLab extends Component {
         this._fontReady = true;
         return;
       }
+      // 「시간 초과」에는 그때의 폰트 상태를 붙인다 — 폰트가 3초 안에 와도 등록 이름을 찾지 못하면(missing)
+      // 같은 경로로 오므로, 상태가 없으면 느린 연결과 이름 불일치를 결과 파일에서 가를 수 없다
       this._abortFont(
-        f.status === 'error' ? '폰트 거부' : f.error ? `불러오기 실패(${f.error})` : '시간 초과',
+        f.status === 'error'
+          ? '폰트 거부'
+          : f.error
+            ? `불러오기 실패(${f.error})`
+            : `시간 초과(상태 ${f.status})`,
       );
     });
   }
@@ -1008,12 +1020,17 @@ export class VfxLab extends Component {
   }
 }
 
-/**
- * JSON을 파일로 내려받는다. 다운로드가 시작되기 전에 주소를 거두면 Firefox · Safari는 받기를 취소한다 —
- * 결과 파일은 다시 얻으려면 회차를 처음부터 돌려야 하므로 한 박자 늦게 거둔다.
- */
+/** JSON을 파일로 내려받는다. */
 function downloadJson(data: unknown, name: string): void {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), name);
+}
+
+/**
+ * 브라우저 내려받기 — 실험실 결과 JSON과 판정 화면(`FontProbe`)의 캡처 · 판정값이 함께 쓴다. 다운로드가
+ * 시작되기 전에 주소를 거두면 Firefox · Safari는 받기를 취소한다. 결과 파일은 다시 얻으려면 회차를
+ * 처음부터 돌려야 하므로 한 박자 늦게 거둔다.
+ */
+export function downloadBlob(blob: Blob, name: string): void {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = name;
