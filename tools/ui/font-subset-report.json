@@ -1,0 +1,37 @@
+{
+  "createdAt": "2026-11-03T21:43:43Z",
+  "source": "Noto Sans KR (google/fonts b38c5c9)",
+  "sourceSha256": {
+    "NotoSansKR[wght].ttf": "194018e6b2b293a7964f037b25c0249ce1418bc9ab3c971060a03aa57861e252",
+    "OFL.txt": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9"
+  },
+  "reservedNames": ["Source"],
+  "reservedNamesCheckedAt": "2026-11-03",
+  "noHinting": true,
+  "tools": {
+    "python": "3.12.10",
+    "fonttools": "4.67.0",
+    "otsSanitizer": "9.2.0"
+  },
+  "files": [
+    {
+      "weight": 500,
+      "baked": false,
+      "hinting": "removed",
+      "check7": "passed",
+      "file": "UiSans-500.ttf",
+      "bytes": 436880,
+      "sha256": "d622c71a807f9f3d8bec8757e157efb561244844796c4266430e0650e41ee046"
+    },
+    {
+      "weight": 800,
+      "baked": false,
+      "hinting": "removed",
+      "check7": "passed",
+      "file": "UiSans-800.ttf",
+      "bytes": 436740,
+      "sha256": "f2102fe1cca356b58ae714d03fa77553495078aad6bf8c66644e93e9890a129c"
+    }
+  ],
+  "totalBytes": 873620
+}
