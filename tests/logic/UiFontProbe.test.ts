@@ -758,7 +758,7 @@ describe('UiFontProbeLogic — captureFileToken (화면 캡처 파일 이름 조
   });
 });
 
-describe('UiFontProbeLogic — driverValue (측정 모드의 문자열 바꾸기 장치)', () => {
+describe('UiFontProbeLogic — driverValue (UI 몫 측정의 문자열 바꾸기)', () => {
   const LABELS = ['hp', 'wave', 'timer', 'level'] as const;
 
   it.each(
@@ -783,7 +783,7 @@ describe('UiFontProbeLogic — driverValue (측정 모드의 문자열 바꾸기
   });
 });
 
-describe('UiFontProbeLogic — timerText (측정 장치와 판정 화면 2번 줄의 mm:ss)', () => {
+describe('UiFontProbeLogic — timerText (UI 몫 측정의 문자열 바꾸기와 판정 화면 2번 줄의 mm:ss)', () => {
   it.each([
     [0, '00:00'],
     [61.9, '01:01'],
@@ -797,7 +797,7 @@ describe('UiFontProbeLogic — timerText (측정 장치와 판정 화면 2번 �
     for (const sec of [0, 9, 59, 600, 5999, 6001, 123456]) expect(timerText(sec)).toHaveLength(5);
   });
 
-  it('측정 장치의 timer 값과 같은 형식이다', () => {
+  it('UI 몫 측정의 문자열 바꾸기가 쓰는 timer 값과 같은 형식이다', () => {
     expect(driverValue(125, 'timer')).toBe(timerText(125));
   });
 });

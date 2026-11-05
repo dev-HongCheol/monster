@@ -556,7 +556,10 @@ export class VfxLab extends Component {
     LabRuntime.hudControl?.setActive(active);
   }
 
-  /** HUD를 켜고 문자열 주인을 `HudController`에 되돌린다(끝 · 중단 · 컴포넌트가 사라질 때). */
+  /**
+   * HUD를 켜고, HUD 라벨 글자를 쓰는 쪽을 `HudController`에 되돌린다(`hudDriven = false`). 측정이 끝날 때 ·
+   * 중단할 때 · 컴포넌트가 사라질 때 부른다.
+   */
   private _restoreHud(): void {
     if (LabRuntime.mode.off !== 'ui') return;
     LabRuntime.hudDriven = false;

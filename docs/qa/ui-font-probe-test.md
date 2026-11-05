@@ -15,17 +15,17 @@
 | `tools/ui/embed-1280x720.html` | **신규.** 빌드를 1280×720 iframe으로 띄우는 판정용 페이지. |
 | `resources/fonts/UiSans-500.ttf` · `UiSans-800.ttf` | **신규.** 판정에서 이긴 Noto Sans KR을 최종 이름으로 다시 만든 두 파일(본문 500 · 제목 800). 판정에 쓴 후보 파일(`UiSansA-*` · `UiSansB-*`)은 판정 뒤 지웠다 — squash merge 뒤에도 PR 커밋 기록에 남으므로 어느 커밋에도 넣지 않았다. |
 | `resources/data/font-probe.json` | **신규.** 판정 화면이 그릴 폰트 목록(stem · 본문 굵기 · 제목 굵기). 공개 빌드에 남아도 파일 이름 목록뿐이다. |
-| `scripts/logic/UiFontProbeLogic.ts` | **신규.** 글자 단계 · 줄 높이 · 화면 높이 배분 · 유효 판정 · 폰트 상태 · 다운로드 기록 · 결과 JSON · 문자열 바꾸기 장치. cc를 import하지 않는다. 판정 화면 · 측정 모드의 판정 규칙은 이 파일의 JSDoc이 정본이다. |
+| `scripts/logic/UiFontProbeLogic.ts` | **신규.** 글자 단계 · 줄 높이 · 화면 높이 배분 · 유효 판정 · 폰트 상태 · 다운로드 기록 · 결과 JSON · 문자열 바꾸기 값. cc를 import하지 않는다. 판정 화면 · 측정 모드의 판정 규칙은 이 파일의 JSDoc이 정본이다. |
 | `scripts/logic/FrameStatsLogic.ts` | `summarize`에 `p95` · `over20`을 더하고, UI 문턱(1ms) · `judgeUiShare` · `isNearUiThreshold`를 더한다. 회귀 기준: 이펙트 판정(`judgeShare` · `isNearThreshold` · 문턱 3ms · 6ms · 1%p)은 그대로다. |
 | `scripts/logic/VfxRecipeLogic.ts` | `parseLabUrl`에 `lab=font`와 `off` · `font` · `weight` · `cache` · `drive`를 더한다. 회귀 기준: 기존 `lab=compare` · `lab=measure` URL은 같은 상태로 읽힌다(`MagicEffectGate.test.ts`가 그대로 통과). |
 | `scripts/logic/MeasureScheduleLogic.ts` | `off=ui`에만 「폰트 입힘 → 1초」 단계를 더한다. 회귀 기준: `off=vfx` 시간표는 그대로다. |
-| `scripts/systems/LabRuntime.ts` | `isFontProbeMode` · `labVfxEnabled` · `pausesGameTimer`를 더하고 `isLabStage`에 font를 넣는다. HUD 손잡이(`hudControl`)와 문자열 쓰기 주인(`hudDriven`) 칸을 더한다. 회귀 기준: 실험실이 꺼진 게임에서는 모든 값이 보통 게임 쪽이다. |
+| `scripts/systems/LabRuntime.ts` | `isFontProbeMode` · `labVfxEnabled` · `pausesGameTimer`를 더하고 `isLabStage`에 font를 넣는다. HUD를 켜고 끄는 함수와 라벨(`hudControl`), HUD 라벨 글자를 실험실이 쓰는지(`hudDriven`) 칸을 더한다. 회귀 기준: 실험실이 꺼진 게임에서는 모든 값이 보통 게임 쪽이다. |
 | `scripts/systems/DataManager.ts` | `lab`이 있을 때 `data/font-probe`도 읽는다. 회귀 기준: `lab`이 없으면 로딩 경로가 그대로다. |
 | `scripts/systems/GameManager.ts` | `pausesGameTimer()`가 참(font)이면 게임 시계를 줄이지 않는다. 회귀 기준: 보통 게임 · measure · compare의 시계는 그대로다. |
 | `scripts/components/SpellCaster.ts` | font면 `VfxLab` 대신 `FontProbe`를 붙이고, 레시피 이펙트 준비는 `labVfxEnabled()`로 묻고, 마법 목록은 측정 모드와 같은 `MEASURE_SPELL_IDS`다. 회귀 기준: 보통 게임은 시작 마법 그대로다. |
-| `scripts/components/VfxLab.ts` | `off=ui` 운전(HUD 켜고 끄기 · 문자열 바꾸기 장치 · 폰트 입힘 · 첫 표시 기록), 결과 JSON 형식 2. 회귀 기준: `off=vfx` 측정과 비교판은 그대로다. |
+| `scripts/components/VfxLab.ts` | `off=ui` 측정(HUD 켜고 끄기 · 문자열 바꾸기 · 폰트 입힘 · 첫 표시 기록), 결과 JSON 형식 2. 회귀 기준: `off=vfx` 측정과 비교판은 그대로다. |
 | `scripts/components/FontProbe.ts` | **신규.** 판정 화면. `lab=font`이고 오류가 없을 때만 붙는다. |
-| `scripts/ui/HudController.ts` | `onLoad`에서 HUD 손잡이를 `LabRuntime`에 맡기고, `hudDriven`이 참이면 문자열 쓰기를 건너뛴다. 회귀 기준: 보통 게임의 HUD는 그대로 바뀐다. |
+| `scripts/ui/HudController.ts` | `onLoad`에서 HUD를 켜고 끄는 함수와 라벨을 `LabRuntime.hudControl`에 넘기고, `hudDriven`이 참이면 문자열 쓰기를 건너뛴다. 회귀 기준: 보통 게임의 HUD는 그대로 바뀐다. |
 | `game/build-templates/web-mobile/licenses/` | **신규.** `OFL.txt` · `NOTICE.txt`. Cocos가 빌드 결과물에 그대로 복사한다. |
 | `tests/logic/UiFontProbe.test.ts` | **신규.** §4. |
 | `tests/logic/MagicEffectGate.test.ts` | 빈 배열의 `summarize` 모양에 `p95` · `over20`을 더한다. 나머지는 그대로 통과해야 한다. |
@@ -61,7 +61,7 @@ UICanvas                 [UI_2D] (640,360) — 화면 고정 UI. UICamera가 그
 
 ## 3. 에디터 연결 체크리스트
 
-새 `@property`가 없다. 판정 화면 · 측정 모드는 이미 연결된 프로퍼티를 읽기만 하고, HUD 손잡이는 `HudController`가 코드로 맡긴다.
+새 `@property`가 없다. 판정 화면 · 측정 모드는 이미 연결된 프로퍼티를 읽기만 하고, HUD를 켜고 끄는 함수와 라벨은 `HudController`가 코드로 `LabRuntime.hudControl`에 넘긴다.
 
 | 컴포넌트(노드) | 프로퍼티 · 연결 | 쓰는 곳 | 상태 |
 |---|---|---|---|
@@ -80,7 +80,7 @@ UICanvas                 [UI_2D] (640,360) — 화면 고정 UI. UICamera가 그
 | `UiFontProbeLogic` — 단계 | 기준 · 비율별 네 단계(16 · 1.25 → 16 · 20 · 25 · 31 등), 기준을 17 · 18로 올린 단계, 줄 높이 정수 px |
 | `UiFontProbeLogic` — 화면 높이 | 처음 값에서 여섯 줄 모두 첫 화면, 넘치면 6번 → 5번 → 영어 줄 차례로 둘째 화면, 6번만 보내도 되면 거기서 멈춤, 한국어 1~4번 줄만으로 넘치면 무효 |
 | `UiFontProbeLogic` — 판정 화면 | 숫자 폭 비교(0.5px 허용) · 설정 파일 검사(stem 겹침 · 공백 · ASCII 밖 · body 빔 · title 없음 · 폰트 셋 · 폰트 없음) · 굵기 돌리기 · 유효 조건 다섯과 사유 · 열 이름이 폰트를 따라감 |
-| `UiFontProbeLogic` — 폰트 상태 · 기록 | `document.fonts` 상태 찾기(따옴표 무시 · 없으면 missing) · 3초 시간 초과 · 다운로드 기록 찾기(nativeUrl · 늦은 항목 · 못 찾으면 합계 null) · 판정값 JSON(고른 열 · F 상태 · 무효 · 크기 출처 셋 · 버퍼 참) · 폰트 중단 JSON · 캡처 파일 이름 · 문자열 바꾸기 장치 · 블록별 HUD 켜기 |
+| `UiFontProbeLogic` — 폰트 상태 · 기록 | `document.fonts` 상태 찾기(따옴표 무시 · 없으면 missing) · 3초 시간 초과 · 다운로드 기록 찾기(nativeUrl · 늦은 항목 · 못 찾으면 합계 null) · 판정값 JSON(고른 열 · 전체 보기 · 무효 · 크기 출처 셋 · 버퍼 참) · 폰트 중단 JSON · 캡처 파일 이름 · 문자열 바꾸기 값 · 블록별 HUD 켜기 |
 | `FrameStatsLogic` | `p95`(가까운 순위) · `over20` · UI 문턱 1ms · 켬 − 끔 중앙값 판정 · ±20% 재측정 |
 | `MeasureScheduleLogic` | `off=ui`의 채우기 → 폰트 입힘(첫 프레임만 알림) → 1초 → 끔 블록, `off=vfx`는 지금 그대로 |
 | `LabRuntime` | font · measure · compare마다 실험 판 · 레시피 이펙트 · 게임 시계 정지 분기, 시작이 막혔으면 모두 거짓 |
@@ -101,7 +101,7 @@ UICanvas                 [UI_2D] (640,360) — 화면 고정 UI. UICamera가 그
 | 다 | 서브셋 스크립트 자체 검사 일곱 통과(후보 실행은 「검사 통과」만 적는다 — 크기와 예약 이름 목록은 원본 폰트를 드러낸다) | 검사 통과 — 후보 파일 6개. OTS 검사(8)와 겹친 윤곽 플래그 검사도 통과했다(2026-11-04) |
 | 라 | `opentype-sanitizer` 설치 여부를 사용자에게 물었는가와 답 | 물었고 사용자가 설치를 골랐다. 9.2.0을 설치해 자체 검사 8로 돌린다(2026-11-04) |
 | 마 | 엔진이 넣은 `@font-face`가 `document.fonts`에 나타나는가, 그 `family` 값의 따옴표 모양 | 나타난다. `family` 값은 따옴표 없이 `<파일 이름>_LABEL`이고, 후보 빌드의 여섯 파일이 모두 `loaded`였다. 그래서 `fontFaceStatus`를 그대로 쓴다(2026-11-04, 헤드리스 Chrome 151 · 후보 빌드) |
-| 바 | Cocos 3.8 Label 외곽선 폭의 뜻(매뉴얼)과, HTML 판정판의 2px 외곽선에 맞춘 값 | 매뉴얼에는 폭의 뜻이 없어 엔진 3.8.8 소스로 확인했다. 캔버스 선 두께를 `outlineWidth × 2`로 긋고 그 위에 채우기를 덮으므로(`assembler/label/text-processing.ts:536-543` · `:664`) 글자 바깥에 `outlineWidth`px가 보인다. CSS 2px 외곽선은 바깥에 약 1px가 보이므로 「1단계」는 `outlineWidth = 1`, 「후보 폭」은 2다. 그림자는 엔진이 y를 뒤집어 넘기므로(`:674`) CSS `0 1px 2px`는 `shadowOffset (0, −1)` · `shadowBlur 2`다(2026-11-04) |
+| 바 | Cocos 3.8 Label 외곽선 폭의 뜻(매뉴얼)과, HTML 시안 페이지의 2px 외곽선에 맞춘 값 | 매뉴얼에는 폭의 뜻이 없어 엔진 3.8.8 소스로 확인했다. 캔버스 선 두께를 `outlineWidth × 2`로 긋고 그 위에 채우기를 덮으므로(`assembler/label/text-processing.ts:536-543` · `:664`) 글자 바깥에 `outlineWidth`px가 보인다. CSS 2px 외곽선은 바깥에 약 1px가 보이므로 「1단계」는 `outlineWidth = 1`, 「후보 폭」은 2다. 그림자는 엔진이 y를 뒤집어 넘기므로(`:674`) CSS `0 1px 2px`는 `shadowOffset (0, −1)` · `shadowBlur 2`다(2026-11-04) |
 
 ### 5.2 연기 시험 — 후보 빌드에서 가장 먼저
 
@@ -171,7 +171,7 @@ UICanvas                 [UI_2D] (640,360) — 화면 고정 UI. UICamera가 그
 | 노트북 화면 배율 125%에서 판정 화면이 흐려지는가 | 판정 화면 전체(무효 상태로 띄운 채 본다) | 보지 못했다 — 사용자 장비에 노트북이 없다 |
 | 카드 설명이 지금 상자(150×60)를 넘는가 | 3번 줄(아래 띠에 「카드 상자 넘침」) | 넘지 않는다 — 최종 빌드의 고른 값(16 · 줄 높이 1.5)에서 가장 긴 설명이 두 줄로 상자 안에 들어가고 띠에 넘침 표시가 없다(AI, 헤드리스 Chrome) |
 
-외곽선 관찰에는 1층 HTML 판정판과 그리는 방식이 다르다는 점을 함께 본다. Chrome의 `-webkit-text-stroke`는 채우기 위에 외곽선을 그려 글자 안쪽을 덮지만, Cocos는 외곽선을 먼저 그리고 채우기를 위에 그려 글자를 깎지 않는다(엔진 `assembler/label/text-processing.ts:536-543`). 그래서 같은 두께로 맞춰도 1층의 HTML 판정이 더 보수적이었다.
+외곽선 관찰에는 외곽선 1단계를 정할 때 쓴 HTML 시안 페이지와 그리는 방식이 다르다는 점을 함께 본다. Chrome의 `-webkit-text-stroke`는 채우기 위에 외곽선을 그려 글자 안쪽을 덮지만, Cocos는 외곽선을 먼저 그리고 채우기를 위에 그려 글자를 깎지 않는다(엔진 `assembler/label/text-processing.ts:536-543`). 그래서 같은 두께로 맞춰도 HTML 시안 페이지의 판정이 더 보수적이었다.
 
 문장 속 고정 폭 숫자를 받아들일 수 없다고 판정하면, 숫자 전용 파일을 hp · timer 라벨에만 쓰는 경로로 바꾼다. 그때 아래 줄을 더해 확인한다.
 

@@ -116,7 +116,7 @@ export interface ILabMode {
   font: string | null;
   /** 그 폰트의 굵기. 아니면 null */
   weight: number | null;
-  /** UI 몫 측정의 Cache Mode — none은 모든 라벨 NONE, char는 hp · timer 라벨만 CHAR */
+  /** UI 몫 측정의 Cache Mode — none은 HUD 라벨 넷 모두 NONE, char는 hp · timer 라벨만 CHAR */
   cache: 'none' | 'char';
   /** UI 몫 측정의 문자열 바꾸기 — worst는 HUD 라벨 넷을 매 프레임, real은 타이머만 1초에 한 번 */
   drive: 'worst' | 'real';
@@ -823,7 +823,7 @@ export function labOffMode(): ILabMode {
 
 /**
  * URL 쿼리를 읽어 이번 판에서 어떤 실험을 할지(`ILabMode`) 정하고, 틀린 값은 오류 목록에 담는다.
- * **실험실 사용법의 정본이다**(계획 · QA 문서는 거울). 아래 목록이 URL에 쓸 수 있는 값 전부다.
+ * **실험실 사용법의 정본이다**(QA 문서가 이 목록을 옮겨 적는다). 아래 목록이 URL에 쓸 수 있는 값 전부다.
  *
  * **모드 — `lab`** (없으면 실험실이 꺼지고 보통 게임이 돈다)
  * - `compare` 비교판 — 한 방식의 이펙트 후보 여럿을 나란히 띄워 사용자가 눈으로 고른다. 고른 후보와
@@ -833,8 +833,9 @@ export function labOffMode(): ILabMode {
  * - `font` 폰트 판정 화면 — 설정 파일(`font-probe.json`)의 후보 폰트를 열로 나란히 그려 사용자가 고른다
  *
  * **세 모드 공통**
- * - `load=base|max` — 마법 강화 상태. base는 강화 없음, max는 가진 마법을 모두 최대로 강화한 상태다.
- *   기본 max(font는 base)
+ * - `load=base|max` — 마법 강화 상태. base는 강화 없음이다. max는 발사체 수를 늘릴 수 있는 마법마다
+ *   발사체 수 강화(개별 · 분류)를 상한까지 채운 상태다 — 데미지 · 쿨다운 강화와 더블 캐스팅은 넣지 않는다
+ *   (`maxLoadSeed`). 기본 max(font는 base)
  *
  * **이펙트 실험 — compare · measure에서 쓴다**
  *
@@ -851,14 +852,16 @@ export function labOffMode(): ILabMode {
  *   tune을 적용한 뒤에 곱한다
  * - `block=<초>` — 측정의 켬 · 끔 블록 하나의 길이. 기본 10
  *
- * pick · tune · sizeScale · countScale은 손으로 쓰기보다 비교판의 `J` 출력을 그대로 붙이는 값이다.
+ * pick · tune은 손으로 쓰기보다 비교판의 `J` 출력을 그대로 붙이는 값이다. sizeScale · countScale은 `J`
+ * 출력에 없고, 측정이 상한을 넘었을 때 사람이 손으로 붙여 줄인 후보를 다시 재는 값이다.
  *
  * **UI 몫 측정 — measure에서 `off=ui`일 때 쓴다**
  * - `off=vfx|ui` — 켜고 끄는 대상. vfx는 이펙트, ui는 HUD 노드 전체다. 기본 vfx이고 measure에서만 쓴다
- * - `font=<stem>` — HUD에 입힐 폰트. 설정 파일에 있는 stem이어야 한다. off=ui면 반드시 쓰고, 그 밖에는 오류다
+ * - `font=<stem>` — HUD에 입힐 폰트. stem은 폰트 파일 이름에서 굵기 앞부분이다(`UiSans-500.ttf`의
+ *   `UiSans`). 설정 파일에 있는 stem이어야 한다. off=ui면 반드시 쓰고, 그 밖에는 오류다
  * - `weight=<굵기>` — 그 폰트의 굵기. 설정 파일의 body 또는 title 값이어야 한다. font를 쓰면 반드시 쓴다
- * - `cache=none|char` — 라벨을 텍스처로 만드는 방식(Cache Mode). none은 모든 라벨을 NONE으로, char는
- *   숫자 라벨(hp · timer)만 CHAR로 둔다. 기본 none
+ * - `cache=none|char` — HUD 라벨 넷(hp · wave · timer · level)을 텍스처로 만드는 방식(Cache Mode). none은
+ *   넷 모두 NONE으로, char는 숫자 라벨(hp · timer)만 CHAR로 둔다. 마법 슬롯 라벨은 바꾸지 않는다. 기본 none
  * - `drive=worst|real` — 측정 중에 HUD 글자를 바꾸는 빈도. worst는 HUD 라벨 넷을 매 프레임 바꾸고, real은
  *   실제 게임처럼 타이머만 1초에 한 번 바꾼다. 기본 worst
  *

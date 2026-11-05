@@ -10,13 +10,16 @@ import { type ILabError, type IVfxRecipe, labOffMode } from '../logic/VfxRecipeL
  * 없는 빌드에서는 켜지지 않는다. 모드마다 쓸 수 있는 URL 값은 `parseLabUrl` 주석에 있다.
  *
  * 1. `DataManager`가 게임 데이터를 읽을 때, 주소에 `lab`이 있으면 레시피 파일과 폰트 설정 파일
- *    (`font-probe.json`)도 읽는다. `parseLabUrl`이 주소와 두 파일로 모드와 오류를 정해 여기(`mode` ·
- *    `errors`)에 적는다.
+ *    (`font-probe.json`)도 읽는다. 순수 함수 `parseLabUrl`이 주소와 두 파일로 모드와 오류를 정하고,
+ *    `DataManager._resolveLab`이 그 결과와 두 파일 내용을 여기(`mode` · `errors` · `recipes` · `fontProbe` ·
+ *    `recipeHash`)에 적는다.
  * 2. 게임 쪽 코드는 아래 함수로 모드를 묻고 실험 판에 맞게 동작을 바꾼다. `isLabStage`가 참이면 적은
  *    피해를 받지 않고 제자리에 서고(`EnemyController`), 웨이브와 플레이어 피해가 멈추고(`WaveManager` ·
  *    `GameManager`), 스포너는 살아 있는 적 수를 `targetAlive`에 맞춘다(`EnemySpawner`).
- * 3. `SpellCaster`가 시작할 때 모드에 맞는 컴포넌트를 플레이어 노드에 붙인다. 오류가 있으면 어느 모드든
- *    `VfxLab`이 오류 상자만 띄운다.
+ * 3. 데이터를 다 읽고 나면(`DataManager.onReady`) `SpellCaster`가 모드에 맞는 컴포넌트를 플레이어 노드에
+ *    붙인다. 오류가 있으면 어느 모드든 `VfxLab`이 오류 상자만 띄운다.
+ * 4. 측정은 사용자가 화면의 「측정 시작」 버튼이나 Space를 눌러야 시작한다. 비교판은 붙자마자 그리고,
+ *    폰트 판정 화면은 후보 폰트 파일을 다 받은 뒤 그린다.
  *
  * **모드별로 붙는 컴포넌트와 하는 일**
  * - 비교판 `?lab=compare` → `VfxLab`이 `VfxCompareBoard`를 띄운다. 한 방식의 이펙트 후보 여럿을 나란히
@@ -35,9 +38,9 @@ import { type ILabError, type IVfxRecipe, labOffMode } from '../logic/VfxRecipeL
  * 스포너가 보통 간격으로 시작한다.
  *
  * `vfxOff`는 측정(`VfxLab`)이 매 프레임 쓰고, 이펙트를 그리는 쪽(`SpellCaster` · `LabVfxSink` ·
- * `StatusVfxOverlay`)이 읽는다. `targetAlive`는 측정 · 폰트 판정 화면이 쓰고
- * 스포너가 읽는다.
- * `hudControl` · `hudDriven`은 UI 몫 측정(`off=ui`)과 폰트 판정 화면(`lab=font`)이 HUD를 다룰 때 쓴다.
+ * `StatusVfxOverlay`)이 읽는다. `targetAlive`는 측정 · 비교판(`VfxLab`)과 폰트 판정 화면(`FontProbe`)이
+ * 쓰고 스포너가 읽는다. `hudControl`은 UI 몫 측정과 폰트 판정 화면이 HUD를 켜고 끌 때 쓰고, `hudDriven`은
+ * UI 몫 측정만 쓴다.
  */
 export const LabRuntime = {
   /** 실험실 상태. 정해지기 전과 실험실이 꺼진 게임에서는 꺼진 기본값이다 */
@@ -50,11 +53,14 @@ export const LabRuntime = {
   recipeHash: '',
   /** 폰트 설정 파일 내용(`font-probe.json`). 없거나 틀렸으면 null — 그 경우 폰트를 쓰는 URL은 시작이 막혀 있다 */
   fontProbe: null as IFontProbeConfig | null,
-  /** 지금 끔 블록이다 — 이펙트 노드를 만들지도 그리지도 않는다 */
+  /**
+   * 지금 이펙트를 끈 상태다 — 이펙트 측정의 끔 블록, 그리고 UI 몫 측정의 모든 단계(켬 블록 포함)에서
+   * 참이다. 참이면 이펙트 노드를 만들지도 그리지도 않는다
+   */
   vfxOff: false,
   /**
-   * 스포너가 유지할 살아 있는 적 수 — 측정은 적 수 단계마다 `VfxLab`이, 폰트 판정 화면은 `FontProbe`가
-   * 정한다. 0이면 스폰하지 않는다
+   * 스포너가 유지할 살아 있는 적 수 — 측정은 적 수 단계마다, 비교판은 가운데 더미 수
+   * (`COMPARE_DUMMY_COUNT`)로 `VfxLab`이 정하고, 폰트 판정 화면은 `FontProbe`가 정한다. 0이면 스폰하지 않는다
    */
   targetAlive: 0,
   /**
