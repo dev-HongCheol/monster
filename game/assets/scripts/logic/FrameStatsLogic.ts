@@ -4,8 +4,12 @@ export interface IStatSummary {
   median: number;
   /** 가장 느린 1%(값이 큰 쪽)의 평균. 표본이 100보다 적어도 가장 큰 1개는 들어간다 */
   low1: number;
+  /** 상위 5% 경계값 — 가까운 순위 방식(정렬한 값의 ceil(0.95 × n)번째) */
+  p95: number;
   max: number;
   count: number;
+  /** 20ms를 넘은 값의 개수 — 60Hz 한 장(16.7ms)을 넘겨 눈에 띄는 멈춤이 된 프레임 수다 */
+  over20: number;
 }
 
 /** 한 종류 블록(켬 또는 끔)을 합친 통계 중 판정에 쓰는 부분. */
@@ -72,13 +76,16 @@ const SKIP_FACTOR = 1.5;
 /** 문턱 근처로 보는 폭. 이 안이면 같은 회차를 한 번 더 돈다. */
 const NEAR_BAND = 0.2;
 
+/** 이 값(ms)을 넘으면 멈춤으로 센다(`over20`). */
+const STALL_MS = 20;
+
 /**
- * 값 목록의 평균 · 중앙값 · 1% low · 최대를 낸다.
+ * 값 목록의 평균 · 중앙값 · 1% low · 상위 5% · 최대 · 20ms 초과 수를 낸다.
  * @param values 바쁜 시간이나 간격(ms). 빈 배열이면 모두 0
  */
 export function summarize(values: readonly number[]): IStatSummary {
   const n = values.length;
-  if (n === 0) return { mean: 0, median: 0, low1: 0, max: 0, count: 0 };
+  if (n === 0) return { mean: 0, median: 0, low1: 0, p95: 0, max: 0, count: 0, over20: 0 };
   const sorted = [...values].sort((a, b) => a - b);
   const sum = sorted.reduce((acc, v) => acc + v, 0);
   const mid = Math.floor(n / 2);
@@ -87,7 +94,11 @@ export function summarize(values: readonly number[]): IStatSummary {
   const k = Math.max(1, Math.floor(n / 100));
   let slowSum = 0;
   for (let i = n - k; i < n; i++) slowSum += sorted[i];
-  return { mean: sum / n, median, low1: slowSum / k, max: sorted[n - 1], count: n };
+  // 0.95는 이진수로 0.95보다 조금 작아서 0.95 × n이 정수여야 할 때 그 아래로 떨어질 수는 있어도
+  // 위로 넘지는 않는다 — ceil이 한 순위 뒤를 고르는 일은 없다
+  const p95 = sorted[Math.ceil(0.95 * n) - 1];
+  const over20 = sorted.filter((v) => v > STALL_MS).length;
+  return { mean: sum / n, median, low1: slowSum / k, p95, max: sorted[n - 1], count: n, over20 };
 }
 
 /**
@@ -143,6 +154,37 @@ export function isNearThreshold(d: IShareDeltas, th: IShareThresholds): boolean 
     near(d.busyLowDelta, th.busyLowMs) ||
     near(d.skipDelta, th.skipRate)
   );
+}
+
+/**
+ * UI 몫의 상한(ms) — HUD 노드 전체를 켠 블록과 끈 블록의 바쁜 시간 중앙값 차이가 이 값 이하면 통과다.
+ * 상한과 그 근거는 디자인 정본 `art-asset-spec.md` §8.5가 들고, 이 값은 그 상한과 같아야 한다(바꿀 때 둘을
+ * 함께 고친다). 이펙트 문턱(`PASS_THRESHOLDS`)과 따로 둔다 — 재는 대상과 블록 구성이 달라 한 표에 섞으면
+ * 어느 문턱이 어느 회차의 것인지 흐려진다.
+ */
+export const UI_THRESHOLD_MS = 1;
+
+/**
+ * UI 몫 판정. 프레임 간격이 아니라 바쁜 시간을 쓴다 — 간격은 주사율 단위(60Hz면 16.7ms)로 끊겨,
+ * 한 장을 넘치기 전까지 1ms 차이가 0으로 나온다.
+ * @param onBusyMedian 켬 블록 바쁜 시간 중앙값(ms)
+ * @param offBusyMedian 끔 블록 바쁜 시간 중앙값(ms)
+ */
+export function judgeUiShare(
+  onBusyMedian: number,
+  offBusyMedian: number,
+): { delta: number; pass: boolean } {
+  const delta = onBusyMedian - offBusyMedian;
+  return { delta, pass: delta <= UI_THRESHOLD_MS };
+}
+
+/**
+ * UI 몫 차이가 문턱의 ±20%(0.8~1.2ms) 안이면 true — `isNearThreshold`와 같은 규칙으로 같은 회차를 한
+ * 번 더 돈다.
+ * @param delta 켬 − 끔 바쁜 시간 중앙값(ms)
+ */
+export function isNearUiThreshold(delta: number): boolean {
+  return Math.abs(delta - UI_THRESHOLD_MS) <= UI_THRESHOLD_MS * NEAR_BAND;
 }
 
 /**

@@ -19,6 +19,7 @@ import { DataManager } from '../systems/DataManager';
 import { ExperienceManager } from '../systems/ExperienceManager';
 import { GameManager } from '../systems/GameManager';
 import { I18n } from '../systems/I18n';
+import { LabRuntime } from '../systems/LabRuntime';
 import { WaveManager } from '../systems/WaveManager';
 import { COLORS } from './Theme';
 
@@ -49,8 +50,10 @@ export class HudController extends Component {
   private _spellSlots: Node[] = [];
   /** 마지막으로 그린 보유 마법 서명(id join) — 바뀔 때만 슬롯을 재빌드한다. */
   private _spellRowKey: string | null = null;
+  /** 실험실에 넘긴 `LabRuntime.hudControl` 값. 거둘 때 다른 HUD가 넘긴 것을 지우지 않으려고 들고 있는다 */
+  private _labHandle: typeof LabRuntime.hudControl = null;
 
-  // 필수 프로퍼티 검증 → 카드 패널 숨김 초기화 → 바 색을 테마에서 적용
+  // 필수 프로퍼티 검증 → 카드 패널 숨김 초기화 → 바 색을 테마에서 적용 → 실험실에 HUD를 켜고 끄는 함수와 라벨을 넘긴다
   onLoad() {
     if (!this.hpLabel || !this.hpBar) {
       console.error('[HudController] required properties not assigned');
@@ -64,6 +67,11 @@ export class HudController extends Component {
     if (this.xpBar?.barSprite) this.xpBar.barSprite.color = COLORS.XP_FILL;
 
     this._initSpellSlots();
+    this._registerLabHandle();
+  }
+
+  onDestroy() {
+    if (LabRuntime.hudControl === this._labHandle) LabRuntime.hudControl = null;
   }
 
   // 매 프레임 HP·웨이브·XP 레이블을 갱신하고, 보유 마법 변경 시 아이콘 행을 재빌드한다
@@ -80,19 +88,48 @@ export class HudController extends Component {
     return I18n.instance ? I18n.instance.t(key, params) : key;
   }
 
-  /** HP 레이블과 HP 바를 현재 값으로 갱신한다. */
+  /**
+   * HUD 노드를 켜고 끄는 함수와 HUD 라벨을 `LabRuntime.hudControl`에 넘긴다. HUD 노드를 끄면 이 컴포넌트의
+   * `update`도 멈춰 스스로 다시 켤 수 없으므로, UI 몫 측정 · 폰트 판정 화면은 이 함수로 바깥에서 켜고 끈다.
+   */
+  private _registerLabHandle(): void {
+    const slotLabels = this._spellSlots
+      .map((n) => n.getComponentInChildren(Label))
+      .filter((l): l is Label => l !== null);
+    this._labHandle = {
+      setActive: (active: boolean) => {
+        if (this.isValid) this.node.active = active;
+      },
+      labels: {
+        hp: this.hpLabel,
+        wave: this.waveLabel,
+        timer: this.timerLabel,
+        level: this.levelLabel,
+        spellSlots: slotLabels,
+      },
+    };
+    LabRuntime.hudControl = this._labHandle;
+  }
+
+  /** HP 레이블과 HP 바를 현재 값으로 갱신한다. 실험실(`VfxLab`)이 라벨 글자를 쓰는 동안은 바만 갱신한다. */
   private _updateHp(): void {
     if (!this.hpLabel) return;
     const gm = GameManager.instance;
     if (!gm) return;
-    this.hpLabel.string = this._t('hud.hp', {
-      cur: formatNumber(Math.ceil(gm.playerHp)),
-    });
+    if (!LabRuntime.hudDriven) {
+      this.hpLabel.string = this._t('hud.hp', {
+        cur: formatNumber(Math.ceil(gm.playerHp)),
+      });
+    }
     if (this.hpBar) this.hpBar.progress = barRatio(gm.playerHp, gm.maxPlayerHp);
   }
 
-  /** 웨이브 번호와 전체 게임 잔여 시간을 갱신한다. */
+  /**
+   * 웨이브 번호와 전체 게임 잔여 시간을 갱신한다. 실험실(`VfxLab`)이 라벨 글자를 쓰는 동안은 건너뛴다 —
+   * 둘이 같은 라벨에 매 프레임 쓰면 늦게 도는 쪽이 이겨 문자열이 바뀌는 횟수가 실행 순서에 달린다.
+   */
   private _updateWaveInfo(): void {
+    if (LabRuntime.hudDriven) return;
     const wm = WaveManager.instance;
     const gm = GameManager.instance;
     if (wm && this.waveLabel) {
@@ -105,11 +142,14 @@ export class HudController extends Component {
     }
   }
 
-  /** 레벨 레이블과 XP 바(진행도)를 갱신한다. XP 진행은 수치 라벨 없이 바로만 표시한다. */
+  /**
+   * 레벨 레이블과 XP 바(진행도)를 갱신한다. XP 진행은 수치 라벨 없이 바로만 표시한다. 실험실(`VfxLab`)이
+   * 라벨 글자를 쓰는 동안은 바만 갱신한다.
+   */
   private _updateXpInfo(): void {
     if (!ExperienceManager.instance) return;
     const em = ExperienceManager.instance;
-    if (this.levelLabel) {
+    if (this.levelLabel && !LabRuntime.hudDriven) {
       this.levelLabel.string = this._t('hud.level', { level: em.level });
     }
     // XP 바는 하단 풀폭이라 Widget으로 폭이 늘어난다. ProgressBar.totalLength는

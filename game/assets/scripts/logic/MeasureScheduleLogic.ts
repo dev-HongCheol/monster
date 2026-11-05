@@ -8,10 +8,16 @@ export interface IMeasureScheduleOptions {
   discardSec: number;
   /** 목표 적 수를 채우는 대기의 상한(초) */
   fillTimeoutSec: number;
+  /**
+   * 첫 블록 앞에 HUD에 폰트를 입히고 기다릴 시간(초). `off=ui` 측정만 준다 — 없으면 채우기 다음이
+   * 바로 블록이다(이펙트 측정의 시간표 그대로)
+   */
+  fontApplySec?: number;
 }
 
 export type BlockKind = 'off' | 'on';
-export type ScheduleStage = 'fill' | 'block' | 'done';
+/** 지금 단계. `font`는 `off=ui`에서 적을 다 채운 뒤 폰트를 입히고 기다리는 구간이다 */
+export type ScheduleStage = 'fill' | 'font' | 'block' | 'done';
 /** 블록을 무효로 만드는 사건 — 창 가림 · 포커스 잃음 · 캔버스 크기 변경 · 1초를 넘는 간격 */
 export type InvalidReason = 'hidden' | 'blur' | 'resize' | 'longFrame';
 
@@ -38,6 +44,11 @@ export interface IScheduleState {
   /** 이 프레임을 통계에 넣어도 되는가 */
   measuring: boolean;
   filledCount: number;
+  /**
+   * 이 프레임에 HUD에 폰트를 입힌다 — 폰트 입힘 단계의 첫 프레임에만 참이다. 첫 표시의 비용을 그
+   * 프레임의 바쁜 시간으로 재므로, 입히는 프레임이 정확히 하나여야 한다
+   */
+  applyFontNow: boolean;
 }
 
 /** 한 적 수 안의 블록 순서. 끔으로 시작해 켬 · 끔을 번갈아 세 번씩 돈다. */
@@ -63,6 +74,8 @@ export class MeasureSchedule {
   /** 지금 단계에 들어온 뒤 흐른 시간(초) */
   private _elapsed = 0;
   private _filledCount = 0;
+  /** 폰트 입힘 단계를 이미 지났다 — 폰트는 한 번 입히면 계속 남으므로 다음 적 수에서는 다시 지나지 않는다 */
+  private _fontApplied = false;
 
   /** @param opts 측정 운전 설정 */
   constructor(opts: IMeasureScheduleOptions) {
@@ -98,6 +111,7 @@ export class MeasureSchedule {
       discard,
       measuring: inBlock && !discard,
       filledCount: this._filledCount,
+      applyFontNow: this._stage === 'font' && this._elapsed === 0,
     };
   }
 
@@ -113,8 +127,20 @@ export class MeasureSchedule {
       const target = this.state.count;
       if (ctx.alive >= target || this._elapsed >= this._opts.fillTimeoutSec) {
         this._filledCount = Math.min(ctx.alive, target);
-        this._startBlock(0);
+        // 적을 다 채운 뒤에 폰트를 입혀야 스폰 비용이 첫 표시 기록에 섞이지 않는다
+        if ((this._opts.fontApplySec ?? 0) > 0 && !this._fontApplied) {
+          this._stage = 'font';
+          this._elapsed = 0;
+          this._fontApplied = true;
+        } else {
+          this._startBlock(0);
+        }
       }
+      return;
+    }
+    if (this._stage === 'font') {
+      this._elapsed += dt;
+      if (this._elapsed >= (this._opts.fontApplySec ?? 0)) this._startBlock(0);
       return;
     }
     if (dt > LONG_FRAME_SEC) this._markCurrent('longFrame');

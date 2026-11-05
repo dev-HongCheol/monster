@@ -1,18 +1,18 @@
 {
-  "feature": "magic-effect-gate",
+  "feature": "ui-font-probe",
   "phase": "pr-ready",
   "test_skipped": false,
   "test_skip_reason": null,
   "ts_check_scope": "full",
   "canon_updated": [
     "docs/design/spec/art-asset-spec.md",
-    "docs/design/spec/art-direction.md",
     "docs/development/spec/docs-glossary.md",
     "docs/development/spec/ops-build.md",
+    "docs/development/spec/ops-licensing.md",
     "docs/planning/design-roadmap.md"
   ],
   "canon_skip_reason": null,
-  "qa_doc_fingerprint": "71408efebeb5129b",
+  "qa_doc_fingerprint": "1f4a356d08556e6e",
   "verification": {
     "cso_done": true,
     "ts_check_clean": true,
@@ -22,5 +22,5 @@
   "docs_delivered": [
     "pr-ready"
   ],
-  "cso_commit": "57f0d7bd3c71be3d988727ce698f8b4c0aa391e1"
+  "cso_commit": "9d7e8d56f14e7ac9f8cd967a245fbcf7643ff84b"
 }

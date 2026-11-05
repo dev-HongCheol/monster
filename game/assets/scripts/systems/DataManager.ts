@@ -8,6 +8,7 @@ import type {
   ISpellData,
   IXPData,
 } from '../data/GameTypes';
+import { type IFontProbeParse, parseFontProbeConfig } from '../logic/UiFontProbeLogic';
 import { hasLabParam, type IVfxRecipe, parseLabUrl, textHash } from '../logic/VfxRecipeLogic';
 import { LabRuntime } from './LabRuntime';
 
@@ -132,9 +133,11 @@ export class DataManager extends Component {
   }
 
   /**
-   * URL에 `lab`이 있을 때만 레시피 파일을 읽어 실험실 상태를 정한다. 파일이 없으면(공개 빌드는
-   * 이 파일을 뺀다) 실험실은 꺼진 채로 남고 게임은 보통대로 돈다 — 그래서 읽기 실패는 게임 데이터
-   * 실패와 달리 삼킨다. `lab`이 없으면 파일을 건드리지도 않아 보통 게임의 로딩 경로가 그대로다.
+   * URL에 `lab`이 있을 때만 레시피 파일과 폰트 설정 파일을 읽어 실험실 상태를 정한다. 레시피 파일이
+   * 없으면(공개 빌드는 이 파일을 뺀다) 실험실은 꺼진 채로 남고 게임은 보통대로 돈다 — 그래서 읽기
+   * 실패는 게임 데이터 실패와 달리 삼킨다. 폰트 설정 파일도 같다. 없거나 틀린 것이 문제가 되는지는
+   * `parseLabUrl`이 URL을 보고 정한다(폰트를 쓰지 않는 URL이면 무시한다). `lab`이 없으면 두 파일을
+   * 건드리지도 않아 보통 게임의 로딩 경로가 그대로다.
    */
   private async _resolveLab(): Promise<void> {
     const search = typeof location === 'undefined' ? '' : location.search;
@@ -145,10 +148,17 @@ export class DataManager extends Component {
     } catch {
       console.warn('[DataManager] data/vfx-lab 없음 — 이펙트 실험실을 켜지 않습니다.');
     }
-    const { mode, errors } = parseLabUrl(search, recipes);
+    let fontProbe: IFontProbeParse = { config: null, errors: [] };
+    try {
+      fontProbe = parseFontProbeConfig(await this._load<unknown>('data/font-probe'));
+    } catch {
+      // 없는 것은 오류가 아니다 — 폰트를 쓰는 URL에서만 parseLabUrl이 「설정 파일 없음」을 띄운다
+    }
+    const { mode, errors } = parseLabUrl(search, recipes, fontProbe);
     LabRuntime.mode = mode;
     LabRuntime.errors = errors;
     LabRuntime.recipes = recipes;
+    LabRuntime.fontProbe = fontProbe.config;
     LabRuntime.recipeHash = recipes ? textHash(JSON.stringify(recipes)) : '';
   }
 

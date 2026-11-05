@@ -10,6 +10,10 @@
 
 ---
 
+### UI 폰트 실행 탐침 (2026-11-05)
+
+- **F145** UI 2층 Cocos 실행 탐침과 본문 폰트 최종 판정 → **완료**(`feat/ui-font-probe`, PR #102, 2026-11-05). 실제 Cocos Label로 그린 판정 화면(`?lab=font`)에서 Noto Sans KR · 본문 500 · 제목 800 · 기준 16px · 단계 비율 1.25 · 줄 높이 1.5를 골랐고, 측정 모드(`?lab=measure&off=ui`)로 UI 몫(+0.30ms, 상한 1ms)과 폰트 용량(874KB, 상한 1.5MB)을 쟀다. 지금 값은 [`../design/spec/art-asset-spec.md`](../design/spec/art-asset-spec.md) §8.5 · §10.1이 든다. 사용자 검증 뒤 주석 리워크에서 F153~F157이 나왔다. → [`sessions/2026-11-01-ui-font-probe-plan.md`](sessions/2026-11-01-ui-font-probe-plan.md) §10
+
 ### 적 로스터 변별 게이트 (2026-11-01)
 
 - **F108** 귀신 생성 요구사항을 정본으로 승격 → **완료**(`docs/enemy-roster`, PR #101, 2026-11-01). 승인 시트 프롬프트의 「공통 화풍」 절 원문을 [`../design/spec/art-asset-spec.md`](../design/spec/art-asset-spec.md) §6.3에 올렸고, 확인된 네 종의 도상은 같은 문서 §11, 나머지 여덟 종의 생김새 원본은 [`../planning/enemy-roster-art.md`](../planning/enemy-roster-art.md)가 든다. 톤은 「종마다 특색을 지키되 살짝 귀엽고 무겁지 않게」로 썼다. 출처: [`sessions/2026-10-16-enemy-roster-plan.md`](sessions/2026-10-16-enemy-roster-plan.md) §3 나 · [`sessions/2026-10-30-enemy-roster-gate.md`](sessions/2026-10-30-enemy-roster-gate.md)

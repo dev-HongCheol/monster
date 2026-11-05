@@ -6,6 +6,7 @@ import {
   director,
   dynamicAtlasManager,
   game,
+  Label,
   Node,
   screen,
 } from 'cc';
@@ -13,13 +14,26 @@ import {
   frameTimeFromOffMedians,
   type IStatSummary,
   isNearThreshold,
+  isNearUiThreshold,
   judgeShare,
+  judgeUiShare,
   PASS_THRESHOLDS,
   STRESS_THRESHOLDS,
   skipRate,
   summarize,
 } from '../logic/FrameStatsLogic';
-import { type IBlockRecord, MeasureSchedule } from '../logic/MeasureScheduleLogic';
+import {
+  type IBlockRecord,
+  type IScheduleState,
+  MeasureSchedule,
+} from '../logic/MeasureScheduleLogic';
+import {
+  buildFontAbortRecord,
+  driverValue,
+  fontFileRecord,
+  type IFirstShow,
+  uiBlockFlags,
+} from '../logic/UiFontProbeLogic';
 import {
   applyOverrides,
   buildCompareUrl,
@@ -39,11 +53,13 @@ import {
   stepTune,
   type TuneMap,
   tuneKeyAction,
+  uiResultFileName,
 } from '../logic/VfxRecipeLogic';
 import { DataManager } from '../systems/DataManager';
 import { GameManager } from '../systems/GameManager';
 import { isCompareMode, isMeasureMode, LabRuntime } from '../systems/LabRuntime';
 import { CameraController } from './CameraController';
+import { LabFontLoader } from './LabFontLoader';
 import { LabVfxSink } from './LabVfxSink';
 import { StatusVfxOverlay } from './StatusVfxOverlay';
 import { type ICompareRefs, type ICurrentPrefabs, VfxCompareBoard } from './VfxCompareBoard';
@@ -51,8 +67,13 @@ import { VfxFactory } from './VfxFactory';
 
 const { ccclass } = _decorator;
 
-/** 결과 파일 형식 번호. 필드를 바꾸면 올린다 — 옛 결과와 섞어 표를 만들 때 가른다. */
-const RESULT_SCHEMA_VERSION = 1;
+/**
+ * 결과 파일 형식 번호. 필드를 바꾸면 올린다 — 옛 결과와 섞어 표를 만들 때 가른다. 2는 UI 몫 측정의 칸
+ * (블록별 hudActive · 상위 5% · 20ms 초과 수 · UI 판정 · 폰트 첫 표시 · 폰트 파일 다운로드 기록)을 더한 판이다.
+ */
+const RESULT_SCHEMA_VERSION = 2;
+/** UI 몫 측정에서 HUD에 폰트를 입힌 뒤 첫 블록까지 기다리는 시간(초) — 그 사이 최대 바쁜 시간이 첫 표시 기록이다. */
+const FONT_APPLY_SEC = 1;
 /** 목표 적 수를 채우는 대기의 상한(초). */
 const FILL_TIMEOUT_SEC = 30;
 /** HUD 글자 갱신 간격(초). 매 프레임 바꾸면 글자 그리기 비용이 측정 통계에 섞인다. */
@@ -62,6 +83,9 @@ const FRAMES_PER_SEC_CAP = 300;
 /** 판정 창 크기(실제 픽셀). 이 크기가 아니면 측정 화면에 노란 경고를 띄운다. */
 const JUDGE_W = 1920;
 const JUDGE_H = 1080;
+
+/** 문자열 바꾸기가 글자를 쓰는 HUD 라벨 넷. */
+const DRIVE_LABELS = ['hp', 'wave', 'timer', 'level'] as const;
 
 /** 측정 화면 키 안내 한 줄. */
 const MEASURE_KEYS = 'Space 측정 시작 · Esc 중단(그 회차는 무효)';
@@ -99,6 +123,8 @@ interface IBlockFrames {
   n: number;
   drawCallsMax: number;
   drawCallsSum: number;
+  /** HUD 노드를 켠 블록인가 — UI 몫 측정에서 분기가 맞게 돌았는지 사람이 결과 파일로 확인한다 */
+  hudActive: boolean;
   /** 실험실 방출기의 살아 있는 알갱이 합 — 귀속 순서의 셋째 기준(계획 §6.6) */
   particlesMax: number;
   particlesSum: number;
@@ -115,7 +141,8 @@ interface ISideStats {
 
 /**
  * 이펙트 실험실(계획 2026-10-12-magic-effect-gate-plan.md §4 · §5 · §6). `LabRuntime.mode.enabled`일
- * 때만 `SpellCaster`가 플레이어 노드에 붙인다.
+ * 때 `SpellCaster`가 플레이어 노드에 붙인다. 다만 `lab=font`이고 시작을 막는 오류가 없으면 이 컴포넌트
+ * 대신 폰트 판정 화면(`FontProbe`)을 붙인다 — 오류가 있으면 어떤 모드든 이 컴포넌트가 오류 상자를 띄운다.
  *
  * 화면 글자(HUD · 오류 상자)는 브라우저 DOM에 `textContent`로만 쓴다. Cocos `Label`로 그리면 그
  * 글자의 드로우콜이 측정하는 숫자에 섞이고, URL 값을 HTML로 넣으면 남이 만든 링크 하나로 스크립트가
@@ -123,6 +150,14 @@ interface ISideStats {
  *
  * 측정 시계는 엔진 이벤트 둘이다. `EVENT_BEFORE_UPDATE`에서 바쁜 시간을 켜고 `EVENT_AFTER_DRAW`에서
  * 끈다. 간격은 연속한 `EVENT_BEFORE_UPDATE` 사이다(3.8.8 `director.tick()` 순서).
+ *
+ * `off=ui`이면 같은 시간표로 이펙트 대신 HUD 노드 전체를 켜고 끄며, HUD가 프레임 시간을 얼마나 쓰는지
+ * (UI 몫)를 잰다. 이펙트는 두 블록 모두 끈다. 첫 블록 앞에는 HUD에 폰트를 입혀, 폰트가 처음 그려질 때
+ * 한 번 드는 비용(첫 표시)을 따로 잰다.
+ *
+ * UI 몫 측정 중에는 HUD 라벨의 글자를 `HudController` 대신 이 컴포넌트가 `drive` 조건대로 바꿔 쓴다. 이
+ * 파일과 `LabRuntime` · `UiFontProbeLogic`에서 「문자열 바꾸기」는 이 일을 가리킨다. 글자가 바뀌어야 라벨을
+ * 다시 그리는 비용이 측정에 들어가고, 누가 언제 바꾸는지를 한 곳에 고정해야 회차마다 조건이 같다.
  */
 @ccclass('VfxLab')
 export class VfxLab extends Component {
@@ -160,6 +195,29 @@ export class VfxLab extends Component {
   /** `P`를 눌렀다 — 다음 `EVENT_AFTER_DRAW`에서 그려진 화면을 받는다 */
   private _capturePending = false;
   private readonly _onCompareAfterDraw = (): void => this._captureIfPending();
+  /** UI 몫 측정(`off=ui`)에서 HUD에 입힐 폰트 */
+  private _fontLoader: LabFontLoader | null = null;
+  private _fontReady = false;
+  /**
+   * 폰트 첫 표시 기록 — 폰트를 불러온 시간과, HUD에 폰트를 입힌 프레임 · 그 뒤 1초의 바쁜 시간이다.
+   * 폰트가 처음 그려질 때 한 번만 드는 비용이라 켬 · 끔 블록에 섞지 않고 첫 블록 앞에서 따로 잰다
+   */
+  private readonly _firstShow: IFirstShow = {
+    loadMs: null,
+    applyBusyMs: null,
+    applyFrame: null,
+    maxBusyAfterMs: null,
+  };
+  /** 측정을 시작한 뒤 센 프레임 번호 — 문자열 바꾸기의 값과 폰트를 입힌 프레임 번호에 쓴다 */
+  private _frameNo = 0;
+  /** 이번 프레임에 폰트를 입혔다 · 폰트 입힘 단계의 나머지 프레임이다 — AFTER_DRAW에서 바쁜 시간을 첫 표시로 적는다 */
+  private _applyFrameThis = false;
+  private _fontStageThis = false;
+  /** 지금 HUD 노드를 켰나 — 블록 경계에서만 바꾸려고 들고 있는다 */
+  private _hudActive = true;
+  /** drive=real에서 타이머를 마지막으로 바꾼 초 */
+  private _lastDriveSec = -1;
+  private _driveStart = 0;
 
   onLoad() {
     if (typeof document === 'undefined') return; // 브라우저가 아니면 화면을 만들 곳이 없다
@@ -177,7 +235,9 @@ export class VfxLab extends Component {
       blockSec: mode.blockSec,
       discardSec: discardSeconds(this._pickedRecipes()),
       fillTimeoutSec: FILL_TIMEOUT_SEC,
+      fontApplySec: mode.off === 'ui' ? FONT_APPLY_SEC : undefined,
     });
+    if (mode.off === 'ui') this._loadUiFont();
     director.on(Director.EVENT_BEFORE_UPDATE, this._onBeforeUpdate);
     director.on(Director.EVENT_AFTER_DRAW, this._onAfterDraw);
     document.addEventListener('visibilitychange', this._onVisibility);
@@ -202,6 +262,8 @@ export class VfxLab extends Component {
     this._root?.remove();
     LabRuntime.vfxOff = false;
     LabRuntime.targetAlive = 0;
+    this._restoreHud();
+    this._fontLoader?.dispose();
   }
 
   // 비교판 격자를 카메라 가운데에 붙여 두고, HUD 글자는 초당 4회만 고친다
@@ -234,7 +296,8 @@ export class VfxLab extends Component {
       return;
     }
     LabRuntime.targetAlive = st.count;
-    LabRuntime.vfxOff = st.kind === 'off';
+    if (LabRuntime.mode.off === 'ui') this._driveUiFrame(st);
+    else LabRuntime.vfxOff = st.kind === 'off';
     this._measuringThisFrame = st.measuring && intervalMs > 0;
     if (this._measuringThisFrame) {
       const cur = this._frames[this._frames.length - 1];
@@ -242,8 +305,14 @@ export class VfxLab extends Component {
     }
   }
 
-  /** 바쁜 시간을 끄고 이번 프레임을 지금 블록에 넣는다. */
+  /** 바쁜 시간을 끄고 이번 프레임을 지금 블록에 넣는다. 폰트를 입힌 프레임과 그 뒤 1초는 첫 표시로 적는다. */
   private _afterDraw(): void {
+    if (this._applyFrameThis || this._fontStageThis) {
+      const busy = performance.now() - this._frameStart;
+      if (this._applyFrameThis) this._firstShow.applyBusyMs = busy;
+      else this._firstShow.maxBusyAfterMs = Math.max(this._firstShow.maxBusyAfterMs ?? 0, busy);
+      this._applyFrameThis = false;
+    }
     if (!this._measuringThisFrame) return;
     const cur = this._frames[this._frames.length - 1];
     if (cur.n >= cur.busy.length) return; // 주사율이 상한을 넘는 장비 — 남은 프레임은 버린다
@@ -270,6 +339,7 @@ export class VfxLab extends Component {
       n: 0,
       drawCallsMax: 0,
       drawCallsSum: 0,
+      hudActive: LabRuntime.mode.off === 'ui' ? uiBlockFlags(record.kind).hudActive : true,
       particlesMax: 0,
       particlesSum: 0,
       emittersMax: 0,
@@ -301,7 +371,12 @@ export class VfxLab extends Component {
 
   /** 측정 회차를 시작한다(Space 또는 시작 버튼). */
   private _start(): void {
-    if (!this._schedule || this._started) return;
+    if (!this._schedule || this._started || this._finished) return;
+    // UI 몫 측정은 폰트가 준비된 뒤에만 시작한다 — 준비 전에 블록을 돌면 대체 글꼴로 잰 값이 판정에 들어간다
+    if (LabRuntime.mode.off === 'ui') {
+      if (!this._fontReady) return;
+      this._prepareUiRun();
+    }
     this._started = true;
     this._startedAt = new Date().toISOString();
     this._startButton?.remove();
@@ -312,24 +387,184 @@ export class VfxLab extends Component {
   private _finish(): void {
     this._finished = true;
     LabRuntime.vfxOff = false;
+    // 끔 블록 중에 끝나거나 Esc로 멈추면 HUD가 꺼진 채 남는다 — 끝날 때 늘 되돌린다
+    this._restoreHud();
     const result = this._buildResult();
     const canvas = game.canvas;
-    this._resultName = resultFileName(
-      canvas?.width ?? 0,
-      canvas?.height ?? 0,
-      LabRuntime.mode.load,
-      LabRuntime.mode.only,
-      new Date(),
-    );
-    const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = this._resultName;
-    a.click();
-    // 다운로드가 시작되기 전에 주소를 거두면 Firefox · Safari는 받기를 취소한다 — 결과 파일은 다시
-    // 얻으려면 회차를 처음부터 돌려야 하므로 한 박자 늦게 거둔다
-    const href = a.href;
-    setTimeout(() => URL.revokeObjectURL(href), 1000);
+    const mode = LabRuntime.mode;
+    this._resultName =
+      mode.off === 'ui'
+        ? uiResultFileName(
+            canvas?.width ?? 0,
+            canvas?.height ?? 0,
+            mode.cache,
+            mode.drive,
+            new Date(),
+          )
+        : resultFileName(canvas?.width ?? 0, canvas?.height ?? 0, mode.load, mode.only, new Date());
+    downloadJson(result, this._resultName);
+  }
+
+  /** UI 몫 측정의 폰트를 불러 들고만 있는다 — 입히는 것은 시간표의 「폰트 입힘」 프레임이다. */
+  private _loadUiFont(): void {
+    const { font, weight } = LabRuntime.mode;
+    if (font === null || weight === null) return;
+    const loader = new LabFontLoader([{ stem: font, weight }]);
+    this._fontLoader = loader;
+    loader.load(() => {
+      if (!this.isValid) return;
+      const f = loader.fonts[0];
+      this._firstShow.loadMs = f.loadDoneMs === null ? null : f.loadDoneMs - f.loadStartMs;
+      if (f.ttf && !f.timedOut) {
+        this._fontReady = true;
+        return;
+      }
+      // 「시간 초과」에는 그때의 폰트 상태를 붙인다 — 폰트가 3초 안에 와도 등록 이름을 찾지 못하면(missing)
+      // 같은 경로로 오므로, 상태가 없으면 느린 연결과 이름 불일치를 결과 파일에서 가를 수 없다
+      this._abortFont(
+        f.status === 'error'
+          ? '폰트 거부'
+          : f.error
+            ? `불러오기 실패(${f.error})`
+            : `시간 초과(상태 ${f.status})`,
+      );
+    });
+  }
+
+  /**
+   * 폰트가 시간 초과하거나 거부됐다 — 블록을 시작하지 않고 작은 결과 JSON을 내려받은 뒤 오류 상자를 띄운다.
+   * 브라우저 네트워크를 느린 4G로 늦춰 재는 회차는 폰트가 늦게 올 때를 보려는 것이라 이 경로를 탈 수 있다.
+   * 여기서 기록이 남지 않으면 그 회차의 첫 표시를 얻을 수 없다.
+   */
+  private _abortFont(reason: string): void {
+    this._finished = true;
+    this._aborted = true;
+    this._startButton?.remove();
+    this._startButton = null;
+    const record = buildFontAbortRecord({
+      firstShow: this._firstShow,
+      fontFiles: this._fontLoader?.fileInputs() ?? [],
+      reason,
+    });
+    this._resultName = `font-abort-${sanitizeFileToken(new Date().toISOString())}.json`;
+    this._resultSummary = `폰트 때문에 측정을 시작하지 않았다 — ${reason}`;
+    downloadJson(record, this._resultName);
+    this._showErrors([
+      {
+        problem: `폰트를 쓸 수 없어 측정을 시작하지 않았다 — ${reason}`,
+        cause: '대체 글꼴로 잰 UI 몫은 판정에 쓸 수 없다',
+        fix: `내려받은 ${this._resultName}의 firstShow · fontFiles를 QA 문서의 느린 4G 회차에 적는다`,
+        ref: 'docs/qa/ui-font-probe-test.md §5.5(느린 4G 회차)',
+      },
+    ]);
+  }
+
+  /**
+   * 측정을 시작하는 순간 UI 몫 측정을 준비한다 — HUD 라벨 글자를 쓰는 쪽을 `HudController`에서 이 컴포넌트의
+   * 문자열 바꾸기로 넘기고(`LabRuntime.hudDriven`), Cache Mode를 정한다.
+   */
+  private _prepareUiRun(): void {
+    LabRuntime.hudDriven = true;
+    LabRuntime.vfxOff = true;
+    this._driveStart = performance.now();
+    const labels = this._hudLabels();
+    // cache=char는 숫자와 기호로만 된 hp · timer만 CHAR로 바꾼다 — wave · level은 「Wave」 · 「Lv.」 글자가
+    // 있어 문장 라벨 규칙(NONE)을 따른다. 폰트를 입히기 전에 정해 두어야 첫 표시 기록에 Cache Mode를 바꾸는
+    // 비용이 섞이지 않는다
+    for (const key of DRIVE_LABELS) {
+      const label = labels[key];
+      if (!label) continue;
+      const char = LabRuntime.mode.cache === 'char' && (key === 'hp' || key === 'timer');
+      label.cacheMode = char ? Label.CacheMode.CHAR : Label.CacheMode.NONE;
+    }
+  }
+
+  /** HUD 라벨 넷과 마법 슬롯 라벨 — `HudController`가 `LabRuntime.hudControl`에 넘겨 둔 것에서 꺼낸다. */
+  private _hudLabels(): {
+    hp: Label | null;
+    wave: Label | null;
+    timer: Label | null;
+    level: Label | null;
+    spellSlots: Label[];
+  } {
+    const l = LabRuntime.hudControl?.labels;
+    return {
+      hp: (l?.hp as Label | null | undefined) ?? null,
+      wave: (l?.wave as Label | null | undefined) ?? null,
+      timer: (l?.timer as Label | null | undefined) ?? null,
+      level: (l?.level as Label | null | undefined) ?? null,
+      spellSlots: (l?.spellSlots as Label[] | undefined) ?? [],
+    };
+  }
+
+  /**
+   * UI 몫 측정의 한 프레임 — 블록마다 HUD를 켜고 끄고, 폰트 입힘 프레임에 폰트를 넣고, 블록 안에서만
+   * 문자열을 바꾼다. 이펙트는 모든 단계에서 끈다.
+   */
+  private _driveUiFrame(st: IScheduleState): void {
+    const flags = st.kind === null ? { vfxOff: true, hudActive: true } : uiBlockFlags(st.kind);
+    LabRuntime.vfxOff = flags.vfxOff;
+    this._setHud(flags.hudActive);
+    if (st.applyFontNow) {
+      this._applyFont();
+      this._applyFrameThis = true;
+      this._firstShow.applyFrame = this._frameNo;
+    }
+    this._fontStageThis = st.stage === 'font' && !st.applyFontNow;
+    // 채우기 · 폰트 입힘 단계에는 문자열을 바꾸지 않는다 — 첫 표시 기록에 문자열 바꾸기 비용이 섞인다
+    if (st.stage === 'block') this._drive();
+    this._frameNo++;
+  }
+
+  /**
+   * HUD 라벨 넷과 마법 슬롯 라벨에 폰트를 넣는다. `font` 세터는 그 자리에서 다시 그리므로(엔진
+   * `2d/components/label.ts:466-487`) 이 프레임의 바쁜 시간에 그 비용이 들어간다.
+   */
+  private _applyFont(): void {
+    const ttf = this._fontLoader?.fonts[0]?.ttf ?? null;
+    if (!ttf) return;
+    const l = this._hudLabels();
+    for (const label of [l.hp, l.wave, l.timer, l.level, ...l.spellSlots])
+      if (label) label.font = ttf;
+  }
+
+  /**
+   * 문자열 바꾸기 — worst는 HUD 라벨 넷에 매 프레임 쓰고, real은 타이머만 1초에 한 번 바꾼다(측정 모드에는
+   * 피해 · 처치가 없어 다른 라벨은 실제로도 바뀌지 않는다). 켬 · 끔 두 블록에 똑같이 쓴다 — 꺼진 라벨에
+   * 쓰는 비용은 문자열 비교와 대입뿐이다.
+   */
+  private _drive(): void {
+    const l = this._hudLabels();
+    if (LabRuntime.mode.drive === 'real') {
+      const sec = Math.floor((performance.now() - this._driveStart) / 1000);
+      if (sec !== this._lastDriveSec && l.timer) {
+        this._lastDriveSec = sec;
+        l.timer.string = driverValue(sec, 'timer');
+      }
+      return;
+    }
+    for (const key of DRIVE_LABELS) {
+      const label = l[key];
+      if (label) label.string = driverValue(this._frameNo, key);
+    }
+  }
+
+  /** HUD 노드를 켜고 끈다. 같은 값이면 건드리지 않는다 — 다시 켜면 라벨 전체를 다시 그린다. */
+  private _setHud(active: boolean): void {
+    if (this._hudActive === active) return;
+    this._hudActive = active;
+    LabRuntime.hudControl?.setActive(active);
+  }
+
+  /**
+   * HUD를 켜고, HUD 라벨 글자를 쓰는 쪽을 `HudController`에 되돌린다(`hudDriven = false`). 측정이 끝날 때 ·
+   * 중단할 때 · 컴포넌트가 사라질 때 부른다.
+   */
+  private _restoreHud(): void {
+    if (LabRuntime.mode.off !== 'ui') return;
+    LabRuntime.hudDriven = false;
+    this._hudActive = true;
+    LabRuntime.hudControl?.setActive(true);
   }
 
   /** 블록 기록을 적 수별 켬 · 끔 통계와 판정으로 묶는다. */
@@ -345,6 +580,7 @@ export class VfxLab extends Component {
     // Set 자체가 원소 하나가 되고, 적 수별 통계가 통째로 빈다(2026-10-13 웹 빌드에서 확인)
     const counts = Array.from(new Set(this._frames.map((f) => f.record.count)));
     const summaryLines: string[] = [];
+    const uiRun = LabRuntime.mode.off === 'ui';
     const perCount = counts.map((count) => {
       const side = (kind: 'on' | 'off'): ISideStats => {
         const blocks = valid.filter((f) => f.record.count === count && f.record.kind === kind);
@@ -369,6 +605,26 @@ export class VfxLab extends Component {
       const judge = judgeShare(on, off, th);
       const near = isNearThreshold(judge, th);
       const judged = count === 200;
+      if (uiRun) {
+        // UI 몫은 중앙값으로 판정한다(사용자 결정). 평균 차이도 함께 적는 이유: drive=real처럼 문자열이
+        // 초당 한 번만 바뀌면 60프레임 중 1프레임만 다시 그려 그 비용이 중앙값 · 상위 5%에는 안 보이고
+        // 평균에만 남는다
+        const share = judgeUiShare(on.busy.median, off.busy.median);
+        const uiNear = isNearUiThreshold(share.delta);
+        const ui = {
+          ...share,
+          nearThreshold: uiNear,
+          meanDelta: on.busy.mean - off.busy.mean,
+          p95Delta: on.busy.p95 - off.busy.p95,
+          maxDelta: on.busy.max - off.busy.max,
+          over20: { on: on.busy.over20, off: off.busy.over20 },
+        };
+        summaryLines.push(
+          `${count}마리 UI 몫: 바쁜 시간 중앙값 ${signed(share.delta)}ms · 평균 ${signed(ui.meanDelta)}ms · 상위 5% ${signed(ui.p95Delta)}ms` +
+            ` → ${share.pass ? '통과' : '실패'}${uiNear ? ' · 문턱 근처 — 한 번 더' : ''}`,
+        );
+        return { count, judged, thresholds: th, on, off, judge, nearThreshold: near, ui };
+      }
       summaryLines.push(
         `${count}마리: 바쁜 시간 ${signed(judge.busyMeanDelta)}ms · 1% low ${signed(judge.busyLowDelta)}ms · 건너뜀 ${signed(judge.skipDelta * 100)}%p` +
           (judged
@@ -405,13 +661,24 @@ export class VfxLab extends Component {
       devShortBlock: devShort,
       invalidBlocks: invalid,
       frameMs,
-      interpretation: '바쁜 시간 = CPU 제출 비용, GPU 비용은 간격(건너뜀) 쪽에 나타난다',
+      interpretation: uiRun
+        ? 'UI 몫 = HUD 노드 전체(글자 라벨 · HP · XP 바 · 마법 슬롯)를 켠 블록과 끈 블록의 바쁜 시간 차이 — 폰트 자체의 비용이 아니다'
+        : '바쁜 시간 = CPU 제출 비용, GPU 비용은 간격(건너뜀) 쪽에 나타난다',
+      ...(uiRun
+        ? {
+            firstShow: { ...this._firstShow },
+            fontFiles: (this._fontLoader?.fileInputs() ?? []).map(fontFileRecord),
+            timingBufferFull: this._fontLoader?.timingBufferFull ?? false,
+            server: typeof location === 'undefined' ? '' : location.origin,
+          }
+        : {}),
       perCount,
       blocks: this._frames.map((f) => ({
         ...f.record,
         frames: f.n,
         drawCallsMax: f.drawCallsMax,
         drawCallsMean: f.n > 0 ? f.drawCallsSum / f.n : 0,
+        hudActive: f.hudActive,
         particlesMax: f.particlesMax,
         particlesMean: f.n > 0 ? f.particlesSum / f.n : 0,
         emittersMax: f.emittersMax,
@@ -488,7 +755,9 @@ export class VfxLab extends Component {
     const h = canvas?.height ?? 0;
     const s = this._schedule;
     lines.push(
-      `이펙트 측정 — load=${mode.load} · counts=${mode.counts.join(',')} · block=${mode.blockSec}초`,
+      mode.off === 'ui'
+        ? `UI 몫 측정 — font=${mode.font} · weight=${mode.weight} · cache=${mode.cache} · drive=${mode.drive} · counts=${mode.counts.join(',')}`
+        : `이펙트 측정 — load=${mode.load} · counts=${mode.counts.join(',')} · block=${mode.blockSec}초`,
     );
     lines.push(`캔버스 ${w}×${h}px · devicePixelRatio ${window.devicePixelRatio}`);
     if (w !== JUDGE_W || h !== JUDGE_H)
@@ -498,7 +767,9 @@ export class VfxLab extends Component {
     lines.push(
       `드로우콜 ${last && last.n > 0 ? Math.round(last.drawCallsSum / last.n) : '-'} · 적 ${GameManager.instance?.enemies.length ?? 0} · ${liveText()}`,
     );
-    if (!this._started) {
+    if (!this._started && mode.off === 'ui' && !this._fontReady && !this._finished) {
+      lines.push('폰트 불러오는 중 — 준비되면 「측정 시작」이나 Space로 시작할 수 있다');
+    } else if (!this._started && !this._finished) {
       lines.push(
         '가운데 「측정 시작」 버튼이나 Space를 누르면 시작한다. 측정 중에는 마우스 · 키를 건드리지 마세요.',
       );
@@ -507,7 +778,9 @@ export class VfxLab extends Component {
       const stage =
         st.stage === 'fill'
           ? `적 채우는 중(목표 ${st.count})`
-          : `${st.count}마리 · ${st.kind === 'on' ? '켬' : '끔'} 블록 ${st.blockIndex + 1}/6${st.discard ? ' · 버림 구간' : ''}`;
+          : st.stage === 'font'
+            ? `폰트 입힘 — ${FONT_APPLY_SEC}초 기다림`
+            : `${st.count}마리 · ${st.kind === 'on' ? '켬' : '끔'} 블록 ${st.blockIndex + 1}/6${st.discard ? ' · 버림 구간' : ''}`;
       lines.push(stage, '마우스 · 키를 건드리지 마세요.');
       if (s.invalidCount > 0) lines.push(`무효 블록 ${s.invalidCount} — 끝나고 다시 돌리세요`);
     } else {
@@ -759,4 +1032,23 @@ export class VfxLab extends Component {
     a.download = `compare-${sanitizeFileToken(method)}-${sanitizeFileToken(stamp)}.png`;
     a.click();
   }
+}
+
+/** JSON을 파일로 내려받는다. */
+function downloadJson(data: unknown, name: string): void {
+  downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), name);
+}
+
+/**
+ * 브라우저 내려받기 — 실험실 결과 JSON과 판정 화면(`FontProbe`)의 캡처 · 판정값이 함께 쓴다. 다운로드가
+ * 시작되기 전에 주소를 거두면 Firefox · Safari는 받기를 취소한다. 결과 파일은 다시 얻으려면 회차를
+ * 처음부터 돌려야 하므로 한 박자 늦게 거둔다.
+ */
+export function downloadBlob(blob: Blob, name: string): void {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  const href = a.href;
+  setTimeout(() => URL.revokeObjectURL(href), 1000);
 }
