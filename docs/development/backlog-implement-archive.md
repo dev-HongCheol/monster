@@ -97,3 +97,7 @@
 ### 플레이어 3D 층 전환 (2026-09-30)
 
 - **F101** 씬·프리팹이 안 쓰는 아트 자산 정리 → **완료**(`feat/blender-3d-gate`, PR #92, 2026-09-30). 브릿지 스프라이트 · 분리 지팡이 · 2D 네 장을 층 아틀라스로 대체하며 지웠고, 2D 생성 원본은 `cloud-storage/art/evidence/`로 옮겼다. → [`sessions/2026-09-15-blender-3d-gate-round2-g5-game.md`](sessions/2026-09-15-blender-3d-gate-round2-g5-game.md)
+
+### 워크플로 문서 리팩터 (2026-11-10)
+
+- **F76** QA 문서의 「이전 문서 링크」 규칙이 실행 불가능 → **완료**(`docs/workflow-refactor-2-procedure-trim`, 2026-11-10). 처방이던 머리말 `이전 문서:` 필드를 만들지 않고, 규칙 자체를 `workflow/qa-setup.md`에서 지웠다. 슬라이스가 병렬로 진행되거나 영역이 다르면 바로 이전 문서를 정할 방법이 없기 때문이다. → [`sessions/2026-11-10-workflow-docs-refactor.md`](sessions/2026-11-10-workflow-docs-refactor.md) §4
