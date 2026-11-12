@@ -1,7 +1,7 @@
 # 워크플로 문서 리팩터 3a — 1·2단계 리뷰 지적을 고치고 다음 단계 조건을 남긴다
 
 - **작성:** 2026-11-11
-- **상태:** 계획
+- **상태:** 완료(2026-11-12, PR #105)
 - **정본:** [`spec/code-conventions.md`](../spec/code-conventions.md) · [`workflow/verification.md`](../workflow/verification.md) · [`workflow/user-verification.md`](../workflow/user-verification.md) · [`workflow/qa-setup.md`](../workflow/qa-setup.md) — 1·2단계 독립 리뷰가 짚은 문장을 고친다
 - **백로그:** F116 · F121 · F158 · F159를 진척시키고, 하네스 빈틈을 F160으로 새로 남긴다
 - **고치는 파일(8, 상태 파일 `.claude/workflow-state.json` 제외):** `docs/development/spec/code-conventions.md` · `docs/development/workflow/verification.md` · `docs/development/workflow/user-verification.md` · `docs/development/workflow/qa-setup.md` · `docs/development/backlog-docs.md` · `docs/development/backlog-implement.md` · 이 문서(`docs/development/sessions/2026-11-11-workflow-refactor-3-plan.md`) · `docs/qa/workflow-refactor-3-review-issues.md`(이 슬라이스의 코드 리뷰 기록, `verification.md` 게이트 2, 새로 만듦)
