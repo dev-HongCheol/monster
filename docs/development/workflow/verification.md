@@ -25,7 +25,7 @@
 | 답할 정본이 없어 새로 만든다 | `pnpm wf canon <분류>-<주제> "<제목>" "<답하는 질문>"` (디자인 정본은 `--design`) |
 | 바꾼 명세가 없다 | `pnpm wf canon-skip "<사유>"` |
 
-**코드 동작만 바뀌었으면 JSDoc이 정본이다.** 별도 문서를 만들지 말고 `canon-skip`에 그렇게 적는다. 새로 만들 때 파일명을 짓는 규칙은 [`../spec/README.md`](../spec/README.md)에 있다.
+**코드 동작만 바뀌었으면 JSDoc이 정본이다.** 별도 문서를 만들지 말고 `canon-skip`에 그렇게 적는다. 새로 만들 때 파일명 규칙은 [`../spec/README.md`](../spec/README.md)에, 디자인 정본의 접두사는 [`../../design/spec/README.md`](../../design/spec/README.md)에 있다.
 
 셋 중 아무것도 선언하지 않으면 전이가 막힌다. `invalidate`와 `start-verification`이 이 선언을 함께 지우므로 **선언은 이 phase에 들어온 뒤에 한다** — 코드가 바뀌면 "명세도 바뀌었나"라는 판단이 낡기 때문이다. 구현 중에 이미 `canon`으로 문서를 만들었다면 문서는 그대로 있으니 `canon-done`으로 다시 기록하면 된다.
 
