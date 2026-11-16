@@ -18,7 +18,7 @@ Cocos 관련 코드는 Context7로 공식 문서를 먼저 조회한 뒤 쓴다.
 
 ## 신규 자산의 `.meta`
 
-새로 만든 `.ts`·`.json`의 `.meta`를 만들지 않는다(원칙과 근거는 `CLAUDE.md`의 「에셋 `.meta` 관리 규칙」). 테스트와 빌드는 `.meta` 없이도 돈다 — vitest와 tsc는 경로로 import한다.
+새로 만든 `.ts`·`.json`의 `.meta`를 만들지 않는다(이유는 [`ops-cocos-assets.md`](../spec/ops-cocos-assets.md)). 테스트와 빌드는 `.meta` 없이도 돈다 — vitest와 tsc는 경로로 import한다.
 
 ## 나가는 게이트: `start-verification`
 
