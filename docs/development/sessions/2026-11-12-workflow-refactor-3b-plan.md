@@ -3,7 +3,7 @@
 - **작성:** 2026-11-12
 - **상태:** 계획
 - **정본:** [`spec/ops-cocos-assets.md`](../spec/ops-cocos-assets.md)(새로 만듦) · [`design/spec/art-asset-spec.md`](../../design/spec/art-asset-spec.md) §9.3 · [`workflow/implementation.md`](../workflow/implementation.md) · [`workflow/README.md`](../workflow/README.md) — `.meta` 규칙의 배경 · 원칙 · 이유를 한 정본으로 모은다
-- **백로그:** F121 합계 문장을 고쳐 쓰고, F160 출처 칸에 이 문서 §5 링크를 더하며, `.meta` 쓰기를 훅으로 막는 일을 F161로, 코드 리뷰가 찾은 `wf canon` 템플릿 문구는 F162로 새로 남긴다
+- **백로그:** F121 합계 문장을 고쳐 쓰고, F160 출처 칸에 이 문서 §5 링크를 더하며, `.meta` 쓰기를 훅으로 막는 일을 F161로, 코드 리뷰가 찾은 `wf canon` 템플릿 문구를 F162로 새로 남긴다
 - **고치는 파일(9, 상태 파일 `.claude/workflow-state.json` 제외):** `docs/development/spec/ops-cocos-assets.md`(새로) · `docs/development/spec/README.md`(`wf canon`이 등재) · `docs/design/spec/art-asset-spec.md` · `docs/development/workflow/implementation.md` · `docs/development/workflow/README.md` · `docs/development/backlog-docs.md` · `docs/development/backlog-implement.md` · 이 문서(`docs/development/sessions/2026-11-12-workflow-refactor-3b-plan.md`) · `docs/qa/workflow-refactor-3b-review-issues.md`(리뷰 기록, 새로)
 
 ---
@@ -32,6 +32,7 @@ README에 명령 두 개를 적는 일도 3b가 한다. 7단계가 `CLAUDE.md` �
 | [`backlog-docs.md`](../backlog-docs.md) F121 합계 문장 | 「2026-11-12 실측으로는 파일 내용 합계가 13,420자다(…)」 | 날짜와 숫자를 §6 명령으로 다시 잰 날과 값으로 고쳐 쓴다(문장을 덧붙이지 않는다) |
 | [`backlog-implement.md`](../backlog-implement.md) F160 출처 칸 | 3a 계획 §2 · §5를 가리키는 링크 하나 | 표 아래 「F160 출처 칸 전문」으로 바꾼다 |
 | 같은 문서 F-5 절, F160 행 바로 아래 | — | 표 아래 「F161 행 전문」을 더한다. 번호는 `git fetch` 뒤 `origin/main` 기준으로 백로그 셋과 아카이브 둘에서 비어 있는지 다시 본다 |
+| `backlog-docs.md` 「문서 규칙 · 절차 문서」 표, F158 행 바로 아래 | — | F162(`wf canon` 템플릿 안내 문장의 「든다」를 고친다)를 더한다. 코드 리뷰에서 나온 항목이다(리뷰 기록 Minor 5) |
 
 **정본 만들기 명령**(Bash 도구로 친다. 셸이 제목의 백틱을 명령으로 읽지 않도록 작은따옴표로 감싼다):
 
