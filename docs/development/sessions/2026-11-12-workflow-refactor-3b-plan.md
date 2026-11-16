@@ -3,7 +3,7 @@
 - **작성:** 2026-11-12
 - **상태:** 계획
 - **정본:** [`spec/ops-cocos-assets.md`](../spec/ops-cocos-assets.md)(새로 만듦) · [`design/spec/art-asset-spec.md`](../../design/spec/art-asset-spec.md) §9.3 · [`workflow/implementation.md`](../workflow/implementation.md) · [`workflow/README.md`](../workflow/README.md) — `.meta` 규칙의 배경 · 원칙 · 이유를 한 정본으로 모은다
-- **백로그:** F121 합계 문장을 고쳐 쓰고, F160 출처 칸에 이 문서 §5 링크를 더하며, `.meta` 쓰기를 훅으로 막는 일을 F161로 새로 남긴다
+- **백로그:** F121 합계 문장을 고쳐 쓰고, F160 출처 칸에 이 문서 §5 링크를 더하며, `.meta` 쓰기를 훅으로 막는 일을 F161로, 코드 리뷰가 찾은 `wf canon` 템플릿 문구는 F162로 새로 남긴다
 - **고치는 파일(9, 상태 파일 `.claude/workflow-state.json` 제외):** `docs/development/spec/ops-cocos-assets.md`(새로) · `docs/development/spec/README.md`(`wf canon`이 등재) · `docs/design/spec/art-asset-spec.md` · `docs/development/workflow/implementation.md` · `docs/development/workflow/README.md` · `docs/development/backlog-docs.md` · `docs/development/backlog-implement.md` · 이 문서(`docs/development/sessions/2026-11-12-workflow-refactor-3b-plan.md`) · `docs/qa/workflow-refactor-3b-review-issues.md`(리뷰 기록, 새로)
 
 ---
@@ -58,11 +58,11 @@ pnpm wf canon ops-cocos-assets 'Cocos 에셋과 `.meta`' 'Cocos 에셋의 `.meta
 ```md
 ## 1. `.meta`는 Cocos 에디터만 만든다
 
-`.meta`는 Cocos 에디터만 만들고, AI는 직접 만들지 않는다. 새 파일의 `.meta`가 언제 생기고 언제 커밋되는지는 그 순간의 행동으로 [`../workflow/implementation.md`](../workflow/implementation.md)와 [`../workflow/user-verification.md`](../workflow/user-verification.md)에 적혀 있다. 아트 파일의 경로 · 파일명 · 원본 자리는 [`../../design/spec/art-asset-spec.md`](../../design/spec/art-asset-spec.md) §9가 맡는다.
+`.meta`는 Cocos 에디터만 만들고, AI는 직접 만들지 않는다. 구현하는 동안 새 파일의 `.meta`를 만들지 않는다는 것은 [`../workflow/implementation.md`](../workflow/implementation.md)에, `.meta`가 언제 생기고 언제 커밋되는지는 [`../workflow/user-verification.md`](../workflow/user-verification.md)에 적혀 있다. 아트 파일의 경로 · 파일명 · 원본 자리는 [`../../design/spec/art-asset-spec.md`](../../design/spec/art-asset-spec.md) §9가 맡는다.
 
 ## 2. `.meta`가 하는 일
 
-Cocos는 `game/assets/` 아래의 파일과 폴더마다 같은 이름의 `.meta`를 만든다. `.meta`에는 그 자산의 UUID와 설정이 들어 있고, 씬과 프리팹은 다른 자산을 경로가 아니라 이 UUID로 가리킨다.
+Cocos는 `game/assets/` 아래의 파일과 폴더마다 같은 이름의 `.meta`를 만든다(`body_idle.png`라면 `body_idle.png.meta`). `.meta`에는 그 자산의 UUID와 설정이 들어 있고, 씬과 프리팹은 다른 자산을 경로가 아니라 이 UUID로 가리킨다.
 
 그래서 `.meta`를 커밋하지 않으면, 다른 장비에서 클론한 뒤 Cocos가 그 자산에 `.meta`를 새로 만들면서 UUID도 새로 매긴다. 씬과 프리팹은 옛 UUID를 가리키고 있으므로 참조가 끊긴다. 공식 매뉴얼도 `.meta`를 버전 관리에 함께 올리라고 한다.
 
@@ -72,7 +72,7 @@ Cocos는 `game/assets/` 아래의 파일과 폴더마다 같은 이름의 `.meta
 
 ## 3. AI가 손으로 만들지 않는 이유
 
-`.meta`에는 UUID 말고도 에디터가 자산을 읽고 채우는 값이 들어 있다. 이미지라면 크기 · 오프셋 · 테두리 값이다([Cocos Creator 3.8 Manual — meta files](https://docs.cocos.com/creator/3.8/manual/en/asset/meta.html), 2026-11-12 확인). 형식만 맞춰 손으로 만들면 이 값이 에디터가 만들 값과 달라질 수 있다. 그래서 이 프로젝트는 그 파일을 최종적으로 쓰는 Cocos가 만든 `.meta`만 믿는다.
+`.meta`에는 UUID 말고도 에디터가 자산을 읽고 채우는 값이 들어 있다. 이미지라면 크기 · 오프셋 · 테두리 값이다([Cocos Creator 3.8 Manual — meta files](https://docs.cocos.com/creator/3.8/manual/en/asset/meta.html), 2026-11-12 확인). 형식만 맞춰 손으로 만들면 이 값이 에디터가 만들 값과 달라질 수 있다. 그래서 이 프로젝트는 Cocos 에디터가 자산을 임포트하면서 만든 `.meta`만 믿는다.
 
 ## 4. 커밋을 빠뜨리면 무엇이 막나
 
