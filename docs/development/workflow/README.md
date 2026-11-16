@@ -16,6 +16,11 @@ phase 하나에 문서 하나다. `pnpm wf` 전이가 성공하면 그 순간 �
 
 어느 검사를 언제 하는지는 `pnpm wf status`가 보여 주고, 규칙은 `.claude/lib/change-set.mjs`의 상수 위 주석에 적혀 있다.
 
+따로 치는 검사 명령(배달 문서에는 나오지 않는다):
+
+- `pnpm wf check-links` — 마크다운 링크와 앵커를 검사한다(통합 검사에도 들어 있다).
+- `pnpm typecheck` — 타입 검사만 따로 돌린다.
+
 ## 새 문서를 넣는 법
 
 파일명이 곧 phase 이름이고, 그 어휘의 출처는 `.claude/lib/phases.mjs`의 `PHASES` 배열이다. phase를 추가하면 같은 이름의 `.md`를 여기 만든다. `pnpm wf check-docs`가 누락과 잉여를 검사하며, 배달되지 않는 `.md`(phase 이름도 `README.md`도 아닌 것)도 잉여로 잡는다 — 읽히지 않은 채 낡는 문서를 만들지 않기 위해서다.
