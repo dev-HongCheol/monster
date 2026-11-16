@@ -1,6 +1,6 @@
 {
   "feature": "workflow-refactor-3b",
-  "phase": "verification",
+  "phase": "pr-ready",
   "test_skipped": true,
   "test_skip_reason": "문서만 바뀌고 game/** 변경이 없다",
   "ts_check_scope": "full",
@@ -16,10 +16,10 @@
     "cso_done": false,
     "ts_check_clean": true,
     "lint_clean": true,
-    "code_review_clean": false
+    "code_review_clean": true
   },
   "docs_delivered": [
-    "verification"
+    "pr-ready"
   ],
   "qa_skip_reason": "문서만 바뀌고 game/** 변경이 없다"
 }

@@ -1,7 +1,7 @@
 # 워크플로 문서 리팩터 3b — `.meta` 규칙의 주인을 색인되는 정본으로 세우고 README에 명령 두 개를 적는다
 
 - **작성:** 2026-11-12
-- **상태:** 계획
+- **상태:** 완료(2026-11-16, PR #106)
 - **정본:** [`spec/ops-cocos-assets.md`](../spec/ops-cocos-assets.md)(새로 만듦) · [`design/spec/art-asset-spec.md`](../../design/spec/art-asset-spec.md) §9.3 · [`workflow/implementation.md`](../workflow/implementation.md) · [`workflow/README.md`](../workflow/README.md) — `.meta` 규칙의 배경 · 원칙 · 이유를 한 정본으로 모은다
 - **백로그:** F121 합계 문장을 고쳐 쓰고, F160 출처 칸에 이 문서 §5 링크를 더하며, `.meta` 쓰기를 훅으로 막는 일을 F161로, 코드 리뷰가 찾은 `wf canon` 템플릿 문구를 F162로 새로 남긴다
 - **고치는 파일(9, 상태 파일 `.claude/workflow-state.json` 제외):** `docs/development/spec/ops-cocos-assets.md`(새로) · `docs/development/spec/README.md`(`wf canon`이 등재) · `docs/design/spec/art-asset-spec.md` · `docs/development/workflow/implementation.md` · `docs/development/workflow/README.md` · `docs/development/backlog-docs.md` · `docs/development/backlog-implement.md` · 이 문서(`docs/development/sessions/2026-11-12-workflow-refactor-3b-plan.md`) · `docs/qa/workflow-refactor-3b-review-issues.md`(리뷰 기록, 새로)
